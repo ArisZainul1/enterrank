@@ -254,77 +254,70 @@ Respond ONLY with JSON (no markdown):
 
   onProgress("Compiling results...",85);
 
-  // ── STEP 5: Channel verification (web search for major, Claude for rest) ──
+  // ── STEP 5: Channel verification — split across all 3 engines with web search ──
   onProgress("Verifying channel presence...",72);
-  const channelPrompt=`I need you to verify the online presence of the brand "${brand}" (website: ${cd.website}, industry: ${industry}, region: ${region}).
+  let channelData=null;
+  let deepData=null;
+  
+  const verifyPrompt=(channels)=>`You must search the web to verify whether "${brand}" (website: ${cd.website}) has a REAL presence on these specific channels. Do NOT guess — actually search for evidence.
 
-Using your web search capability, check which of these channels "${brand}" is ACTUALLY present on. For each channel, determine the status:
-- "Active" = brand has an established, maintained presence
-- "Needs Work" = brand has a presence but it's incomplete, outdated, or underutilised
-- "Not Present" = brand has no presence on this channel
+For each channel, search the web and determine:
+- "Active" = you found a real, maintained page/profile for "${brand}" on this platform
+- "Needs Work" = you found something but it's incomplete, outdated, or minimal
+- "Not Present" = you searched and found NO page/profile for "${brand}" on this platform
 
-Also provide a brief finding (1 sentence) explaining what you found for each.
-
-Also, the current static list of recommended sites for Review Platforms, Press/News, Industry Directories, and Social Media may not be the best fit for a ${industry} company in ${region}. Please also return better, more relevant site recommendations for these 4 expandable channel groups tailored to ${brand}'s specific industry and region.
+Provide a specific finding for each — what URL did you find? How many followers? When was it last updated? If you found nothing, say so clearly.
 
 Channels to verify:
-1. Company Blog / Knowledge Base (check ${cd.website} for a blog or resources section)
-2. Wikipedia / Wikidata (check if ${brand} has a Wikipedia article)
-3. YouTube / Video (check for official YouTube channel)
-4. Review Platforms (check G2, Trustpilot, Google Business, industry-specific review sites)
-5. Press / News Coverage (check for recent news articles mentioning ${brand})
-6. LinkedIn (check for company LinkedIn page)
-7. Industry Directories (check Crunchbase, industry-specific directories)
-8. Podcasts (check if ${brand} has appeared on or hosts podcasts)
-9. Social Media - X, Reddit, Quora (check for official accounts and community discussions)
-10. Academic Citations (check Google Scholar or research papers mentioning ${brand})
+${channels.map((c,i)=>`${i+1}. ${c}`).join("\n")}
 
 Respond ONLY with JSON (no markdown):
-{
-  "channels": [
-    {"channel":"Company Blog / Knowledge Base","status":"Active","finding":"Brand has an active blog with regular posts at website.com/blog"},
-    {"channel":"Wikipedia / Wikidata","status":"Active","finding":"Has a comprehensive Wikipedia article with recent edits"},
-    {"channel":"YouTube / Video","status":"Needs Work","finding":"Channel exists but last upload was 6 months ago"},
-    {"channel":"Review Platforms","status":"Active","finding":"Listed on G2 with 4.5 stars and 200+ reviews"},
-    {"channel":"Press / News Coverage","status":"Active","finding":"Featured in TechCrunch, Forbes in the past 6 months"},
-    {"channel":"LinkedIn","status":"Active","finding":"Company page with 50K+ followers and weekly posts"},
-    {"channel":"Industry Directories","status":"Needs Work","finding":"Listed on Crunchbase but profile is incomplete"},
-    {"channel":"Podcasts","status":"Not Present","finding":"No podcast appearances found"},
-    {"channel":"Social Media (X, Reddit, Quora)","status":"Needs Work","finding":"Active on X but no Reddit or Quora presence"},
-    {"channel":"Academic Citations","status":"Not Present","finding":"No academic papers or citations found"}
-  ],
-  "recommendedSites": {
-    "reviewPlatforms": [{"name":"Site Name","url":"site.com","focus":"Why this matters for ${brand}"}],
-    "pressNews": [{"name":"Publication","url":"pub.com","focus":"Relevant beat/section"}],
-    "industryDirectories": [{"name":"Directory","url":"dir.com","focus":"Why relevant"}],
-    "socialMedia": [{"name":"Platform","url":"platform.com","focus":"How to use it"}]
-  }
-}`;
-  const channelRaw=await callClaude(channelPrompt, "You are an expert AEO analyst. Research thoroughly before answering.", true);
-  const channelData=safeJSON(channelRaw);
+[{"channel":"${channels[0]}","status":"Active","finding":"Found company page at linkedin.com/company/brandname with 10K followers, posts weekly"}]`;
 
-  // Also do a web-search-enabled deep check on the biggest channels
-  onProgress("Deep-checking key channels...",80);
-  const deepCheckPrompt=`Search the web and verify these specific things about "${brand}" (${cd.website}):
+  try{
+    // Split channels across engines for speed and accuracy
+    const claudeChannels=["Wikipedia / Wikidata","LinkedIn","Company Blog / Knowledge Base","Press / News Coverage"];
+    const gptChannels=["YouTube / Video","Review Platforms","Podcasts"];
+    const geminiChannels=["Social Media (X, Reddit, Quora)","Industry Directories","Academic Citations"];
 
-1. Does "${brand}" have a Wikipedia page? Search for "${brand} Wikipedia" and confirm.
-2. Does "${brand}" have a YouTube channel? Search for "${brand} YouTube" and confirm.
-3. Does "${brand}" have a LinkedIn company page? Search for "${brand} LinkedIn" and confirm.
-4. Search for recent news about "${brand}" — has it been covered by any major publications in the last 12 months?
-5. Search for "${brand}" on review sites — is it listed on G2, Trustpilot, or similar?
+    onProgress("Claude checking Wikipedia, LinkedIn, Blog, Press...",74);
+    const claudeVerifyP=callClaude(verifyPrompt(claudeChannels),"You are a research assistant. You MUST use web search to verify each channel. Do not guess. Search for real URLs and evidence.",true);
+    
+    onProgress("ChatGPT checking YouTube, Reviews, Podcasts...",76);
+    const gptVerifyP=callEngine("openai",verifyPrompt(gptChannels),"You are a research assistant. Verify each channel by searching the web. Provide specific evidence — URLs, follower counts, review scores. If you cannot find evidence, say Not Present.");
+    
+    onProgress("Gemini checking Social Media, Directories, Academic...",78);
+    const geminiVerifyP=callEngine("gemini",verifyPrompt(geminiChannels),"You are a research assistant. Verify each channel by searching the web. Provide specific evidence. If you cannot find evidence, say Not Present.");
 
-For each, provide what you actually found with specific details (follower counts, article titles, review counts, etc. if available).
+    const [claudeVerifyRaw, gptVerifyRaw, geminiVerifyRaw] = await Promise.all([claudeVerifyP, gptVerifyP, geminiVerifyP]);
 
-Respond ONLY with JSON (no markdown):
-{
-  "wikipedia": {"exists": true, "details": "Comprehensive article, last edited Jan 2025, covers history, services, financials"},
-  "youtube": {"exists": true, "details": "Official channel with 12K subscribers, 200+ videos, last upload 2 weeks ago"},
-  "linkedin": {"exists": true, "details": "Company page with 85K followers, posts weekly"},
-  "news": {"exists": true, "details": "Featured in Reuters (Dec 2024), The Star (Jan 2025), coverage of 5G rollout"},
-  "reviews": {"exists": true, "details": "4.2 stars on Google Business (15K+ reviews), listed on Trustpilot"}
-}`;
-  const deepRaw=await callClaude(deepCheckPrompt, "You are a research assistant. Use web search to verify information. Be specific about what you find. If you cannot confirm something exists, say so honestly.", true);
-  const deepData=safeJSON(deepRaw);
+    onProgress("Merging verification results...",82);
+    const claudeVerify=safeJSON(claudeVerifyRaw)||[];
+    const gptVerify=safeJSON(gptVerifyRaw)||[];
+    const geminiVerify=safeJSON(geminiVerifyRaw)||[];
+    
+    const allVerified=[...claudeVerify,...gptVerify,...geminiVerify];
+    
+    if(allVerified.length>0){
+      channelData={channels:allVerified,recommendedSites:null};
+      const findCh=(name)=>allVerified.find(c=>c.channel&&c.channel.includes(name));
+      deepData={
+        wikipedia:{exists:findCh("Wikipedia")?.status==="Active",details:findCh("Wikipedia")?.finding||""},
+        youtube:{exists:findCh("YouTube")?.status==="Active",details:findCh("YouTube")?.finding||""},
+        linkedin:{exists:findCh("LinkedIn")?.status==="Active",details:findCh("LinkedIn")?.finding||""},
+        news:{exists:findCh("Press")?.status==="Active",details:findCh("Press")?.finding||""},
+        reviews:{exists:findCh("Review")?.status==="Active",details:findCh("Review")?.finding||""},
+      };
+    }
+  }catch(e){console.error("Channel verification error:",e);}
+
+  // Get industry-specific site recommendations from Claude
+  onProgress("Generating channel recommendations...",86);
+  const recPrompt=`For "${brand}" in "${industry}" (region: ${region}), recommend the most relevant specific sites for these 4 channel categories. Return 10-15 sites per category tailored to this industry and region.
+Respond ONLY with JSON: {"reviewPlatforms":[{"name":"Site","url":"site.com","focus":"Why relevant"}],"pressNews":[...],"industryDirectories":[...],"socialMedia":[...]}`;
+  const recRaw=await callClaude(recPrompt);
+  const recData=safeJSON(recRaw);
+  if(channelData&&recData)channelData.recommendedSites=recData;
 
   onProgress("Finalising report...",90);
 
@@ -535,8 +528,9 @@ function NewAuditPage({data,setData,onRun}){
           28:["[COMP] Running competitor signal analysis...","[COMP] Cross-referencing citation networks for "+data.competitors.slice(0,3).join(", "),"[COMP] Calculating category-level differentials...","[COMP] Mapping authority distribution curves..."],
           45:["[ARCH] Analysing search intent clusters...","[ARCH] Segmenting user archetypes by behaviour pattern...","[ARCH] Correlating query frequency → brand visibility...","[ARCH] Generating stakeholder-mapped personas..."],
           62:["[INTENT] Testing "+data.topics[0]+" prompt variants...","[INTENT] Evaluating citation probability per funnel stage...","[INTENT] Mapping brand mention density across query types...","[INTENT] Scoring "+data.brand+" presence in AI responses..."],
-          72:["[VERIFY] Initiating web search verification...","[VERIFY] Checking Wikipedia / Wikidata presence...","[VERIFY] Scanning review platform profiles...","[VERIFY] Auditing social media footprint...","[VERIFY] Crawling press/news citation history..."],
-          80:["[DEEP] Cross-validating channel data with live search...","[DEEP] Verifying LinkedIn company signals...","[DEEP] Checking YouTube content indexing...","[DEEP] Confirming knowledge graph entity resolution..."],
+          72:["[VERIFY] Dispatching channel checks to 3 engines...","[VERIFY] Claude → searching Wikipedia, LinkedIn, Blog, Press...","[VERIFY] ChatGPT → searching YouTube, Reviews, Podcasts...","[VERIFY] Gemini → searching Social Media, Directories, Academic..."],
+          74:["[VERIFY] Engines searching the web for real evidence...","[VERIFY] Looking for: "+data.brand+" company profiles, pages, mentions..."],
+          82:["[VERIFY] All engines reported back ✓","[VERIFY] Merging verification results from 3 sources...","[REC] Generating industry-specific site recommendations..."],
           90:["[BUILD] Compiling AEO score matrix...","[BUILD] Generating brand playbook recommendations...","[BUILD] Calculating 90-day projection model...","[BUILD] Assembling final report..."],
           95:["[DONE] All engines responded ✓","[DONE] Data validation complete ✓","[DONE] Report ready ✓"]
         };
@@ -569,7 +563,7 @@ function NewAuditPage({data,setData,onRun}){
     </div>
     {/* Step progress bars */}
     <div style={{width:"100%",display:"flex",flexDirection:"column",gap:6}}>
-      {[{l:"ChatGPT (gpt-4o)",p:Math.min(100,progress*100/14),c:"#10A37F"},{l:"Claude (Sonnet)",p:Math.max(0,Math.min(100,(progress-8)*100/12)),c:"#D97706"},{l:"Gemini (Flash)",p:Math.max(0,Math.min(100,(progress-14)*100/12)),c:"#4285F4"},{l:"Competitor Analysis",p:Math.max(0,Math.min(100,(progress-30)*100/15)),c:"#8b5cf6"},{l:"Archetype Generation",p:Math.max(0,Math.min(100,(progress-45)*100/17)),c:"#ec4899"},{l:"Intent Pathway",p:Math.max(0,Math.min(100,(progress-62)*100/10)),c:"#f59e0b"},{l:"Channel Verification",p:Math.max(0,Math.min(100,(progress-72)*100/18)),c:"#059669"},{l:"Report Compilation",p:Math.max(0,Math.min(100,(progress-90)*100/10)),c:C.accent}].map(s=>(<div key={s.l} style={{display:"flex",alignItems:"center",gap:8}}>
+      {[{l:"ChatGPT (gpt-4o)",p:Math.min(100,progress*100/14),c:"#10A37F"},{l:"Claude (Sonnet)",p:Math.max(0,Math.min(100,(progress-8)*100/12)),c:"#D97706"},{l:"Gemini (Flash)",p:Math.max(0,Math.min(100,(progress-14)*100/12)),c:"#4285F4"},{l:"Competitor Analysis",p:Math.max(0,Math.min(100,(progress-30)*100/15)),c:"#8b5cf6"},{l:"Archetype Generation",p:Math.max(0,Math.min(100,(progress-45)*100/17)),c:"#ec4899"},{l:"Intent Pathway",p:Math.max(0,Math.min(100,(progress-62)*100/10)),c:"#f59e0b"},{l:"Channel Verification (3 Engines)",p:Math.max(0,Math.min(100,(progress-72)*100/18)),c:"#059669"},{l:"Report Compilation",p:Math.max(0,Math.min(100,(progress-90)*100/10)),c:C.accent}].map(s=>(<div key={s.l} style={{display:"flex",alignItems:"center",gap:8}}>
         <span style={{fontSize:10,color:s.p>=100?C.green:s.p>0?C.text:C.muted,minWidth:120,fontWeight:s.p>0&&s.p<100?600:400,fontFamily:"'Outfit'"}}>{s.p>=100?"✓ ":s.p>0?"◉ ":"○ "}{s.l}</span>
         <div style={{flex:1,height:3,background:C.borderSoft,borderRadius:2}}><div style={{width:`${Math.max(0,s.p)}%`,height:"100%",background:s.p>=100?C.green:s.c,borderRadius:2,transition:"width .5s ease-out"}}/></div>
       </div>))}
@@ -830,8 +824,8 @@ function ChannelsPage({r,goTo}){
   const[expandCh,setExpandCh]=useState(null);
   const hasAnyFindings=r.aeoChannels.some(ch=>ch.finding);
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>AEO Channels</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Channels ranked by impact on AI engine visibility {hasAnyFindings&&<span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>⚡ Verified via AI</span>}</p></div>
-    <SectionNote text="These channels directly influence whether AI engines cite your brand. Statuses have been verified through live AI research. Channels with ▼ include specific sites and publishers to target."/>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>AEO Channels</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Channels ranked by impact on AI engine visibility {hasAnyFindings&&<span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>✓ Verified via 3 AI Engines</span>}</p></div>
+    <SectionNote text="These channels directly influence whether AI engines cite your brand. Each channel has been verified by ChatGPT, Claude, or Gemini searching the web for real evidence of your brand's presence. Channels with ▼ include specific sites to target."/>
     <Card>
       {r.aeoChannels.sort((a,b)=>b.impact-a.impact).map((ch,i)=>{const isOpen=expandCh===i;const hasSites=ch.sites&&ch.sites.length>0;const canExpand=hasSites||ch.finding;return(<div key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
         <div onClick={()=>{if(canExpand)setExpandCh(isOpen?null:i);}} style={{display:"grid",gridTemplateColumns:"30px 1fr 100px 90px 20px",gap:8,padding:"12px 8px",alignItems:"center",cursor:canExpand?"pointer":"default",background:isOpen?`${C.accent}03`:"transparent"}}>
