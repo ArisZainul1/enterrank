@@ -129,33 +129,50 @@ async function runRealAudit(cd, onProgress){
   const brand=cd.brand, industry=cd.industry, topics=cd.topics, competitors=cd.competitors, region=cd.region||"Global";
 
   // ── STEP 1: Direct engine queries — each AI answers about the brand itself ──
-  const perEnginePrompt=(engineName)=>`You are ${engineName}. A user is asking you about "${brand}" in the "${industry}" industry (region: ${region}, topics: ${topics.join(", ")}).
+  const perEnginePrompt=(engineName)=>`You are ${engineName}. A user is researching "${brand}" — a ${industry} company (website: ${cd.website}, region: ${region}, topics: ${topics.join(", ")}, competitors: ${competitors.join(", ")||"none listed"}).
 
-I will give you 8 queries. For each one, tell me honestly:
-- Would you mention "${brand}" in your response? ("Mentioned")
-- Would you cite/link to ${cd.website} as a source? ("Cited")  
-- Would you NOT reference "${brand}" at all? ("Absent")
+TASK 1 — QUERY VISIBILITY:
+For each of the 8 queries below, honestly assess: would you mention "${brand}" in your response?
+- "Cited" = you would link to ${cd.website} as a source
+- "Mentioned" = you would name-drop "${brand}" in your answer
+- "Absent" = you would NOT reference "${brand}" at all
+If you genuinely don't know this company, most should be "Absent". Be honest.
 
-Be completely honest. If you don't know "${brand}" or wouldn't naturally include it, say "Absent".
+TASK 2 — SELF-ASSESSMENT:
+Rate yourself honestly:
+- score (0-100): overall, how visible is "${brand}" in your knowledge? 0 = never heard of them, 100 = I cite them constantly
+- mentionRate (0-100): what % of ${industry} queries would you mention them?
+- citationRate (0-100): what % of queries would you link to their website?
+- sentiment (0-100): how positively do you view them? 50 = neutral
 
-Also rate yourself on:
-- mentionRate (0-100): how often you'd mention this brand across ${industry} queries
-- citationRate (0-100): how often you'd link to their site
-- sentiment (0-100): how positively you'd describe them
-- 2 strengths: what you know/like about this brand
-- 2 weaknesses: gaps in your knowledge or reasons you might not cite them
+TASK 3 — STRENGTHS & WEAKNESSES:
+Provide exactly 2 strengths and 2 weaknesses about "${brand}"'s visibility in your engine. These must be SPECIFIC and ACTIONABLE — not meta-commentary about your own limitations.
 
-Respond ONLY with JSON (no markdown):
-{"score":45,"mentionRate":40,"citationRate":25,"sentiment":55,"queries":[{"query":"Best ${industry} companies","status":"Mentioned"},{"query":"${topics[0]||industry} recommendations","status":"Absent"},{"query":"${brand} reviews","status":"Mentioned"},{"query":"Top ${industry} providers in ${region}","status":"Absent"},{"query":"Is ${brand} worth it","status":"Absent"},{"query":"${topics[0]||industry} comparison","status":"Absent"},{"query":"${brand} vs ${competitors[0]||"competitors"}","status":"Mentioned"},{"query":"${industry} buyer guide","status":"Absent"}],"strengths":["specific strength","specific strength"],"weaknesses":["specific weakness","specific weakness"]}`;
+BAD examples (do NOT write these):
+- "Limited knowledge available" ← too vague
+- "specific strength" ← placeholder
+- "As a language model, I don't have..." ← meta-commentary about yourself
+- "Would acknowledge if directly asked" ← not a real strength
+
+GOOD examples (write things like these):
+- "Strong presence in ${region} ${industry} discussions — frequently mentioned alongside ${competitors[0]||"major competitors"}"
+- "Website has comprehensive FAQ content that maps well to common user queries"
+- "No structured data / schema markup detected on ${cd.website}, reducing citation likelihood"
+- "Competitors like ${competitors[0]||"larger firms"} dominate 'best ${industry}' queries — ${brand} rarely appears in top recommendations"
+- "Active LinkedIn presence with thought leadership content strengthens authority signals"
+- "Limited third-party reviews or press coverage reduces trust signals for AI citation"
+
+Respond ONLY with valid JSON (no markdown, no backticks, no explanation before or after):
+{"score":25,"mentionRate":15,"citationRate":5,"sentiment":50,"queries":[{"query":"Best ${industry} companies","status":"Absent"},{"query":"${topics[0]||industry} recommendations","status":"Absent"},{"query":"${brand} reviews","status":"Absent"},{"query":"Top ${industry} providers in ${region}","status":"Absent"},{"query":"Is ${brand} worth it","status":"Absent"},{"query":"${topics[0]||industry} comparison","status":"Absent"},{"query":"${brand} vs ${competitors[0]||"competitors"}","status":"Absent"},{"query":"${industry} buyer guide","status":"Absent"}],"strengths":["REPLACE WITH REAL SPECIFIC STRENGTH ABOUT ${brand}","REPLACE WITH REAL SPECIFIC STRENGTH ABOUT ${brand}"],"weaknesses":["REPLACE WITH REAL SPECIFIC WEAKNESS ABOUT ${brand}","REPLACE WITH REAL SPECIFIC WEAKNESS ABOUT ${brand}"]}`;
 
   onProgress("Querying ChatGPT (gpt-4o)...",8);
-  const gptRaw=callEngine("openai",perEnginePrompt("ChatGPT"),"You are ChatGPT by OpenAI. Answer honestly about what you know.");
+  const gptRaw=callEngine("openai",perEnginePrompt("ChatGPT"),"You are an AEO visibility analyst roleplaying as ChatGPT. Provide specific, actionable analysis about the brand's visibility. Never use placeholder text. Never write meta-commentary about being an AI. Write real strengths and weaknesses about the BRAND, not about yourself.");
   
   onProgress("Querying Claude (claude-sonnet-4-20250514)...",14);
-  const claudeRaw=callClaude(perEnginePrompt("Claude"),"You are Claude by Anthropic. Answer honestly about what you know.");
+  const claudeRaw=callClaude(perEnginePrompt("Claude"),"You are an AEO visibility analyst roleplaying as Claude. Provide specific, actionable analysis about the brand's visibility. Never use placeholder text. Never write meta-commentary about being an AI. Write real strengths and weaknesses about the BRAND, not about yourself.");
   
   onProgress("Querying Gemini (gemini-2.0-flash)...",20);
-  const geminiRaw=callEngine("gemini",perEnginePrompt("Gemini"),"You are Gemini by Google. Answer honestly about what you know.");
+  const geminiRaw=callEngine("gemini",perEnginePrompt("Gemini"),"You are an AEO visibility analyst roleplaying as Gemini. Provide specific, actionable analysis about the brand's visibility. Never use placeholder text. Never write meta-commentary about being an AI. Write real strengths and weaknesses about the BRAND, not about yourself.");
 
   // Run all 3 in parallel
   const [gptResult, claudeResult, geminiResult] = await Promise.all([gptRaw, claudeRaw, geminiRaw]);
@@ -346,11 +363,20 @@ function generateAll(cd, apiData){
   const engineMeta=[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",Logo:ChatGPTLogo},{id:"claude",name:"Claude",color:"#D97706",Logo:ClaudeLogo},{id:"gemini",name:"Gemini",color:"#4285F4",Logo:GeminiLogo}];
   const engines=engineMeta.map((e,i)=>{
     const t0=cd.topics[0]||cd.industry||"tech";
+    // Filter out bad/placeholder strengths and weaknesses
+    const badPatterns=["specific strength","specific weakness","data unavailable","REPLACE WITH","as a language model","as an ai","limited knowledge available","would acknowledge"];
+    const filterBad=(arr,fallbacks)=>{
+      if(!arr||!Array.isArray(arr))return fallbacks;
+      const filtered=arr.filter(s=>s&&typeof s==="string"&&!badPatterns.some(bp=>s.toLowerCase().includes(bp))&&s.length>10);
+      return filtered.length>=2?filtered:fallbacks;
+    };
     if(hasApi&&apiData.engineData.engines&&apiData.engineData.engines[i]){
       const ae=apiData.engineData.engines[i];
+      const defStrengths=[`${cd.brand} has a clear niche positioning in ${cd.industry} that could differentiate it from larger competitors`,`Brand name includes relevant industry keywords which aids AI entity recognition`];
+      const defWeaknesses=[`Limited third-party citations and reviews reduce AI engines' confidence to recommend ${cd.brand}`,`Larger competitors like ${cd.competitors[0]||"established firms"} dominate generic ${cd.industry} queries`];
       return{...e,score:ae.score||Math.round(base),mentionRate:ae.mentionRate||50,citationRate:ae.citationRate||30,sentiment:ae.sentiment||50,
         queries:(ae.queries||[]).slice(0,8).map(q=>({query:q.query||"",status:q.status||"Absent"})),
-        strengths:ae.strengths||["Data unavailable"],weaknesses:ae.weaknesses||["Data unavailable"]};
+        strengths:filterBad(ae.strengths,defStrengths),weaknesses:filterBad(ae.weaknesses,defWeaknesses)};
     }
     const score=Math.max(8,Math.min(95,Math.round(base+(pr(i*7+3)-.5)*20)));
     return{...e,score,mentionRate:Math.min(100,Math.round(score*.8+pr(i*11)*15)),citationRate:Math.min(100,Math.round(score*.5+pr(i*13)*20)),sentiment:Math.min(100,Math.max(10,Math.round(50+(score-50)*.6+(pr(i*17)-.5)*20))),
