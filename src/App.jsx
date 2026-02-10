@@ -531,7 +531,7 @@ function generateAll(cd, apiData){
   return{overall,engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,clientData:cd};
 }
 
-const STEPS=[{id:"input",label:"New Audit",n:"01"},{id:"audit",label:"AEO Audit",n:"02"},{id:"archetypes",label:"User Archetypes",n:"03"},{id:"intent",label:"Intent Pathway",n:"04"},{id:"playbook",label:"Brand Playbook",n:"05"},{id:"channels",label:"AEO Channels",n:"06"},{id:"grid",label:"Content Grid",n:"07"},{id:"roadmap",label:"90-Day Roadmap",n:"08"}];
+const STEPS=[{id:"input",label:"New Audit",n:"01"},{id:"audit",label:"AEO Audit",n:"02"},{id:"archetypes",label:"User Archetypes",n:"03"},{id:"intent",label:"Intent Pathway",n:"04"},{id:"playbook",label:"Brand Playbook",n:"05",comingSoon:true},{id:"channels",label:"AEO Channels",n:"06"},{id:"grid",label:"Content Grid",n:"07"},{id:"roadmap",label:"90-Day Roadmap",n:"08"}];
 
 /* ─── PAGE: NEW AUDIT ─── */
 function NewAuditPage({data,setData,onRun}){
@@ -572,39 +572,33 @@ function NewAuditPage({data,setData,onRun}){
       setRunning(false);onRun(null);
     }
   };
-  if(running)return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"70vh",gap:20,maxWidth:600,margin:"0 auto"}}>
+  if(running)return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"70vh",gap:20,maxWidth:520,margin:"0 auto"}}>
     {/* Main progress ring */}
-    <div style={{position:"relative",width:120,height:120}}>
-      <svg width="120" height="120"><circle cx="60" cy="60" r="52" fill="none" stroke={C.borderSoft} strokeWidth="3"/><circle cx="60" cy="60" r="52" fill="none" stroke={C.accent} strokeWidth="4" strokeDasharray={327} strokeDashoffset={327-(progress/100)*327} strokeLinecap="round" transform="rotate(-90 60 60)" style={{transition:"stroke-dashoffset .5s ease-out"}}/></svg>
-      <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:28,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{progress}%</span></div>
+    <div style={{position:"relative",width:130,height:130}}>
+      <svg width="130" height="130"><circle cx="65" cy="65" r="56" fill="none" stroke={C.borderSoft} strokeWidth="3"/><circle cx="65" cy="65" r="56" fill="none" stroke={C.accent} strokeWidth="4" strokeDasharray={352} strokeDashoffset={352-(progress/100)*352} strokeLinecap="round" transform="rotate(-90 65 65)" style={{transition:"stroke-dashoffset .5s ease-out"}}/></svg>
+      <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:30,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{progress}%</span></div>
     </div>
-    {/* Title + stage */}
+    {/* Title */}
     <div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:C.text,fontFamily:"'Outfit'"}}>Running Full AEO Audit</div></div>
+    {/* Scrolling techy text — single line that changes */}
+    <div style={{height:20,overflow:"hidden",textAlign:"center"}}>
+      {logLines.length>0&&<div key={logLines[logLines.length-1].t} style={{fontSize:12,color:C.accent,fontWeight:500,fontFamily:"'Outfit'",animation:"fadeInUp .3s ease-out"}}>{logLines[logLines.length-1].msg.replace(/^\[.*?\]\s*/,"")}</div>}
+    </div>
     {/* Engine status row */}
     <div style={{display:"flex",gap:16}}>
-      {[{L:ChatGPTLogo,n:"ChatGPT",a:progress>=12,done:progress>=28},{L:ClaudeLogo,n:"Claude",a:progress>=12,done:progress>=28},{L:GeminiLogo,n:"Gemini",a:progress>=12,done:progress>=28}].map(e=>(<div key={e.n} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:8,background:e.done?`${C.green}08`:e.a?`${C.accent}06`:C.bg,border:`1px solid ${e.done?`${C.green}20`:e.a?`${C.accent}15`:C.border}`,transition:"all .3s"}}>
+      {[{L:ChatGPTLogo,n:"ChatGPT",a:progress>=8,done:progress>=26},{L:ClaudeLogo,n:"Claude",a:progress>=14,done:progress>=26},{L:GeminiLogo,n:"Gemini",a:progress>=20,done:progress>=26}].map(e=>(<div key={e.n} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:8,background:e.done?`${C.green}08`:e.a?`${C.accent}06`:C.bg,border:`1px solid ${e.done?`${C.green}20`:e.a?`${C.accent}15`:C.border}`,transition:"all .3s"}}>
         <e.L size={18}/><span style={{fontSize:11,fontWeight:600,color:e.done?C.green:e.a?C.text:C.muted}}>{e.n}</span>
         {e.done?<span style={{fontSize:10,color:C.green}}>✓</span>:e.a?<span style={{width:4,height:4,borderRadius:"50%",background:C.accent,animation:"pulse 1s infinite"}}/>:null}
       </div>))}
     </div>
     {/* Step progress bars */}
     <div style={{width:"100%",display:"flex",flexDirection:"column",gap:6}}>
-      {[{l:"ChatGPT (gpt-4o)",p:Math.min(100,progress*100/14),c:"#10A37F"},{l:"Claude (Sonnet)",p:Math.max(0,Math.min(100,(progress-8)*100/12)),c:"#D97706"},{l:"Gemini (Flash)",p:Math.max(0,Math.min(100,(progress-14)*100/12)),c:"#4285F4"},{l:"Competitor Analysis",p:Math.max(0,Math.min(100,(progress-30)*100/15)),c:"#8b5cf6"},{l:"Archetype Generation",p:Math.max(0,Math.min(100,(progress-45)*100/17)),c:"#ec4899"},{l:"Intent Pathway",p:Math.max(0,Math.min(100,(progress-62)*100/10)),c:"#f59e0b"},{l:"Channel Verification (3 Engines)",p:Math.max(0,Math.min(100,(progress-72)*100/18)),c:"#059669"},{l:"Report Compilation",p:Math.max(0,Math.min(100,(progress-90)*100/10)),c:C.accent}].map(s=>(<div key={s.l} style={{display:"flex",alignItems:"center",gap:8}}>
+      {[{l:"ChatGPT (gpt-4o)",p:Math.min(100,progress*100/14),c:"#10A37F"},{l:"Claude (Sonnet)",p:Math.max(0,Math.min(100,(progress-8)*100/12)),c:"#D97706"},{l:"Gemini (Flash)",p:Math.max(0,Math.min(100,(progress-14)*100/12)),c:"#4285F4"},{l:"Competitor Analysis",p:Math.max(0,Math.min(100,(progress-30)*100/15)),c:"#8b5cf6"},{l:"Archetype Generation",p:Math.max(0,Math.min(100,(progress-45)*100/17)),c:"#ec4899"},{l:"Intent Pathway",p:Math.max(0,Math.min(100,(progress-62)*100/10)),c:"#f59e0b"},{l:"Channel Verification",p:Math.max(0,Math.min(100,(progress-72)*100/18)),c:"#059669"},{l:"Report Compilation",p:Math.max(0,Math.min(100,(progress-90)*100/10)),c:C.accent}].map(s=>(<div key={s.l} style={{display:"flex",alignItems:"center",gap:8}}>
         <span style={{fontSize:10,color:s.p>=100?C.green:s.p>0?C.text:C.muted,minWidth:120,fontWeight:s.p>0&&s.p<100?600:400,fontFamily:"'Outfit'"}}>{s.p>=100?"✓ ":s.p>0?"◉ ":"○ "}{s.l}</span>
         <div style={{flex:1,height:3,background:C.borderSoft,borderRadius:2}}><div style={{width:`${Math.max(0,s.p)}%`,height:"100%",background:s.p>=100?C.green:s.c,borderRadius:2,transition:"width .5s ease-out"}}/></div>
       </div>))}
     </div>
-    {/* Scrolling log terminal */}
-    <div style={{width:"100%",background:"#0c1222",borderRadius:8,padding:"10px 12px",maxHeight:160,overflow:"hidden",position:"relative"}}>
-      <div style={{position:"absolute",top:0,left:0,right:0,height:20,background:"linear-gradient(#0c1222,transparent)",zIndex:1}}/>
-      <div style={{display:"flex",flexDirection:"column",gap:2}}>
-        {logLines.slice(-8).map((l,i)=>(<div key={l.t+i} style={{fontSize:10,fontFamily:"'Courier New',monospace",color:l.msg.includes("ERR")?"#ef4444":l.msg.includes("DONE")?"#10b981":l.msg.includes("VERIFY")?"#f59e0b":"#64748b",opacity:i===logLines.slice(-8).length-1?1:0.5+i*0.06,lineHeight:1.6}}>{l.msg}</div>))}
-        <div style={{fontSize:10,fontFamily:"'Courier New',monospace",color:C.accent}}>
-          <span style={{animation:"blink 1s step-end infinite"}}>█</span>
-        </div>
-      </div>
-    </div>
-    <div style={{padding:"6px 14px",background:`${C.accent}08`,borderRadius:100,fontSize:11,color:C.accent,fontWeight:500}}>⚡ Powered by live AI analysis · {Math.round(progress/100*6)}/6 API calls</div>
+    <div style={{padding:"6px 14px",background:`${C.accent}08`,borderRadius:100,fontSize:11,color:C.accent,fontWeight:500}}>⚡ Powered by live AI analysis</div>
     {error&&<div style={{padding:"10px 16px",background:`${C.red}08`,border:`1px solid ${C.red}20`,borderRadius:8,fontSize:12,color:C.red}}>{error}</div>}
     </div>);
   return(<div style={{maxWidth:620,margin:"0 auto"}}>
@@ -768,7 +762,7 @@ function IntentPage({r,goTo}){
       <div style={{display:"flex",gap:4}}><Pill color={C.green} filled>{stats[os].cited} Cited</Pill><Pill color={C.amber} filled>{stats[os].mentioned} Mentioned</Pill><Pill color={C.red} filled>{stats[os].absent} Absent</Pill></div>
     </div>
     <div style={{fontSize:12}}>{r.funnelStages[os].prompts.map((p,j)=>(<div key={j} style={{display:"grid",gridTemplateColumns:"1fr 50px 70px",padding:"7px 8px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center"}}><span style={{color:C.sub,fontSize:11}}>{p.query}</span><span style={{textAlign:"center",fontWeight:600,fontSize:11,color:p.rank<=3?C.green:p.rank<=7?C.amber:C.red}}>#{p.rank}</span><span style={{textAlign:"center"}}><Pill color={p.status==="Cited"?C.green:p.status==="Mentioned"?C.amber:C.red}>{p.status}</Pill></span></div>))}</div></Card>
-    <NavBtn onClick={()=>goTo("playbook")} label="Next: Brand Playbook →"/>
+    <NavBtn onClick={()=>goTo("channels")} label="Next: AEO Channels →"/>
   </div>);
 }
 
@@ -1016,10 +1010,10 @@ export default function App(){
   };
   return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,sans-serif",color:C.text}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}*{box-sizing:border-box}::selection{background:#0c4cfc18}`}</style>
+    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box}::selection{background:#0c4cfc18}`}</style>
     <div style={{padding:"11px 24px",borderBottom:`1px solid ${C.border}`,background:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center"}}><Logo/>{results&&<div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:6,height:6,borderRadius:"50%",background:C.green}}/><span style={{fontSize:12,color:C.muted}}>Active: <strong style={{color:C.text}}>{results.clientData.brand}</strong> · Score: <strong style={{color:results.overall>=70?C.green:results.overall>=40?C.amber:C.red}}>{results.overall}</strong></span></div>}</div>
     <div style={{padding:"0 24px",borderBottom:`1px solid ${C.border}`,background:"#fff",overflowX:"auto"}}><div style={{display:"flex",minWidth:"max-content"}}>
-      {STEPS.map(s=>{const dis=!results&&s.id!=="input";return(<button key={s.id} onClick={()=>{if(!dis)setStep(s.id);}} style={{padding:"10px 14px",background:"none",border:"none",borderBottom:step===s.id?`2px solid ${C.accent}`:"2px solid transparent",color:step===s.id?C.accent:dis?"#d0d5dd":C.muted,fontSize:12,fontWeight:600,cursor:dis?"default":"pointer",fontFamily:"'Plus Jakarta Sans'",transition:"all .15s",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:10,opacity:.5}}>{s.n}</span>{s.label}</button>);})}
+      {STEPS.map(s=>{const dis=(!results&&s.id!=="input")||s.comingSoon;return(<button key={s.id} onClick={()=>{if(!dis)setStep(s.id);}} style={{padding:"10px 14px",background:"none",border:"none",borderBottom:step===s.id&&!s.comingSoon?`2px solid ${C.accent}`:"2px solid transparent",color:s.comingSoon?"#c8cdd5":step===s.id?C.accent:dis?"#d0d5dd":C.muted,fontSize:12,fontWeight:600,cursor:dis?"default":"pointer",fontFamily:"'Plus Jakarta Sans'",transition:"all .15s",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5,opacity:s.comingSoon?.5:1}}><span style={{fontSize:10,opacity:.5}}>{s.n}</span>{s.label}{s.comingSoon&&<span style={{fontSize:8,fontWeight:700,color:"#fff",background:"#c8cdd5",padding:"1px 5px",borderRadius:3,marginLeft:3}}>SOON</span>}</button>);})}
     </div></div>
     <div style={{padding:24,maxWidth:1020,margin:"0 auto"}}>
       {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={run}/>}
