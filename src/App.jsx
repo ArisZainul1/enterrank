@@ -531,6 +531,28 @@ function generateAll(cd, apiData){
   return{overall,engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,clientData:cd};
 }
 
+/* ─── LOGIN FORM ─── */
+function LoginForm({onSubmit,error,loading}){
+  const[email,setEmail]=useState("");const[pw,setPw]=useState("");const[showPw,setShowPw]=useState(false);
+  const ok=email.length>0&&pw.length>0;
+  const submit=()=>{if(ok&&!loading)onSubmit(email,pw);};
+  return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
+    <div>
+      <label style={{fontSize:12,fontWeight:600,color:C.sub,display:"block",marginBottom:6}}>Email</label>
+      <input value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")submit();}} placeholder="you@company.com" type="email" style={{width:"100%",padding:"10px 14px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit",transition:"border .15s"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
+    </div>
+    <div>
+      <label style={{fontSize:12,fontWeight:600,color:C.sub,display:"block",marginBottom:6}}>Password</label>
+      <div style={{position:"relative"}}>
+        <input value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")submit();}} placeholder="••••••••" type={showPw?"text":"password"} style={{width:"100%",padding:"10px 14px",paddingRight:42,background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit",transition:"border .15s"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
+        <span onClick={()=>setShowPw(!showPw)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",cursor:"pointer",fontSize:12,color:C.muted,userSelect:"none"}}>{showPw?"Hide":"Show"}</span>
+      </div>
+    </div>
+    {error&&<div style={{padding:"8px 12px",background:`${C.red}08`,border:`1px solid ${C.red}15`,borderRadius:6,fontSize:12,color:C.red}}>{error}</div>}
+    <button onClick={submit} disabled={!ok||loading} style={{width:"100%",padding:"11px",background:ok&&!loading?C.accent:"#c8cdd5",color:"#fff",border:"none",borderRadius:8,fontSize:14,fontWeight:600,cursor:ok&&!loading?"pointer":"not-allowed",fontFamily:"'Outfit'",transition:"background .15s",marginTop:4}}>{loading?"Signing in...":"Sign in"}</button>
+  </div>);
+}
+
 const STEPS=[{id:"input",label:"New Audit",n:"01"},{id:"audit",label:"AEO Audit",n:"02"},{id:"archetypes",label:"User Archetypes",n:"03"},{id:"intent",label:"Intent Pathway",n:"04"},{id:"playbook",label:"Brand Playbook",n:"05",comingSoon:true},{id:"channels",label:"AEO Channels",n:"06"},{id:"grid",label:"Content Grid",n:"07"},{id:"roadmap",label:"90-Day Roadmap",n:"08"}];
 
 /* ─── PAGE: NEW AUDIT ─── */
@@ -998,10 +1020,49 @@ function RoadmapPage({r}){
 
 /* ─── MAIN APP ─── */
 export default function App(){
+  const[authed,setAuthed]=useState(()=>{try{return sessionStorage.getItem("enterrank_token")?true:false;}catch(e){return false;}});
   const[step,setStep]=useState("input");
   const[data,setData]=useState({brand:"",industry:"",website:"",region:"",topics:[],competitors:[]});
   const[results,setResults]=useState(null);
   const[history,setHistory]=useState([]);
+  const[loginError,setLoginError]=useState("");
+  const[loggingIn,setLoggingIn]=useState(false);
+
+  const handleLogin=async(email,password)=>{
+    setLoggingIn(true);setLoginError("");
+    try{
+      const res=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
+      const data=await res.json();
+      if(data.success){try{sessionStorage.setItem("enterrank_token",data.token);}catch(e){}setAuthed(true);}
+      else{setLoginError(data.error||"Invalid credentials");}
+    }catch(e){setLoginError("Connection error. Please try again.");}
+    setLoggingIn(false);
+  };
+
+  const handleLogout=()=>{try{sessionStorage.removeItem("enterrank_token");}catch(e){}setAuthed(false);setResults(null);setStep("input");};
+
+  if(!authed)return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,sans-serif",display:"flex",alignItems:"center",justifyContent:"center"}}>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box}::selection{background:#0c4cfc18}`}</style>
+    <div style={{width:"100%",maxWidth:400,padding:"0 24px",animation:"fadeIn .4s ease-out"}}>
+      {/* Logo */}
+      <div style={{textAlign:"center",marginBottom:32}}>
+        <div style={{display:"inline-flex",alignItems:"center",gap:8,marginBottom:8}}>
+          <svg width="32" height="32" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
+          <span style={{fontSize:22,fontWeight:700,fontFamily:"'Outfit'",color:C.text,letterSpacing:"-.02em"}}>EnterRank</span>
+        </div>
+        <div style={{fontSize:13,color:C.muted}}>AI Engine Optimisation Platform</div>
+      </div>
+      {/* Login Card */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:C.r,padding:"32px 28px",boxShadow:"0 4px 24px rgba(0,0,0,.06)"}}>
+        <h2 style={{fontSize:18,fontWeight:700,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'",textAlign:"center"}}>Welcome back</h2>
+        <p style={{fontSize:13,color:C.muted,margin:"0 0 24px",textAlign:"center"}}>Sign in to access your AEO dashboard</p>
+        <LoginForm onSubmit={handleLogin} error={loginError} loading={loggingIn}/>
+      </div>
+      <div style={{textAlign:"center",marginTop:16,fontSize:11,color:C.muted}}>Powered by Entermind</div>
+    </div>
+  </div>);
+
   const run=(apiData)=>{
     const r=generateAll(data, apiData);setResults(r);
     const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score,r.engines[2].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/3),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/3),categories:r.painPoints.map(p=>({label:p.label,score:p.score}))};
@@ -1011,7 +1072,7 @@ export default function App(){
   return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,sans-serif",color:C.text}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box}::selection{background:#0c4cfc18}`}</style>
-    <div style={{padding:"11px 24px",borderBottom:`1px solid ${C.border}`,background:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center"}}><Logo/>{results&&<div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:6,height:6,borderRadius:"50%",background:C.green}}/><span style={{fontSize:12,color:C.muted}}>Active: <strong style={{color:C.text}}>{results.clientData.brand}</strong> · Score: <strong style={{color:results.overall>=70?C.green:results.overall>=40?C.amber:C.red}}>{results.overall}</strong></span></div>}</div>
+    <div style={{padding:"11px 24px",borderBottom:`1px solid ${C.border}`,background:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center"}}><Logo/><div style={{display:"flex",alignItems:"center",gap:12}}>{results&&<div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:6,height:6,borderRadius:"50%",background:C.green}}/><span style={{fontSize:12,color:C.muted}}>Active: <strong style={{color:C.text}}>{results.clientData.brand}</strong> · Score: <strong style={{color:results.overall>=70?C.green:results.overall>=40?C.amber:C.red}}>{results.overall}</strong></span></div>}<span onClick={handleLogout} style={{fontSize:11,color:C.muted,cursor:"pointer",padding:"4px 10px",borderRadius:6,border:`1px solid ${C.border}`,fontWeight:500,fontFamily:"'Outfit'"}}>Sign out</span></div></div>
     <div style={{padding:"0 24px",borderBottom:`1px solid ${C.border}`,background:"#fff",overflowX:"auto"}}><div style={{display:"flex",minWidth:"max-content"}}>
       {STEPS.map(s=>{const dis=(!results&&s.id!=="input")||s.comingSoon;return(<button key={s.id} onClick={()=>{if(!dis)setStep(s.id);}} style={{padding:"10px 14px",background:"none",border:"none",borderBottom:step===s.id&&!s.comingSoon?`2px solid ${C.accent}`:"2px solid transparent",color:s.comingSoon?"#c8cdd5":step===s.id?C.accent:dis?"#d0d5dd":C.muted,fontSize:12,fontWeight:600,cursor:dis?"default":"pointer",fontFamily:"'Plus Jakarta Sans'",transition:"all .15s",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5,opacity:s.comingSoon?.5:1}}><span style={{fontSize:10,opacity:.5}}>{s.n}</span>{s.label}{s.comingSoon&&<span style={{fontSize:8,fontWeight:700,color:"#fff",background:"#c8cdd5",padding:"1px 5px",borderRadius:3,marginLeft:3}}>SOON</span>}</button>);})}
     </div></div>
