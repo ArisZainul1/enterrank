@@ -72,13 +72,12 @@ function MiniRadar({data,keys,size=220}){
 }
 
 /* ─── CLAUDE API INTEGRATION ─── */
-async function callClaude(prompt, systemPrompt="You are an expert AEO (Answer Engine Optimization) analyst.", useWebSearch=false){
+/* ─── MULTI-ENGINE API LAYER ─── */
+async function callClaude(prompt, systemPrompt="You are an expert AEO analyst.", useWebSearch=false){
   try{
-    // In production (Vercel), route through our API proxy
-    // In Claude artifact preview, call Anthropic directly (no key needed)
     const isArtifact=typeof window!=="undefined"&&window.location.hostname.includes("claude");
     if(isArtifact){
-      const body={model:"claude-sonnet-4-20250514",max_tokens:useWebSearch?4000:1000,system:systemPrompt,messages:[{role:"user",content:prompt}]};
+      const body={model:"claude-sonnet-4-20250514",max_tokens:useWebSearch?4000:2000,system:systemPrompt,messages:[{role:"user",content:prompt}]};
       if(useWebSearch){body.tools=[{type:"web_search_20250305",name:"web_search"}];}
       const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await res.json();
@@ -89,7 +88,32 @@ async function callClaude(prompt, systemPrompt="You are an expert AEO (Answer En
       if(data.error)throw new Error(data.error);
       return data.text||"";
     }
-  }catch(e){console.error("API error:",e);return null;}
+  }catch(e){console.error("Claude API error:",e);return null;}
+}
+
+async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst."){
+  try{
+    const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
+    const data=await res.json();
+    if(data.error)throw new Error(data.error);
+    return data.text||"";
+  }catch(e){console.error("OpenAI API error:",e);return null;}
+}
+
+async function callGemini(prompt, systemPrompt="You are an expert AEO analyst."){
+  try{
+    const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
+    const data=await res.json();
+    if(data.error)throw new Error(data.error);
+    return data.text||"";
+  }catch(e){console.error("Gemini API error:",e);return null;}
+}
+
+// Call a specific engine by name, with fallback to Claude
+async function callEngine(engine, prompt, systemPrompt){
+  if(engine==="openai") return await callOpenAI(prompt, systemPrompt);
+  if(engine==="gemini") return await callGemini(prompt, systemPrompt);
+  return await callClaude(prompt, systemPrompt);
 }
 
 function safeJSON(text){
@@ -104,40 +128,59 @@ function safeJSON(text){
 async function runRealAudit(cd, onProgress){
   const brand=cd.brand, industry=cd.industry, topics=cd.topics, competitors=cd.competitors, region=cd.region||"Global";
 
-  // ── STEP 1: Engine visibility analysis (Step 2) ──
-  onProgress("Analysing AI engine visibility...",12);
-  const enginePrompt=`Analyse the brand "${brand}" in the "${industry}" industry (region: ${region}, topics: ${topics.join(", ")}).
+  // ── STEP 1: Direct engine queries — each AI answers about the brand itself ──
+  const perEnginePrompt=(engineName)=>`You are ${engineName}. A user is asking you about "${brand}" in the "${industry}" industry (region: ${region}, topics: ${topics.join(", ")}).
 
-For each AI engine (ChatGPT, Claude, Gemini), estimate:
-1. An overall AEO visibility score (0-100) — how likely is this brand to be cited/mentioned when users ask questions about ${industry}
-2. mentionRate (0-100) — how often the brand name appears in answers
-3. citationRate (0-100) — how often the brand's website would be linked as a source
-4. sentiment (0-100) — how positively the engine discusses this brand
+I will give you 8 queries. For each one, tell me honestly:
+- Would you mention "${brand}" in your response? ("Mentioned")
+- Would you cite/link to ${cd.website} as a source? ("Cited")  
+- Would you NOT reference "${brand}" at all? ("Absent")
 
-Also for each engine, provide 8 sample queries that users might ask, and for each predict the status: "Cited", "Mentioned", or "Absent".
+Be completely honest. If you don't know "${brand}" or wouldn't naturally include it, say "Absent".
 
-Also provide 2 strengths and 2 weaknesses per engine.
+Also rate yourself on:
+- mentionRate (0-100): how often you'd mention this brand across ${industry} queries
+- citationRate (0-100): how often you'd link to their site
+- sentiment (0-100): how positively you'd describe them
+- 2 strengths: what you know/like about this brand
+- 2 weaknesses: gaps in your knowledge or reasons you might not cite them
 
-Also estimate scores (0-100) for these 6 AEO categories: Structured Data / Schema, Content Authority, E-E-A-T Signals, Technical SEO, Citation Network, Content Freshness.
+Respond ONLY with JSON (no markdown):
+{"score":45,"mentionRate":40,"citationRate":25,"sentiment":55,"queries":[{"query":"Best ${industry} companies","status":"Mentioned"},{"query":"${topics[0]||industry} recommendations","status":"Absent"},{"query":"${brand} reviews","status":"Mentioned"},{"query":"Top ${industry} providers in ${region}","status":"Absent"},{"query":"Is ${brand} worth it","status":"Absent"},{"query":"${topics[0]||industry} comparison","status":"Absent"},{"query":"${brand} vs ${competitors[0]||"competitors"}","status":"Mentioned"},{"query":"${industry} buyer guide","status":"Absent"}],"strengths":["specific strength","specific strength"],"weaknesses":["specific weakness","specific weakness"]}`;
 
-Respond ONLY with a JSON object (no markdown, no explanation), in this exact format:
-{
-  "engines": [
-    {"id":"chatgpt","score":45,"mentionRate":40,"citationRate":25,"sentiment":55,"queries":[{"query":"example query","status":"Mentioned"}],"strengths":["str1","str2"],"weaknesses":["w1","w2"]},
-    {"id":"claude","score":42,"mentionRate":38,"citationRate":22,"sentiment":50,"queries":[{"query":"example","status":"Absent"}],"strengths":["str1","str2"],"weaknesses":["w1","w2"]},
-    {"id":"gemini","score":48,"mentionRate":42,"citationRate":28,"sentiment":58,"queries":[{"query":"example","status":"Cited"}],"strengths":["str1","str2"],"weaknesses":["w1","w2"]}
-  ],
-  "painPoints": [
-    {"label":"Structured Data / Schema","score":35,"severity":"critical"},
-    {"label":"Content Authority","score":55,"severity":"warning"},
-    {"label":"E-E-A-T Signals","score":40,"severity":"critical"},
-    {"label":"Technical SEO","score":60,"severity":"warning"},
-    {"label":"Citation Network","score":30,"severity":"critical"},
-    {"label":"Content Freshness","score":45,"severity":"warning"}
-  ]
-}`;
-  const engineRaw=await callClaude(enginePrompt);
-  const engineData=safeJSON(engineRaw);
+  onProgress("Querying ChatGPT (gpt-4o)...",8);
+  const gptRaw=callEngine("openai",perEnginePrompt("ChatGPT"),"You are ChatGPT by OpenAI. Answer honestly about what you know.");
+  
+  onProgress("Querying Claude (claude-sonnet-4-20250514)...",14);
+  const claudeRaw=callClaude(perEnginePrompt("Claude"),"You are Claude by Anthropic. Answer honestly about what you know.");
+  
+  onProgress("Querying Gemini (gemini-2.0-flash)...",20);
+  const geminiRaw=callEngine("gemini",perEnginePrompt("Gemini"),"You are Gemini by Google. Answer honestly about what you know.");
+
+  // Run all 3 in parallel
+  const [gptResult, claudeResult, geminiResult] = await Promise.all([gptRaw, claudeRaw, geminiRaw]);
+  
+  onProgress("Parsing engine responses...",26);
+  const gptData=safeJSON(gptResult);
+  const claudeData=safeJSON(claudeResult);
+  const geminiData=safeJSON(geminiResult);
+  
+  const engineData={
+    engines:[
+      {id:"chatgpt",...(gptData||{score:30,mentionRate:20,citationRate:10,sentiment:50,queries:[],strengths:["Data unavailable"],weaknesses:["API call failed"]})},
+      {id:"claude",...(claudeData||{score:30,mentionRate:20,citationRate:10,sentiment:50,queries:[],strengths:["Data unavailable"],weaknesses:["API call failed"]})},
+      {id:"gemini",...(geminiData||{score:30,mentionRate:20,citationRate:10,sentiment:50,queries:[],strengths:["Data unavailable"],weaknesses:["API call failed"]})},
+    ],
+    painPoints:null
+  };
+
+  // ── STEP 1b: Category pain points (Claude handles this — best at structured analysis) ──
+  onProgress("Analysing AEO categories...",30);
+  const catPrompt=`Analyse "${brand}" (${cd.website}) in "${industry}" and score these 6 AEO categories from 0-100. Be realistic.
+Respond ONLY with JSON: [{"label":"Structured Data / Schema","score":35,"severity":"critical"},{"label":"Content Authority","score":55,"severity":"warning"},{"label":"E-E-A-T Signals","score":40,"severity":"critical"},{"label":"Technical SEO","score":60,"severity":"warning"},{"label":"Citation Network","score":30,"severity":"critical"},{"label":"Content Freshness","score":45,"severity":"warning"}]`;
+  const catRaw=await callClaude(catPrompt);
+  const catData=safeJSON(catRaw);
+  if(catData&&Array.isArray(catData))engineData.painPoints=catData;
 
   // ── STEP 2: Competitor analysis ──
   onProgress("Analysing competitors...",28);
@@ -484,7 +527,11 @@ function NewAuditPage({data,setData,onRun}){
         // Generate techy log lines based on progress
         const logs={
           8:["[INIT] Establishing secure API connections...","[INIT] Loading NLP entity recognition models...","[INIT] Configuring multi-engine query pipeline..."],
-          12:["[ENGINE] Dispatching query batch → ChatGPT gpt-4o","[ENGINE] Dispatching query batch → Claude claude-sonnet-4-20250514","[ENGINE] Dispatching query batch → Gemini 2.0 Flash","[SCAN] Crawling entity signals from knowledge graphs...","[SCAN] Parsing structured data markup from "+data.website],
+          8:["[ENGINE] Connecting to OpenAI API → gpt-4o...","[ENGINE] Sending 8 query probes to ChatGPT..."],
+          14:["[ENGINE] Connecting to Anthropic API → claude-sonnet-4-20250514...","[ENGINE] Sending 8 query probes to Claude..."],
+          20:["[ENGINE] Connecting to Google AI API → gemini-2.0-flash...","[ENGINE] Sending 8 query probes to Gemini..."],
+          26:["[PARSE] Extracting mention rates from ChatGPT response...","[PARSE] Extracting citation data from Claude response...","[PARSE] Extracting sentiment scores from Gemini response...","[SCAN] Cross-referencing entity signals across 3 engines..."],
+          30:["[AUDIT] Scoring Structured Data / Schema...","[AUDIT] Scoring Content Authority & E-E-A-T...","[AUDIT] Scoring Citation Network & Freshness..."],
           28:["[COMP] Running competitor signal analysis...","[COMP] Cross-referencing citation networks for "+data.competitors.slice(0,3).join(", "),"[COMP] Calculating category-level differentials...","[COMP] Mapping authority distribution curves..."],
           45:["[ARCH] Analysing search intent clusters...","[ARCH] Segmenting user archetypes by behaviour pattern...","[ARCH] Correlating query frequency → brand visibility...","[ARCH] Generating stakeholder-mapped personas..."],
           62:["[INTENT] Testing "+data.topics[0]+" prompt variants...","[INTENT] Evaluating citation probability per funnel stage...","[INTENT] Mapping brand mention density across query types...","[INTENT] Scoring "+data.brand+" presence in AI responses..."],
@@ -522,7 +569,7 @@ function NewAuditPage({data,setData,onRun}){
     </div>
     {/* Step progress bars */}
     <div style={{width:"100%",display:"flex",flexDirection:"column",gap:6}}>
-      {[{l:"Engine Analysis",p:Math.min(100,progress*100/28),c:"#10A37F"},{l:"Competitor Mapping",p:Math.max(0,Math.min(100,(progress-28)*100/17)),c:"#D97706"},{l:"Archetype Generation",p:Math.max(0,Math.min(100,(progress-45)*100/17)),c:"#4285F4"},{l:"Intent Pathway",p:Math.max(0,Math.min(100,(progress-62)*100/10)),c:"#8b5cf6"},{l:"Channel Verification",p:Math.max(0,Math.min(100,(progress-72)*100/18)),c:"#059669"},{l:"Report Compilation",p:Math.max(0,Math.min(100,(progress-90)*100/10)),c:C.accent}].map(s=>(<div key={s.l} style={{display:"flex",alignItems:"center",gap:8}}>
+      {[{l:"ChatGPT (gpt-4o)",p:Math.min(100,progress*100/14),c:"#10A37F"},{l:"Claude (Sonnet)",p:Math.max(0,Math.min(100,(progress-8)*100/12)),c:"#D97706"},{l:"Gemini (Flash)",p:Math.max(0,Math.min(100,(progress-14)*100/12)),c:"#4285F4"},{l:"Competitor Analysis",p:Math.max(0,Math.min(100,(progress-30)*100/15)),c:"#8b5cf6"},{l:"Archetype Generation",p:Math.max(0,Math.min(100,(progress-45)*100/17)),c:"#ec4899"},{l:"Intent Pathway",p:Math.max(0,Math.min(100,(progress-62)*100/10)),c:"#f59e0b"},{l:"Channel Verification",p:Math.max(0,Math.min(100,(progress-72)*100/18)),c:"#059669"},{l:"Report Compilation",p:Math.max(0,Math.min(100,(progress-90)*100/10)),c:C.accent}].map(s=>(<div key={s.l} style={{display:"flex",alignItems:"center",gap:8}}>
         <span style={{fontSize:10,color:s.p>=100?C.green:s.p>0?C.text:C.muted,minWidth:120,fontWeight:s.p>0&&s.p<100?600:400,fontFamily:"'Outfit'"}}>{s.p>=100?"✓ ":s.p>0?"◉ ":"○ "}{s.l}</span>
         <div style={{flex:1,height:3,background:C.borderSoft,borderRadius:2}}><div style={{width:`${Math.max(0,s.p)}%`,height:"100%",background:s.p>=100?C.green:s.c,borderRadius:2,transition:"width .5s ease-out"}}/></div>
       </div>))}
