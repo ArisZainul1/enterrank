@@ -125,11 +125,82 @@ function safeJSON(text){
   }
 }
 
+/* ─── WEBSITE CRAWLER ─── */
+async function crawlWebsite(url){
+  if(!url||url.length<3)return null;
+  try{
+    const isArtifact=typeof window!=="undefined"&&window.location.hostname.includes("claude");
+    if(isArtifact)return null; // crawl only works on Vercel
+    const res=await fetch("/api/crawl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url})});
+    const data=await res.json();
+    if(data.error)return null;
+    return data;
+  }catch(e){console.error("Crawl error for "+url+":",e);return null;}
+}
+
+function summariseCrawl(crawl){
+  if(!crawl||!crawl.mainPage)return"No crawl data available.";
+  const mp=crawl.mainPage;
+  const parts=[];
+  parts.push(`Title: "${mp.title}"`);
+  if(mp.metaDescription)parts.push(`Meta description: "${mp.metaDescription}"`);
+  if(mp.schemas&&mp.schemas.length>0)parts.push(`Schema markup: ${mp.schemas.join(", ")}`);
+  else parts.push("No JSON-LD schema markup detected.");
+  if(mp.headings){
+    if(mp.headings.h1s.length>0)parts.push(`H1: ${mp.headings.h1s.slice(0,3).join(" | ")}`);
+    parts.push(`H2 count: ${mp.headings.h2s.length}, H3 count: ${mp.headings.h3Count}`);
+  }
+  parts.push(`Word count: ${mp.wordCount||0}`);
+  parts.push(`Internal links: ${mp.internalLinks||0}`);
+  if(mp.hasOpenGraph)parts.push("Has Open Graph tags ✓"); else parts.push("Missing Open Graph tags ✗");
+  if(mp.hasTwitterCard)parts.push("Has Twitter Card ✓"); else parts.push("Missing Twitter Card ✗");
+  if(mp.hasFAQMarkup)parts.push("Has FAQ schema ✓"); else parts.push("No FAQ schema ✗");
+  if(mp.hasArticleMarkup)parts.push("Has Article/Blog schema ✓"); else parts.push("No Article schema ✗");
+  if(mp.hasAuthorInfo)parts.push("Author info detected ✓"); else parts.push("No author info ✗");
+  if(mp.hasTrustSignals)parts.push("Trust signals detected (awards/certs) ✓"); else parts.push("No trust signals ✗");
+  if(mp.hasTestimonials)parts.push("Testimonials/reviews detected ✓"); else parts.push("No testimonials ✗");
+  if(mp.hasVideo)parts.push("Video content detected ✓"); else parts.push("No video content ✗");
+  parts.push(`Images: ${mp.imageCount||0}, Tables: ${mp.tableCount||0}, Lists: ${mp.listCount||0}`);
+  // Sub-pages
+  const sp=crawl.subPages||{};
+  if(sp.blog)parts.push(`Blog/resources page found at ${sp.blog.url} (${sp.blog.wordCount||0} words)`);
+  else parts.push("No blog/resources section found.");
+  if(sp.about)parts.push(`About page found at ${sp.about.url}`);
+  if(sp.faq)parts.push(`FAQ page found at ${sp.faq.url}`);
+  if(sp.products)parts.push(`Products/services page found at ${sp.products.url}`);
+  return parts.join("\n");
+}
+
 async function runRealAudit(cd, onProgress){
-  const brand=cd.brand, industry=cd.industry, topics=cd.topics, competitors=cd.competitors, region=cd.region||"Global";
+  // Normalize competitors — support both old ["name"] and new [{name,website}] formats
+  const rawComps=(cd.competitors||[]).filter(c=>{
+    if(typeof c==="string")return c.trim().length>0;
+    return c&&c.name&&c.name.trim().length>0;
+  }).map(c=>typeof c==="string"?{name:c,website:""}:c);
+  const compNames=rawComps.map(c=>c.name);
+  const brand=cd.brand, industry=cd.industry, topics=cd.topics, region=cd.region||"Global";
+
+  // ── STEP 0: Crawl websites in parallel ──
+  onProgress("Crawling websites for AEO signals...",3);
+  const crawlTargets=[{name:brand,website:cd.website},...rawComps.filter(c=>c.website&&c.website.length>3)];
+  const crawlResults={};
+  const crawlPromises=crawlTargets.map(async(target)=>{
+    const result=await crawlWebsite(target.website);
+    crawlResults[target.name]=result;
+  });
+  await Promise.all(crawlPromises);
+  onProgress("Website crawl complete",6);
+
+  // Build crawl summaries for use in prompts
+  const brandCrawlSummary=summariseCrawl(crawlResults[brand]);
+  const compCrawlSummaries=rawComps.map(c=>({name:c.name,website:c.website,summary:crawlResults[c.name]?summariseCrawl(crawlResults[c.name]):"No website crawl data (no URL provided)."}));
+  const crawlContext=`\n\nWEBSITE CRAWL DATA FOR "${brand}" (${cd.website}):\n${brandCrawlSummary}\n\n${compCrawlSummaries.map(c=>`CRAWL DATA FOR COMPETITOR "${c.name}" (${c.website||"no URL"}):\n${c.summary}`).join("\n\n")}`;
 
   // ── STEP 1: Direct engine queries — each AI answers about the brand itself ──
-  const perEnginePrompt=(engineName)=>`You are ${engineName}. A user is researching "${brand}" — a ${industry} company (website: ${cd.website}, region: ${region}, topics: ${topics.join(", ")}, competitors: ${competitors.join(", ")||"none listed"}).
+  const perEnginePrompt=(engineName)=>`You are ${engineName}. A user is researching "${brand}" — a ${industry} company (website: ${cd.website}, region: ${region}, topics: ${topics.join(", ")}, competitors: ${compNames.join(", ")||"none listed"}).
+
+REAL WEBSITE DATA (use this to make your analysis accurate):
+${brandCrawlSummary}
 
 TASK 1 — QUERY VISIBILITY:
 For each of the 8 queries below, honestly assess: would you mention "${brand}" in your response?
@@ -155,15 +226,15 @@ BAD examples (do NOT write these):
 - "Would acknowledge if directly asked" ← not a real strength
 
 GOOD examples (write things like these):
-- "Strong presence in ${region} ${industry} discussions — frequently mentioned alongside ${competitors[0]||"major competitors"}"
+- "Strong presence in ${region} ${industry} discussions — frequently mentioned alongside ${compNames[0]||"major competitors"}"
 - "Website has comprehensive FAQ content that maps well to common user queries"
 - "No structured data / schema markup detected on ${cd.website}, reducing citation likelihood"
-- "Competitors like ${competitors[0]||"larger firms"} dominate 'best ${industry}' queries — ${brand} rarely appears in top recommendations"
+- "Competitors like ${compNames[0]||"larger firms"} dominate 'best ${industry}' queries — ${brand} rarely appears in top recommendations"
 - "Active LinkedIn presence with thought leadership content strengthens authority signals"
 - "Limited third-party reviews or press coverage reduces trust signals for AI citation"
 
 Respond ONLY with valid JSON (no markdown, no backticks, no explanation before or after):
-{"score":25,"mentionRate":15,"citationRate":5,"sentiment":50,"queries":[{"query":"Best ${industry} companies","status":"Absent"},{"query":"${topics[0]||industry} recommendations","status":"Absent"},{"query":"${brand} reviews","status":"Absent"},{"query":"Top ${industry} providers in ${region}","status":"Absent"},{"query":"Is ${brand} worth it","status":"Absent"},{"query":"${topics[0]||industry} comparison","status":"Absent"},{"query":"${brand} vs ${competitors[0]||"competitors"}","status":"Absent"},{"query":"${industry} buyer guide","status":"Absent"}],"strengths":["REPLACE WITH REAL SPECIFIC STRENGTH ABOUT ${brand}","REPLACE WITH REAL SPECIFIC STRENGTH ABOUT ${brand}"],"weaknesses":["REPLACE WITH REAL SPECIFIC WEAKNESS ABOUT ${brand}","REPLACE WITH REAL SPECIFIC WEAKNESS ABOUT ${brand}"]}`;
+{"score":25,"mentionRate":15,"citationRate":5,"sentiment":50,"queries":[{"query":"Best ${industry} companies","status":"Absent"},{"query":"${topics[0]||industry} recommendations","status":"Absent"},{"query":"${brand} reviews","status":"Absent"},{"query":"Top ${industry} providers in ${region}","status":"Absent"},{"query":"Is ${brand} worth it","status":"Absent"},{"query":"${topics[0]||industry} comparison","status":"Absent"},{"query":"${brand} vs ${compNames[0]||"competitors"}","status":"Absent"},{"query":"${industry} buyer guide","status":"Absent"}],"strengths":["REPLACE WITH REAL SPECIFIC STRENGTH ABOUT ${brand}","REPLACE WITH REAL SPECIFIC STRENGTH ABOUT ${brand}"],"weaknesses":["REPLACE WITH REAL SPECIFIC WEAKNESS ABOUT ${brand}","REPLACE WITH REAL SPECIFIC WEAKNESS ABOUT ${brand}"]}`;
 
   onProgress("Querying ChatGPT (gpt-4o)...",8);
   const gptRaw=callEngine("openai",perEnginePrompt("ChatGPT"),"You are an AEO visibility analyst roleplaying as ChatGPT. Provide specific, actionable analysis about the brand's visibility. Never use placeholder text. Never write meta-commentary about being an AI. Write real strengths and weaknesses about the BRAND, not about yourself.");
@@ -191,23 +262,42 @@ Respond ONLY with valid JSON (no markdown, no backticks, no explanation before o
     painPoints:null
   };
 
-  // ── STEP 1b: Category pain points (Claude handles this — best at structured analysis) ──
-  onProgress("Analysing AEO categories...",30);
-  const catPrompt=`Analyse "${brand}" (${cd.website}) in "${industry}" and score these 6 AEO categories from 0-100. Be realistic.
+  // ── STEP 1b: Category pain points — scored from REAL crawl data ──
+  onProgress("Analysing AEO categories from crawl data...",30);
+  const catPrompt=`Analyse "${brand}" (${cd.website}) in "${industry}". Score these 6 AEO categories from 0-100 based on the REAL website crawl data below. Do NOT guess — use the actual signals found.
+
+WEBSITE CRAWL DATA:
+${brandCrawlSummary}
+
+Scoring guide based on crawl signals:
+- Structured Data / Schema: Based on JSON-LD schemas found (Organization, FAQ, Article, etc). No schema = 10-20, basic schema = 40-60, rich schema = 70-90.
+- Content Authority: Based on word count, heading structure, blog/resources presence, content depth. Thin content = 10-30, decent = 40-60, comprehensive = 70-90.
+- E-E-A-T Signals: Based on author info, trust signals (awards/certs), testimonials, dates. None = 10-20, some = 40-60, strong = 70-90.
+- Technical SEO: Based on meta tags, Open Graph, Twitter Card, hreflang, canonical. Missing basics = 10-30, decent = 50-70, fully optimised = 80-95.
+- Citation Network: This relates to external links/mentions — harder to assess from crawl alone. Estimate based on brand size and industry presence.
+- Content Freshness: Based on dates found, blog presence, and content volume. No blog = 10-30, active blog = 50-70, regularly updated = 75-90.
+
 Respond ONLY with JSON: [{"label":"Structured Data / Schema","score":35,"severity":"critical"},{"label":"Content Authority","score":55,"severity":"warning"},{"label":"E-E-A-T Signals","score":40,"severity":"critical"},{"label":"Technical SEO","score":60,"severity":"warning"},{"label":"Citation Network","score":30,"severity":"critical"},{"label":"Content Freshness","score":45,"severity":"warning"}]`;
   const catRaw=await callClaude(catPrompt);
   const catData=safeJSON(catRaw);
   if(catData&&Array.isArray(catData))engineData.painPoints=catData;
 
-  // ── STEP 2: Competitor analysis ──
-  onProgress("Analysing competitors...",28);
+  // ── STEP 2: Competitor analysis — using real crawl data ──
+  onProgress("Analysing competitors...",35);
   let competitorData=[];
-  if(competitors.length>0){
-    const compPrompt=`For the "${industry}" industry, compare these competitors against "${brand}": ${competitors.join(", ")}.
+  if(compNames.length>0){
+    const compPrompt=`For the "${industry}" industry, compare these competitors against "${brand}".
 
-For each competitor, provide:
-- An AEO score (0-100)
-- Scores for 6 categories: Structured Data / Schema, Content Authority, E-E-A-T Signals, Technical SEO, Citation Network, Content Freshness
+REAL WEBSITE CRAWL DATA (use this for accurate scoring — do NOT guess):
+${crawlContext}
+
+For each competitor below, score them based on their ACTUAL website signals compared to "${brand}". If a competitor has richer schema markup, more content, better E-E-A-T signals, they should score higher in those categories.
+
+Competitors: ${compNames.join(", ")}
+
+For each, provide:
+- An AEO score (0-100) reflecting their real website signals
+- Scores for 6 categories based on actual crawl data
 - Their strongest category
 - Engine scores for ChatGPT, Claude, Gemini
 
@@ -219,7 +309,7 @@ Respond ONLY with JSON array (no markdown):
 
   // ── STEP 3: User archetypes (Step 3) ──
   onProgress("Generating user archetypes...",45);
-  const archPrompt=`Analyse the specific brand "${brand}" — a ${industry} company (website: ${cd.website}, topics: ${topics.join(", ")}, region: ${region}, competitors: ${competitors.join(", ")||"none specified"}).
+  const archPrompt=`Analyse the specific brand "${brand}" — a ${industry} company (website: ${cd.website}, topics: ${topics.join(", ")}, region: ${region}, competitors: ${compNames.join(", ")||"none specified"}).
 
 CRITICAL RULES:
 - Think deeply about WHO would actually search for "${brand}" or its specific services. Do NOT use generic templates.
@@ -243,7 +333,7 @@ Respond ONLY with JSON (no markdown, no explanation):
 
   // ── STEP 4: Intent pathway with real prompts (Step 4) ──
   onProgress("Testing intent pathway prompts...",62);
-  const intentPrompt=`For the brand "${brand}" (${cd.website}) in "${industry}" (topics: ${topics.join(", ")}, region: ${region}, competitors: ${competitors.join(", ")||"none"}):
+  const intentPrompt=`For the brand "${brand}" (${cd.website}) in "${industry}" (topics: ${topics.join(", ")}, region: ${region}, competitors: ${compNames.join(", ")||"none"}):
 
 Generate the REAL prompts that people would type into AI chatbots (ChatGPT, Claude, Gemini) at each stage of the buying journey.
 
@@ -354,6 +444,11 @@ function getInsight(cat,comp,brand,theyWin){
 }
 
 function generateAll(cd, apiData){
+  // Normalize competitors to {name, website} objects and extract name strings
+  const normComps=(cd.competitors||[]).map(c=>typeof c==="string"?{name:c,website:""}:c).filter(c=>c.name&&c.name.trim());
+  const compNameList=normComps.map(c=>c.name);
+  // Create a shallow copy with normalized competitors for downstream use
+  cd={...cd, competitors:normComps, competitorNames:compNameList};
   const seed=cd.brand.length+cd.website.length+(cd.industry||"").length+cd.topics.length;
   const pr=o=>{const x=Math.sin(seed+o)*10000;return x-Math.floor(x);};
   const base=30+pr(1)*45;
@@ -373,14 +468,14 @@ function generateAll(cd, apiData){
     if(hasApi&&apiData.engineData.engines&&apiData.engineData.engines[i]){
       const ae=apiData.engineData.engines[i];
       const defStrengths=[`${cd.brand} has a clear niche positioning in ${cd.industry} that could differentiate it from larger competitors`,`Brand name includes relevant industry keywords which aids AI entity recognition`];
-      const defWeaknesses=[`Limited third-party citations and reviews reduce AI engines' confidence to recommend ${cd.brand}`,`Larger competitors like ${cd.competitors[0]||"established firms"} dominate generic ${cd.industry} queries`];
+      const defWeaknesses=[`Limited third-party citations and reviews reduce AI engines' confidence to recommend ${cd.brand}`,`Larger competitors like ${cd.competitorNames[0]||"established firms"} dominate generic ${cd.industry} queries`];
       return{...e,score:ae.score||Math.round(base),mentionRate:ae.mentionRate||50,citationRate:ae.citationRate||30,sentiment:ae.sentiment||50,
         queries:(ae.queries||[]).slice(0,8).map(q=>({query:q.query||"",status:q.status||"Absent"})),
         strengths:filterBad(ae.strengths,defStrengths),weaknesses:filterBad(ae.weaknesses,defWeaknesses)};
     }
     const score=Math.max(8,Math.min(95,Math.round(base+(pr(i*7+3)-.5)*20)));
     return{...e,score,mentionRate:Math.min(100,Math.round(score*.8+pr(i*11)*15)),citationRate:Math.min(100,Math.round(score*.5+pr(i*13)*20)),sentiment:Math.min(100,Math.max(10,Math.round(50+(score-50)*.6+(pr(i*17)-.5)*20))),
-      queries:[`Best ${cd.industry} companies`,`${t0} recommendations`,`${cd.brand} reviews`,`Top ${cd.industry} providers`,`Is ${cd.brand} worth it`,`${t0} comparison`,`${cd.brand} vs ${cd.competitors[0]||"competitors"}`,`${cd.industry} buyer guide`].map((q,j)=>({query:q,status:pr(i*31+j*37)<.35?"Cited":pr(i*31+j*37)<.65?"Mentioned":"Absent"})),
+      queries:[`Best ${cd.industry} companies`,`${t0} recommendations`,`${cd.brand} reviews`,`Top ${cd.industry} providers`,`Is ${cd.brand} worth it`,`${t0} comparison`,`${cd.brand} vs ${cd.competitorNames[0]||"competitors"}`,`${cd.industry} buyer guide`].map((q,j)=>({query:q,status:pr(i*31+j*37)<.35?"Cited":pr(i*31+j*37)<.65?"Mentioned":"Absent"})),
       strengths:["Strong FAQ coverage detected","Cited in comparison queries"],weaknesses:["Missing from 'best of' queries","Not cited as authoritative source"]};
   });
   const overall=Math.round(engines.reduce((a,e)=>a+e.score,0)/engines.length);
@@ -396,7 +491,7 @@ function generateAll(cd, apiData){
     const cPain=(c.painPoints||[]).map(pp=>({label:pp.label,score:pp.score}));
     const advantages=cPain.map((cp,j)=>{const diff=cp.score-(painPoints[j]?.score||50);return{cat:cp.label,theirScore:cp.score,yourScore:painPoints[j]?.score||50,diff,insight:Math.abs(diff)>8?getInsight(cp.label,c.name,cd.brand,diff>0):null};}).filter(a=>a.insight);
     return{name:c.name,score:c.score,painPoints:cPain,advantages,engineScores:c.engineScores||[c.score,c.score-3,c.score+2],topStrength:c.topStrength||"Unknown"};
-  }):cd.competitors.filter(n=>isNotSelf(n)).map((name,i)=>{
+  }):cd.competitorNames.filter(n=>isNotSelf(n)).map((name,i)=>{
     const cs=Math.max(15,Math.min(95,Math.round(base+(pr(i*23+11)-.5)*50)));
     const cPain=painCats.map((l,j)=>({label:l,score:Math.max(10,Math.min(95,Math.round(cs+(pr(i*29+j*31)-.5)*30)))}) );
     const advantages=cPain.map((cp,j)=>{const diff=cp.score-painPoints[j].score;return{cat:cp.label,theirScore:cp.score,yourScore:painPoints[j].score,diff,insight:Math.abs(diff)>8?getInsight(cp.label,name,cd.brand,diff>0):null};}).filter(a=>a.insight);
@@ -408,7 +503,7 @@ function generateAll(cd, apiData){
     {group:"End Users / Consumers",icon:"👤",desc:"People who directly use or purchase the product/service",archetypes:[
       {name:"Budget-Conscious Researchers",icon:"🎓",demo:"18-25, Students",behavior:"Compare prices, seek free alternatives",intent:"Find affordable option",size:Math.round(10+pr(41)*30),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(53)-.5)*40))),opportunity:pr(47)>.5?"high":"medium",prompts:[`Best affordable ${cd.industry||"tech"} solutions`,`Cheap ${cd.topics[0]||"services"} for students`,`Free ${cd.topics[0]||"tools"} alternatives`,`${cd.industry||"Tech"} student discounts`]},
       {name:"First-Time Buyers",icon:"🔍",demo:"All ages, New to category",behavior:"Educational queries, beginner guides",intent:"Understand before buying",size:Math.round(15+pr(44)*25),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(56)-.5)*40))),opportunity:"high",prompts:[`What is ${cd.topics[0]||cd.industry}`,`${cd.industry} beginner guide`,`How to choose ${cd.topics[0]||"provider"}`,`${cd.industry} explained`]},
-      {name:"Switchers & Upgraders",icon:"🔄",demo:"28-45, Competitor users",behavior:"Alternative-to queries, comparisons",intent:"Find better alternative",size:Math.round(8+pr(45)*20),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(57)-.5)*40))),opportunity:"high",prompts:[`${cd.competitors[0]||"Competitor"} alternatives`,`Switch to ${cd.brand}`,`${cd.brand} vs ${cd.competitors[0]||"competitor"}`,`${cd.industry} migration guide`]},
+      {name:"Switchers & Upgraders",icon:"🔄",demo:"28-45, Competitor users",behavior:"Alternative-to queries, comparisons",intent:"Find better alternative",size:Math.round(8+pr(45)*20),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(57)-.5)*40))),opportunity:"high",prompts:[`${cd.competitorNames[0]||"Competitor"} alternatives`,`Switch to ${cd.brand}`,`${cd.brand} vs ${cd.competitorNames[0]||"competitor"}`,`${cd.industry} migration guide`]},
     ]},
     {group:"Business Decision Makers",icon:"💼",desc:"People evaluating solutions for their organisation",archetypes:[
       {name:"Enterprise Decision Makers",icon:"📊",demo:"35-55, C-Suite & Directors",behavior:"Evaluate ROI, compare features",intent:"Find reliable enterprise solution",size:Math.round(10+pr(42)*25),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(54)-.5)*40))),opportunity:"high",prompts:[`Best enterprise ${cd.industry} platform`,`${cd.topics[0]||"Solution"} ROI comparison`,`Top ${cd.industry} for large companies`,`${cd.brand} enterprise reviews`]},
@@ -425,7 +520,7 @@ function generateAll(cd, apiData){
   const mkP=(temps,off)=>temps.map((q,j)=>({query:q,rank:Math.round(1+pr(j*61+off)*15),status:pr(j*63+off)<.3?"Cited":pr(j*63+off)<.6?"Mentioned":"Absent"}));
   const funnelStages=(apiData&&apiData.intentData&&Array.isArray(apiData.intentData)&&apiData.intentData.length>0)?apiData.intentData.map(s=>({stage:s.stage,desc:s.desc||"",color:s.color||"#6366f1",prompts:(s.prompts||[]).map(p=>({query:p.query||"",rank:p.rank||8,status:p.status||"Absent"}))})):[
     {stage:"Awareness",desc:"User discovers the category",color:"#6366f1",prompts:mkP([`What is ${t0}`,`${cd.industry} trends`,`How does ${t0} work`,`Benefits of ${t0}`,`${cd.industry} overview`,`Why use ${t0}`,`${cd.industry} use cases`],0)},
-    {stage:"Consideration",desc:"User evaluates options",color:"#8b5cf6",prompts:mkP([`Best ${cd.industry} companies`,`${cd.brand} reviews`,`${cd.brand} vs ${cd.competitors[0]||"competitors"}`,`Top ${t0} providers`,`${cd.brand} pricing`,`Is ${cd.brand} worth it`,`${cd.industry} comparison`],100)},
+    {stage:"Consideration",desc:"User evaluates options",color:"#8b5cf6",prompts:mkP([`Best ${cd.industry} companies`,`${cd.brand} reviews`,`${cd.brand} vs ${cd.competitorNames[0]||"competitors"}`,`Top ${t0} providers`,`${cd.brand} pricing`,`Is ${cd.brand} worth it`,`${cd.industry} comparison`],100)},
     {stage:"Decision",desc:"User ready to choose",color:"#a855f7",prompts:mkP([`${cd.brand} free trial`,`${cd.brand} onboarding`,`${cd.brand} pricing plans`,`How to start with ${cd.brand}`,`${cd.brand} implementation`],200)},
     {stage:"Retention",desc:"User seeks more value",color:"#c084fc",prompts:mkP([`${cd.brand} best practices`,`${cd.brand} advanced features`,`${cd.brand} tips`,`Get more from ${cd.brand}`],300)},
   ];
@@ -557,47 +652,125 @@ const STEPS=[{id:"input",label:"New Audit",n:"01"},{id:"audit",label:"AEO Audit"
 
 /* ─── PAGE: NEW AUDIT ─── */
 function NewAuditPage({data,setData,onRun}){
-  const[running,setRunning]=useState(false);const[progress,setProgress]=useState(0);const[stage,setStage]=useState("");const[error,setError]=useState(null);
+  const[running,setRunning]=useState(false);const[stage,setStage]=useState("");const[error,setError]=useState(null);
   const ok=data.brand&&data.industry&&data.website&&data.topics.length>0;
   const[logLines,setLogLines]=useState([]);
   const addLog=(msg)=>setLogLines(prev=>[...prev.slice(-14),{msg,t:Date.now()}]);
+
+  // Smooth progress: target is set by API callbacks, displayed value interpolates toward it
+  const targetRef=React.useRef(0);
+  const displayRef=React.useRef(0);
+  const[displayProgress,setDisplayProgress]=useState(0);
+  const intervalRef=React.useRef(null);
+  const logIntervalRef=React.useRef(null);
+
+  // All log messages grouped by phase
+  const allLogs=React.useRef([
+    {at:0,msg:"Crawling "+data.website+" for AEO signals..."},
+    {at:1,msg:"Extracting schema markup, meta tags, heading structure..."},
+    {at:2,msg:"Checking for blog, FAQ, about, and product pages..."},
+    {at:3,msg:"Crawling competitor websites for comparison data..."},
+    {at:5,msg:"Analysing content depth, E-E-A-T signals, trust factors..."},
+    {at:6,msg:"Website crawl complete — feeding data to engines..."},
+    {at:7,msg:"Establishing secure API connections..."},
+    {at:2,msg:"Loading NLP entity recognition models..."},
+    {at:4,msg:"Configuring multi-engine query pipeline..."},
+    {at:6,msg:"Connecting to OpenAI API → gpt-4o..."},
+    {at:9,msg:"Sending 8 query probes to ChatGPT..."},
+    {at:12,msg:"Connecting to Anthropic API → claude-sonnet-4-20250514..."},
+    {at:15,msg:"Sending 8 query probes to Claude..."},
+    {at:18,msg:"Connecting to Google AI API → gemini-2.0-flash..."},
+    {at:21,msg:"Sending 8 query probes to Gemini..."},
+    {at:24,msg:"Extracting mention rates from ChatGPT response..."},
+    {at:27,msg:"Extracting citation data from Claude response..."},
+    {at:29,msg:"Cross-referencing entity signals across 3 engines..."},
+    {at:31,msg:"Scoring Structured Data / Schema..."},
+    {at:33,msg:"Scoring Content Authority & E-E-A-T..."},
+    {at:35,msg:"Running competitor signal analysis..."},
+    {at:38,msg:`Cross-referencing citation networks for ${data.competitors.slice(0,3).join(", ")||"competitors"}...`},
+    {at:41,msg:"Calculating category-level differentials..."},
+    {at:44,msg:"Mapping authority distribution curves..."},
+    {at:47,msg:"Analysing search intent clusters..."},
+    {at:50,msg:"Segmenting user archetypes by behaviour pattern..."},
+    {at:53,msg:"Correlating query frequency → brand visibility..."},
+    {at:56,msg:"Generating stakeholder-mapped personas..."},
+    {at:59,msg:`Testing ${data.topics[0]||"primary topic"} prompt variants...`},
+    {at:62,msg:"Evaluating citation probability per funnel stage..."},
+    {at:65,msg:`Scoring ${data.brand} presence in AI responses...`},
+    {at:68,msg:"Mapping brand mention density across query types..."},
+    {at:71,msg:"Dispatching channel checks to 3 engines..."},
+    {at:73,msg:"Claude → searching Wikipedia, LinkedIn, Blog, Press..."},
+    {at:75,msg:"ChatGPT → searching YouTube, Reviews, Podcasts..."},
+    {at:77,msg:"Gemini → searching Social Media, Directories, Academic..."},
+    {at:80,msg:`Searching for ${data.brand} company profiles and pages...`},
+    {at:83,msg:"All engines reported back ✓"},
+    {at:85,msg:"Merging verification results from 3 sources..."},
+    {at:87,msg:"Generating industry-specific site recommendations..."},
+    {at:89,msg:"Compiling AEO score matrix..."},
+    {at:91,msg:"Calculating 90-day projection model..."},
+    {at:93,msg:"Assembling final report..."},
+    {at:96,msg:"All engines responded ✓"},
+    {at:98,msg:"Data validation complete ✓"},
+  ]);
+  const lastLogIndex=React.useRef(0);
+
+  const startSmooth=()=>{
+    displayRef.current=0;targetRef.current=0;lastLogIndex.current=0;
+    // Smooth tick every 80ms
+    intervalRef.current=setInterval(()=>{
+      const target=targetRef.current;
+      const current=displayRef.current;
+      if(current<target){
+        // Move toward target — faster when far away, slower when close (easing)
+        const gap=target-current;
+        const step=Math.max(0.15, gap*0.08);
+        displayRef.current=Math.min(target, current+step);
+      }else if(current<95&&target>0){
+        // Slow creep even when waiting for next API call (never fully stalls)
+        const nextTarget=Math.min(target+3, 99);
+        displayRef.current=Math.min(nextTarget, current+0.05);
+      }
+      setDisplayProgress(Math.round(displayRef.current));
+      // Check if any new log lines should show
+      const logs=allLogs.current;
+      while(lastLogIndex.current<logs.length&&logs[lastLogIndex.current].at<=displayRef.current){
+        addLog(logs[lastLogIndex.current].msg);
+        lastLogIndex.current++;
+      }
+    },80);
+  };
+  const stopSmooth=()=>{if(intervalRef.current){clearInterval(intervalRef.current);intervalRef.current=null;}};
+
   const go=async()=>{
-    setRunning(true);setProgress(0);setError(null);setLogLines([]);
+    setRunning(true);setError(null);setLogLines([]);setDisplayProgress(0);
+    targetRef.current=0;displayRef.current=0;lastLogIndex.current=0;
+    startSmooth();
     try{
-      const apiData=await runRealAudit(data,(msg,pct)=>{setStage(msg);setProgress(pct);
-        // Generate techy log lines based on progress
-        const logs={
-          8:["[INIT] Establishing secure API connections...","[INIT] Loading NLP entity recognition models...","[INIT] Configuring multi-engine query pipeline..."],
-          8:["[ENGINE] Connecting to OpenAI API → gpt-4o...","[ENGINE] Sending 8 query probes to ChatGPT..."],
-          14:["[ENGINE] Connecting to Anthropic API → claude-sonnet-4-20250514...","[ENGINE] Sending 8 query probes to Claude..."],
-          20:["[ENGINE] Connecting to Google AI API → gemini-2.0-flash...","[ENGINE] Sending 8 query probes to Gemini..."],
-          26:["[PARSE] Extracting mention rates from ChatGPT response...","[PARSE] Extracting citation data from Claude response...","[PARSE] Extracting sentiment scores from Gemini response...","[SCAN] Cross-referencing entity signals across 3 engines..."],
-          30:["[AUDIT] Scoring Structured Data / Schema...","[AUDIT] Scoring Content Authority & E-E-A-T...","[AUDIT] Scoring Citation Network & Freshness..."],
-          28:["[COMP] Running competitor signal analysis...","[COMP] Cross-referencing citation networks for "+data.competitors.slice(0,3).join(", "),"[COMP] Calculating category-level differentials...","[COMP] Mapping authority distribution curves..."],
-          45:["[ARCH] Analysing search intent clusters...","[ARCH] Segmenting user archetypes by behaviour pattern...","[ARCH] Correlating query frequency → brand visibility...","[ARCH] Generating stakeholder-mapped personas..."],
-          62:["[INTENT] Testing "+data.topics[0]+" prompt variants...","[INTENT] Evaluating citation probability per funnel stage...","[INTENT] Mapping brand mention density across query types...","[INTENT] Scoring "+data.brand+" presence in AI responses..."],
-          72:["[VERIFY] Dispatching channel checks to 3 engines...","[VERIFY] Claude → searching Wikipedia, LinkedIn, Blog, Press...","[VERIFY] ChatGPT → searching YouTube, Reviews, Podcasts...","[VERIFY] Gemini → searching Social Media, Directories, Academic..."],
-          74:["[VERIFY] Engines searching the web for real evidence...","[VERIFY] Looking for: "+data.brand+" company profiles, pages, mentions..."],
-          82:["[VERIFY] All engines reported back ✓","[VERIFY] Merging verification results from 3 sources...","[REC] Generating industry-specific site recommendations..."],
-          90:["[BUILD] Compiling AEO score matrix...","[BUILD] Generating brand playbook recommendations...","[BUILD] Calculating 90-day projection model...","[BUILD] Assembling final report..."],
-          95:["[DONE] All engines responded ✓","[DONE] Data validation complete ✓","[DONE] Report ready ✓"]
-        };
-        const closest=Object.keys(logs).map(Number).filter(k=>k<=pct).sort((a,b)=>b-a)[0];
-        if(closest&&logs[closest])logs[closest].forEach((l,i)=>setTimeout(()=>addLog(l),i*250));
+      const apiData=await runRealAudit(data,(msg,pct)=>{
+        setStage(msg);
+        targetRef.current=Math.max(targetRef.current, pct);
       });
-      setProgress(100);setStage("Complete");
-      await new Promise(r=>setTimeout(r,500));
+      targetRef.current=100;
+      await new Promise(r=>setTimeout(r,800));
+      stopSmooth();setDisplayProgress(100);
+      await new Promise(r=>setTimeout(r,400));
       setRunning(false);onRun(apiData);
     }catch(e){
-      console.error("Audit error:",e);setError("API call failed — falling back to simulated data.");addLog("[ERR] API error — using fallback engine...");
+      console.error("Audit error:",e);setError("API call failed — falling back to simulated data.");addLog("API error — using fallback engine...");
+      targetRef.current=100;
       await new Promise(r=>setTimeout(r,1500));
-      setRunning(false);onRun(null);
+      stopSmooth();setRunning(false);onRun(null);
     }
   };
+
+  // Cleanup on unmount
+  React.useEffect(()=>()=>{stopSmooth();},[]);
+
+  const progress=displayProgress;
   if(running)return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"70vh",gap:20,maxWidth:520,margin:"0 auto"}}>
     {/* Main progress ring */}
     <div style={{position:"relative",width:130,height:130}}>
-      <svg width="130" height="130"><circle cx="65" cy="65" r="56" fill="none" stroke={C.borderSoft} strokeWidth="3"/><circle cx="65" cy="65" r="56" fill="none" stroke={C.accent} strokeWidth="4" strokeDasharray={352} strokeDashoffset={352-(progress/100)*352} strokeLinecap="round" transform="rotate(-90 65 65)" style={{transition:"stroke-dashoffset .5s ease-out"}}/></svg>
+      <svg width="130" height="130"><circle cx="65" cy="65" r="56" fill="none" stroke={C.borderSoft} strokeWidth="3"/><circle cx="65" cy="65" r="56" fill="none" stroke={C.accent} strokeWidth="4" strokeDasharray={352} strokeDashoffset={352-(progress/100)*352} strokeLinecap="round" transform="rotate(-90 65 65)" style={{transition:"stroke-dashoffset .15s linear"}}/></svg>
       <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:30,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{progress}%</span></div>
     </div>
     {/* Title */}
@@ -617,7 +790,7 @@ function NewAuditPage({data,setData,onRun}){
     <div style={{width:"100%",display:"flex",flexDirection:"column",gap:6}}>
       {[{l:"ChatGPT (gpt-4o)",p:Math.min(100,progress*100/14),c:"#10A37F"},{l:"Claude (Sonnet)",p:Math.max(0,Math.min(100,(progress-8)*100/12)),c:"#D97706"},{l:"Gemini (Flash)",p:Math.max(0,Math.min(100,(progress-14)*100/12)),c:"#4285F4"},{l:"Competitor Analysis",p:Math.max(0,Math.min(100,(progress-30)*100/15)),c:"#8b5cf6"},{l:"Archetype Generation",p:Math.max(0,Math.min(100,(progress-45)*100/17)),c:"#ec4899"},{l:"Intent Pathway",p:Math.max(0,Math.min(100,(progress-62)*100/10)),c:"#f59e0b"},{l:"Channel Verification",p:Math.max(0,Math.min(100,(progress-72)*100/18)),c:"#059669"},{l:"Report Compilation",p:Math.max(0,Math.min(100,(progress-90)*100/10)),c:C.accent}].map(s=>(<div key={s.l} style={{display:"flex",alignItems:"center",gap:8}}>
         <span style={{fontSize:10,color:s.p>=100?C.green:s.p>0?C.text:C.muted,minWidth:120,fontWeight:s.p>0&&s.p<100?600:400,fontFamily:"'Outfit'"}}>{s.p>=100?"✓ ":s.p>0?"◉ ":"○ "}{s.l}</span>
-        <div style={{flex:1,height:3,background:C.borderSoft,borderRadius:2}}><div style={{width:`${Math.max(0,s.p)}%`,height:"100%",background:s.p>=100?C.green:s.c,borderRadius:2,transition:"width .5s ease-out"}}/></div>
+        <div style={{flex:1,height:3,background:C.borderSoft,borderRadius:2}}><div style={{width:`${Math.max(0,s.p)}%`,height:"100%",background:s.p>=100?C.green:s.c,borderRadius:2,transition:"width .15s linear"}}/></div>
       </div>))}
     </div>
     <div style={{padding:"6px 14px",background:`${C.accent}08`,borderRadius:100,fontSize:11,color:C.accent,fontWeight:500}}>⚡ Powered by live AI analysis</div>
@@ -631,7 +804,15 @@ function NewAuditPage({data,setData,onRun}){
       <Field label="Website" value={data.website} onChange={v=>setData({...data,website:v})} placeholder="acme.com"/>
       <Field label="Region" value={data.region} onChange={v=>setData({...data,region:v})} placeholder="e.g. Malaysia"/>
       <div style={{gridColumn:"1/-1"}}><TagInput label="Key Topics" tags={data.topics} setTags={v=>setData({...data,topics:v})} placeholder="Type a topic and press Enter..."/></div>
-      <div style={{gridColumn:"1/-1"}}><TagInput label="Competitors" tags={data.competitors} setTags={v=>setData({...data,competitors:v})} placeholder="Type a competitor and press Enter..."/></div>
+      <div style={{gridColumn:"1/-1"}}>
+        <label style={{fontSize:12,fontWeight:500,color:C.sub,display:"block",marginBottom:8}}>Competitors</label>
+        {(data.competitors||[]).map((comp,i)=>(<div key={i} style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
+          <input value={comp.name} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],name:e.target.value};setData({...data,competitors:c});}} placeholder={`Competitor ${i+1}`} style={{flex:1,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit"}}/>
+          <input value={comp.website} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],website:e.target.value};setData({...data,competitors:c});}} placeholder="website.com" style={{flex:1,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit"}}/>
+          <span onClick={()=>{const c=data.competitors.filter((_,j)=>j!==i);setData({...data,competitors:c});}} style={{cursor:"pointer",color:C.muted,fontSize:16,padding:"0 4px",lineHeight:1}}>×</span>
+        </div>))}
+        {(data.competitors||[]).length<8&&<button onClick={()=>setData({...data,competitors:[...(data.competitors||[]),{name:"",website:""}]})} style={{padding:"6px 14px",background:"none",border:`1px dashed ${C.border}`,borderRadius:C.rs,fontSize:12,color:C.muted,cursor:"pointer",fontFamily:"inherit"}}>+ Add competitor</button>}
+      </div>
     </div>
     <div style={{marginTop:20,paddingTop:18,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div style={{display:"flex",gap:12,alignItems:"center"}}><span style={{fontSize:11,color:C.muted}}>Engines:</span><ChatGPTLogo size={18}/><ClaudeLogo size={18}/><GeminiLogo size={18}/></div>
@@ -1022,7 +1203,7 @@ function RoadmapPage({r}){
 export default function App(){
   const[authed,setAuthed]=useState(()=>{try{return sessionStorage.getItem("enterrank_token")?true:false;}catch(e){return false;}});
   const[step,setStep]=useState("input");
-  const[data,setData]=useState({brand:"",industry:"",website:"",region:"",topics:[],competitors:[]});
+  const[data,setData]=useState({brand:"",industry:"",website:"",region:"",topics:[],competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
   const[results,setResults]=useState(null);
   const[history,setHistory]=useState([]);
   const[loginError,setLoginError]=useState("");
