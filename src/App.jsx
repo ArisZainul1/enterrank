@@ -419,16 +419,85 @@ Respond ONLY with JSON (no markdown):
   }catch(e){console.error("Channel verification error:",e);}
 
   // Get industry-specific site recommendations from Claude
-  onProgress("Generating channel recommendations...",86);
+  onProgress("Generating channel recommendations...",84);
   const recPrompt=`For "${brand}" in "${industry}" (region: ${region}), recommend the most relevant specific sites for these 4 channel categories. Return 10-15 sites per category tailored to this industry and region.
 Respond ONLY with JSON: {"reviewPlatforms":[{"name":"Site","url":"site.com","focus":"Why relevant"}],"pressNews":[...],"industryDirectories":[...],"socialMedia":[...]}`;
   const recRaw=await callClaude(recPrompt);
   const recData=safeJSON(recRaw);
   if(channelData&&recData)channelData.recommendedSites=recData;
 
-  onProgress("Finalising report...",90);
+  // ── STEP 6: Personalised Content Grid ──
+  onProgress("Building personalised content strategy...",87);
+  const contentGridPrompt=`You are an AEO strategist. Create a personalised content-channel grid for "${brand}" — a ${industry} company (${cd.website}, region: ${region}, topics: ${topics.join(", ")}).
 
-  return {engineData,competitorData,archData,intentData,channelData,deepData};
+REAL DATA FROM AUDIT:
+${brandCrawlSummary}
+
+KEY FINDINGS:
+- Overall AEO Score: The brand has ${engineData.painPoints?engineData.painPoints.filter(p=>p.score<40).map(p=>p.label).join(", ")||"no critical gaps":"areas needing work"}
+- Competitors: ${compNames.join(", ")||"none specified"}
+${compCrawlSummaries.map(c=>`- ${c.name}: ${c.summary.split("\n").slice(0,3).join("; ")}`).join("\n")}
+
+Based on this real data, create 8-10 content types that would SPECIFICALLY help "${brand}" improve their AEO visibility. Each content type must:
+- Be specific to ${industry} (not generic "blog posts")
+- Address actual gaps found in the crawl data
+- Target channels where "${brand}" is weakest
+- Include realistic frequency for a ${industry} company
+- Have impact scores based on how much they'd move the needle for THIS brand
+
+Respond ONLY with JSON (no markdown):
+[{"type":"Specific Content Type","channels":["Channel1","Channel2"],"freq":"Realistic frequency","p":"P0","owner":"Specific Team","impact":95,"rationale":"Why this matters for ${brand} specifically"}]`;
+  const contentGridRaw=await callClaude(contentGridPrompt);
+  const contentGridData=safeJSON(contentGridRaw);
+
+  // ── STEP 7: Personalised 90-Day Roadmap ──
+  onProgress("Creating personalised 90-day roadmap...",90);
+  const roadmapPrompt=`You are a senior AEO consultant at Entermind. Create a hyper-personalised 90-day AEO transformation roadmap for "${brand}" — a ${industry} company (${cd.website}, region: ${region}).
+
+REAL WEBSITE CRAWL FINDINGS:
+${brandCrawlSummary}
+
+COMPETITOR CRAWL FINDINGS:
+${compCrawlSummaries.map(c=>`${c.name} (${c.website}): ${c.summary.split("\n").slice(0,5).join("; ")}`).join("\n")}
+
+AEO CATEGORY SCORES (from real analysis):
+${engineData.painPoints?engineData.painPoints.map(p=>`- ${p.label}: ${p.score}/100 (${p.severity})`).join("\n"):"Not yet scored"}
+
+CRITICAL: Every task must be SPECIFIC to "${brand}". Instead of "Implement schema markup", say "Add Organization + ${industry}-specific schema to ${cd.website} (currently ${brandCrawlSummary.includes("No JSON-LD")?"missing":"has basic"} schema)".
+
+Instead of "Publish blog posts", say "Create ${topics[0]||industry} comparison guides targeting queries where ${compNames[0]||"competitors"} currently outrank ${brand}".
+
+Create a 3-phase roadmap (Days 1-30, Days 31-60, Days 61-90). Each phase should have 3-5 department groups, each with 3-5 specific tasks.
+
+Respond ONLY with JSON (no markdown):
+{
+  "day30":{"title":"Phase name","sub":"Days 1-30","accent":"#ef4444","lift":"Realistic % improvement","departments":[
+    {"dept":"Department Name","color":"#0c4cfc","tasks":["Very specific task 1 for ${brand}","Very specific task 2"]}
+  ]},
+  "day60":{"title":"Phase name","sub":"Days 31-60","accent":"#f59e0b","lift":"Realistic %","departments":[...]},
+  "day90":{"title":"Phase name","sub":"Days 61-90","accent":"#10b981","lift":"Realistic %","departments":[...]}
+}`;
+  const roadmapRaw=await callClaude(roadmapPrompt);
+  const roadmapData=safeJSON(roadmapRaw);
+
+  // ── STEP 8: Personalised Monthly Output Requirements ──
+  onProgress("Calculating output requirements...",93);
+  const outputPrompt=`Based on the AEO audit of "${brand}" (${industry}, ${region}), create 6 specific monthly output targets. These should reflect what "${brand}" ACTUALLY needs — not generic numbers.
+
+Current state from crawl:
+${brandCrawlSummary.split("\n").slice(0,8).join("\n")}
+
+Weakest categories: ${engineData.painPoints?engineData.painPoints.filter(p=>p.score<50).map(p=>`${p.label} (${p.score})`).join(", "):"unknown"}
+
+Respond ONLY with JSON (no markdown):
+[{"n":"4-6","u":"pieces/month","l":"Specific Content Type","d":"Brief specific description for ${brand}"}]
+Return exactly 6 items.`;
+  const outputRaw=await callClaude(outputPrompt);
+  const outputData=safeJSON(outputRaw);
+
+  onProgress("Finalising report...",96);
+
+  return {engineData,competitorData,archData,intentData,channelData,deepData,contentGridData,roadmapData,outputData};
 }
 
 /* ─── MERGE API RESULTS WITH STATIC DATA ─── */
@@ -587,43 +656,47 @@ function generateAll(cd, apiData){
     return {...ch,status:verified?verified.status:(pr(i*7+3)>.5?"Active":"Needs Work"),finding:verified?verified.finding:null};
   });
 
-  const contentTypes=[
-    {type:"Definitive Guides",channels:["Blog","YouTube","LinkedIn"],freq:"2/month",p:"P0",owner:"Content Team",impact:95},
-    {type:"FAQ & Knowledge Base",channels:["Website","Blog"],freq:"Weekly",p:"P0",owner:"Content Team",impact:92},
-    {type:"Case Studies",channels:["Blog","LinkedIn"],freq:"2/month",p:"P1",owner:"Marketing + Sales",impact:88},
-    {type:"Original Research",channels:["Blog","PR","Email"],freq:"Quarterly",p:"P0",owner:"Content + Analytics",impact:96},
-    {type:"Thought Leadership",channels:["LinkedIn","Podcast"],freq:"Weekly",p:"P1",owner:"Leadership + PR",impact:85},
-    {type:"Comparison Content",channels:["Blog","YouTube"],freq:"Monthly",p:"P1",owner:"Content Team",impact:90},
-    {type:"Video Tutorials",channels:["YouTube","Website"],freq:"2/month",p:"P2",owner:"Product + Mktg",impact:80},
-    {type:"Press Releases",channels:["PR Wire","News"],freq:"As needed",p:"P1",owner:"PR Team",impact:82},
-    {type:"Community Posts",channels:["Reddit","Quora","X"],freq:"Daily",p:"P2",owner:"Community Mgr",impact:65},
-    {type:"Schema Updates",channels:["Website"],freq:"Ongoing",p:"P0",owner:"Dev Team",impact:94},
-  ];
+  // Content types — use API-generated personalised data, fallback to basic defaults
+  const contentTypes=(hasApi&&apiData.contentGridData&&Array.isArray(apiData.contentGridData)&&apiData.contentGridData.length>0)?
+    apiData.contentGridData.map(ct=>({type:ct.type||"Content",channels:ct.channels||["Blog"],freq:ct.freq||"Monthly",p:ct.p||"P1",owner:ct.owner||"Content Team",impact:ct.impact||70,rationale:ct.rationale||""})):
+    [
+      {type:`${cd.industry} Definitive Guides`,channels:["Blog","LinkedIn"],freq:"2/month",p:"P0",owner:"Content Team",impact:95,rationale:`Address knowledge gaps in ${cd.industry}`},
+      {type:"FAQ & Knowledge Base",channels:["Website"],freq:"Weekly",p:"P0",owner:"Content Team",impact:92,rationale:"Cover common queries AI engines pull from"},
+      {type:`${cd.brand} Case Studies`,channels:["Blog","LinkedIn"],freq:"2/month",p:"P1",owner:"Marketing",impact:88,rationale:"Build E-E-A-T through demonstrated expertise"},
+      {type:"Schema Markup Updates",channels:["Website"],freq:"Ongoing",p:"P0",owner:"Dev Team",impact:94,rationale:"Enable AI engines to parse and cite content"},
+      {type:`${cd.industry} Comparison Content`,channels:["Blog","YouTube"],freq:"Monthly",p:"P1",owner:"Content Team",impact:90,rationale:`Compete for 'vs' and comparison queries`},
+      {type:"Original Research",channels:["Blog","PR"],freq:"Quarterly",p:"P0",owner:"Analytics",impact:96,rationale:"Generate citable, authoritative data"},
+    ];
 
-  const roadmap={
+  // Roadmap — use API-generated personalised data, fallback to basic framework
+  const roadmap=(hasApi&&apiData.roadmapData&&apiData.roadmapData.day30)?apiData.roadmapData:{
     day30:{title:"Foundation Sprint",sub:"Days 1-30",accent:"#ef4444",lift:"10-15%",departments:[
-      {dept:"Entermind (Consultants)",color:"#0c4cfc",tasks:["Complete full AEO audit and baseline report","Design schema markup templates","Create brand voice guidelines for AI","Set up AI engine monitoring","Identify top 50 priority prompts"]},
-      {dept:"Content & Marketing",color:"#059669",tasks:["Publish FAQ pages for top 10 queries","Add author bios to all content","Audit brand descriptions for consistency","Create briefs for 4 definitive guides","Begin daily community engagement"]},
-      {dept:"Web Development",color:"#d97706",tasks:["Implement Organization + Product schema","Fix critical technical SEO issues","Add speakable schema to key content","Create XML sitemap with lastmod","Add 'Last Updated' timestamps"]},
-      {dept:"PR & Communications",color:"#8b5cf6",tasks:["Update Wikipedia/Wikidata entries","Audit review platform profiles","Prepare outreach list of 20+ publications"]},
+      {dept:"Technical",color:"#0c4cfc",tasks:[`Implement Organization schema on ${cd.website}`,`Fix missing meta descriptions and Open Graph tags`,`Add structured data for ${cd.industry}-specific content types`,`Create XML sitemap with proper lastmod dates`,`Add author markup and date stamps to all content`]},
+      {dept:"Content",color:"#059669",tasks:[`Create FAQ page covering top 10 ${cd.industry} queries`,`Publish 2 definitive guides on ${cd.topics.slice(0,2).join(" and ")||cd.industry}`,`Add case studies demonstrating ${cd.brand} expertise`,`Audit and update all existing content for accuracy`]},
+      {dept:"PR & Outreach",color:"#8b5cf6",tasks:[`Verify/create ${cd.brand} profiles on key industry directories`,`Audit review platform presence (G2, Trustpilot, etc.)`,`Prepare media outreach list for ${cd.region||"target"} region`]},
     ]},
     day60:{title:"Authority Building",sub:"Days 31-60",accent:"#f59e0b",lift:"20-30%",departments:[
-      {dept:"Entermind (Consultants)",color:"#0c4cfc",tasks:["Mid-point re-audit and benchmarking","Optimise prompt cluster strategy","Refine content-channel grid","Advanced schema review","Competitor gap analysis refresh"]},
-      {dept:"Content & Marketing",color:"#059669",tasks:[`Publish 4 guides: ${cd.topics.slice(0,4).join(", ")}`,"Create comparison vs top competitors","Produce 3 case studies","Launch weekly LinkedIn thought leadership","Build content hub with internal links"]},
-      {dept:"Web Development",color:"#d97706",tasks:["Implement HowTo + Article schema","Build automated schema injection","Optimise to sub-2s load times","Create prompt cluster landing pages"]},
-      {dept:"PR & Communications",color:"#8b5cf6",tasks:["Secure 5+ guest contributions","Launch digital PR campaign","Pitch 3+ podcast appearances","Secure 10+ review entries"]},
-      {dept:"Social Media",color:"#ec4899",tasks:["Amplify content across channels","20+ industry conversations weekly","Create video snippets for Shorts/Reels","Build community around expertise"]},
+      {dept:"Technical",color:"#0c4cfc",tasks:[`Implement FAQ and HowTo schema across content`,`Optimise Core Web Vitals to sub-2s load times`,`Build automated schema injection pipeline`]},
+      {dept:"Content",color:"#059669",tasks:[`Publish comparison content: ${cd.brand} vs ${cd.competitorNames[0]||"competitors"}`,`Create ${cd.industry} buyer's guide`,`Launch weekly thought leadership on LinkedIn`,`Produce original research report on ${cd.topics[0]||cd.industry}`]},
+      {dept:"PR & Outreach",color:"#8b5cf6",tasks:[`Secure 5+ guest contributions in ${cd.industry} publications`,`Build citation network through industry partnerships`,`Launch digital PR campaign in ${cd.region||"target"} market`]},
     ]},
     day90:{title:"Dominance & Scale",sub:"Days 61-90",accent:"#10b981",lift:"40-60%",departments:[
-      {dept:"Entermind (Consultants)",color:"#0c4cfc",tasks:["Full re-audit with comparison report","Document AEO playbook","Deliver next 90-day strategy","Train internal team on AEO","Final ROI presentation"]},
-      {dept:"Content & Marketing",color:"#059669",tasks:["Publish original research report","Cover 50+ long-tail queries","Establish 2/week publishing","Automate content refresh workflow","Launch AEO email nurture"]},
-      {dept:"Web Development",color:"#d97706",tasks:["Full schema audit (95%+ coverage)","Build AEO monitoring dashboard","Automate freshness signals","Schema testing in CI/CD"]},
-      {dept:"PR & Communications",color:"#8b5cf6",tasks:["3+ expert endorsements","15+ new authoritative backlinks","Pitch research to major publications"]},
-      {dept:"Leadership / C-Suite",color:"#0ea5e9",tasks:["Record executive thought leadership","Approve ongoing AEO budget","Champion AEO across departments"]},
+      {dept:"Technical",color:"#0c4cfc",tasks:[`Achieve 95%+ schema coverage across ${cd.website}`,`Build AEO monitoring dashboard`,`Automate content freshness signals`]},
+      {dept:"Content",color:"#059669",tasks:[`Cover 50+ long-tail ${cd.industry} queries`,`Establish 2/week publishing cadence`,`Create video content for YouTube presence`]},
+      {dept:"PR & Outreach",color:"#8b5cf6",tasks:[`Secure 15+ authoritative backlinks`,`Get featured in ${cd.industry} roundups and lists`,`Build ongoing media relationships`]},
     ]},
   };
 
-  return{overall,engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,clientData:cd};
+  // Monthly output requirements — use API data or generate from audit findings
+  const outputReqs=(hasApi&&apiData.outputData&&Array.isArray(apiData.outputData)&&apiData.outputData.length>=4)?apiData.outputData:
+    [{n:"6-8",u:"pieces/month",l:`${cd.industry} Guides & Articles`,d:`Covering ${cd.topics.slice(0,2).join(", ")||cd.industry} topics`},
+     {n:"4-6",u:"pages/month",l:"FAQ & Knowledge Base",d:`Answering real ${cd.industry} queries`},
+     {n:"2-3",u:"per month",l:"Case Studies",d:`Demonstrating ${cd.brand} expertise`},
+     {n:"1",u:"per quarter",l:"Original Research",d:`${cd.industry}-specific data and insights`},
+     {n:"Weekly",u:"posts",l:"Thought Leadership",d:`LinkedIn + industry publications`},
+     {n:"Ongoing",u:"updates",l:"Schema & Technical",d:`Structured data on ${cd.website}`}];
+
+  return{overall,engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,clientData:cd};
 }
 
 /* ─── LOGIN FORM ─── */
@@ -705,10 +778,14 @@ function NewAuditPage({data,setData,onRun}){
     {at:80,msg:`Searching for ${data.brand} company profiles and pages...`},
     {at:83,msg:"All engines reported back ✓"},
     {at:85,msg:"Merging verification results from 3 sources..."},
-    {at:87,msg:"Generating industry-specific site recommendations..."},
-    {at:89,msg:"Compiling AEO score matrix..."},
-    {at:91,msg:"Calculating 90-day projection model..."},
-    {at:93,msg:"Assembling final report..."},
+    {at:85,msg:"Generating industry-specific site recommendations..."},
+    {at:87,msg:"Building personalised content strategy from audit data..."},
+    {at:88,msg:"Matching content types to "+data.brand+"'s specific AEO gaps..."},
+    {at:90,msg:"Creating personalised 90-day roadmap..."},
+    {at:91,msg:"Tailoring tasks to "+data.brand+"'s crawl findings..."},
+    {at:92,msg:"Mapping competitor advantages into action items..."},
+    {at:93,msg:"Calculating monthly output requirements..."},
+    {at:95,msg:"Compiling final report..."},
     {at:96,msg:"All engines responded ✓"},
     {at:98,msg:"Data validation complete ✓"},
   ]);
@@ -1083,12 +1160,12 @@ function ChannelsPage({r,goTo}){
 /* ─── PAGE: CONTENT GRID (Step 07) ─── */
 function GridPage({r,goTo}){
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Content-Channel Grid</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>What to publish, where, and who owns it.</p></div>
-    <SectionNote text="Priority P0 = start immediately. Impact shows how much each content type influences AEO visibility. The output requirements show the minimum monthly production needed."/>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Content-Channel Grid</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Personalised content strategy based on {r.clientData.brand}'s audit findings.</p></div>
+    <SectionNote text={`This content grid is tailored to ${r.clientData.brand}'s specific AEO gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
     <Card style={{marginBottom:20,overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
       <thead><tr style={{borderBottom:`2px solid ${C.border}`}}>{["Content Type","Channels","Frequency","Priority","Owner","Impact"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:600,color:C.muted,fontSize:10,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
       <tbody>{r.contentTypes.map((ct,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
-        <td style={{padding:"10px",fontWeight:600,color:C.text}}>{ct.type}</td>
+        <td style={{padding:"10px"}}><div style={{fontWeight:600,color:C.text}}>{ct.type}</div>{ct.rationale&&<div style={{fontSize:10,color:C.muted,marginTop:2}}>{ct.rationale}</div>}</td>
         <td style={{padding:"10px"}}><div style={{display:"flex",flexWrap:"wrap",gap:3}}>{ct.channels.map(ch=><Pill key={ch} color="#64748b">{ch}</Pill>)}</div></td>
         <td style={{padding:"10px",color:C.sub}}>{ct.freq}</td>
         <td style={{padding:"10px"}}><Pill color={ct.p==="P0"?C.red:ct.p==="P1"?C.amber:"#94a3b8"}>{ct.p}</Pill></td>
@@ -1096,9 +1173,9 @@ function GridPage({r,goTo}){
         <td style={{padding:"10px"}}><div style={{display:"flex",alignItems:"center",gap:6}}><Bar value={ct.impact} color={ct.impact>=90?C.accent:C.green} h={4}/><span style={{fontWeight:600,fontSize:11}}>{ct.impact}</span></div></td>
       </tr>))}</tbody></table>
     </Card>
-    <Card><h3 style={{fontSize:14,fontWeight:600,color:C.text,margin:"0 0 12px",fontFamily:"'Outfit'"}}>Monthly Output Requirements</h3>
+    <Card><h3 style={{fontSize:14,fontWeight:600,color:C.text,margin:"0 0 12px",fontFamily:"'Outfit'"}}>Monthly Output Requirements for {r.clientData.brand}</h3>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
-        {[{n:"8-12",u:"pieces/month",l:"Written Content",d:"Guides, FAQs, case studies"},{n:"4-6",u:"pieces/month",l:"Video Content",d:"Tutorials, demos, thought leadership"},{n:"20+",u:"per month",l:"Community Posts",d:"Reddit, Quora, LinkedIn, X"},{n:"2-4",u:"per month",l:"PR Placements",d:"Guest posts, press mentions"},{n:"1",u:"per quarter",l:"Research Report",d:"Original data, surveys"},{n:"Weekly",u:"updates",l:"Schema & Technical",d:"Markup, freshness, monitoring"}].map((item,i)=>(<div key={i} style={{padding:"14px",background:C.bg,borderRadius:C.rs,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{item.n}</div><div style={{fontSize:10,color:C.muted,marginBottom:4}}>{item.u}</div><div style={{fontSize:12,fontWeight:600,color:C.text}}>{item.l}</div><div style={{fontSize:10,color:C.muted,marginTop:2}}>{item.d}</div></div>))}
+        {(r.outputReqs||[]).map((item,i)=>(<div key={i} style={{padding:"14px",background:C.bg,borderRadius:C.rs,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{item.n}</div><div style={{fontSize:10,color:C.muted,marginBottom:4}}>{item.u}</div><div style={{fontSize:12,fontWeight:600,color:C.text}}>{item.l}</div><div style={{fontSize:10,color:C.muted,marginTop:2}}>{item.d}</div></div>))}
       </div>
     </Card>
     <NavBtn onClick={()=>goTo("roadmap")} label="Next: 90-Day Roadmap →"/>
@@ -1135,7 +1212,7 @@ function RoadmapPage({r}){
     const funnelHtml=r.funnelStages.map(s=>{const st={c:s.prompts.filter(p=>p.status==="Cited").length,m:s.prompts.filter(p=>p.status==="Mentioned").length,a:s.prompts.filter(p=>p.status==="Absent").length};return`<h3 style="color:${s.color}">${s.stage} (${st.c} cited, ${st.m} mentioned, ${st.a} absent)</h3><table><tr><th>Prompt</th><th>Rank</th><th>Status</th></tr>${s.prompts.map(p=>`<tr><td>${p.query}</td><td>#${p.rank}</td><td style="color:${p.status==="Cited"?"#059669":p.status==="Mentioned"?"#d97706":"#dc2626"}">${p.status}</td></tr>`).join("")}</table>`;}).join("");
     const guideHtml=r.brandGuidelines.map(g=>`<div class="dept"><div class="dept-title" style="border-color:#0c4cfc">${g.area}</div><div style="color:#4a5568">${g.rule}</div><div class="insight" style="border-color:#e2e5ea;background:#f8f9fb;margin-top:6px"><strong>Example:</strong> ${g.example}</div></div>`).join("");
     const chHtml=r.aeoChannels.sort((a,b)=>b.impact-a.impact).map((ch,i)=>`<tr><td>${i+1}</td><td><strong>${ch.channel}</strong><br><span style="color:#8896a6">${ch.desc}</span></td><td>${ch.impact}</td><td style="color:${ch.status==="Active"?"#059669":ch.status==="Needs Work"?"#d97706":"#dc2626"}">${ch.status}</td></tr>`).join("");
-    const gridHtml=r.contentTypes.map(ct=>`<tr><td>${ct.type}</td><td>${ct.channels.join(", ")}</td><td>${ct.freq}</td><td>${ct.p}</td><td>${ct.owner}</td></tr>`).join("");
+    const gridHtml=r.contentTypes.map(ct=>`<tr><td><strong>${ct.type}</strong>${ct.rationale?`<br><span style="color:#8896a6;font-size:9px">${ct.rationale}</span>`:""}</td><td>${ct.channels.join(", ")}</td><td>${ct.freq}</td><td>${ct.p}</td><td>${ct.owner}</td></tr>`).join("");
     const rmHtml=phases.map(p=>`<h3 style="color:${p.accent}">${p.title} (${p.sub}) — Expected lift: ${p.lift}</h3>${p.departments.map(d=>`<div class="dept"><div class="dept-title" style="border-color:${d.color};color:${d.color}">${d.dept}</div>${d.tasks.map(t=>`<div class="task">→ ${t}</div>`).join("")}</div>`).join("")}`).join("");
 
     w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>EnterRank AEO Report — ${r.clientData.brand}</title><style>${css}</style></head><body>
