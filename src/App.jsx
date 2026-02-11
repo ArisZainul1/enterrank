@@ -885,7 +885,7 @@ function LoginForm({onSubmit,error,loading}){
 const STEPS=[{id:"input",label:"New Audit",n:"01"},{id:"audit",label:"AEO Audit",n:"02"},{id:"archetypes",label:"User Archetypes",n:"03"},{id:"intent",label:"Intent Pathway",n:"04"},{id:"playbook",label:"Brand Playbook",n:"05",comingSoon:true},{id:"channels",label:"AEO Channels",n:"06"},{id:"grid",label:"Content Grid",n:"07"},{id:"roadmap",label:"90-Day Roadmap",n:"08"}];
 
 /* ─── PAGE: NEW AUDIT ─── */
-function NewAuditPage({data,setData,onRun}){
+function NewAuditPage({data,setData,onRun,history=[]}){
   const[running,setRunning]=useState(false);const[stage,setStage]=useState("");const[error,setError]=useState(null);
   const ok=data.brand&&data.industry&&data.website&&data.topics.length>0;
   const[logLines,setLogLines]=useState([]);
@@ -1035,7 +1035,7 @@ function NewAuditPage({data,setData,onRun}){
     {error&&<div style={{padding:"10px 16px",background:`${C.red}08`,border:`1px solid ${C.red}20`,borderRadius:8,fontSize:12,color:C.red}}>{error}</div>}
     </div>);
   return(<div style={{maxWidth:620,margin:"0 auto"}}>
-    <div style={{marginBottom:24,textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>New AEO Audit</h2><p style={{color:C.sub,fontSize:13,marginTop:4}}>Enter client details for a comprehensive 8-stage AEO analysis.</p></div>
+    <div style={{marginBottom:24,textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>{data.brand?"Run AEO Audit":"New AEO Audit"}</h2><p style={{color:C.sub,fontSize:13,marginTop:4}}>{data.brand?`Run a ${history.length>0?"follow-up":"first"} audit for ${data.brand}.`:"Enter client details for a comprehensive 8-stage AEO analysis."}</p></div>
     <Card><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       <Field label="Brand Name" value={data.brand} onChange={v=>setData({...data,brand:v})} placeholder="Acme Corp"/>
       <Field label="Industry" value={data.industry} onChange={v=>setData({...data,industry:v})} placeholder="e.g. Technology"/>
@@ -1128,8 +1128,12 @@ function AuditPage({r,history,goTo}){
         <span style={{fontSize:12,color:C.accent,fontWeight:600}}>{showTrack?"Hide ↑":"Show ↓"}</span>
       </div>
       {showTrack&&<div style={{marginTop:18}}>
-        <SectionNote text="Each audit adds a data point. Over time this shows if your AEO strategy is working."/>
-        <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>AEO Score Trend</div><MiniAreaChart data={trend} dataKey="overall" color={C.accent}/></div>
+        <SectionNote text="Each audit adds a data point. Run audits over time to track whether your AEO strategy is working."/>
+        {history.length<2?<div style={{textAlign:"center",padding:"32px 20px",background:C.bg,borderRadius:C.rs}}>
+          <div style={{fontSize:28,marginBottom:8}}>📊</div>
+          <div style={{fontSize:14,fontWeight:600,color:C.text,marginBottom:4,fontFamily:"'Outfit'"}}>First Audit Complete</div>
+          <div style={{fontSize:12,color:C.muted,maxWidth:340,margin:"0 auto"}}>This is your baseline. Run another audit in 30+ days to see trends, score changes, and category movement.</div>
+        </div>:<><div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>AEO Score Trend</div><MiniAreaChart data={trend} dataKey="overall" color={C.accent}/></div>
         <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>Engine Performance</div><MiniLineChart data={engineTrend} lines={[{key:"ChatGPT",color:"#10A37F",label:"ChatGPT"},{key:"Claude",color:"#D97706",label:"Claude"},{key:"Gemini",color:"#4285F4",label:"Gemini"}]}/></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
           <div>
@@ -1144,6 +1148,7 @@ function AuditPage({r,history,goTo}){
             <div style={{display:"flex",flexDirection:"column",gap:6}}>{catChanges.map((cat,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:10,color:C.sub,minWidth:70}}>{cat.label.split(" ").slice(0,2).join(" ")}</span><div style={{flex:1}}><Bar value={cat.score} color={SC(cat.severity)} h={5}/></div><span style={{fontSize:12,fontWeight:700,color:C.text,minWidth:20,textAlign:"right"}}>{cat.score}</span><span style={{fontSize:10,fontWeight:600,minWidth:28,textAlign:"right",color:cat.change>0?C.green:cat.change<0?C.red:C.muted}}>{cat.change>0?`+${cat.change}`:cat.change===0?"—":cat.change}</span></div>))}</div>
           </div>
         </div>
+      </>}
       </div>}
     </Card>
     <NavBtn onClick={()=>goTo("archetypes")} label="Next: User Archetypes →"/>
@@ -1466,8 +1471,88 @@ function RoadmapPage({r}){
 }
 
 /* ─── MAIN APP ─── */
+/* ─── PROJECT HUB ─── */
+function ProjectHub({onSelect,onNew,onLogout}){
+  const[projects,setProjects]=useState(null);
+  const[loading,setLoading]=useState(true);
+  const[deleting,setDeleting]=useState(null);
+
+  React.useEffect(()=>{
+    fetch("/api/projects").then(r=>r.json()).then(d=>{setProjects(d.projects||[]);setLoading(false);}).catch(()=>{setProjects([]);setLoading(false);});
+  },[]);
+
+  const handleDelete=async(id,e)=>{
+    e.stopPropagation();
+    if(!confirm("Delete this project and all its audit history?"))return;
+    setDeleting(id);
+    try{await fetch(`/api/projects?id=${id}`,{method:"DELETE"});setProjects(projects.filter(p=>p.id!==id));}catch(e){}
+    setDeleting(null);
+  };
+
+  const scoreColor=(s)=>!s?C.muted:s>=70?C.green:s>=40?C.amber:C.red;
+
+  return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,sans-serif"}}>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box}::selection{background:#0c4cfc18}`}</style>
+    <div style={{padding:"11px 24px",borderBottom:`1px solid ${C.border}`,background:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center"}}><Logo/><span onClick={onLogout} style={{fontSize:11,color:C.muted,cursor:"pointer",padding:"4px 10px",borderRadius:6,border:`1px solid ${C.border}`,fontWeight:500,fontFamily:"'Outfit'"}}>Sign out</span></div>
+    <div style={{maxWidth:820,margin:"0 auto",padding:"40px 24px",animation:"fadeIn .4s ease-out"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:28}}>
+        <div><h1 style={{fontSize:26,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Projects</h1><p style={{color:C.sub,fontSize:13,marginTop:4}}>Select an existing client or start a new audit.</p></div>
+        <button onClick={onNew} style={{padding:"10px 20px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:16,lineHeight:1}}>+</span> New Project
+        </button>
+      </div>
+
+      {loading?<div style={{textAlign:"center",padding:60,color:C.muted}}><div style={{width:28,height:28,border:`3px solid ${C.borderSoft}`,borderTopColor:C.accent,borderRadius:"50%",animation:"spin 1s linear infinite",margin:"0 auto 12px"}}/><span style={{fontSize:13}}>Loading projects...</span></div>:
+       projects.length===0?<Card style={{textAlign:"center",padding:"60px 40px"}}>
+        <div style={{fontSize:40,marginBottom:12}}>📊</div>
+        <h3 style={{fontSize:16,fontWeight:600,color:C.text,margin:"0 0 6px",fontFamily:"'Outfit'"}}>No projects yet</h3>
+        <p style={{color:C.muted,fontSize:13,margin:"0 0 20px"}}>Create your first project to start tracking AEO performance.</p>
+        <button onClick={onNew} style={{padding:"10px 20px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>+ New Project</button>
+      </Card>:
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340,1fr))",gap:14}}>
+        {projects.sort((a,b)=>new Date(b.lastAudit||b.createdAt)-new Date(a.lastAudit||a.createdAt)).map(p=>(
+          <Card key={p.id} onClick={()=>onSelect(p)} style={{cursor:"pointer",transition:"all .15s",position:"relative",overflow:"hidden"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                  <h3 style={{fontSize:16,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>{p.brand}</h3>
+                  {p.lastScore&&<span style={{fontSize:13,fontWeight:700,color:scoreColor(p.lastScore)}}>{p.lastScore}</span>}
+                </div>
+                <div style={{fontSize:12,color:C.sub,marginBottom:8}}>{[p.industry,p.region].filter(Boolean).join(" · ")||"No details yet"}</div>
+                <div style={{fontSize:11,color:C.muted}}>{p.website||""}</div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                <span onClick={(e)=>handleDelete(p.id,e)} style={{fontSize:12,color:C.muted,cursor:"pointer",padding:"2px 6px",borderRadius:4,opacity:deleting===p.id?.5:1}}>
+                  {deleting===p.id?"...":"✕"}
+                </span>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:12,marginTop:12,paddingTop:10,borderTop:`1px solid ${C.borderSoft}`}}>
+              <div style={{display:"flex",alignItems:"center",gap:4}}>
+                <span style={{fontSize:11,color:C.muted}}>Audits:</span>
+                <span style={{fontSize:12,fontWeight:600,color:C.text}}>{p.auditCount||0}</span>
+              </div>
+              {p.lastAudit&&<div style={{display:"flex",alignItems:"center",gap:4}}>
+                <span style={{fontSize:11,color:C.muted}}>Last:</span>
+                <span style={{fontSize:12,fontWeight:500,color:C.sub}}>{new Date(p.lastAudit).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})}</span>
+              </div>}
+              {p.competitors&&p.competitors.length>0&&<div style={{display:"flex",alignItems:"center",gap:4}}>
+                <span style={{fontSize:11,color:C.muted}}>vs</span>
+                <span style={{fontSize:12,fontWeight:500,color:C.sub}}>{p.competitors.filter(c=>(typeof c==="string"?c:c.name||"").trim()).length} competitors</span>
+              </div>}
+            </div>
+          </Card>
+        ))}
+      </div>}
+    </div>
+  </div>);
+}
+
 export default function App(){
   const[authed,setAuthed]=useState(()=>{try{return sessionStorage.getItem("enterrank_token")?true:false;}catch(e){return false;}});
+  const[screen,setScreen]=useState("hub"); // "hub" | "dashboard"
+  const[activeProject,setActiveProject]=useState(null);
   const[step,setStep]=useState("input");
   const[data,setData]=useState({brand:"",industry:"",website:"",region:"",topics:[],competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
   const[results,setResults]=useState(null);
@@ -1486,13 +1571,39 @@ export default function App(){
     setLoggingIn(false);
   };
 
-  const handleLogout=()=>{try{sessionStorage.removeItem("enterrank_token");}catch(e){}setAuthed(false);setResults(null);setStep("input");};
+  const handleLogout=()=>{try{sessionStorage.removeItem("enterrank_token");}catch(e){}setAuthed(false);setResults(null);setStep("input");setScreen("hub");setActiveProject(null);};
+
+  const handleSelectProject=async(projectSummary)=>{
+    // Load full project data
+    try{
+      const res=await fetch(`/api/projects?id=${projectSummary.id}`);
+      const project=await res.json();
+      if(project.error){alert("Failed to load project");return;}
+      setActiveProject(project);
+      setData({brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors&&project.competitors.length>0?project.competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
+      // Load history from project
+      setHistory((project.history||[]).map(h=>({date:h.date||new Date(h.timestamp).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),...h})));
+      setResults(null);
+      setStep("input");
+      setScreen("dashboard");
+    }catch(e){alert("Failed to load project");}
+  };
+
+  const handleNewProject=()=>{
+    setActiveProject(null);
+    setData({brand:"",industry:"",website:"",region:"",topics:[],competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
+    setHistory([]);
+    setResults(null);
+    setStep("input");
+    setScreen("dashboard");
+  };
+
+  const handleBackToHub=()=>{setScreen("hub");setResults(null);setStep("input");};
 
   if(!authed)return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,sans-serif",display:"flex",alignItems:"center",justifyContent:"center"}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box}::selection{background:#0c4cfc18}`}</style>
+    <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}*{box-sizing:border-box}::selection{background:#0c4cfc18}`}</style>
     <div style={{width:"100%",maxWidth:400,padding:"0 24px",animation:"fadeIn .4s ease-out"}}>
-      {/* Logo */}
       <div style={{textAlign:"center",marginBottom:32}}>
         <div style={{display:"inline-flex",alignItems:"center",gap:8,marginBottom:8}}>
           <svg width="32" height="32" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
@@ -1500,7 +1611,6 @@ export default function App(){
         </div>
         <div style={{fontSize:13,color:C.muted}}>AI Engine Optimisation Platform</div>
       </div>
-      {/* Login Card */}
       <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:C.r,padding:"32px 28px",boxShadow:"0 4px 24px rgba(0,0,0,.06)"}}>
         <h2 style={{fontSize:18,fontWeight:700,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'",textAlign:"center"}}>Welcome back</h2>
         <p style={{fontSize:13,color:C.muted,margin:"0 0 24px",textAlign:"center"}}>Sign in to access your AEO dashboard</p>
@@ -1510,21 +1620,52 @@ export default function App(){
     </div>
   </div>);
 
-  const run=(apiData)=>{
+  if(screen==="hub")return <ProjectHub onSelect={handleSelectProject} onNew={handleNewProject} onLogout={handleLogout}/>;
+
+  const run=async(apiData)=>{
     const r=generateAll(data, apiData);setResults(r);
     const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score,r.engines[2].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/3),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/3),categories:r.painPoints.map(p=>({label:p.label,score:p.score}))};
-    if(history.length===0){setHistory([entry]);}else{setHistory([...history,entry]);}
+    setHistory(prev=>[...prev,entry]);
     setStep("audit");
+
+    // Save to project (create if new, update if existing)
+    try{
+      if(activeProject){
+        // Update existing project with new audit entry
+        const res=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:activeProject.id,auditEntry:entry})});
+        const updated=await res.json();
+        if(!updated.error)setActiveProject(updated);
+      }else{
+        // Create new project
+        const res=await fetch("/api/projects",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({brand:data.brand,industry:data.industry,website:data.website,region:data.region,topics:data.topics,competitors:data.competitors})});
+        const created=await res.json();
+        if(!created.error){
+          // Now add the audit entry
+          setActiveProject(created);
+          await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:created.id,auditEntry:entry})});
+        }
+      }
+    }catch(e){console.error("Failed to save project:",e);}
   };
   return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,sans-serif",color:C.text}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box}::selection{background:#0c4cfc18}`}</style>
-    <div style={{padding:"11px 24px",borderBottom:`1px solid ${C.border}`,background:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center"}}><Logo/><div style={{display:"flex",alignItems:"center",gap:12}}>{results&&<div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:6,height:6,borderRadius:"50%",background:C.green}}/><span style={{fontSize:12,color:C.muted}}>Active: <strong style={{color:C.text}}>{results.clientData.brand}</strong> · Score: <strong style={{color:results.overall>=70?C.green:results.overall>=40?C.amber:C.red}}>{results.overall}</strong></span></div>}<span onClick={handleLogout} style={{fontSize:11,color:C.muted,cursor:"pointer",padding:"4px 10px",borderRadius:6,border:`1px solid ${C.border}`,fontWeight:500,fontFamily:"'Outfit'"}}>Sign out</span></div></div>
+    <div style={{padding:"11px 24px",borderBottom:`1px solid ${C.border}`,background:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div style={{display:"flex",alignItems:"center",gap:16}}>
+        <Logo/>
+        <span onClick={handleBackToHub} style={{fontSize:11,color:C.accent,cursor:"pointer",padding:"4px 10px",borderRadius:6,border:`1px solid ${C.accent}25`,fontWeight:500,fontFamily:"'Outfit'",display:"flex",alignItems:"center",gap:4}}>← Projects</span>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:12}}>
+        {results&&<div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:6,height:6,borderRadius:"50%",background:C.green}}/><span style={{fontSize:12,color:C.muted}}>Active: <strong style={{color:C.text}}>{results.clientData.brand}</strong> · Score: <strong style={{color:results.overall>=70?C.green:results.overall>=40?C.amber:C.red}}>{results.overall}</strong></span></div>}
+        {activeProject&&<span style={{fontSize:11,color:C.muted,padding:"3px 8px",background:`${C.accent}06`,borderRadius:4}}>Audit #{(history||[]).length+1}</span>}
+        <span onClick={handleLogout} style={{fontSize:11,color:C.muted,cursor:"pointer",padding:"4px 10px",borderRadius:6,border:`1px solid ${C.border}`,fontWeight:500,fontFamily:"'Outfit'"}}>Sign out</span>
+      </div>
+    </div>
     <div style={{padding:"0 24px",borderBottom:`1px solid ${C.border}`,background:"#fff",overflowX:"auto"}}><div style={{display:"flex",minWidth:"max-content"}}>
       {STEPS.map(s=>{const dis=(!results&&s.id!=="input")||s.comingSoon;return(<button key={s.id} onClick={()=>{if(!dis)setStep(s.id);}} style={{padding:"10px 14px",background:"none",border:"none",borderBottom:step===s.id&&!s.comingSoon?`2px solid ${C.accent}`:"2px solid transparent",color:s.comingSoon?"#c8cdd5":step===s.id?C.accent:dis?"#d0d5dd":C.muted,fontSize:12,fontWeight:600,cursor:dis?"default":"pointer",fontFamily:"'Plus Jakarta Sans'",transition:"all .15s",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5,opacity:s.comingSoon?.5:1}}><span style={{fontSize:10,opacity:.5}}>{s.n}</span>{s.label}{s.comingSoon&&<span style={{fontSize:8,fontWeight:700,color:"#fff",background:"#c8cdd5",padding:"1px 5px",borderRadius:3,marginLeft:3}}>SOON</span>}</button>);})}
     </div></div>
     <div style={{padding:24,maxWidth:1020,margin:"0 auto"}}>
-      {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={run}/>}
+      {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={run} history={history}/>}
       {step==="audit"&&results&&<AuditPage r={results} history={history} goTo={setStep}/>}
       {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep}/>}
       {step==="intent"&&results&&<IntentPage r={results} goTo={setStep}/>}
