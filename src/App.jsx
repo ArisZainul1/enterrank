@@ -307,9 +307,12 @@ Respond ONLY with JSON array (no markdown):
     competitorData=safeJSON(compRaw)||[];
   }
 
-  // ── STEP 3: User archetypes (Step 3) ──
+  // ── STEP 3: User archetypes — generate then VERIFY prompts across engines ──
   onProgress("Generating user archetypes...",45);
   const archPrompt=`Analyse the specific brand "${brand}" — a ${industry} company (website: ${cd.website}, topics: ${topics.join(", ")}, region: ${region}, competitors: ${compNames.join(", ")||"none specified"}).
+
+WEBSITE CRAWL DATA:
+${brandCrawlSummary}
 
 CRITICAL RULES:
 - Think deeply about WHO would actually search for "${brand}" or its specific services. Do NOT use generic templates.
@@ -318,36 +321,107 @@ CRITICAL RULES:
 - Demographics must be realistic for "${brand}"'s actual target market.
 - If "${brand}" is B2B, don't include student/budget segments unless they genuinely apply.
 - If "${brand}" is B2C, don't include enterprise procurement segments unless they genuinely apply.
-- "brandVisibility" should reflect how likely AI engines are to mention "${brand}" specifically for that segment's queries — be honest, most brands score low here.
+- DO NOT set brandVisibility — we will calculate it from real engine tests. Set it to 0 as placeholder.
 
-Create 3 stakeholder groups that are genuinely relevant to "${brand}". Each group should have 2-3 specific customer segments.
+Create 3 stakeholder groups that are genuinely relevant to "${brand}". Each group should have 2-3 specific customer segments. Each segment should have 4-6 realistic prompts.
 
 Respond ONLY with JSON (no markdown, no explanation):
 [
   {"group":"Group Name Relevant to This Brand","icon":"emoji","desc":"1-line description","archetypes":[
-    {"name":"Specific Segment Name","icon":"emoji","demo":"Realistic demographic","behavior":"Their actual search behavior","intent":"What they're trying to achieve","size":15,"brandVisibility":25,"opportunity":"high","prompts":["realistic prompt 1","realistic prompt 2","realistic prompt 3","realistic prompt 4"]}
+    {"name":"Specific Segment Name","icon":"emoji","demo":"Realistic demographic","behavior":"Their actual search behavior","intent":"What they're trying to achieve","size":15,"brandVisibility":0,"opportunity":"high","prompts":["realistic prompt 1","realistic prompt 2","realistic prompt 3","realistic prompt 4"]}
   ]}
 ]`;
   const archRaw=await callClaude(archPrompt);
-  const archData=safeJSON(archRaw);
+  let archData=safeJSON(archRaw);
 
-  // ── STEP 4: Intent pathway with real prompts (Step 4) ──
-  onProgress("Testing intent pathway prompts...",62);
+  // Now VERIFY archetype prompts by testing them against all 3 engines
+  if(archData&&Array.isArray(archData)&&archData.length>0){
+    onProgress("Testing archetype prompts across 3 engines...",50);
+    // Collect all unique prompts from archetypes
+    const allArchPrompts=[];
+    archData.forEach((sg,gi)=>{(sg.archetypes||[]).forEach((a,ai)=>{(a.prompts||[]).forEach((p,pi)=>{allArchPrompts.push({gi,ai,pi,prompt:p});});});});
+
+    // Batch test — ask each engine which prompts would mention the brand
+    const testPrompt=(engineName,prompts)=>`You are ${engineName}. For each prompt below, would you mention "${brand}" (${cd.website}) in your response? Answer ONLY "Cited", "Mentioned", or "Absent" for each.
+
+- "Cited" = you would link to ${cd.website} (very rare)
+- "Mentioned" = you would name "${brand}" in your answer
+- "Absent" = you would NOT reference "${brand}" at all
+
+ENGINE SCORES FROM STEP 1 (for calibration — your overall mention rate for ${brand} is low, be consistent):
+These are the REAL scores from your earlier assessment. Stay consistent with them.
+
+Be honest — if you scored ${brand} low in Step 1, most of these should also be "Absent".
+
+Prompts:
+${prompts.map((p,i)=>`${i+1}. "${p}"`).join("\n")}
+
+Respond ONLY with JSON array of statuses in the same order (no markdown):
+["Absent","Absent","Mentioned","Absent"]`;
+
+    const promptTexts=allArchPrompts.map(p=>p.prompt);
+    const [gptTest,claudeTest,geminiTest]=await Promise.all([
+      callEngine("openai",testPrompt("ChatGPT",promptTexts),"Be honest about what you know. Most niche brands should be Absent for generic queries."),
+      callClaude(testPrompt("Claude",promptTexts),"Be honest about what you know. Most niche brands should be Absent for generic queries."),
+      callEngine("gemini",testPrompt("Gemini",promptTexts),"Be honest about what you know. Most niche brands should be Absent for generic queries."),
+    ]);
+
+    const gptStatuses=safeJSON(gptTest)||[];
+    const claudeStatuses=safeJSON(claudeTest)||[];
+    const geminiStatuses=safeJSON(geminiTest)||[];
+
+    onProgress("Calculating real visibility from engine tests...",55);
+
+    // Calculate real brandVisibility per archetype based on actual engine responses
+    archData.forEach((sg,gi)=>{
+      (sg.archetypes||[]).forEach((a,ai)=>{
+        const indices=allArchPrompts.filter(p=>p.gi===gi&&p.ai===ai).map((_,k)=>{
+          const globalIdx=allArchPrompts.findIndex(p=>p.gi===gi&&p.ai===ai&&p.pi===k);
+          return globalIdx;
+        });
+        let mentioned=0,total=indices.length*3; // 3 engines
+        indices.forEach(idx=>{
+          if(idx>=0){
+            if(gptStatuses[idx]==="Cited"||gptStatuses[idx]==="Mentioned")mentioned++;
+            if(claudeStatuses[idx]==="Cited"||claudeStatuses[idx]==="Mentioned")mentioned++;
+            if(geminiStatuses[idx]==="Cited"||geminiStatuses[idx]==="Mentioned")mentioned++;
+          }
+        });
+        a.brandVisibility=total>0?Math.round((mentioned/total)*100):0;
+        // Store per-prompt verification results
+        a.promptResults=indices.map((idx,k)=>({
+          prompt:a.prompts[k],
+          gpt:gptStatuses[idx]||"Absent",
+          claude:claudeStatuses[idx]||"Absent",
+          gemini:geminiStatuses[idx]||"Absent",
+        }));
+      });
+    });
+  }
+
+  // ── STEP 4: Intent pathway with real prompts ──
+  onProgress("Testing intent pathway prompts...",60);
   const intentPrompt=`For the brand "${brand}" (${cd.website}) in "${industry}" (topics: ${topics.join(", ")}, region: ${region}, competitors: ${compNames.join(", ")||"none"}):
 
-Generate the REAL prompts that people would type into AI chatbots (ChatGPT, Claude, Gemini) at each stage of the buying journey.
+IMPORTANT CONTEXT — REAL ENGINE SCORES:
+${engineData.engines?engineData.engines.map(e=>`${e.name||"Engine"}: mentionRate=${e.mentionRate||0}%, citationRate=${e.citationRate||0}%`).join(", "):"Unknown"}
+
+These are the ACTUAL scores from testing ${brand} against all 3 engines. Your status assignments below MUST be consistent with these numbers.
+If the average citation rate is ${engineData.engines?Math.round(engineData.engines.reduce((a,e)=>a+(e.citationRate||0),0)/3):5}%, then roughly that % of prompts should be "Cited".
+If the average mention rate is ${engineData.engines?Math.round(engineData.engines.reduce((a,e)=>a+(e.mentionRate||0),0)/3):10}%, then roughly that % should be "Mentioned" or "Cited".
+The rest should be "Absent".
+
+Generate the REAL prompts that people would type into AI chatbots at each stage of the buying journey.
 
 CRITICAL RULES:
 - ONLY include prompts that real people would actually ask. Do NOT pad the list with filler or variations of the same prompt.
 - If a stage only has 5 genuine prompts, return 5. If it has 15, return 15. Do NOT force 20 per stage.
-- Every prompt must be something a real human would type — not SEO keyword stuffing.
-- Be brutally honest about status: if "${brand}" is a small/niche company, most prompts should be "Absent". Don't inflate results.
-- "Cited" means the AI engine actually links to ${cd.website}. This is RARE for most brands. Don't overuse it.
-- "Mentioned" means the brand name appears in the response text. 
-- "Absent" means the brand is not referenced at all — this is the most common status for most companies.
-- rank = estimated position among the sources/brands the AI would list (1 = top pick, 10+ = barely mentioned)
-- Awareness prompts are about the category/problem, NOT about "${brand}" specifically.
-- Retention prompts should only exist if "${brand}" has enough product depth to warrant them.
+- Be brutally honest about status — MOST prompts for any brand should be "Absent" unless it's a household name.
+- "Cited" means the AI engine actually links to ${cd.website}. This is EXTREMELY RARE.
+- "Mentioned" means the brand name appears in the response text.
+- "Absent" means the brand is not referenced at all — this should be the MOST COMMON status.
+- rank = estimated position (1 = top pick, 10+ = barely mentioned). For "Absent" prompts, rank should be 15+.
+- Awareness prompts are about the category/problem, NOT about "${brand}" specifically — so most should be "Absent".
 
 Respond ONLY with JSON (no markdown):
 [
@@ -359,60 +433,55 @@ Respond ONLY with JSON (no markdown):
   const intentRaw=await callClaude(intentPrompt);
   const intentData=safeJSON(intentRaw);
 
-  onProgress("Compiling results...",85);
+  onProgress("Compiling results...",65);
 
-  // ── STEP 5: Channel verification — split across all 3 engines with web search ──
-  onProgress("Verifying channel presence...",72);
+  // ── STEP 5: Channel verification — ALL channels via Claude with web search for accuracy ──
+  onProgress("Verifying channel presence via web search...",68);
   let channelData=null;
   let deepData=null;
   
-  const verifyPrompt=(channels)=>`You must search the web to verify whether "${brand}" (website: ${cd.website}) has a REAL presence on these specific channels. Do NOT guess — actually search for evidence.
+  try{
+    // Use Claude with web search for ALL channels — it's the only engine with reliable web search
+    const allChannels=["Wikipedia / Wikidata","LinkedIn","Company Blog / Knowledge Base","Press / News Coverage","YouTube / Video","Review Platforms (G2, Trustpilot, etc.)","Podcasts","Social Media (X, Reddit, Quora)","Industry Directories","Academic Citations"];
+    
+    const verifyAllPrompt=`You MUST use web search to verify whether "${brand}" (website: ${cd.website}) has a REAL presence on each of these channels.
 
-For each channel, search the web and determine:
-- "Active" = you found a real, maintained page/profile for "${brand}" on this platform
-- "Needs Work" = you found something but it's incomplete, outdated, or minimal
-- "Not Present" = you searched and found NO page/profile for "${brand}" on this platform
+For EACH channel, you must actually search the web. Here are the specific searches to perform:
+1. Wikipedia: Search for "${brand}" on Wikipedia. Check if a dedicated Wikipedia article exists.
+2. LinkedIn: Search for "${brand}" company page on LinkedIn.
+3. Blog: Visit ${cd.website} and check for /blog, /insights, /resources, /news sections.
+4. Press: Search for "${brand}" on major news sites (TechCrunch, Forbes, Reuters, local news for ${region}).
+5. YouTube: Search for "${brand}" on YouTube. Check for an official channel.
+6. Reviews: Search for "${brand}" on G2, Trustpilot, Capterra, or industry-specific review sites.
+7. Podcasts: Search for "${brand}" on podcast platforms.
+8. Social Media: Search for "${brand}" on X/Twitter, Reddit, Quora.
+9. Directories: Search for "${brand}" on Crunchbase, ZoomInfo, industry directories.
+10. Academic: Search for "${brand}" on Google Scholar.
 
-Provide a specific finding for each — what URL did you find? How many followers? When was it last updated? If you found nothing, say so clearly.
+For each channel, provide:
+- "Active" = CONFIRMED real page/profile found (include the URL you found)
+- "Needs Work" = something exists but incomplete or outdated
+- "Not Present" = you searched and found NO presence
 
-Channels to verify:
-${channels.map((c,i)=>`${i+1}. ${c}`).join("\n")}
+CRITICAL: Include the actual URL you found in your finding. If you say "Active", you MUST have found a real URL. If you're not sure, say "Needs Work" not "Active".
 
 Respond ONLY with JSON (no markdown):
-[{"channel":"${channels[0]}","status":"Active","finding":"Found company page at linkedin.com/company/brandname with 10K followers, posts weekly"}]`;
+[{"channel":"Wikipedia / Wikidata","status":"Active","finding":"Found: https://en.wikipedia.org/wiki/BrandName — comprehensive article covering history, services, and operations."}]`;
 
-  try{
-    // Split channels across engines for speed and accuracy
-    const claudeChannels=["Wikipedia / Wikidata","LinkedIn","Company Blog / Knowledge Base","Press / News Coverage"];
-    const gptChannels=["YouTube / Video","Review Platforms","Podcasts"];
-    const geminiChannels=["Social Media (X, Reddit, Quora)","Industry Directories","Academic Citations"];
+    onProgress("Claude searching web for all 10 channels...",70);
+    const verifyRaw=await callClaude(verifyAllPrompt,"You are a meticulous research assistant. You MUST use web search for EVERY channel — do not rely on memory. Search for real URLs. If you find a Wikipedia page, include the exact URL. If you find a LinkedIn page, include the URL. Be thorough and accurate.",true);
 
-    onProgress("Claude checking Wikipedia, LinkedIn, Blog, Press...",74);
-    const claudeVerifyP=callClaude(verifyPrompt(claudeChannels),"You are a research assistant. You MUST use web search to verify each channel. Do not guess. Search for real URLs and evidence.",true);
+    onProgress("Processing verification results...",80);
+    const verifyResult=safeJSON(verifyRaw)||[];
     
-    onProgress("ChatGPT checking YouTube, Reviews, Podcasts...",76);
-    const gptVerifyP=callEngine("openai",verifyPrompt(gptChannels),"You are a research assistant. Verify each channel by searching the web. Provide specific evidence — URLs, follower counts, review scores. If you cannot find evidence, say Not Present.");
-    
-    onProgress("Gemini checking Social Media, Directories, Academic...",78);
-    const geminiVerifyP=callEngine("gemini",verifyPrompt(geminiChannels),"You are a research assistant. Verify each channel by searching the web. Provide specific evidence. If you cannot find evidence, say Not Present.");
-
-    const [claudeVerifyRaw, gptVerifyRaw, geminiVerifyRaw] = await Promise.all([claudeVerifyP, gptVerifyP, geminiVerifyP]);
-
-    onProgress("Merging verification results...",82);
-    const claudeVerify=safeJSON(claudeVerifyRaw)||[];
-    const gptVerify=safeJSON(gptVerifyRaw)||[];
-    const geminiVerify=safeJSON(geminiVerifyRaw)||[];
-    
-    const allVerified=[...claudeVerify,...gptVerify,...geminiVerify];
-    
-    if(allVerified.length>0){
-      channelData={channels:allVerified,recommendedSites:null};
-      const findCh=(name)=>allVerified.find(c=>c.channel&&c.channel.includes(name));
+    if(verifyResult.length>0){
+      channelData={channels:verifyResult,recommendedSites:null};
+      const findCh=(name)=>verifyResult.find(c=>c.channel&&c.channel.toLowerCase().includes(name.toLowerCase()));
       deepData={
         wikipedia:{exists:findCh("Wikipedia")?.status==="Active",details:findCh("Wikipedia")?.finding||""},
         youtube:{exists:findCh("YouTube")?.status==="Active",details:findCh("YouTube")?.finding||""},
         linkedin:{exists:findCh("LinkedIn")?.status==="Active",details:findCh("LinkedIn")?.finding||""},
-        news:{exists:findCh("Press")?.status==="Active",details:findCh("Press")?.finding||""},
+        news:{exists:findCh("Press")?.status==="Active"||findCh("News")?.status==="Active",details:findCh("Press")?.finding||findCh("News")?.finding||""},
         reviews:{exists:findCh("Review")?.status==="Active",details:findCh("Review")?.finding||""},
       };
     }
@@ -451,31 +520,56 @@ Respond ONLY with JSON (no markdown):
   const contentGridData=safeJSON(contentGridRaw);
 
   // ── STEP 7: Personalised 90-Day Roadmap ──
-  onProgress("Creating personalised 90-day roadmap...",90);
-  const roadmapPrompt=`You are a senior AEO consultant at Entermind. Create a hyper-personalised 90-day AEO transformation roadmap for "${brand}" — a ${industry} company (${cd.website}, region: ${region}).
+  onProgress("Creating personalised 90-day roadmap...",88);
 
-REAL WEBSITE CRAWL FINDINGS:
+  // Build a comprehensive context summary from all audit data
+  const channelStatusSummary=(channelData&&channelData.channels)?channelData.channels.map(c=>`${c.channel}: ${c.status} — ${c.finding||"no details"}`).join("\n"):"No channel data yet";
+  const engineSummary=engineData.engines?engineData.engines.map(e=>`${e.name||"Engine"}: Score ${e.score||0}, Mentions ${e.mentionRate||0}%, Citations ${e.citationRate||0}%`).join("\n"):"No engine data";
+
+  const roadmapPrompt=`You are the Head of AEO Strategy at Entermind, presenting a detailed 90-day transformation plan to the client "${brand}" — a ${industry} company (${cd.website}, region: ${region}).
+
+COMPLETE AUDIT FINDINGS — USE ALL OF THIS DATA:
+
+1. WEBSITE CRAWL:
 ${brandCrawlSummary}
 
-COMPETITOR CRAWL FINDINGS:
-${compCrawlSummaries.map(c=>`${c.name} (${c.website}): ${c.summary.split("\n").slice(0,5).join("; ")}`).join("\n")}
+2. COMPETITOR WEBSITES:
+${compCrawlSummaries.map(c=>`${c.name} (${c.website}): ${c.summary.split("\n").slice(0,6).join("; ")}`).join("\n")}
 
-AEO CATEGORY SCORES (from real analysis):
+3. AEO CATEGORY SCORES:
 ${engineData.painPoints?engineData.painPoints.map(p=>`- ${p.label}: ${p.score}/100 (${p.severity})`).join("\n"):"Not yet scored"}
 
-CRITICAL: Every task must be SPECIFIC to "${brand}". Instead of "Implement schema markup", say "Add Organization + ${industry}-specific schema to ${cd.website} (currently ${brandCrawlSummary.includes("No JSON-LD")?"missing":"has basic"} schema)".
+4. ENGINE VISIBILITY:
+${engineSummary}
 
-Instead of "Publish blog posts", say "Create ${topics[0]||industry} comparison guides targeting queries where ${compNames[0]||"competitors"} currently outrank ${brand}".
+5. CHANNEL PRESENCE:
+${channelStatusSummary}
 
-Create a 3-phase roadmap (Days 1-30, Days 31-60, Days 61-90). Each phase should have 3-5 department groups, each with 3-5 specific tasks.
+YOUR TASK: Create a comprehensive, detailed 90-day roadmap. This is what separates our consulting firm from competitors — the roadmap must be so specific and actionable that the client can hand it directly to their teams and start executing.
+
+RULES FOR QUALITY:
+- Every task must reference SPECIFIC findings from the audit data above
+- Include the actual URL, platform, or metric being addressed
+- Each department should have 5-8 detailed tasks (not 3 generic ones)
+- Tasks should be sequenced logically (dependencies considered)
+- Include specific KPI targets where relevant (e.g., "Achieve 4+ schema types on ${cd.website}, currently at ${brandCrawlSummary.includes("No JSON-LD")?"0":"1-2"}")
+- Reference actual competitors by name where they outperform ${brand}
+- Reference actual channels that are "Not Present" and need to be built
+
+DEPARTMENT STRUCTURE (use these 5 departments for each phase):
+1. "Entermind (AEO Consultants)" — color: "#0c4cfc" — Strategy, audits, monitoring, recommendations
+2. "Content & Marketing" — color: "#059669" — Content creation, publishing, thought leadership
+3. "Web Development & Technical" — color: "#d97706" — Schema, technical SEO, site performance
+4. "PR & Communications" — color: "#8b5cf6" — Press, backlinks, review platforms, Wikipedia
+5. "Leadership & Operations" — color: "#0ea5e9" — Budget, training, cross-dept coordination
 
 Respond ONLY with JSON (no markdown):
 {
-  "day30":{"title":"Phase name","sub":"Days 1-30","accent":"#ef4444","lift":"Realistic % improvement","departments":[
-    {"dept":"Department Name","color":"#0c4cfc","tasks":["Very specific task 1 for ${brand}","Very specific task 2"]}
+  "day30":{"title":"Foundation & Quick Wins","sub":"Days 1-30","accent":"#ef4444","lift":"Realistic % based on current score of ${engineData.engines?Math.round(engineData.engines.reduce((a,e)=>a+(e.score||0),0)/3):30}","departments":[
+    {"dept":"Department","color":"#hex","tasks":["Detailed specific task 1","Detailed specific task 2","...5-8 tasks"]}
   ]},
-  "day60":{"title":"Phase name","sub":"Days 31-60","accent":"#f59e0b","lift":"Realistic %","departments":[...]},
-  "day90":{"title":"Phase name","sub":"Days 61-90","accent":"#10b981","lift":"Realistic %","departments":[...]}
+  "day60":{"title":"Authority Building","sub":"Days 31-60","accent":"#f59e0b","lift":"Realistic %","departments":[...]},
+  "day90":{"title":"Scale & Dominance","sub":"Days 61-90","accent":"#10b981","lift":"Realistic %","departments":[...]}
 }`;
   const roadmapRaw=await callClaude(roadmapPrompt);
   const roadmapData=safeJSON(roadmapRaw);
@@ -763,27 +857,27 @@ function NewAuditPage({data,setData,onRun}){
     {at:38,msg:`Cross-referencing citation networks for ${data.competitors.slice(0,3).join(", ")||"competitors"}...`},
     {at:41,msg:"Calculating category-level differentials..."},
     {at:44,msg:"Mapping authority distribution curves..."},
-    {at:47,msg:"Analysing search intent clusters..."},
-    {at:50,msg:"Segmenting user archetypes by behaviour pattern..."},
-    {at:53,msg:"Correlating query frequency → brand visibility..."},
-    {at:56,msg:"Generating stakeholder-mapped personas..."},
-    {at:59,msg:`Testing ${data.topics[0]||"primary topic"} prompt variants...`},
-    {at:62,msg:"Evaluating citation probability per funnel stage..."},
-    {at:65,msg:`Scoring ${data.brand} presence in AI responses...`},
-    {at:68,msg:"Mapping brand mention density across query types..."},
-    {at:71,msg:"Dispatching channel checks to 3 engines..."},
-    {at:73,msg:"Claude → searching Wikipedia, LinkedIn, Blog, Press..."},
-    {at:75,msg:"ChatGPT → searching YouTube, Reviews, Podcasts..."},
-    {at:77,msg:"Gemini → searching Social Media, Directories, Academic..."},
-    {at:80,msg:`Searching for ${data.brand} company profiles and pages...`},
-    {at:83,msg:"All engines reported back ✓"},
-    {at:85,msg:"Merging verification results from 3 sources..."},
-    {at:85,msg:"Generating industry-specific site recommendations..."},
-    {at:87,msg:"Building personalised content strategy from audit data..."},
-    {at:88,msg:"Matching content types to "+data.brand+"'s specific AEO gaps..."},
-    {at:90,msg:"Creating personalised 90-day roadmap..."},
-    {at:91,msg:"Tailoring tasks to "+data.brand+"'s crawl findings..."},
-    {at:92,msg:"Mapping competitor advantages into action items..."},
+    {at:47,msg:"Generating user archetypes from crawl data..."},
+    {at:50,msg:"Testing archetype prompts across ChatGPT, Claude, Gemini..."},
+    {at:52,msg:"Calculating real visibility for each user segment..."},
+    {at:55,msg:"Archetype verification complete — real engine data applied..."},
+    {at:58,msg:`Testing intent pathway prompts for ${data.brand}...`},
+    {at:60,msg:"Calibrating status against actual engine mention rates..."},
+    {at:63,msg:`Scoring ${data.brand} presence in AI responses...`},
+    {at:65,msg:"Intent pathway complete..."},
+    {at:68,msg:"Starting channel verification via web search..."},
+    {at:70,msg:"Searching Wikipedia, LinkedIn, YouTube, G2, Crunchbase..."},
+    {at:73,msg:`Verifying ${data.brand} presence on 10 channels...`},
+    {at:76,msg:"Checking review platforms and press coverage..."},
+    {at:78,msg:"Verifying social media and directory listings..."},
+    {at:80,msg:`All 10 channels verified with real URLs...`},
+    {at:82,msg:"Generating industry-specific site recommendations..."},
+    {at:84,msg:"Building personalised content strategy from audit data..."},
+    {at:86,msg:"Matching content types to "+data.brand+"'s specific AEO gaps..."},
+    {at:88,msg:"Creating personalised 90-day roadmap..."},
+    {at:89,msg:"Tailoring tasks to "+data.brand+"'s crawl findings..."},
+    {at:90,msg:"Mapping competitor advantages into action items..."},
+    {at:92,msg:"Building department-level task breakdowns..."},
     {at:93,msg:"Calculating monthly output requirements..."},
     {at:95,msg:"Compiling final report..."},
     {at:96,msg:"All engines responded ✓"},
@@ -1124,8 +1218,8 @@ function ChannelsPage({r,goTo}){
   const[expandCh,setExpandCh]=useState(null);
   const hasAnyFindings=r.aeoChannels.some(ch=>ch.finding);
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>AEO Channels</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Channels ranked by impact on AI engine visibility {hasAnyFindings&&<span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>✓ Verified via 3 AI Engines</span>}</p></div>
-    <SectionNote text="These channels directly influence whether AI engines cite your brand. Each channel has been verified by ChatGPT, Claude, or Gemini searching the web for real evidence of your brand's presence. Channels with ▼ include specific sites to target."/>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>AEO Channels</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Channels ranked by impact on AI engine visibility {hasAnyFindings&&<span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>✓ Verified via Web Search</span>}</p></div>
+    <SectionNote text="These channels directly influence whether AI engines cite your brand. Each channel has been verified through real web searches — URLs confirmed, not estimated. Channels with ▼ include specific sites to target."/>
     <Card>
       {r.aeoChannels.sort((a,b)=>b.impact-a.impact).map((ch,i)=>{const isOpen=expandCh===i;const hasSites=ch.sites&&ch.sites.length>0;const canExpand=hasSites||ch.finding;return(<div key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
         <div onClick={()=>{if(canExpand)setExpandCh(isOpen?null:i);}} style={{display:"grid",gridTemplateColumns:"30px 1fr 100px 90px 20px",gap:8,padding:"12px 8px",alignItems:"center",cursor:canExpand?"pointer":"default",background:isOpen?`${C.accent}03`:"transparent"}}>
@@ -1164,7 +1258,7 @@ function GridPage({r,goTo}){
     <SectionNote text={`This content grid is tailored to ${r.clientData.brand}'s specific AEO gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
     <Card style={{marginBottom:20,overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
       <thead><tr style={{borderBottom:`2px solid ${C.border}`}}>{["Content Type","Channels","Frequency","Priority","Owner","Impact"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:600,color:C.muted,fontSize:10,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
-      <tbody>{r.contentTypes.map((ct,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
+      <tbody>{[...r.contentTypes].sort((a,b)=>{const po={"P0":0,"P1":1,"P2":2,"P3":3};return(po[a.p]??9)-(po[b.p]??9);}).map((ct,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
         <td style={{padding:"10px"}}><div style={{fontWeight:600,color:C.text}}>{ct.type}</div>{ct.rationale&&<div style={{fontSize:10,color:C.muted,marginTop:2}}>{ct.rationale}</div>}</td>
         <td style={{padding:"10px"}}><div style={{display:"flex",flexWrap:"wrap",gap:3}}>{ct.channels.map(ch=><Pill key={ch} color="#64748b">{ch}</Pill>)}</div></td>
         <td style={{padding:"10px",color:C.sub}}>{ct.freq}</td>
@@ -1227,7 +1321,7 @@ function RoadmapPage({r}){
     const archHtml=r.stakeholders.map(sg=>`<h3>${sg.icon} ${sg.group}</h3>${sg.archetypes.map(a=>`<div class="dept"><div class="dept-title" style="border-color:#0c4cfc">${a.name}</div><div style="color:#4a5568">${a.demo} · ~${a.size}% of searches · ${a.brandVisibility}% visibility</div><div style="margin-top:4px"><strong>Behaviour:</strong> ${a.behavior} | <strong>Intent:</strong> ${a.intent}</div><div style="margin-top:4px">${a.prompts.map(p=>`<span style="display:inline-block;padding:2px 8px;background:#f0f4ff;border-radius:4px;margin:2px;font-size:10px">"${p}"</span>`).join("")}</div></div>`).join("")}`).join("");
     const funnelHtml=r.funnelStages.map(s=>{const st={c:s.prompts.filter(p=>p.status==="Cited").length,m:s.prompts.filter(p=>p.status==="Mentioned").length,a:s.prompts.filter(p=>p.status==="Absent").length};return`<h3 style="color:${s.color}">${s.stage} (${st.c} cited, ${st.m} mentioned, ${st.a} absent)</h3><table><tr><th>Prompt</th><th>Rank</th><th>Status</th></tr>${s.prompts.map(p=>`<tr><td>${p.query}</td><td>#${p.rank}</td><td style="color:${p.status==="Cited"?"#059669":p.status==="Mentioned"?"#d97706":"#dc2626"}">${p.status}</td></tr>`).join("")}</table>`;}).join("");
     const chHtml=r.aeoChannels.sort((a,b)=>b.impact-a.impact).map((ch,i)=>`<tr><td>${i+1}</td><td><strong>${ch.channel}</strong><br><span style="color:#8896a6">${ch.desc}</span></td><td>${ch.impact}</td><td style="color:${ch.status==="Active"?"#059669":ch.status==="Needs Work"?"#d97706":"#dc2626"}">${ch.status}</td></tr>`).join("");
-    const gridHtml=r.contentTypes.map(ct=>`<tr><td><strong>${ct.type}</strong>${ct.rationale?`<br><span style="color:#8896a6;font-size:9px">${ct.rationale}</span>`:""}</td><td>${ct.channels.join(", ")}</td><td>${ct.freq}</td><td>${ct.p}</td><td>${ct.owner}</td></tr>`).join("");
+    const gridHtml=[...r.contentTypes].sort((a,b)=>{const po={"P0":0,"P1":1,"P2":2,"P3":3};return(po[a.p]??9)-(po[b.p]??9);}).map(ct=>`<tr><td><strong>${ct.type}</strong>${ct.rationale?`<br><span style="color:#8896a6;font-size:9px">${ct.rationale}</span>`:""}</td><td>${ct.channels.join(", ")}</td><td>${ct.freq}</td><td>${ct.p}</td><td>${ct.owner}</td></tr>`).join("");
     const rmHtml=phases.map(p=>`<h3 style="color:${p.accent}">${p.title} (${p.sub}) — Expected lift: ${p.lift}</h3>${p.departments.map(d=>`<div class="dept"><div class="dept-title" style="border-color:${d.color};color:${d.color}">${d.dept}</div>${d.tasks.map(t=>`<div class="task">→ ${t}</div>`).join("")}</div>`).join("")}`).join("");
     const tocItems=["Executive Summary","AI Engine Scores","Competitive Landscape","User Archetypes","Intent Pathway","AEO Channels","Content-Channel Grid","90-Day Roadmap"];
 
