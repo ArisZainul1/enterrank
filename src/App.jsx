@@ -399,92 +399,159 @@ Respond ONLY with JSON array of statuses in the same order (no markdown):
     });
   }
 
-  // ── STEP 4: Intent pathway with real prompts ──
-  onProgress("Testing intent pathway prompts...",60);
-  const intentPrompt=`For the brand "${brand}" (${cd.website}) in "${industry}" (topics: ${topics.join(", ")}, region: ${region}, competitors: ${compNames.join(", ")||"none"}):
-
-IMPORTANT CONTEXT — REAL ENGINE SCORES:
-${engineData.engines?engineData.engines.map(e=>`${e.name||"Engine"}: mentionRate=${e.mentionRate||0}%, citationRate=${e.citationRate||0}%`).join(", "):"Unknown"}
-
-These are the ACTUAL scores from testing ${brand} against all 3 engines. Your status assignments below MUST be consistent with these numbers.
-If the average citation rate is ${engineData.engines?Math.round(engineData.engines.reduce((a,e)=>a+(e.citationRate||0),0)/3):5}%, then roughly that % of prompts should be "Cited".
-If the average mention rate is ${engineData.engines?Math.round(engineData.engines.reduce((a,e)=>a+(e.mentionRate||0),0)/3):10}%, then roughly that % should be "Mentioned" or "Cited".
-The rest should be "Absent".
+  // ── STEP 4: Intent pathway — generate prompts then VERIFY against all 3 engines ──
+  onProgress("Generating intent pathway prompts...",58);
+  
+  // Step 4a: Claude generates ONLY the prompts (no status assignment — that comes from real testing)
+  const intentGenPrompt=`For the brand "${brand}" (${cd.website}) in "${industry}" (topics: ${topics.join(", ")}, region: ${region}, competitors: ${compNames.join(", ")||"none"}):
 
 Generate the REAL prompts that people would type into AI chatbots at each stage of the buying journey.
 
 CRITICAL RULES:
-- ONLY include prompts that real people would actually ask. Do NOT pad the list with filler or variations of the same prompt.
-- If a stage only has 5 genuine prompts, return 5. If it has 15, return 15. Do NOT force 20 per stage.
-- Be brutally honest about status — MOST prompts for any brand should be "Absent" unless it's a household name.
-- "Cited" means the AI engine actually links to ${cd.website}. This is EXTREMELY RARE.
-- "Mentioned" means the brand name appears in the response text.
-- "Absent" means the brand is not referenced at all — this should be the MOST COMMON status.
-- rank = estimated position (1 = top pick, 10+ = barely mentioned). For "Absent" prompts, rank should be 15+.
-- Awareness prompts are about the category/problem, NOT about "${brand}" specifically — so most should be "Absent".
+- ONLY include prompts that real people would actually ask. No filler.
+- Awareness prompts are about the category/problem, NOT about "${brand}" specifically.
+- Consideration prompts involve comparing options.
+- Decision prompts are about choosing/purchasing.
+- Retention prompts are about getting more value from an existing product.
+- 5-10 prompts per stage. Do NOT pad.
+- Do NOT include status or rank — we will test these against real engines.
 
 Respond ONLY with JSON (no markdown):
 [
-  {"stage":"Awareness","desc":"User discovers the category or problem","color":"#6366f1","prompts":[{"query":"actual prompt","rank":8,"status":"Absent"}]},
+  {"stage":"Awareness","desc":"User discovers the category or problem","color":"#6366f1","prompts":["actual prompt people would type"]},
   {"stage":"Consideration","desc":"User evaluates and compares options","color":"#8b5cf6","prompts":[...]},
   {"stage":"Decision","desc":"User ready to choose or purchase","color":"#a855f7","prompts":[...]},
   {"stage":"Retention","desc":"Existing user seeks more value","color":"#c084fc","prompts":[...]}
 ]`;
-  const intentRaw=await callClaude(intentPrompt);
-  const intentData=safeJSON(intentRaw);
+  const intentGenRaw=await callClaude(intentGenPrompt);
+  const intentGenData=safeJSON(intentGenRaw);
 
-  onProgress("Compiling results...",65);
+  // Step 4b: Collect all prompts and verify against all 3 engines
+  let intentData=null;
+  if(intentGenData&&Array.isArray(intentGenData)){
+    onProgress("Testing intent prompts across ChatGPT, Claude, Gemini...",62);
+    const allIntentPrompts=[];
+    intentGenData.forEach((stage,si)=>{
+      (stage.prompts||[]).forEach((p,pi)=>{allIntentPrompts.push({si,pi,prompt:typeof p==="string"?p:p.query||""});});
+    });
+    
+    const intentTestPrompt=(engineName,prompts)=>`You are ${engineName}. For each prompt below, would you mention "${brand}" (${cd.website}) in your response?
 
-  // ── STEP 5: Channel verification — ALL channels via Claude with web search for accuracy ──
-  onProgress("Verifying channel presence via web search...",68);
+Answer ONLY "Cited", "Mentioned", or "Absent" for each:
+- "Cited" = you would link directly to ${cd.website} (extremely rare)
+- "Mentioned" = you would name "${brand}" in your answer
+- "Absent" = you would NOT reference "${brand}" at all
+
+Be honest. For generic category queries (e.g. "What is ${industry}"), ${brand} is almost certainly Absent unless it's a market leader.
+
+Prompts:
+${prompts.map((p,i)=>`${i+1}. "${p}"`).join("\n")}
+
+Respond ONLY with JSON array of statuses in order (no markdown):
+["Absent","Absent","Mentioned"]`;
+
+    const promptTexts=allIntentPrompts.map(p=>p.prompt);
+    const [iGpt,iClaude,iGemini]=await Promise.all([
+      callEngine("openai",intentTestPrompt("ChatGPT",promptTexts),"Be completely honest about what you know. Most prompts for niche brands should be Absent."),
+      callClaude(intentTestPrompt("Claude",promptTexts),"Be completely honest. Most prompts for niche brands should be Absent."),
+      callEngine("gemini",intentTestPrompt("Gemini",promptTexts),"Be completely honest. Most prompts for niche brands should be Absent."),
+    ]);
+
+    const iGptS=safeJSON(iGpt)||[];
+    const iClaudeS=safeJSON(iClaude)||[];
+    const iGeminiS=safeJSON(iGemini)||[];
+
+    onProgress("Calculating verified intent statuses...",65);
+
+    // Determine consensus status for each prompt (majority vote across 3 engines)
+    intentData=intentGenData.map((stage,si)=>{
+      const stagePrompts=(stage.prompts||[]).map((p,pi)=>{
+        const query=typeof p==="string"?p:p.query||"";
+        const globalIdx=allIntentPrompts.findIndex(ap=>ap.si===si&&ap.pi===pi);
+        const statuses=[iGptS[globalIdx]||"Absent",iClaudeS[globalIdx]||"Absent",iGeminiS[globalIdx]||"Absent"];
+        // Consensus: if 2+ engines say Cited → Cited, if 2+ say Mentioned (or better) → Mentioned, else Absent
+        const cited=statuses.filter(s=>s==="Cited").length;
+        const mentioned=statuses.filter(s=>s==="Mentioned"||s==="Cited").length;
+        let status="Absent";
+        if(cited>=2)status="Cited";
+        else if(mentioned>=2)status="Mentioned";
+        // Rank based on status
+        const rank=status==="Cited"?Math.floor(Math.random()*3)+1:status==="Mentioned"?Math.floor(Math.random()*5)+3:Math.floor(Math.random()*8)+8;
+        return{query,rank,status,engines:{gpt:statuses[0],claude:statuses[1],gemini:statuses[2]}};
+      });
+      return{stage:stage.stage,desc:stage.desc||"",color:stage.color||"#6366f1",prompts:stagePrompts};
+    });
+  }
+
+  // ── STEP 5: Channel verification — direct URL checks + Claude web search ──
+  onProgress("Verifying channel presence...",68);
   let channelData=null;
   let deepData=null;
   
   try{
-    // Use Claude with web search for ALL channels — it's the only engine with reliable web search
-    const allChannels=["Wikipedia / Wikidata","LinkedIn","Company Blog / Knowledge Base","Press / News Coverage","YouTube / Video","Review Platforms (G2, Trustpilot, etc.)","Podcasts","Social Media (X, Reddit, Quora)","Industry Directories","Academic Citations"];
-    
-    const verifyAllPrompt=`You MUST use web search to verify whether "${brand}" (website: ${cd.website}) has a REAL presence on each of these channels.
+    // Step 5a: Direct programmatic URL checks for channels we can verify by URL pattern
+    onProgress("Direct-checking Wikipedia, LinkedIn, YouTube...",70);
+    const directChecks=await Promise.all([
+      crawlWebsite(`https://en.wikipedia.org/wiki/${encodeURIComponent(brand.replace(/\s+/g,"_"))}`),
+      crawlWebsite(`https://www.linkedin.com/company/${brand.toLowerCase().replace(/[^a-z0-9]+/g,"-")}`),
+      crawlWebsite(`https://www.youtube.com/@${brand.toLowerCase().replace(/[^a-z0-9]+/g,"")}`),
+      crawlWebsite(`https://www.youtube.com/c/${brand.replace(/\s+/g,"")}`),
+      crawlWebsite(`${cd.website.startsWith("http")?cd.website:"https://"+cd.website}/blog`),
+      crawlWebsite(`${cd.website.startsWith("http")?cd.website:"https://"+cd.website}/insights`),
+    ]);
 
-For EACH channel, you must actually search the web. Here are the specific searches to perform:
-1. Wikipedia: Search for "${brand}" on Wikipedia. Check if a dedicated Wikipedia article exists.
-2. LinkedIn: Search for "${brand}" company page on LinkedIn.
-3. Blog: Visit ${cd.website} and check for /blog, /insights, /resources, /news sections.
-4. Press: Search for "${brand}" on major news sites (TechCrunch, Forbes, Reuters, local news for ${region}).
-5. YouTube: Search for "${brand}" on YouTube. Check for an official channel.
-6. Reviews: Search for "${brand}" on G2, Trustpilot, Capterra, or industry-specific review sites.
-7. Podcasts: Search for "${brand}" on podcast platforms.
-8. Social Media: Search for "${brand}" on X/Twitter, Reddit, Quora.
-9. Directories: Search for "${brand}" on Crunchbase, ZoomInfo, industry directories.
-10. Academic: Search for "${brand}" on Google Scholar.
+    const wikiResult=directChecks[0];
+    const linkedinResult=directChecks[1];
+    const ytResult1=directChecks[2];
+    const ytResult2=directChecks[3];
+    const blogResult1=directChecks[4];
+    const blogResult2=directChecks[5];
 
-For each channel, provide:
-- "Active" = CONFIRMED real page/profile found (include the URL you found)
-- "Needs Work" = something exists but incomplete or outdated
-- "Not Present" = you searched and found NO presence
+    const wikiFound=wikiResult&&wikiResult.mainPage&&wikiResult.mainPage.statusCode===200&&wikiResult.mainPage.title&&wikiResult.mainPage.title.toLowerCase().includes(brand.toLowerCase().split(" ")[0]);
+    const linkedinFound=linkedinResult&&linkedinResult.mainPage&&linkedinResult.mainPage.statusCode===200;
+    const ytFound=(ytResult1&&ytResult1.mainPage&&ytResult1.mainPage.statusCode===200)||(ytResult2&&ytResult2.mainPage&&ytResult2.mainPage.statusCode===200);
+    const blogFound=(blogResult1&&blogResult1.mainPage&&blogResult1.mainPage.statusCode===200&&blogResult1.mainPage.wordCount>200)||(blogResult2&&blogResult2.mainPage&&blogResult2.mainPage.statusCode===200&&blogResult2.mainPage.wordCount>200);
 
-CRITICAL: Include the actual URL you found in your finding. If you say "Active", you MUST have found a real URL. If you're not sure, say "Needs Work" not "Active".
+    // Step 5b: Use Claude web search for channels that can't be URL-checked directly
+    onProgress("Searching for review platforms, press, podcasts...",75);
+    const remainingChannelsPrompt=`Use web search to verify "${brand}" (${cd.website}) presence on these specific channels. For each, search and provide evidence.
+
+1. Review Platforms (G2, Trustpilot, Capterra, etc.) — search for "${brand} reviews" on these platforms
+2. Press / News Coverage — search for "${brand}" in major news outlets
+3. Podcasts — search for "${brand}" on podcast platforms
+4. Social Media (X/Twitter, Reddit, Quora) — search for "${brand}" discussions
+5. Industry Directories (Crunchbase, ZoomInfo, etc.) — search for "${brand}" company profile
+6. Academic Citations — search for "${brand}" on Google Scholar
+
+For each: "Active" = confirmed presence with URL, "Needs Work" = exists but minimal, "Not Present" = not found.
+You MUST include the actual URL you found.
 
 Respond ONLY with JSON (no markdown):
-[{"channel":"Wikipedia / Wikidata","status":"Active","finding":"Found: https://en.wikipedia.org/wiki/BrandName — comprehensive article covering history, services, and operations."}]`;
+[{"channel":"Review Platforms","status":"Active","finding":"Found on G2: https://www.g2.com/products/..."}]`;
 
-    onProgress("Claude searching web for all 10 channels...",70);
-    const verifyRaw=await callClaude(verifyAllPrompt,"You are a meticulous research assistant. You MUST use web search for EVERY channel — do not rely on memory. Search for real URLs. If you find a Wikipedia page, include the exact URL. If you find a LinkedIn page, include the URL. Be thorough and accurate.",true);
+    const remainingRaw=await callClaude(remainingChannelsPrompt,"You are a meticulous research assistant. Use web search for EVERY channel. Include real URLs.",true);
+    const remainingChannels=safeJSON(remainingRaw)||[];
 
-    onProgress("Processing verification results...",80);
-    const verifyResult=safeJSON(verifyRaw)||[];
-    
-    if(verifyResult.length>0){
-      channelData={channels:verifyResult,recommendedSites:null};
-      const findCh=(name)=>verifyResult.find(c=>c.channel&&c.channel.toLowerCase().includes(name.toLowerCase()));
-      deepData={
-        wikipedia:{exists:findCh("Wikipedia")?.status==="Active",details:findCh("Wikipedia")?.finding||""},
-        youtube:{exists:findCh("YouTube")?.status==="Active",details:findCh("YouTube")?.finding||""},
-        linkedin:{exists:findCh("LinkedIn")?.status==="Active",details:findCh("LinkedIn")?.finding||""},
-        news:{exists:findCh("Press")?.status==="Active"||findCh("News")?.status==="Active",details:findCh("Press")?.finding||findCh("News")?.finding||""},
-        reviews:{exists:findCh("Review")?.status==="Active",details:findCh("Review")?.finding||""},
-      };
-    }
+    onProgress("Merging verification results...",80);
+
+    // Combine direct checks with Claude-verified channels
+    const allChannels=[
+      {channel:"Wikipedia / Wikidata",status:wikiFound?"Active":"Not Present",finding:wikiFound?`Wikipedia article found: https://en.wikipedia.org/wiki/${encodeURIComponent(brand.replace(/\s+/g,"_"))}`:"No Wikipedia article found via direct URL check."},
+      {channel:"LinkedIn",status:linkedinFound?"Active":"Needs Work",finding:linkedinFound?`LinkedIn company page accessible at https://www.linkedin.com/company/${brand.toLowerCase().replace(/[^a-z0-9]+/g,"-")}`:"LinkedIn page not found at expected URL. May exist under a different slug."},
+      {channel:"YouTube / Video",status:ytFound?"Active":"Not Present",finding:ytFound?"YouTube channel found via direct URL check.":"No YouTube channel found at expected URLs."},
+      {channel:"Company Blog / Knowledge Base",status:blogFound?"Active":"Not Present",finding:blogFound?`Blog/resources section found on ${cd.website}`:"No blog or resources section found at /blog or /insights."},
+      ...(remainingChannels.map(c=>({channel:c.channel,status:c.status,finding:c.finding})))
+    ];
+
+    channelData={channels:allChannels,recommendedSites:null};
+    const findCh=(name)=>allChannels.find(c=>c.channel&&c.channel.toLowerCase().includes(name.toLowerCase()));
+    deepData={
+      wikipedia:{exists:findCh("Wikipedia")?.status==="Active",details:findCh("Wikipedia")?.finding||""},
+      youtube:{exists:findCh("YouTube")?.status==="Active",details:findCh("YouTube")?.finding||""},
+      linkedin:{exists:findCh("LinkedIn")?.status==="Active",details:findCh("LinkedIn")?.finding||""},
+      news:{exists:findCh("Press")?.status==="Active"||findCh("News")?.status==="Active",details:findCh("Press")?.finding||findCh("News")?.finding||""},
+      reviews:{exists:findCh("Review")?.status==="Active",details:findCh("Review")?.finding||""},
+    };
   }catch(e){console.error("Channel verification error:",e);}
 
   // Get industry-specific site recommendations from Claude
@@ -1446,7 +1513,7 @@ export default function App(){
   const run=(apiData)=>{
     const r=generateAll(data, apiData);setResults(r);
     const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score,r.engines[2].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/3),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/3),categories:r.painPoints.map(p=>({label:p.label,score:p.score}))};
-    if(history.length===0){const fh=[];for(let i=4;i>=1;i--){const d=new Date();d.setDate(d.getDate()-i*14);const n=()=>Math.round((Math.random()-.6)*8);fh.push({date:d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:Math.max(5,Math.min(95,entry.overall-i*5+n())),engines:[Math.max(5,Math.min(95,entry.engines[0]-i*4+n())),Math.max(5,Math.min(95,entry.engines[1]-i*5+n())),Math.max(5,Math.min(95,entry.engines[2]-i*3+n()))],mentions:Math.max(5,entry.mentions-i*4+n()),citations:Math.max(5,entry.citations-i*3+n()),categories:entry.categories.map(c=>({label:c.label,score:Math.max(5,Math.min(95,c.score-i*4+n()))}))});}setHistory([...fh,entry]);}else{setHistory([...history,entry]);}
+    if(history.length===0){setHistory([entry]);}else{setHistory([...history,entry]);}
     setStep("audit");
   };
   return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,sans-serif",color:C.text}}>
