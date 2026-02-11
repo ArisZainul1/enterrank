@@ -1189,8 +1189,23 @@ function RoadmapPage({r}){
   const handleExport=()=>{
     const w=window.open("","_blank");
     const css=`*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#0c1222;font-size:11px;line-height:1.5}
-    .cover{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;background:linear-gradient(135deg,#f0f4ff,#f5f6f8);page-break-after:always;text-align:center}
-    .cover h1{font-size:42px;font-weight:800;color:#0c4cfc;letter-spacing:-.02em;margin-bottom:8px}.cover .sub{font-size:18px;color:#4a5568;margin-bottom:32px}.cover .meta{font-size:12px;color:#8896a6}
+    .cover{height:100vh;position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#ffffff;page-break-after:always;text-align:center;overflow:hidden}
+    .cover::before{content:'';position:absolute;top:-120px;right:-120px;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(12,76,252,.06) 0%,transparent 70%)}
+    .cover::after{content:'';position:absolute;bottom:-80px;left:-80px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(12,76,252,.04) 0%,transparent 70%)}
+    .cover-inner{position:relative;z-index:1}
+    .cover-line{width:60px;height:3px;background:linear-gradient(90deg,#0c4cfc,#6366f1);border-radius:2px;margin:0 auto 28px}
+    .cover h1{font-size:38px;font-weight:800;color:#0c1222;letter-spacing:-.03em;margin-bottom:4px}
+    .cover .brand-label{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#8896a6;margin-bottom:6px;font-weight:600}
+    .cover .brand-name{font-size:26px;font-weight:700;color:#0c1222;margin-bottom:6px}
+    .cover .sub{font-size:14px;color:#4a5568;margin-bottom:28px;font-weight:400}
+    .cover .meta{font-size:11px;color:#8896a6;line-height:1.8}
+    .cover .score-ring{width:100px;height:100px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;position:relative}
+    .cover .score-ring::before{content:'';position:absolute;inset:0;border-radius:50%;border:3px solid #e2e5ea}
+    .cover .score-val{font-size:32px;font-weight:800;line-height:1}
+    .cover .score-label{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#8896a6;margin-top:8px}
+    .cover-footer{position:absolute;bottom:40px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:6px;font-size:10px;color:#c8cdd5}
+    .cover-dots{display:flex;gap:20px;margin:20px auto;justify-content:center}
+    .cover-dot{width:4px;height:4px;border-radius:50%;background:#e2e5ea}
     .page{padding:40px 50px;max-width:900px;margin:0 auto;page-break-inside:avoid}
     h2{font-size:20px;font-weight:700;color:#0c4cfc;margin:28px 0 10px;padding-bottom:6px;border-bottom:2px solid #e2e5ea}h2:first-child{margin-top:0}
     h3{font-size:14px;font-weight:700;margin:14px 0 6px;color:#0c1222}
@@ -1201,27 +1216,41 @@ function RoadmapPage({r}){
     .dept-title{font-weight:700;font-size:12px;margin-bottom:6px;padding-bottom:4px;border-bottom:2px solid}.task{padding:3px 0;font-size:10.5px;color:#4a5568}
     .insight{padding:8px 12px;border-radius:6px;margin:4px 0;font-size:10.5px;border-left:3px solid}
     .footer{margin-top:28px;padding:14px 0;border-top:2px solid #e2e5ea;text-align:center;color:#8896a6;font-size:10px}
-    .toc{page-break-after:always;padding:60px 50px}.toc h2{font-size:24px;border:none;margin-bottom:20px;padding:0}.toc-item{padding:8px 0;border-bottom:1px solid #edf0f3;display:flex;justify-content:space-between;font-size:13px}
+    .toc{page-break-after:always;padding:60px 50px}.toc h2{font-size:24px;border:none;margin-bottom:20px;padding:0}.toc-item{padding:10px 0;border-bottom:1px solid #edf0f3;display:flex;justify-content:space-between;font-size:13px}.toc-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:#f0f4ff;color:#0c4cfc;font-size:10px;font-weight:700;margin-right:10px}
     .kpi-row{display:flex;gap:12px;margin:12px 0}.kpi{flex:1;padding:12px;background:#f5f6f8;border-radius:8px;text-align:center}.kpi .val{font-size:24px;font-weight:800}.kpi .label{font-size:9px;text-transform:uppercase;color:#8896a6;margin-top:4px}
     @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.cover{height:auto;min-height:95vh;padding:80px 50px}}`;
 
-    const scCol=r.overall>=70?"green":r.overall>=40?"amber":"red";
+    const scCol=r.overall>=70?"#059669":r.overall>=40?"#d97706":"#dc2626";
+    const scBg=r.overall>=70?"green":r.overall>=40?"amber":"red";
     const compRows=r.competitors.map(c=>`<tr><td>${c.name}</td><td><strong>${c.score}</strong></td><td style="color:${c.score>r.overall?"#dc2626":"#059669"}">${c.score>r.overall?"+":""}${c.score-r.overall}</td></tr>`).join("");
     const engRows=r.engines.map(e=>`<tr><td>${e.name}</td><td><strong>${e.score}</strong></td><td>${e.mentionRate}%</td><td>${e.citationRate}%</td><td>${e.sentiment}%</td></tr>`).join("");
     const archHtml=r.stakeholders.map(sg=>`<h3>${sg.icon} ${sg.group}</h3>${sg.archetypes.map(a=>`<div class="dept"><div class="dept-title" style="border-color:#0c4cfc">${a.name}</div><div style="color:#4a5568">${a.demo} · ~${a.size}% of searches · ${a.brandVisibility}% visibility</div><div style="margin-top:4px"><strong>Behaviour:</strong> ${a.behavior} | <strong>Intent:</strong> ${a.intent}</div><div style="margin-top:4px">${a.prompts.map(p=>`<span style="display:inline-block;padding:2px 8px;background:#f0f4ff;border-radius:4px;margin:2px;font-size:10px">"${p}"</span>`).join("")}</div></div>`).join("")}`).join("");
     const funnelHtml=r.funnelStages.map(s=>{const st={c:s.prompts.filter(p=>p.status==="Cited").length,m:s.prompts.filter(p=>p.status==="Mentioned").length,a:s.prompts.filter(p=>p.status==="Absent").length};return`<h3 style="color:${s.color}">${s.stage} (${st.c} cited, ${st.m} mentioned, ${st.a} absent)</h3><table><tr><th>Prompt</th><th>Rank</th><th>Status</th></tr>${s.prompts.map(p=>`<tr><td>${p.query}</td><td>#${p.rank}</td><td style="color:${p.status==="Cited"?"#059669":p.status==="Mentioned"?"#d97706":"#dc2626"}">${p.status}</td></tr>`).join("")}</table>`;}).join("");
-    const guideHtml=r.brandGuidelines.map(g=>`<div class="dept"><div class="dept-title" style="border-color:#0c4cfc">${g.area}</div><div style="color:#4a5568">${g.rule}</div><div class="insight" style="border-color:#e2e5ea;background:#f8f9fb;margin-top:6px"><strong>Example:</strong> ${g.example}</div></div>`).join("");
     const chHtml=r.aeoChannels.sort((a,b)=>b.impact-a.impact).map((ch,i)=>`<tr><td>${i+1}</td><td><strong>${ch.channel}</strong><br><span style="color:#8896a6">${ch.desc}</span></td><td>${ch.impact}</td><td style="color:${ch.status==="Active"?"#059669":ch.status==="Needs Work"?"#d97706":"#dc2626"}">${ch.status}</td></tr>`).join("");
     const gridHtml=r.contentTypes.map(ct=>`<tr><td><strong>${ct.type}</strong>${ct.rationale?`<br><span style="color:#8896a6;font-size:9px">${ct.rationale}</span>`:""}</td><td>${ct.channels.join(", ")}</td><td>${ct.freq}</td><td>${ct.p}</td><td>${ct.owner}</td></tr>`).join("");
     const rmHtml=phases.map(p=>`<h3 style="color:${p.accent}">${p.title} (${p.sub}) — Expected lift: ${p.lift}</h3>${p.departments.map(d=>`<div class="dept"><div class="dept-title" style="border-color:${d.color};color:${d.color}">${d.dept}</div>${d.tasks.map(t=>`<div class="task">→ ${t}</div>`).join("")}</div>`).join("")}`).join("");
+    const tocItems=["Executive Summary","AI Engine Scores","Competitive Landscape","User Archetypes","Intent Pathway","AEO Channels","Content-Channel Grid","90-Day Roadmap"];
 
     w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>EnterRank AEO Report — ${r.clientData.brand}</title><style>${css}</style></head><body>
-    <div class="cover"><div style="margin-bottom:20px"><svg width="48" height="48" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#0c4cfc"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg></div><h1>EnterRank</h1><div class="sub">AEO Audit Report</div><div style="margin:20px 0"><span class="score-box ${scCol}">${r.overall} / 100</span></div><div style="font-size:16px;color:#0c1222;font-weight:600;margin:16px 0">${r.clientData.brand}</div><div class="meta">${r.clientData.industry||"N/A"} · ${r.clientData.region||"Global"} · ${r.clientData.website}</div><div class="meta" style="margin-top:20px">Generated ${new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"long",year:"numeric"})}<br>by Entermind</div></div>
+    <div class="cover">
+      <div class="cover-inner">
+        <div style="margin-bottom:28px"><svg width="44" height="44" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#0c4cfc"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg></div>
+        <div class="brand-label">AEO Audit Report</div>
+        <h1>${r.clientData.brand}</h1>
+        <div class="sub">${r.clientData.industry||"N/A"} · ${r.clientData.region||"Global"}</div>
+        <div class="cover-line"></div>
+        <div class="score-ring"><span class="score-val" style="color:${scCol}">${r.overall}</span></div>
+        <div class="score-label">Overall AEO Score</div>
+        <div class="cover-dots"><span class="cover-dot"></span><span class="cover-dot"></span><span class="cover-dot"></span></div>
+        <div class="meta">${r.clientData.website}<br>Generated ${new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"long",year:"numeric"})}</div>
+      </div>
+      <div class="cover-footer"><svg width="14" height="14" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#c8cdd5"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg> Powered by EnterRank · Entermind</div>
+    </div>
 
-    <div class="toc"><h2>Table of Contents</h2>${["Executive Summary","AI Engine Scores","Competitive Landscape & Deep-Dive","User Archetypes","Intent Pathway","Brand Playbook","AEO Channels","Content-Channel Grid","90-Day Roadmap"].map((t,i)=>`<div class="toc-item"><span>${i+1}. ${t}</span><span style="color:#8896a6">${i+2}</span></div>`).join("")}</div>
+    <div class="toc"><h2>Table of Contents</h2>${tocItems.map((t,i)=>`<div class="toc-item"><span><span class="toc-num">${i+1}</span>${t}</span><span style="color:#8896a6">${i+2}</span></div>`).join("")}</div>
 
     <div class="page"><h2>1. Executive Summary</h2>
-    <div class="kpi-row"><div class="kpi"><div class="val" style="color:${r.overall>=70?"#059669":r.overall>=40?"#d97706":"#dc2626"}">${r.overall}</div><div class="label">Overall AEO Score</div></div><div class="kpi"><div class="val" style="color:#0c4cfc">${Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/3)}%</div><div class="label">Avg Mention Rate</div></div><div class="kpi"><div class="val" style="color:#8b5cf6">${Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/3)}%</div><div class="label">Avg Citation Rate</div></div><div class="kpi"><div class="val" style="color:${r.engines.reduce((a,e)=>e.score>a.score?e:a,r.engines[0]).color}">${r.engines.reduce((a,e)=>e.score>a.score?e:a,r.engines[0]).name}</div><div class="label">Best Engine</div></div></div>
+    <div class="kpi-row"><div class="kpi"><div class="val" style="color:${scCol}">${r.overall}</div><div class="label">Overall AEO Score</div></div><div class="kpi"><div class="val" style="color:#0c4cfc">${Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/3)}%</div><div class="label">Avg Mention Rate</div></div><div class="kpi"><div class="val" style="color:#8b5cf6">${Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/3)}%</div><div class="label">Avg Citation Rate</div></div><div class="kpi"><div class="val" style="color:${r.engines.reduce((a,e)=>e.score>a.score?e:a,r.engines[0]).color}">${r.engines.reduce((a,e)=>e.score>a.score?e:a,r.engines[0]).name}</div><div class="label">Best Engine</div></div></div>
 
     <h2>2. AI Engine Scores</h2><table><tr><th>Engine</th><th>Score</th><th>Mentions</th><th>Citations</th><th>Sentiment</th></tr>${engRows}</table>
 
@@ -1230,10 +1259,9 @@ function RoadmapPage({r}){
 
     <h2>4. User Archetypes</h2>${archHtml}
     <h2>5. Intent Pathway</h2>${funnelHtml}
-    <h2>6. Brand Playbook</h2>${guideHtml}
-    <h2>7. AEO Channels</h2><table><tr><th>#</th><th>Channel</th><th>Impact</th><th>Status</th></tr>${chHtml}</table>
-    <h2>8. Content-Channel Grid</h2><table><tr><th>Type</th><th>Channels</th><th>Frequency</th><th>Priority</th><th>Owner</th></tr>${gridHtml}</table>
-    <h2>9. 90-Day Transformation Roadmap</h2>${rmHtml}
+    <h2>6. AEO Channels</h2><table><tr><th>#</th><th>Channel</th><th>Impact</th><th>Status</th></tr>${chHtml}</table>
+    <h2>7. Content-Channel Grid</h2><table><tr><th>Type</th><th>Channels</th><th>Frequency</th><th>Priority</th><th>Owner</th></tr>${gridHtml}</table>
+    <h2>8. 90-Day Transformation Roadmap</h2>${rmHtml}
     <div class="footer"><strong>EnterRank</strong> by Entermind · Confidential · ${new Date().getFullYear()}</div></div></body></html>`);
     w.document.close();setTimeout(()=>w.print(),600);
   };
