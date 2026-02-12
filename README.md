@@ -1,4 +1,4 @@
-# EnterRank — AEO Dashboard by Entermind
+# EnterRank by Entermind
 
 ## Quick Deploy to Vercel
 
