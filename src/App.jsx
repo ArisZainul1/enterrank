@@ -165,6 +165,17 @@ async function crawlWebsite(url){
   }catch(e){console.error("Crawl error for "+url+":",e);return null;}
 }
 
+async function verifyChannels(brand, website, industry, region){
+  try{
+    const isArtifact=typeof window!=="undefined"&&window.location.hostname.includes("claude");
+    if(isArtifact)return null;
+    const res=await fetch("/api/channels",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({brand,website,industry,region})});
+    const data=await res.json();
+    if(data.error)return null;
+    return data;
+  }catch(e){console.error("Channel verification error:",e);return null;}
+}
+
 function summariseCrawl(crawl){
   if(!crawl||!crawl.mainPage)return"No crawl data available.";
   const mp=crawl.mainPage;
@@ -336,39 +347,63 @@ Make prompts realistic for ${region}. Use "Absent" for most prompts if ${brand} 
   const archRaw=await callOpenAI(archPrompt, engineSystemPrompt);
   const archData=safeJSON(archRaw)||{stakeholders:[]};
 
-  // ── Step 7: AEO Channels verification via crawl + search ──
-  onProgress("Verifying AEO channels...",65);
-  // Use Gemini with web search context + crawl data for accurate channel detection
-  const channelPrompt=`For "${brand}" (website: ${cd.website||"unknown"}) in ${industry} (${region}):
+  // ── Step 7: AEO Channels verification via REAL web crawling ──
+  onProgress("Verifying AEO channels via web search...",65);
+  
+  // First: actually crawl Wikipedia, YouTube, LinkedIn, etc.
+  let realChannels=null;
+  try{realChannels=await verifyChannels(brand, cd.website, industry, region);}catch(e){console.error("Channel verify failed:",e);}
+  
+  // If real crawl returned results, use them. Fill gaps with AI estimation.
+  let chData={channels:[]};
+  if(realChannels&&realChannels.channels&&realChannels.channels.length>0){
+    chData.channels=realChannels.channels;
+    // Add Podcast and Academic channels via AI (can't easily crawl)
+    onProgress("Checking podcast & academic presence...",72);
+    const gapPrompt=`For "${brand}" in ${industry} (${region}), I've already verified these channels via web crawl:
+${realChannels.channels.map(c=>`- ${c.channel}: ${c.status}`).join("\n")}
 
-Website crawl data:
-${crawlSummary}
-
-Based on the crawl data and your knowledge, determine which AEO distribution channels this brand is present on. Use the crawl data signals:
-- If schemas include "FAQPage" → they have FAQ content
-- If hasVideo is true → they likely have YouTube
-- If hasArticleMarkup → they have blog content
-- Check for social media links in the page
+Now assess ONLY these 2 remaining channels that can't be easily verified via URL crawling:
+1. Podcast Appearances
+2. Academic/Research Citations
 
 Return JSON:
 {
   "channels": [
-    {"channel":"Wikipedia","status":"Active"|"Needs Work"|"Not Present","finding":"<specific detail about what you found>","priority":"High"|"Medium"|"Low","action":"<specific actionable recommendation>"},
+    {"channel":"Podcast Appearances","status":"Active"|"Needs Work"|"Not Present","finding":"<specific detail>","priority":"High"|"Medium"|"Low","action":"<recommendation>"},
+    {"channel":"Academic/Research Citations","status":"Active"|"Needs Work"|"Not Present","finding":"<specific detail>","priority":"High"|"Medium"|"Low","action":"<recommendation>"}
+  ]
+}
+
+Be accurate. Only mark "Active" if ${brand} is well-known enough to likely have these.`;
+    const gapRaw=await callGemini(gapPrompt, engineSystemPrompt);
+    const gapData=safeJSON(gapRaw);
+    if(gapData&&gapData.channels)chData.channels=[...chData.channels,...gapData.channels];
+  }else{
+    // Fallback: AI estimation for all channels (less accurate)
+    const channelPrompt=`For "${brand}" (website: ${cd.website||"unknown"}) in ${industry} (${region}):
+
+Website crawl data:
+${crawlSummary}
+
+Determine which AEO distribution channels this brand is present on. Return JSON:
+{
+  "channels": [
+    {"channel":"Wikipedia","status":"Active"|"Needs Work"|"Not Present","finding":"<detail>","priority":"High"|"Medium"|"Low","action":"<recommendation>"},
     {"channel":"YouTube","status":"...","finding":"...","priority":"...","action":"..."},
     {"channel":"LinkedIn","status":"...","finding":"...","priority":"...","action":"..."},
     {"channel":"Reddit","status":"...","finding":"...","priority":"...","action":"..."},
-    {"channel":"Quora","status":"...","finding":"...","priority":"...","action":"..."},
+    {"channel":"Social Media (X, Reddit, Quora)","status":"...","finding":"...","priority":"...","action":"..."},
     {"channel":"Industry Directories","status":"...","finding":"...","priority":"...","action":"..."},
     {"channel":"Review Sites (G2/Capterra/Trustpilot)","status":"...","finding":"...","priority":"...","action":"..."},
     {"channel":"Press/News Coverage","status":"...","finding":"...","priority":"...","action":"..."},
     {"channel":"Podcast Appearances","status":"...","finding":"...","priority":"...","action":"..."},
     {"channel":"Academic/Research Citations","status":"...","finding":"...","priority":"...","action":"..."}
   ]
-}
-
-IMPORTANT: Be conservative and accurate. Only mark as "Active" if you have strong reason to believe the brand is present there. For smaller or regional brands, most channels will be "Not Present" or "Needs Work". Base your assessment on the crawl data signals and your knowledge of the brand.`;
-  const chRaw=await callGemini(channelPrompt, engineSystemPrompt);
-  const chData=safeJSON(chRaw)||{channels:[]};
+}`;
+    const chRaw=await callGemini(channelPrompt, engineSystemPrompt);
+    chData=safeJSON(chRaw)||{channels:[]};
+  }
 
   // ── Step 8: Content recommendations ──
   onProgress("Building content recommendations...",78);
@@ -989,30 +1024,48 @@ function Sidebar({step,setStep,results,brand,onBack,isArtifact,onLogout,collapse
 /* ─── VISIBILITY CHART — Bar chart with hover scores ─── */
 function VisibilityChart({engines,overall,brand}){
   const[hover,setHover]=useState(null);
-  const barH=200;
+  const maxScore=100;
+  const getGrade=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
+  const gradeColor=(s)=>s>=80?C.green:s>=60?"#10A37F":s>=40?C.amber:s>=20?"#f97316":C.red;
   return(<div>
-    <div style={{marginBottom:16}}>
-      <div style={{fontSize:13,color:C.muted,marginBottom:4}}>Visibility Score for {brand}</div>
-      <div style={{display:"flex",alignItems:"baseline",gap:6}}>
-        <span style={{fontSize:36,fontWeight:700,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>{overall}%</span>
-        <span style={{fontSize:13,color:C.muted}}>–</span>
+    <div style={{marginBottom:20}}>
+      <div style={{fontSize:13,color:C.muted,marginBottom:6,fontWeight:500}}>Visibility Score for {brand}</div>
+      <div style={{display:"flex",alignItems:"baseline",gap:10}}>
+        <span style={{fontSize:42,fontWeight:800,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.03em",lineHeight:1}}>{overall}%</span>
+        <span style={{fontSize:14,fontWeight:600,color:gradeColor(overall),fontFamily:"'Outfit'",padding:"3px 10px",background:`${gradeColor(overall)}12`,borderRadius:20}}>{getGrade(overall)}</span>
       </div>
     </div>
-    <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:32,height:barH,paddingBottom:30,position:"relative"}}>
-      {/* Y-axis labels */}
-      {[0,25,50,75,100].map(v=>(<div key={v} style={{position:"absolute",left:0,bottom:30+(v/100)*(barH-30),fontSize:10,color:C.muted,transform:"translateY(50%)"}}>{v}%</div>))}
-      {/* Grid lines */}
-      {[0,25,50,75,100].map(v=>(<div key={`g${v}`} style={{position:"absolute",left:30,right:0,bottom:30+(v/100)*(barH-30),height:1,background:C.borderSoft,borderStyle:v===0?"solid":"dashed"}}/>))}
-      {/* Bars with hover */}
-      <div style={{display:"flex",alignItems:"flex-end",gap:40,paddingLeft:40,flex:1,justifyContent:"center",position:"relative",zIndex:1}}>
-        {engines.map((e,i)=>{const bH=Math.max(4,(e.score/100)*(barH-50));return(<div key={e.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,position:"relative"}} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)}>
-          {hover===i&&<div style={{position:"absolute",bottom:bH+36,background:C.text,color:"#fff",padding:"5px 10px",borderRadius:6,fontSize:12,fontWeight:600,fontFamily:"'Outfit'",whiteSpace:"nowrap",boxShadow:"0 4px 12px rgba(0,0,0,.15)",zIndex:2}}>
-            {e.name}: {e.score}%
-            <div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%) rotate(45deg)",width:8,height:8,background:C.text}}/>
-          </div>}
-          <div style={{width:52,height:bH,background:hover===i?e.color:`${e.color}cc`,borderRadius:"4px 4px 0 0",transition:"all .2s ease-out",cursor:"default"}}/>
-          <e.Logo size={18}/>
-        </div>);})}
+    {/* Engine bars — horizontal */}
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      {engines.map((e,i)=>{
+        const pct=Math.max(2,e.score);
+        return(<div key={e.id} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)} style={{cursor:"default"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <e.Logo size={16}/>
+              <span style={{fontSize:13,fontWeight:600,color:C.text,fontFamily:"'Outfit'"}}>{e.name}</span>
+            </div>
+            <span style={{fontSize:13,fontWeight:700,color:hover===i?e.color:C.text,fontFamily:"'Outfit'",transition:"color .2s"}}>{e.score}%</span>
+          </div>
+          <div style={{height:10,background:C.bg,borderRadius:6,overflow:"hidden",border:`1px solid ${C.borderSoft}`}}>
+            <div style={{height:"100%",width:`${pct}%`,background:`linear-gradient(90deg, ${e.color}cc, ${e.color})`,borderRadius:5,transition:"width .6s ease-out, opacity .2s",opacity:hover===i?1:.85}}/>
+          </div>
+          {/* Sub-metrics */}
+          <div style={{display:"flex",gap:16,marginTop:5}}>
+            <span style={{fontSize:11,color:C.muted}}>Mentions: <span style={{fontWeight:600,color:C.sub}}>{e.mentionRate}%</span></span>
+            <span style={{fontSize:11,color:C.muted}}>Citations: <span style={{fontWeight:600,color:C.sub}}>{e.citationRate}%</span></span>
+          </div>
+        </div>);
+      })}
+    </div>
+    {/* Overall bar */}
+    <div style={{marginTop:18,paddingTop:16,borderTop:`1px solid ${C.borderSoft}`}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+        <span style={{fontSize:12,fontWeight:600,color:C.sub,fontFamily:"'Outfit'"}}>Combined Score</span>
+        <span style={{fontSize:14,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{overall}%</span>
+      </div>
+      <div style={{height:8,background:C.bg,borderRadius:5,overflow:"hidden",border:`1px solid ${C.borderSoft}`}}>
+        <div style={{height:"100%",width:`${Math.max(2,overall)}%`,background:`linear-gradient(90deg, ${C.accent}cc, ${C.accent})`,borderRadius:4,transition:"width .6s ease-out"}}/>
       </div>
     </div>
   </div>);
@@ -1968,9 +2021,6 @@ function ProjectHub({onSelect,onNew,onLogout}){
     <div style={{padding:"14px 32px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <Logo/>
       <div style={{display:"flex",alignItems:"center",gap:16}}>
-        <span style={{fontSize:13,color:C.muted,cursor:"pointer",fontWeight:500}}>Support</span>
-        <span style={{fontSize:13,color:C.muted,cursor:"pointer",fontWeight:500}}>Settings</span>
-        <span onClick={onLogout} style={{width:32,height:32,borderRadius:"50%",background:C.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>AZ</span>
       </div>
     </div>
 
