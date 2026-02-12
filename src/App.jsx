@@ -1024,50 +1024,37 @@ function Sidebar({step,setStep,results,brand,onBack,isArtifact,onLogout,collapse
 /* ─── VISIBILITY CHART — Bar chart with hover scores ─── */
 function VisibilityChart({engines,overall,brand}){
   const[hover,setHover]=useState(null);
-  const maxScore=100;
   const getGrade=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
   const gradeColor=(s)=>s>=80?C.green:s>=60?"#10A37F":s>=40?C.amber:s>=20?"#f97316":C.red;
+  const bars=[{id:"overall",label:"Overall",score:overall,color:C.accent},...engines.map(e=>({id:e.id,label:e.name,score:e.score,color:e.color,mentionRate:e.mentionRate,citationRate:e.citationRate,Logo:e.Logo}))];
+  const svgW=420,svgH=240,pad={t:30,r:20,b:50,l:38};
+  const chartW=svgW-pad.l-pad.r,chartH=svgH-pad.t-pad.b;
+  const gap=chartW/bars.length,barW=Math.min(48,gap*.55);
+  const getX=(i)=>pad.l+gap*i+(gap-barW)/2;
+  const getY=(s)=>pad.t+chartH*(1-s/100);
+  const getH=(s)=>chartH*(s/100);
   return(<div>
-    <div style={{marginBottom:20}}>
+    <div style={{marginBottom:16}}>
       <div style={{fontSize:13,color:C.muted,marginBottom:6,fontWeight:500}}>Visibility Score for {brand}</div>
       <div style={{display:"flex",alignItems:"baseline",gap:10}}>
         <span style={{fontSize:42,fontWeight:800,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.03em",lineHeight:1}}>{overall}%</span>
         <span style={{fontSize:14,fontWeight:600,color:gradeColor(overall),fontFamily:"'Outfit'",padding:"3px 10px",background:`${gradeColor(overall)}12`,borderRadius:20}}>{getGrade(overall)}</span>
       </div>
     </div>
-    {/* Engine bars — horizontal */}
-    <div style={{display:"flex",flexDirection:"column",gap:14}}>
-      {engines.map((e,i)=>{
-        const pct=Math.max(2,e.score);
-        return(<div key={e.id} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)} style={{cursor:"default"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <e.Logo size={16}/>
-              <span style={{fontSize:13,fontWeight:600,color:C.text,fontFamily:"'Outfit'"}}>{e.name}</span>
-            </div>
-            <span style={{fontSize:13,fontWeight:700,color:hover===i?e.color:C.text,fontFamily:"'Outfit'",transition:"color .2s"}}>{e.score}%</span>
-          </div>
-          <div style={{height:10,background:C.bg,borderRadius:6,overflow:"hidden",border:`1px solid ${C.borderSoft}`}}>
-            <div style={{height:"100%",width:`${pct}%`,background:`linear-gradient(90deg, ${e.color}cc, ${e.color})`,borderRadius:5,transition:"width .6s ease-out, opacity .2s",opacity:hover===i?1:.85}}/>
-          </div>
-          {/* Sub-metrics */}
-          <div style={{display:"flex",gap:16,marginTop:5}}>
-            <span style={{fontSize:11,color:C.muted}}>Mentions: <span style={{fontWeight:600,color:C.sub}}>{e.mentionRate}%</span></span>
-            <span style={{fontSize:11,color:C.muted}}>Citations: <span style={{fontWeight:600,color:C.sub}}>{e.citationRate}%</span></span>
-          </div>
-        </div>);
-      })}
-    </div>
-    {/* Overall bar */}
-    <div style={{marginTop:18,paddingTop:16,borderTop:`1px solid ${C.borderSoft}`}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
-        <span style={{fontSize:12,fontWeight:600,color:C.sub,fontFamily:"'Outfit'"}}>Combined Score</span>
-        <span style={{fontSize:14,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{overall}%</span>
-      </div>
-      <div style={{height:8,background:C.bg,borderRadius:5,overflow:"hidden",border:`1px solid ${C.borderSoft}`}}>
-        <div style={{height:"100%",width:`${Math.max(2,overall)}%`,background:`linear-gradient(90deg, ${C.accent}cc, ${C.accent})`,borderRadius:4,transition:"width .6s ease-out"}}/>
-      </div>
-    </div>
+    <svg width="100%" height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} style={{overflow:"visible"}} onMouseLeave={()=>setHover(null)}>
+      <defs>{bars.map(b=>(<linearGradient key={`g_${b.id}`} id={`bg_${b.id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={b.color} stopOpacity="1"/><stop offset="100%" stopColor={b.color} stopOpacity=".7"/></linearGradient>))}</defs>
+      {[0,25,50,75,100].map(v=>{const y=pad.t+chartH*(1-v/100);return(<g key={v}><line x1={pad.l} y1={y} x2={svgW-pad.r} y2={y} stroke={C.borderSoft} strokeDasharray="3 3"/><text x={pad.l-6} y={y+4} textAnchor="end" fontSize="10" fill={C.muted} fontFamily="Outfit">{v}</text></g>);})}
+      {bars.map((b,i)=>{const x=getX(i),y=getY(b.score),h=getH(Math.max(2,b.score)),isH=hover===i;return(<g key={b.id} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)} style={{cursor:"default"}}>
+        <rect x={x} y={y} width={barW} height={h} rx={4} fill={`url(#bg_${b.id})`} opacity={isH?1:.82} style={{transition:"opacity .2s, y .5s ease-out, height .5s ease-out"}}/>
+        <text x={x+barW/2} y={y-8} textAnchor="middle" fontSize="13" fontWeight="700" fill={isH?b.color:C.text} fontFamily="Outfit" style={{transition:"fill .2s"}}>{b.score}%</text>
+        <text x={x+barW/2} y={pad.t+chartH+16} textAnchor="middle" fontSize="11" fontWeight={isH?"600":"500"} fill={isH?b.color:C.sub} fontFamily="Outfit" style={{transition:"fill .2s"}}>{b.label}</text>
+        {isH&&b.mentionRate!=null&&<g>
+          <rect x={x+barW/2-52} y={pad.t+chartH+24} width={104} height={16} rx={4} fill={C.text} opacity=".9"/>
+          <text x={x+barW/2} y={pad.t+chartH+36} textAnchor="middle" fontSize="9" fill="#fff" fontFamily="Outfit">M: {b.mentionRate}%  ·  C: {b.citationRate}%</text>
+        </g>}
+        <rect x={x-4} y={pad.t} width={barW+8} height={chartH+24} fill="transparent"/>
+      </g>);})}
+    </svg>
   </div>);
 }
 
