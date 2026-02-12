@@ -1080,9 +1080,79 @@ function ShareOfVoiceSection({title,rankTitle,brands,metricKey}){
 /* ─── PAGE: NEW AUDIT ─── */
 function NewAuditPage({data,setData,onRun,history=[]}){
   const[running,setRunning]=useState(false);const[stage,setStage]=useState("");const[error,setError]=useState(null);
-  const ok=data.brand&&data.industry&&data.website&&data.topics.length>0;
+  const[auditStep,setAuditStep]=useState(data.topics&&data.topics.length>0?"topics":"input"); // "input" → "topics" → running
+  const[genTopics,setGenTopics]=useState(false);
+  const[editingTopic,setEditingTopic]=useState(null);
+  const[editVal,setEditVal]=useState("");
+  const[newTopic,setNewTopic]=useState("");
+  const inputOk=data.brand&&data.industry&&data.website;
+  const topicsOk=data.topics.length>=3;
   const[logLines,setLogLines]=useState([]);
   const addLog=(msg)=>setLogLines(prev=>[...prev.slice(-14),{msg,t:Date.now()}]);
+
+  // Generate topics via OpenAI
+  const generateTopics=async()=>{
+    setGenTopics(true);setError(null);
+    try{
+      const compInfo=(data.competitors||[]).filter(c=>c.name).map(c=>`${c.name}${c.website?" ("+c.website+")":""}`).join(", ");
+      const prompt=`For the brand "${data.brand}" in the "${data.industry}" industry, based in "${data.region||"Global"}", with website ${data.website||"unknown"}${compInfo?", competitors: "+compInfo:""}.
+
+Generate 8-12 key topics that are most relevant for measuring this brand's AI engine visibility (AEO - Answer Engine Optimisation). These should be specific topics that users would ask AI engines about in this industry and region.
+
+Focus on:
+- Core product/service topics
+- Industry-specific comparison topics  
+- Regional/local relevance topics
+- Buyer decision topics
+- Technical/feature topics
+
+Return ONLY a JSON array of strings, no markdown, no explanation:
+["topic 1", "topic 2", "topic 3", ...]`;
+      const raw=await callOpenAI(prompt,"You are an AEO (Answer Engine Optimisation) expert. Return ONLY valid JSON arrays, no markdown fences.");
+      const topics=safeJSON(raw);
+      if(topics&&Array.isArray(topics)&&topics.length>0){
+        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>0).map(t=>t.trim())}));
+        setAuditStep("topics");
+      }else{
+        setError("Failed to generate topics. Please try again.");
+      }
+    }catch(e){
+      console.error("Topic generation error:",e);
+      setError("Failed to generate topics. Check your API connection.");
+    }
+    setGenTopics(false);
+  };
+
+  const regenerateTopics=async()=>{
+    setGenTopics(true);setError(null);
+    try{
+      const existing=data.topics.join(", ");
+      const compInfo=(data.competitors||[]).filter(c=>c.name).map(c=>`${c.name}${c.website?" ("+c.website+")":""}`).join(", ");
+      const prompt=`For the brand "${data.brand}" in the "${data.industry}" industry (${data.region||"Global"}), website: ${data.website||"unknown"}${compInfo?", competitors: "+compInfo:""}.
+
+I already have these topics: ${existing}
+
+Generate 5 MORE different topics that are also relevant for measuring AI engine visibility. These should NOT duplicate existing topics. Focus on gaps or angles not yet covered.
+
+Return ONLY a JSON array of strings:
+["new topic 1", "new topic 2", ...]`;
+      const raw=await callOpenAI(prompt,"You are an AEO expert. Return ONLY valid JSON arrays.");
+      const newTopics=safeJSON(raw);
+      if(newTopics&&Array.isArray(newTopics)&&newTopics.length>0){
+        const cleaned=newTopics.filter(t=>typeof t==="string"&&t.trim().length>0).map(t=>t.trim());
+        setData(d=>({...d,topics:[...d.topics,...cleaned]}));
+      }
+    }catch(e){console.error("Regenerate error:",e);}
+    setGenTopics(false);
+  };
+
+  const startEdit=(i)=>{setEditingTopic(i);setEditVal(data.topics[i]);};
+  const saveEdit=(i)=>{
+    if(editVal.trim()){const t=[...data.topics];t[i]=editVal.trim();setData({...data,topics:t});}
+    setEditingTopic(null);setEditVal("");
+  };
+  const deleteTopic=(i)=>{setData({...data,topics:data.topics.filter((_,j)=>j!==i)});};
+  const addTopic=()=>{if(newTopic.trim()){setData({...data,topics:[...data.topics,newTopic.trim()]});setNewTopic("");}};
 
   // Smooth progress: target is set by API callbacks, displayed value interpolates toward it
   const targetRef=React.useRef(0);
@@ -1110,11 +1180,11 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     {at:21,msg:"Sending 8 query probes to Gemini..."},
     {at:24,msg:"Extracting mention rates from ChatGPT response..."},
     {at:27,msg:"Extracting citation data from Gemini response..."},
-    {at:29,msg:"Cross-referencing entity signals across 3 engines..."},
+    {at:29,msg:"Cross-referencing entity signals across engines..."},
     {at:31,msg:"Scoring Structured Data / Schema..."},
     {at:33,msg:"Scoring Content Authority & E-E-A-T..."},
     {at:35,msg:"Running competitor signal analysis..."},
-    {at:38,msg:`Cross-referencing citation networks for ${data.competitors.slice(0,3).join(", ")||"competitors"}...`},
+    {at:38,msg:`Cross-referencing citation networks for ${(data.competitors||[]).filter(c=>c.name).map(c=>c.name).slice(0,3).join(", ")||"competitors"}...`},
     {at:41,msg:"Calculating category-level differentials..."},
     {at:44,msg:"Mapping authority distribution curves..."},
     {at:47,msg:"Generating user archetypes from crawl data..."},
@@ -1227,28 +1297,76 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     <div style={{padding:"6px 14px",background:`${C.accent}08`,borderRadius:100,fontSize:11,color:C.accent,fontWeight:500}}>⚡ Powered by live AI analysis</div>
     {error&&<div style={{padding:"10px 16px",background:`${C.red}08`,border:`1px solid ${C.red}20`,borderRadius:8,fontSize:12,color:C.red}}>{error}</div>}
     </div>);
+
+  /* ─── STEP 2: Topics Review ─── */
+  if(auditStep==="topics")return(<div style={{maxWidth:620,margin:"0 auto"}}>
+    <div style={{marginBottom:24,textAlign:"center"}}>
+      <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Review Topics for {data.brand}</h2>
+      <p style={{color:C.sub,fontSize:13,marginTop:4}}>These topics will be used to measure AI engine visibility. Edit, remove, or add more.</p>
+    </div>
+    <Card>
+      {/* Topic list */}
+      <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
+        {data.topics.map((topic,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:C.bg,borderRadius:8,border:`1px solid ${C.borderSoft}`}}>
+          <span style={{fontSize:13,color:C.accent,fontWeight:600,fontFamily:"'Outfit'",minWidth:22}}>{i+1}.</span>
+          {editingTopic===i?(<>
+            <input value={editVal} onChange={e=>setEditVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")saveEdit(i);if(e.key==="Escape"){setEditingTopic(null);setEditVal("");}}} autoFocus style={{flex:1,padding:"4px 8px",background:"#fff",border:`1px solid ${C.accent}40`,borderRadius:6,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit"}}/>
+            <span onClick={()=>saveEdit(i)} style={{cursor:"pointer",fontSize:11,color:C.accent,fontWeight:600}}>Save</span>
+            <span onClick={()=>{setEditingTopic(null);setEditVal("");}} style={{cursor:"pointer",fontSize:11,color:C.muted}}>Cancel</span>
+          </>):(<>
+            <span style={{flex:1,fontSize:13,color:C.text}}>{topic}</span>
+            <span onClick={()=>startEdit(i)} style={{cursor:"pointer",fontSize:11,color:C.accent,fontWeight:500,opacity:.7}}>Edit</span>
+            <span onClick={()=>deleteTopic(i)} style={{cursor:"pointer",fontSize:14,color:C.muted,lineHeight:1}}>×</span>
+          </>)}
+        </div>))}
+      </div>
+
+      {/* Add new topic */}
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        <input value={newTopic} onChange={e=>setNewTopic(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTopic();}} placeholder="Add a custom topic..." style={{flex:1,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit"}}/>
+        <button onClick={addTopic} disabled={!newTopic.trim()} style={{padding:"8px 16px",background:newTopic.trim()?C.accent:"#dde1e7",color:newTopic.trim()?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:newTopic.trim()?"pointer":"not-allowed",fontFamily:"'Outfit'"}}>Add</button>
+      </div>
+
+      {/* Generate more button */}
+      <button onClick={regenerateTopics} disabled={genTopics} style={{width:"100%",padding:"10px 16px",background:"none",border:`1px dashed ${C.accent}40`,borderRadius:8,fontSize:12,fontWeight:600,color:C.accent,cursor:genTopics?"wait":"pointer",fontFamily:"'Outfit'",marginBottom:16,opacity:genTopics?.6:1}}>
+        {genTopics?"Generating more topics...":"+ Generate More Topics"}
+      </button>
+
+      <div style={{paddingTop:16,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <button onClick={()=>setAuditStep("input")} style={{padding:"8px 16px",background:"none",border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,color:C.sub,cursor:"pointer",fontFamily:"'Outfit'"}}>← Back to Details</button>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <span style={{fontSize:11,color:C.muted}}>{data.topics.length} topics</span>
+          <button onClick={go} disabled={!topicsOk} style={{padding:"10px 24px",background:topicsOk?C.accent:"#dde1e7",color:topicsOk?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:topicsOk?"pointer":"not-allowed",fontFamily:"'Outfit'"}}>Run AEO Audit →</button>
+        </div>
+      </div>
+    </Card>
+    {error&&<div style={{marginTop:12,padding:"10px 16px",background:`${C.red}08`,border:`1px solid ${C.red}20`,borderRadius:8,fontSize:12,color:C.red}}>{error}</div>}
+  </div>);
+
+  /* ─── STEP 1: Client Details Input ─── */
   return(<div style={{maxWidth:620,margin:"0 auto"}}>
-    <div style={{marginBottom:24,textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>{data.brand?"Run AEO Audit":"New AEO Audit"}</h2><p style={{color:C.sub,fontSize:13,marginTop:4}}>{data.brand?`Run a ${history.length>0?"follow-up":"first"} audit for ${data.brand}.`:"Enter client details for a comprehensive 8-stage AEO analysis."}</p></div>
+    <div style={{marginBottom:24,textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>{data.brand?"Configure AEO Audit":"New AEO Audit"}</h2><p style={{color:C.sub,fontSize:13,marginTop:4}}>{data.brand?`${history.length>0?"Run another":"Set up"} audit for ${data.brand}.`:"Enter client details to begin."}</p></div>
     <Card><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       <Field label="Brand Name" value={data.brand} onChange={v=>setData({...data,brand:v})} placeholder="Acme Corp"/>
       <Field label="Industry" value={data.industry} onChange={v=>setData({...data,industry:v})} placeholder="e.g. Technology"/>
       <Field label="Website" value={data.website} onChange={v=>setData({...data,website:v})} placeholder="acme.com"/>
       <Field label="Region" value={data.region} onChange={v=>setData({...data,region:v})} placeholder="e.g. Malaysia"/>
-      <div style={{gridColumn:"1/-1"}}><TagInput label="Key Topics" tags={data.topics} setTags={v=>setData({...data,topics:v})} placeholder="Type a topic and press Enter..."/></div>
       <div style={{gridColumn:"1/-1"}}>
         <label style={{fontSize:12,fontWeight:500,color:C.sub,display:"block",marginBottom:8}}>Competitors</label>
         {(data.competitors||[]).map((comp,i)=>(<div key={i} style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
-          <input value={comp.name} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],name:e.target.value};setData({...data,competitors:c});}} placeholder={`Competitor ${i+1}`} style={{flex:1,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit"}}/>
-          <input value={comp.website} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],website:e.target.value};setData({...data,competitors:c});}} placeholder="website.com" style={{flex:1,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit"}}/>
+          <input value={comp.name} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],name:e.target.value};setData({...data,competitors:c});}} placeholder={`Competitor ${i+1}`} style={{flex:1,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit"}}/>
+          <input value={comp.website} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],website:e.target.value};setData({...data,competitors:c});}} placeholder="website.com" style={{flex:1,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit"}}/>
           <span onClick={()=>{const c=data.competitors.filter((_,j)=>j!==i);setData({...data,competitors:c});}} style={{cursor:"pointer",color:C.muted,fontSize:16,padding:"0 4px",lineHeight:1}}>×</span>
         </div>))}
-        {(data.competitors||[]).length<8&&<button onClick={()=>setData({...data,competitors:[...(data.competitors||[]),{name:"",website:""}]})} style={{padding:"6px 14px",background:"none",border:`1px dashed ${C.border}`,borderRadius:C.rs,fontSize:12,color:C.muted,cursor:"pointer",fontFamily:"inherit"}}>+ Add competitor</button>}
+        {(data.competitors||[]).length<8&&<button onClick={()=>setData({...data,competitors:[...(data.competitors||[]),{name:"",website:""}]})} style={{padding:"6px 14px",background:"none",border:`1px dashed ${C.border}`,borderRadius:8,fontSize:12,color:C.muted,cursor:"pointer",fontFamily:"inherit"}}>+ Add competitor</button>}
       </div>
     </div>
     <div style={{marginTop:20,paddingTop:18,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div style={{display:"flex",gap:12,alignItems:"center"}}><span style={{fontSize:11,color:C.muted}}>Engines:</span><ChatGPTLogo size={18}/><GeminiLogo size={18}/></div>
-      <button onClick={go} disabled={!ok} style={{padding:"10px 24px",background:ok?C.accent:"#dde1e7",color:ok?"#fff":"#9ca3af",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:ok?"pointer":"not-allowed",fontFamily:"'Outfit'"}}>Run AEO Audit →</button>
-    </div></Card></div>);
+      <button onClick={generateTopics} disabled={!inputOk||genTopics} style={{padding:"10px 24px",background:inputOk&&!genTopics?C.accent:"#dde1e7",color:inputOk&&!genTopics?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:inputOk&&!genTopics?"pointer":"not-allowed",fontFamily:"'Outfit'"}}>{genTopics?"Generating Topics...":"Generate Topics →"}</button>
+    </div>
+    {error&&<div style={{marginTop:12,padding:"10px 16px",background:`${C.red}08`,border:`1px solid ${C.red}20`,borderRadius:8,fontSize:12,color:C.red}}>{error}</div>}
+    </Card></div>);
 }
 
 /* ─── PAGE: AEO AUDIT (Overview) ─── */
