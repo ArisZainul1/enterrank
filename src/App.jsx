@@ -3,11 +3,11 @@ import React, { useState } from "react";
 const ChatGPTLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.998 5.998 0 0 0-3.998 2.9 6.042 6.042 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" fill="#10A37F"/></svg>);
 const ClaudeLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M16.98 11.14L12.58 2.29C12.42 1.97 12.09 1.77 11.73 1.77C11.37 1.77 11.04 1.97 10.88 2.29L3.07 17.84C2.91 18.16 2.94 18.54 3.15 18.83C3.36 19.12 3.71 19.27 4.07 19.22L11.73 18.15L16.57 12.05C16.84 11.71 16.98 11.14 16.98 11.14Z" fill="#D97706"/><path d="M20.93 17.84L17.38 10.77L11.73 18.15L19.93 19.22C20.29 19.27 20.64 19.12 20.85 18.83C21.06 18.54 21.09 18.16 20.93 17.84Z" fill="#B45309"/></svg>);
 const GeminiLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M12 24C12 20.8174 10.7357 17.7652 8.48528 15.5147C6.23484 13.2643 3.18261 12 0 12C3.18261 12 6.23484 10.7357 8.48528 8.48528C10.7357 6.23484 12 3.18261 12 0C12 3.18261 13.2643 6.23484 15.5147 8.48528C17.7652 10.7357 20.8174 12 24 12C20.8174 12 17.7652 13.2643 15.5147 15.5147C13.2643 17.7652 12 20.8174 12 24Z" fill="url(#gG2)"/><defs><linearGradient id="gG2" x1="0" y1="12" x2="24" y2="12"><stop stopColor="#4285F4"/><stop offset=".5" stopColor="#9B72CB"/><stop offset="1" stopColor="#D96570"/></linearGradient></defs></svg>);
-const C={bg:"#f5f6f8",surface:"#ffffff",border:"#e2e5ea",borderSoft:"#edf0f3",text:"#0c1222",sub:"#4a5568",muted:"#8896a6",accent:"#0c4cfc",green:"#059669",amber:"#d97706",red:"#dc2626",r:12,rs:8};
-function Ring({score,size=100,color,sw=5}){const r2=(size-sw*2)/2,ci=2*Math.PI*r2;const col=color||(score>=70?C.green:score>=40?C.amber:C.red);return(<div style={{position:"relative",width:size,height:size}}><svg width={size} height={size}><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={C.borderSoft} strokeWidth={sw}/><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={col} strokeWidth={sw} strokeDasharray={ci} strokeDashoffset={ci-(score/100)*ci} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`} style={{transition:"stroke-dashoffset 1.2s ease-out"}}/></svg><div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:size*.28,fontWeight:700,color:C.text,lineHeight:1,fontFamily:"'Outfit'"}}>{score}</span><span style={{fontSize:size*.09,color:C.muted,marginTop:1}}>/ 100</span></div></div>);}
+const C={bg:"#f8f9fb",surface:"#ffffff",border:"#e8ecf1",borderSoft:"#f0f2f5",text:"#111827",sub:"#4b5563",muted:"#9ca3af",accent:"#2563eb",green:"#059669",amber:"#d97706",red:"#dc2626",r:12,rs:8};
+function Ring({score,size=100,color,sw=5}){const r2=(size-sw*2)/2,ci=2*Math.PI*r2;const col=color||(score>=70?C.green:score>=40?C.amber:C.red);return(<div style={{position:"relative",width:size,height:size}}><svg width={size} height={size}><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={C.borderSoft} strokeWidth={sw}/><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={col} strokeWidth={sw} strokeDasharray={ci} strokeDashoffset={ci-(score/100)*ci} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`} style={{transition:"stroke-dashoffset 1.2s ease-out"}}/></svg><div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:size*.26,fontWeight:700,color:C.text,lineHeight:1,fontFamily:"'Outfit'"}}>{score}%</span></div></div>);}
 function Bar({value,color=C.accent,h=5}){return <div style={{width:"100%",height:h,background:C.borderSoft,borderRadius:h}}><div style={{width:`${Math.max(2,value)}%`,height:"100%",background:color,borderRadius:h,transition:"width .8s ease-out"}}/></div>;}
 function Pill({children,color=C.accent,filled}){return <span style={{display:"inline-flex",padding:"3px 10px",borderRadius:100,fontSize:11,fontWeight:600,background:filled?color:`${color}10`,color:filled?"#fff":color}}>{children}</span>;}
-function Card({children,style={},onClick}){return <div onClick={onClick} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:C.r,padding:22,boxShadow:"0 1px 3px rgba(0,0,0,.03)",...(onClick?{cursor:"pointer"}:{}),...style}}>{children}</div>;}
+function Card({children,style={},onClick}){return <div onClick={onClick} style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:14,padding:22,boxShadow:"0 1px 2px rgba(0,0,0,.03)",...(onClick?{cursor:"pointer"}:{}),...style}}>{children}</div>;}
 function TagInput({label,tags,setTags,placeholder}){const[input,setInput]=useState("");const add=()=>{const v=input.trim();if(v&&!tags.includes(v)){setTags([...tags,v]);setInput("");}};return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label}</label><div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,minHeight:40,alignItems:"center"}}>{tags.map((tag,i)=>(<span key={i} style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",background:`${C.accent}15`,color:C.accent,borderRadius:100,fontSize:12,fontWeight:500}}>{tag}<span onClick={()=>setTags(tags.filter((_,j)=>j!==i))} style={{cursor:"pointer",opacity:.6,fontSize:14}}>×</span></span>))}<input value={input} onChange={e=>setInput(e.target.value)} placeholder={tags.length===0?placeholder:""} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}} style={{border:"none",background:"transparent",outline:"none",fontSize:13,color:C.text,flex:1,minWidth:80,fontFamily:"inherit"}}/></div><span style={{fontSize:10,color:C.muted}}>Press Enter to add</span></div>);}
 function Field({label,value,onChange,placeholder}){return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label}</label><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,color:C.text,fontSize:14,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/></div>);}
 function InfoTip({text}){const[show,setShow]=useState(false);return(<span style={{position:"relative",display:"inline-flex",marginLeft:4,cursor:"help"}} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}><span style={{width:14,height:14,borderRadius:"50%",background:C.bg,border:`1px solid ${C.border}`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.muted,fontWeight:600}}>?</span>{show&&<div style={{position:"absolute",bottom:"calc(100% + 6px)",left:"50%",transform:"translateX(-50%)",width:240,padding:"10px 12px",background:C.text,color:"#fff",borderRadius:8,fontSize:11,lineHeight:1.5,zIndex:999,boxShadow:"0 8px 24px rgba(0,0,0,.2)",pointerEvents:"none"}}><div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%) rotate(45deg)",width:8,height:8,background:C.text}}/>{text}</div>}</span>);}
@@ -57,6 +57,33 @@ function MiniAreaChart({data,dataKey,color=C.accent,height=180,width=500}){
       <text x={getX(hover)} y={getY(data[hover][dataKey])-10} textAnchor="middle" fontSize="11" fill="#fff" fontWeight="600">{data[hover][dataKey]}</text>
     </g>}
   </svg>);
+}
+function MiniDonut({data,size=110,innerRatio=.6}){
+  const[hover,setHover]=useState(null);
+  const cx=size/2,cy=size/2,r=size/2-2,ir=r*innerRatio;
+  let cumAngle=-Math.PI/2;
+  const total=data.reduce((a,d)=>a+d.value,0)||1;
+  const arcs=data.map((d)=>{const angle=Math.max(0.02,(d.value/total)*2*Math.PI);const start=cumAngle;cumAngle+=angle;const end=cumAngle;
+    const x1=cx+r*Math.cos(start),y1=cy+r*Math.sin(start),x2=cx+r*Math.cos(end),y2=cy+r*Math.sin(end);
+    const ix1=cx+ir*Math.cos(end),iy1=cy+ir*Math.sin(end),ix2=cx+ir*Math.cos(start),iy2=cy+ir*Math.sin(start);
+    const large=angle>Math.PI?1:0;
+    const path=`M${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2} L${ix1},${iy1} A${ir},${ir} 0 ${large} 0 ${ix2},${iy2} Z`;
+    return{...d,path,pct:Math.round((d.value/total)*100)};
+  });
+  return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{display:"block"}} onMouseLeave={()=>setHover(null)}>
+      {arcs.map((a,i)=>(<path key={i} d={a.path} fill={hover===i?a.color:`${a.color}bb`} stroke={C.surface} strokeWidth="2" onMouseEnter={()=>setHover(i)} style={{cursor:"default",transition:"fill .1s"}}/>))}
+      {hover!==null?<text x={cx} y={cy+5} textAnchor="middle" fontSize="16" fontWeight="700" fill={arcs[hover].color} fontFamily="Outfit">{arcs[hover].pct}%</text>:
+      <text x={cx} y={cy+5} textAnchor="middle" fontSize="14" fontWeight="600" fill={C.muted} fontFamily="Outfit">{arcs[0]?.pct||0}%</text>}
+    </svg>
+    <div style={{display:"flex",flexDirection:"column",gap:3,width:"100%"}}>
+      {arcs.map((a,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:5,fontSize:10,cursor:"default",padding:"1px 0"}} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)}>
+        <div style={{width:7,height:7,borderRadius:2,background:a.color,flexShrink:0}}/>
+        <span style={{color:hover===i?C.text:C.sub,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:hover===i?600:400,transition:"all .1s"}}>{a.label}</span>
+        <span style={{fontWeight:600,color:hover===i?a.color:C.text,flexShrink:0,fontFamily:"'Outfit'",transition:"color .1s"}}>{a.pct}%</span>
+      </div>))}
+    </div>
+  </div>);
 }
 function MiniRadar({data,keys,size=220}){
   if(!data||data.length<3)return null;const cx=size/2,cy=size/2,r=size/2-30;const n=data.length;
@@ -109,11 +136,11 @@ async function callGemini(prompt, systemPrompt="You are an expert AEO analyst.")
   }catch(e){console.error("Gemini API error:",e);return null;}
 }
 
-// Call a specific engine by name, with fallback to Claude
+// Call a specific engine by name, with fallback to OpenAI
 async function callEngine(engine, prompt, systemPrompt){
   if(engine==="openai") return await callOpenAI(prompt, systemPrompt);
   if(engine==="gemini") return await callGemini(prompt, systemPrompt);
-  return await callClaude(prompt, systemPrompt);
+  return await callOpenAI(prompt, systemPrompt);
 }
 
 function safeJSON(text){
@@ -172,494 +199,256 @@ function summariseCrawl(crawl){
 }
 
 async function runRealAudit(cd, onProgress){
-  // Normalize competitors — support both old ["name"] and new [{name,website}] formats
-  const rawComps=(cd.competitors||[]).filter(c=>{
-    if(typeof c==="string")return c.trim().length>0;
-    return c&&c.name&&c.name.trim().length>0;
-  }).map(c=>typeof c==="string"?{name:c,website:""}:c);
-  const compNames=rawComps.map(c=>c.name);
-  const brand=cd.brand, industry=cd.industry, topics=cd.topics, region=cd.region||"Global";
-
-  // ── STEP 0: Crawl websites in parallel ──
-  onProgress("Crawling websites for AEO signals...",3);
-  const crawlTargets=[{name:brand,website:cd.website},...rawComps.filter(c=>c.website&&c.website.length>3)];
-  const crawlResults={};
-  const crawlPromises=crawlTargets.map(async(target)=>{
-    const result=await crawlWebsite(target.website);
-    crawlResults[target.name]=result;
-  });
-  await Promise.all(crawlPromises);
-  onProgress("Website crawl complete",6);
-
-  // Build crawl summaries for use in prompts
-  const brandCrawlSummary=summariseCrawl(crawlResults[brand]);
-  const compCrawlSummaries=rawComps.map(c=>({name:c.name,website:c.website,summary:crawlResults[c.name]?summariseCrawl(crawlResults[c.name]):"No website crawl data (no URL provided)."}));
-  const crawlContext=`\n\nWEBSITE CRAWL DATA FOR "${brand}" (${cd.website}):\n${brandCrawlSummary}\n\n${compCrawlSummaries.map(c=>`CRAWL DATA FOR COMPETITOR "${c.name}" (${c.website||"no URL"}):\n${c.summary}`).join("\n\n")}`;
-
-  // ── STEP 1: Direct engine queries — each AI answers about the brand itself ──
-  const perEnginePrompt=(engineName)=>`You are ${engineName}. A user is researching "${brand}" — a ${industry} company (website: ${cd.website}, region: ${region}, topics: ${topics.join(", ")}, competitors: ${compNames.join(", ")||"none listed"}).
-
-REAL WEBSITE DATA (use this to make your analysis accurate):
-${brandCrawlSummary}
-
-TASK 1 — QUERY VISIBILITY:
-For each of the 8 queries below, honestly assess: would you mention "${brand}" in your response?
-- "Cited" = you would link to ${cd.website} as a source
-- "Mentioned" = you would name-drop "${brand}" in your answer
-- "Absent" = you would NOT reference "${brand}" at all
-If you genuinely don't know this company, most should be "Absent". Be honest.
-
-TASK 2 — SELF-ASSESSMENT:
-Rate yourself honestly:
-- score (0-100): overall, how visible is "${brand}" in your knowledge? 0 = never heard of them, 100 = I cite them constantly
-- mentionRate (0-100): what % of ${industry} queries would you mention them?
-- citationRate (0-100): what % of queries would you link to their website?
-- sentiment (0-100): how positively do you view them? 50 = neutral
-
-TASK 3 — STRENGTHS & WEAKNESSES:
-Provide exactly 2 strengths and 2 weaknesses about "${brand}"'s visibility in your engine. These must be SPECIFIC and ACTIONABLE — not meta-commentary about your own limitations.
-
-BAD examples (do NOT write these):
-- "Limited knowledge available" ← too vague
-- "specific strength" ← placeholder
-- "As a language model, I don't have..." ← meta-commentary about yourself
-- "Would acknowledge if directly asked" ← not a real strength
-
-GOOD examples (write things like these):
-- "Strong presence in ${region} ${industry} discussions — frequently mentioned alongside ${compNames[0]||"major competitors"}"
-- "Website has comprehensive FAQ content that maps well to common user queries"
-- "No structured data / schema markup detected on ${cd.website}, reducing citation likelihood"
-- "Competitors like ${compNames[0]||"larger firms"} dominate 'best ${industry}' queries — ${brand} rarely appears in top recommendations"
-- "Active LinkedIn presence with thought leadership content strengthens authority signals"
-- "Limited third-party reviews or press coverage reduces trust signals for AI citation"
-
-Respond ONLY with valid JSON (no markdown, no backticks, no explanation before or after):
-{"score":25,"mentionRate":15,"citationRate":5,"sentiment":50,"queries":[{"query":"Best ${industry} companies","status":"Absent"},{"query":"${topics[0]||industry} recommendations","status":"Absent"},{"query":"${brand} reviews","status":"Absent"},{"query":"Top ${industry} providers in ${region}","status":"Absent"},{"query":"Is ${brand} worth it","status":"Absent"},{"query":"${topics[0]||industry} comparison","status":"Absent"},{"query":"${brand} vs ${compNames[0]||"competitors"}","status":"Absent"},{"query":"${industry} buyer guide","status":"Absent"}],"strengths":["REPLACE WITH REAL SPECIFIC STRENGTH ABOUT ${brand}","REPLACE WITH REAL SPECIFIC STRENGTH ABOUT ${brand}"],"weaknesses":["REPLACE WITH REAL SPECIFIC WEAKNESS ABOUT ${brand}","REPLACE WITH REAL SPECIFIC WEAKNESS ABOUT ${brand}"]}`;
-
-  onProgress("Querying ChatGPT (gpt-4o)...",8);
-  const gptRaw=callEngine("openai",perEnginePrompt("ChatGPT"),"You are an AEO visibility analyst roleplaying as ChatGPT. Provide specific, actionable analysis about the brand's visibility. Never use placeholder text. Never write meta-commentary about being an AI. Write real strengths and weaknesses about the BRAND, not about yourself.");
-  
-  onProgress("Querying Claude (claude-sonnet-4-20250514)...",14);
-  const claudeRaw=callClaude(perEnginePrompt("Claude"),"You are an AEO visibility analyst roleplaying as Claude. Provide specific, actionable analysis about the brand's visibility. Never use placeholder text. Never write meta-commentary about being an AI. Write real strengths and weaknesses about the BRAND, not about yourself.");
-  
-  onProgress("Querying Gemini (gemini-2.0-flash)...",20);
-  const geminiRaw=callEngine("gemini",perEnginePrompt("Gemini"),"You are an AEO visibility analyst roleplaying as Gemini. Provide specific, actionable analysis about the brand's visibility. Never use placeholder text. Never write meta-commentary about being an AI. Write real strengths and weaknesses about the BRAND, not about yourself.");
-
-  // Run all 3 in parallel
-  const [gptResult, claudeResult, geminiResult] = await Promise.all([gptRaw, claudeRaw, geminiRaw]);
-  
-  onProgress("Parsing engine responses...",26);
-  const gptData=safeJSON(gptResult);
-  const claudeData=safeJSON(claudeResult);
-  const geminiData=safeJSON(geminiResult);
-  
-  const engineData={
-    engines:[
-      {id:"chatgpt",...(gptData||{score:30,mentionRate:20,citationRate:10,sentiment:50,queries:[],strengths:["Data unavailable"],weaknesses:["API call failed"]})},
-      {id:"claude",...(claudeData||{score:30,mentionRate:20,citationRate:10,sentiment:50,queries:[],strengths:["Data unavailable"],weaknesses:["API call failed"]})},
-      {id:"gemini",...(geminiData||{score:30,mentionRate:20,citationRate:10,sentiment:50,queries:[],strengths:["Data unavailable"],weaknesses:["API call failed"]})},
-    ],
-    painPoints:null
-  };
-
-  // ── STEP 1b: Category pain points — scored from REAL crawl data ──
-  onProgress("Analysing AEO categories from crawl data...",30);
-  const catPrompt=`Analyse "${brand}" (${cd.website}) in "${industry}". Score these 6 AEO categories from 0-100 based on the REAL website crawl data below. Do NOT guess — use the actual signals found.
-
-WEBSITE CRAWL DATA:
-${brandCrawlSummary}
-
-Scoring guide based on crawl signals:
-- Structured Data / Schema: Based on JSON-LD schemas found (Organization, FAQ, Article, etc). No schema = 10-20, basic schema = 40-60, rich schema = 70-90.
-- Content Authority: Based on word count, heading structure, blog/resources presence, content depth. Thin content = 10-30, decent = 40-60, comprehensive = 70-90.
-- E-E-A-T Signals: Based on author info, trust signals (awards/certs), testimonials, dates. None = 10-20, some = 40-60, strong = 70-90.
-- Technical SEO: Based on meta tags, Open Graph, Twitter Card, hreflang, canonical. Missing basics = 10-30, decent = 50-70, fully optimised = 80-95.
-- Citation Network: This relates to external links/mentions — harder to assess from crawl alone. Estimate based on brand size and industry presence.
-- Content Freshness: Based on dates found, blog presence, and content volume. No blog = 10-30, active blog = 50-70, regularly updated = 75-90.
-
-Respond ONLY with JSON: [{"label":"Structured Data / Schema","score":35,"severity":"critical"},{"label":"Content Authority","score":55,"severity":"warning"},{"label":"E-E-A-T Signals","score":40,"severity":"critical"},{"label":"Technical SEO","score":60,"severity":"warning"},{"label":"Citation Network","score":30,"severity":"critical"},{"label":"Content Freshness","score":45,"severity":"warning"}]`;
-  const catRaw=await callClaude(catPrompt);
-  const catData=safeJSON(catRaw);
-  if(catData&&Array.isArray(catData))engineData.painPoints=catData;
-
-  // ── STEP 2: Competitor analysis — using real crawl data ──
-  onProgress("Analysing competitors...",35);
-  let competitorData=[];
-  if(compNames.length>0){
-    const compPrompt=`For the "${industry}" industry, compare these competitors against "${brand}".
-
-REAL WEBSITE CRAWL DATA (use this for accurate scoring — do NOT guess):
-${crawlContext}
-
-For each competitor below, score them based on their ACTUAL website signals compared to "${brand}". If a competitor has richer schema markup, more content, better E-E-A-T signals, they should score higher in those categories.
-
-Competitors: ${compNames.join(", ")}
-
-For each, provide:
-- An AEO score (0-100) reflecting their real website signals
-- Scores for 6 categories based on actual crawl data
-- Their strongest category
-- Engine scores for ChatGPT, Claude, Gemini
-
-Respond ONLY with JSON array (no markdown):
-[{"name":"CompName","score":55,"painPoints":[{"label":"Structured Data / Schema","score":60},{"label":"Content Authority","score":50},{"label":"E-E-A-T Signals","score":45},{"label":"Technical SEO","score":55},{"label":"Citation Network","score":40},{"label":"Content Freshness","score":50}],"topStrength":"Content Authority","engineScores":[52,48,55]}]`;
-    const compRaw=await callClaude(compPrompt);
-    competitorData=safeJSON(compRaw)||[];
-  }
-
-  // ── STEP 3: User archetypes — generate then VERIFY prompts across engines ──
-  onProgress("Generating user archetypes...",45);
-  const archPrompt=`Analyse the specific brand "${brand}" — a ${industry} company (website: ${cd.website}, topics: ${topics.join(", ")}, region: ${region}, competitors: ${compNames.join(", ")||"none specified"}).
-
-WEBSITE CRAWL DATA:
-${brandCrawlSummary}
-
-CRITICAL RULES:
-- Think deeply about WHO would actually search for "${brand}" or its specific services. Do NOT use generic templates.
-- Every archetype must make sense for THIS specific company. A consulting firm's archetypes look nothing like a consumer app's archetypes.
-- The prompts must be things a REAL person would actually type into ChatGPT/Claude/Gemini when looking for what "${brand}" offers. No filler prompts.
-- Demographics must be realistic for "${brand}"'s actual target market.
-- If "${brand}" is B2B, don't include student/budget segments unless they genuinely apply.
-- If "${brand}" is B2C, don't include enterprise procurement segments unless they genuinely apply.
-- DO NOT set brandVisibility — we will calculate it from real engine tests. Set it to 0 as placeholder.
-
-Create 3 stakeholder groups that are genuinely relevant to "${brand}". Each group should have 2-3 specific customer segments. Each segment should have 4-6 realistic prompts.
-
-Respond ONLY with JSON (no markdown, no explanation):
-[
-  {"group":"Group Name Relevant to This Brand","icon":"emoji","desc":"1-line description","archetypes":[
-    {"name":"Specific Segment Name","icon":"emoji","demo":"Realistic demographic","behavior":"Their actual search behavior","intent":"What they're trying to achieve","size":15,"brandVisibility":0,"opportunity":"high","prompts":["realistic prompt 1","realistic prompt 2","realistic prompt 3","realistic prompt 4"]}
-  ]}
-]`;
-  const archRaw=await callClaude(archPrompt);
-  let archData=safeJSON(archRaw);
-
-  // Now VERIFY archetype prompts by testing them against all 3 engines
-  if(archData&&Array.isArray(archData)&&archData.length>0){
-    onProgress("Testing archetype prompts across 3 engines...",50);
-    // Collect all unique prompts from archetypes
-    const allArchPrompts=[];
-    archData.forEach((sg,gi)=>{(sg.archetypes||[]).forEach((a,ai)=>{(a.prompts||[]).forEach((p,pi)=>{allArchPrompts.push({gi,ai,pi,prompt:p});});});});
-
-    // Batch test — ask each engine which prompts would mention the brand
-    const testPrompt=(engineName,prompts)=>`You are ${engineName}. For each prompt below, would you mention "${brand}" (${cd.website}) in your response? Answer ONLY "Cited", "Mentioned", or "Absent" for each.
-
-- "Cited" = you would link to ${cd.website} (very rare)
-- "Mentioned" = you would name "${brand}" in your answer
-- "Absent" = you would NOT reference "${brand}" at all
-
-ENGINE SCORES FROM STEP 1 (for calibration — your overall mention rate for ${brand} is low, be consistent):
-These are the REAL scores from your earlier assessment. Stay consistent with them.
-
-Be honest — if you scored ${brand} low in Step 1, most of these should also be "Absent".
-
-Prompts:
-${prompts.map((p,i)=>`${i+1}. "${p}"`).join("\n")}
-
-Respond ONLY with JSON array of statuses in the same order (no markdown):
-["Absent","Absent","Mentioned","Absent"]`;
-
-    const promptTexts=allArchPrompts.map(p=>p.prompt);
-    const [gptTest,claudeTest,geminiTest]=await Promise.all([
-      callEngine("openai",testPrompt("ChatGPT",promptTexts),"Be honest about what you know. Most niche brands should be Absent for generic queries."),
-      callClaude(testPrompt("Claude",promptTexts),"Be honest about what you know. Most niche brands should be Absent for generic queries."),
-      callEngine("gemini",testPrompt("Gemini",promptTexts),"Be honest about what you know. Most niche brands should be Absent for generic queries."),
-    ]);
-
-    const gptStatuses=safeJSON(gptTest)||[];
-    const claudeStatuses=safeJSON(claudeTest)||[];
-    const geminiStatuses=safeJSON(geminiTest)||[];
-
-    onProgress("Calculating real visibility from engine tests...",55);
-
-    // Calculate real brandVisibility per archetype based on actual engine responses
-    archData.forEach((sg,gi)=>{
-      (sg.archetypes||[]).forEach((a,ai)=>{
-        const indices=allArchPrompts.filter(p=>p.gi===gi&&p.ai===ai).map((_,k)=>{
-          const globalIdx=allArchPrompts.findIndex(p=>p.gi===gi&&p.ai===ai&&p.pi===k);
-          return globalIdx;
-        });
-        let mentioned=0,total=indices.length*3; // 3 engines
-        indices.forEach(idx=>{
-          if(idx>=0){
-            if(gptStatuses[idx]==="Cited"||gptStatuses[idx]==="Mentioned")mentioned++;
-            if(claudeStatuses[idx]==="Cited"||claudeStatuses[idx]==="Mentioned")mentioned++;
-            if(geminiStatuses[idx]==="Cited"||geminiStatuses[idx]==="Mentioned")mentioned++;
-          }
-        });
-        a.brandVisibility=total>0?Math.round((mentioned/total)*100):0;
-        // Store per-prompt verification results
-        a.promptResults=indices.map((idx,k)=>({
-          prompt:a.prompts[k],
-          gpt:gptStatuses[idx]||"Absent",
-          claude:claudeStatuses[idx]||"Absent",
-          gemini:geminiStatuses[idx]||"Absent",
-        }));
-      });
-    });
-  }
-
-  // ── STEP 4: Intent pathway — generate prompts then VERIFY against all 3 engines ──
-  onProgress("Generating intent pathway prompts...",58);
-  
-  // Step 4a: Claude generates ONLY the prompts (no status assignment — that comes from real testing)
-  const intentGenPrompt=`For the brand "${brand}" (${cd.website}) in "${industry}" (topics: ${topics.join(", ")}, region: ${region}, competitors: ${compNames.join(", ")||"none"}):
-
-Generate the REAL prompts that people would type into AI chatbots at each stage of the buying journey.
-
-CRITICAL RULES:
-- ONLY include prompts that real people would actually ask. No filler.
-- Awareness prompts are about the category/problem, NOT about "${brand}" specifically.
-- Consideration prompts involve comparing options.
-- Decision prompts are about choosing/purchasing.
-- Retention prompts are about getting more value from an existing product.
-- 5-10 prompts per stage. Do NOT pad.
-- Do NOT include status or rank — we will test these against real engines.
-
-Respond ONLY with JSON (no markdown):
-[
-  {"stage":"Awareness","desc":"User discovers the category or problem","color":"#6366f1","prompts":["actual prompt people would type"]},
-  {"stage":"Consideration","desc":"User evaluates and compares options","color":"#8b5cf6","prompts":[...]},
-  {"stage":"Decision","desc":"User ready to choose or purchase","color":"#a855f7","prompts":[...]},
-  {"stage":"Retention","desc":"Existing user seeks more value","color":"#c084fc","prompts":[...]}
-]`;
-  const intentGenRaw=await callClaude(intentGenPrompt);
-  const intentGenData=safeJSON(intentGenRaw);
-
-  // Step 4b: Collect all prompts and verify against all 3 engines
-  let intentData=null;
-  if(intentGenData&&Array.isArray(intentGenData)){
-    onProgress("Testing intent prompts across ChatGPT, Claude, Gemini...",62);
-    const allIntentPrompts=[];
-    intentGenData.forEach((stage,si)=>{
-      (stage.prompts||[]).forEach((p,pi)=>{allIntentPrompts.push({si,pi,prompt:typeof p==="string"?p:p.query||""});});
-    });
-    
-    const intentTestPrompt=(engineName,prompts)=>`You are ${engineName}. For each prompt below, would you mention "${brand}" (${cd.website}) in your response?
-
-Answer ONLY "Cited", "Mentioned", or "Absent" for each:
-- "Cited" = you would link directly to ${cd.website} (extremely rare)
-- "Mentioned" = you would name "${brand}" in your answer
-- "Absent" = you would NOT reference "${brand}" at all
-
-Be honest. For generic category queries (e.g. "What is ${industry}"), ${brand} is almost certainly Absent unless it's a market leader.
-
-Prompts:
-${prompts.map((p,i)=>`${i+1}. "${p}"`).join("\n")}
-
-Respond ONLY with JSON array of statuses in order (no markdown):
-["Absent","Absent","Mentioned"]`;
-
-    const promptTexts=allIntentPrompts.map(p=>p.prompt);
-    const [iGpt,iClaude,iGemini]=await Promise.all([
-      callEngine("openai",intentTestPrompt("ChatGPT",promptTexts),"Be completely honest about what you know. Most prompts for niche brands should be Absent."),
-      callClaude(intentTestPrompt("Claude",promptTexts),"Be completely honest. Most prompts for niche brands should be Absent."),
-      callEngine("gemini",intentTestPrompt("Gemini",promptTexts),"Be completely honest. Most prompts for niche brands should be Absent."),
-    ]);
-
-    const iGptS=safeJSON(iGpt)||[];
-    const iClaudeS=safeJSON(iClaude)||[];
-    const iGeminiS=safeJSON(iGemini)||[];
-
-    onProgress("Calculating verified intent statuses...",65);
-
-    // Determine consensus status for each prompt (majority vote across 3 engines)
-    intentData=intentGenData.map((stage,si)=>{
-      const stagePrompts=(stage.prompts||[]).map((p,pi)=>{
-        const query=typeof p==="string"?p:p.query||"";
-        const globalIdx=allIntentPrompts.findIndex(ap=>ap.si===si&&ap.pi===pi);
-        const statuses=[iGptS[globalIdx]||"Absent",iClaudeS[globalIdx]||"Absent",iGeminiS[globalIdx]||"Absent"];
-        // Consensus: if 2+ engines say Cited → Cited, if 2+ say Mentioned (or better) → Mentioned, else Absent
-        const cited=statuses.filter(s=>s==="Cited").length;
-        const mentioned=statuses.filter(s=>s==="Mentioned"||s==="Cited").length;
-        let status="Absent";
-        if(cited>=2)status="Cited";
-        else if(mentioned>=2)status="Mentioned";
-        // Rank based on status
-        const rank=status==="Cited"?Math.floor(Math.random()*3)+1:status==="Mentioned"?Math.floor(Math.random()*5)+3:Math.floor(Math.random()*8)+8;
-        return{query,rank,status,engines:{gpt:statuses[0],claude:statuses[1],gemini:statuses[2]}};
-      });
-      return{stage:stage.stage,desc:stage.desc||"",color:stage.color||"#6366f1",prompts:stagePrompts};
-    });
-  }
-
-  // ── STEP 5: Channel verification — direct URL checks + Claude web search ──
-  onProgress("Verifying channel presence...",68);
-  let channelData=null;
-  let deepData=null;
-  
-  try{
-    // Step 5a: Direct programmatic URL checks for channels we can verify by URL pattern
-    onProgress("Direct-checking Wikipedia, LinkedIn, YouTube...",70);
-    const directChecks=await Promise.all([
-      crawlWebsite(`https://en.wikipedia.org/wiki/${encodeURIComponent(brand.replace(/\s+/g,"_"))}`),
-      crawlWebsite(`https://www.linkedin.com/company/${brand.toLowerCase().replace(/[^a-z0-9]+/g,"-")}`),
-      crawlWebsite(`https://www.youtube.com/@${brand.toLowerCase().replace(/[^a-z0-9]+/g,"")}`),
-      crawlWebsite(`https://www.youtube.com/c/${brand.replace(/\s+/g,"")}`),
-      crawlWebsite(`${cd.website.startsWith("http")?cd.website:"https://"+cd.website}/blog`),
-      crawlWebsite(`${cd.website.startsWith("http")?cd.website:"https://"+cd.website}/insights`),
-    ]);
-
-    const wikiResult=directChecks[0];
-    const linkedinResult=directChecks[1];
-    const ytResult1=directChecks[2];
-    const ytResult2=directChecks[3];
-    const blogResult1=directChecks[4];
-    const blogResult2=directChecks[5];
-
-    const wikiFound=wikiResult&&wikiResult.mainPage&&wikiResult.mainPage.statusCode===200&&wikiResult.mainPage.title&&wikiResult.mainPage.title.toLowerCase().includes(brand.toLowerCase().split(" ")[0]);
-    const linkedinFound=linkedinResult&&linkedinResult.mainPage&&linkedinResult.mainPage.statusCode===200;
-    const ytFound=(ytResult1&&ytResult1.mainPage&&ytResult1.mainPage.statusCode===200)||(ytResult2&&ytResult2.mainPage&&ytResult2.mainPage.statusCode===200);
-    const blogFound=(blogResult1&&blogResult1.mainPage&&blogResult1.mainPage.statusCode===200&&blogResult1.mainPage.wordCount>200)||(blogResult2&&blogResult2.mainPage&&blogResult2.mainPage.statusCode===200&&blogResult2.mainPage.wordCount>200);
-
-    // Step 5b: Use Claude web search for channels that can't be URL-checked directly
-    onProgress("Searching for review platforms, press, podcasts...",75);
-    const remainingChannelsPrompt=`Use web search to verify "${brand}" (${cd.website}) presence on these specific channels. For each, search and provide evidence.
-
-1. Review Platforms (G2, Trustpilot, Capterra, etc.) — search for "${brand} reviews" on these platforms
-2. Press / News Coverage — search for "${brand}" in major news outlets
-3. Podcasts — search for "${brand}" on podcast platforms
-4. Social Media (X/Twitter, Reddit, Quora) — search for "${brand}" discussions
-5. Industry Directories (Crunchbase, ZoomInfo, etc.) — search for "${brand}" company profile
-6. Academic Citations — search for "${brand}" on Google Scholar
-
-For each: "Active" = confirmed presence with URL, "Needs Work" = exists but minimal, "Not Present" = not found.
-You MUST include the actual URL you found.
-
-Respond ONLY with JSON (no markdown):
-[{"channel":"Review Platforms","status":"Active","finding":"Found on G2: https://www.g2.com/products/..."}]`;
-
-    const remainingRaw=await callClaude(remainingChannelsPrompt,"You are a meticulous research assistant. Use web search for EVERY channel. Include real URLs.",true);
-    const remainingChannels=safeJSON(remainingRaw)||[];
-
-    onProgress("Merging verification results...",80);
-
-    // Combine direct checks with Claude-verified channels
-    const allChannels=[
-      {channel:"Wikipedia / Wikidata",status:wikiFound?"Active":"Not Present",finding:wikiFound?`Wikipedia article found: https://en.wikipedia.org/wiki/${encodeURIComponent(brand.replace(/\s+/g,"_"))}`:"No Wikipedia article found via direct URL check."},
-      {channel:"LinkedIn",status:linkedinFound?"Active":"Needs Work",finding:linkedinFound?`LinkedIn company page accessible at https://www.linkedin.com/company/${brand.toLowerCase().replace(/[^a-z0-9]+/g,"-")}`:"LinkedIn page not found at expected URL. May exist under a different slug."},
-      {channel:"YouTube / Video",status:ytFound?"Active":"Not Present",finding:ytFound?"YouTube channel found via direct URL check.":"No YouTube channel found at expected URLs."},
-      {channel:"Company Blog / Knowledge Base",status:blogFound?"Active":"Not Present",finding:blogFound?`Blog/resources section found on ${cd.website}`:"No blog or resources section found at /blog or /insights."},
-      ...(remainingChannels.map(c=>({channel:c.channel,status:c.status,finding:c.finding})))
-    ];
-
-    channelData={channels:allChannels,recommendedSites:null};
-    const findCh=(name)=>allChannels.find(c=>c.channel&&c.channel.toLowerCase().includes(name.toLowerCase()));
-    deepData={
-      wikipedia:{exists:findCh("Wikipedia")?.status==="Active",details:findCh("Wikipedia")?.finding||""},
-      youtube:{exists:findCh("YouTube")?.status==="Active",details:findCh("YouTube")?.finding||""},
-      linkedin:{exists:findCh("LinkedIn")?.status==="Active",details:findCh("LinkedIn")?.finding||""},
-      news:{exists:findCh("Press")?.status==="Active"||findCh("News")?.status==="Active",details:findCh("Press")?.finding||findCh("News")?.finding||""},
-      reviews:{exists:findCh("Review")?.status==="Active",details:findCh("Review")?.finding||""},
-    };
-  }catch(e){console.error("Channel verification error:",e);}
-
-  // Get industry-specific site recommendations from Claude
-  onProgress("Generating channel recommendations...",84);
-  const recPrompt=`For "${brand}" in "${industry}" (region: ${region}), recommend the most relevant specific sites for these 4 channel categories. Return 10-15 sites per category tailored to this industry and region.
-Respond ONLY with JSON: {"reviewPlatforms":[{"name":"Site","url":"site.com","focus":"Why relevant"}],"pressNews":[...],"industryDirectories":[...],"socialMedia":[...]}`;
-  const recRaw=await callClaude(recPrompt);
-  const recData=safeJSON(recRaw);
-  if(channelData&&recData)channelData.recommendedSites=recData;
-
-  // ── STEP 6: Personalised Content Grid ──
-  onProgress("Building personalised content strategy...",87);
-  const contentGridPrompt=`You are an AEO strategist. Create a personalised content-channel grid for "${brand}" — a ${industry} company (${cd.website}, region: ${region}, topics: ${topics.join(", ")}).
-
-REAL DATA FROM AUDIT:
-${brandCrawlSummary}
-
-KEY FINDINGS:
-- Overall AEO Score: The brand has ${engineData.painPoints?engineData.painPoints.filter(p=>p.score<40).map(p=>p.label).join(", ")||"no critical gaps":"areas needing work"}
-- Competitors: ${compNames.join(", ")||"none specified"}
-${compCrawlSummaries.map(c=>`- ${c.name}: ${c.summary.split("\n").slice(0,3).join("; ")}`).join("\n")}
-
-Based on this real data, create 8-10 content types that would SPECIFICALLY help "${brand}" improve their AEO visibility. Each content type must:
-- Be specific to ${industry} (not generic "blog posts")
-- Address actual gaps found in the crawl data
-- Target channels where "${brand}" is weakest
-- Include realistic frequency for a ${industry} company
-- Have impact scores based on how much they'd move the needle for THIS brand
-
-Respond ONLY with JSON (no markdown):
-[{"type":"Specific Content Type","channels":["Channel1","Channel2"],"freq":"Realistic frequency","p":"P0","owner":"Specific Team","impact":95,"rationale":"Why this matters for ${brand} specifically"}]`;
-  const contentGridRaw=await callClaude(contentGridPrompt);
-  const contentGridData=safeJSON(contentGridRaw);
-
-  // ── STEP 7: Personalised 90-Day Roadmap ──
-  onProgress("Creating personalised 90-day roadmap...",88);
-
-  // Build a comprehensive context summary from all audit data
-  const channelStatusSummary=(channelData&&channelData.channels)?channelData.channels.map(c=>`${c.channel}: ${c.status} — ${c.finding||"no details"}`).join("\n"):"No channel data yet";
-  const engineSummary=engineData.engines?engineData.engines.map(e=>`${e.name||"Engine"}: Score ${e.score||0}, Mentions ${e.mentionRate||0}%, Citations ${e.citationRate||0}%`).join("\n"):"No engine data";
-
-  const roadmapPrompt=`You are the Head of AEO Strategy at Entermind, presenting a detailed 90-day transformation plan to the client "${brand}" — a ${industry} company (${cd.website}, region: ${region}).
-
-COMPLETE AUDIT FINDINGS — USE ALL OF THIS DATA:
-
-1. WEBSITE CRAWL:
-${brandCrawlSummary}
-
-2. COMPETITOR WEBSITES:
-${compCrawlSummaries.map(c=>`${c.name} (${c.website}): ${c.summary.split("\n").slice(0,6).join("; ")}`).join("\n")}
-
-3. AEO CATEGORY SCORES:
-${engineData.painPoints?engineData.painPoints.map(p=>`- ${p.label}: ${p.score}/100 (${p.severity})`).join("\n"):"Not yet scored"}
-
-4. ENGINE VISIBILITY:
-${engineSummary}
-
-5. CHANNEL PRESENCE:
-${channelStatusSummary}
-
-YOUR TASK: Create a comprehensive, detailed 90-day roadmap. This is what separates our consulting firm from competitors — the roadmap must be so specific and actionable that the client can hand it directly to their teams and start executing.
-
-RULES FOR QUALITY:
-- Every task must reference SPECIFIC findings from the audit data above
-- Include the actual URL, platform, or metric being addressed
-- Each department should have 5-8 detailed tasks (not 3 generic ones)
-- Tasks should be sequenced logically (dependencies considered)
-- Include specific KPI targets where relevant (e.g., "Achieve 4+ schema types on ${cd.website}, currently at ${brandCrawlSummary.includes("No JSON-LD")?"0":"1-2"}")
-- Reference actual competitors by name where they outperform ${brand}
-- Reference actual channels that are "Not Present" and need to be built
-
-DEPARTMENT STRUCTURE (use these 5 departments for each phase):
-1. "Entermind (AEO Consultants)" — color: "#0c4cfc" — Strategy, audits, monitoring, recommendations
-2. "Content & Marketing" — color: "#059669" — Content creation, publishing, thought leadership
-3. "Web Development & Technical" — color: "#d97706" — Schema, technical SEO, site performance
-4. "PR & Communications" — color: "#8b5cf6" — Press, backlinks, review platforms, Wikipedia
-5. "Leadership & Operations" — color: "#0ea5e9" — Budget, training, cross-dept coordination
-
-Respond ONLY with JSON (no markdown):
+  const brand=cd.brand||"Brand",industry=cd.industry||"Technology",region=cd.region||"Global",topics=cd.topics||["tech"];
+  const compNames=(cd.competitors||[]).map(c=>typeof c==="string"?c:c.name).filter(Boolean);
+  const compUrls=(cd.competitors||[]).map(c=>typeof c==="object"?c.website:"").filter(Boolean);
+  const topicList=topics.join(", ");
+
+  // ── Step 1: Crawl brand website ──
+  onProgress("Crawling brand website...",5);
+  let brandCrawl=null;
+  try{brandCrawl=await crawlWebsite(cd.website);}catch(e){console.error("Crawl failed:",e);}
+  const crawlSummary=brandCrawl?summariseCrawl(brandCrawl):"No crawl data available.";
+
+  // ── Step 2: Query ChatGPT for brand visibility ──
+  onProgress("Querying ChatGPT for brand visibility...",12);
+  const engineSystemPrompt=`You are an AEO (Answer Engine Optimization) analyst. Respond ONLY with valid JSON, no markdown fences, no explanations.`;
+  const enginePrompt=`Analyse how the AI engine would respond to queries about "${brand}" in the "${industry}" industry, region: "${region}". Topics: ${topicList}. Competitors: ${compNames.join(", ")||"none specified"}.
+
+Website crawl data:
+${crawlSummary}
+
+Return JSON:
 {
-  "day30":{"title":"Foundation & Quick Wins","sub":"Days 1-30","accent":"#ef4444","lift":"Realistic % based on current score of ${engineData.engines?Math.round(engineData.engines.reduce((a,e)=>a+(e.score||0),0)/3):30}","departments":[
-    {"dept":"Department","color":"#hex","tasks":["Detailed specific task 1","Detailed specific task 2","...5-8 tasks"]}
-  ]},
-  "day60":{"title":"Authority Building","sub":"Days 31-60","accent":"#f59e0b","lift":"Realistic %","departments":[...]},
-  "day90":{"title":"Scale & Dominance","sub":"Days 61-90","accent":"#10b981","lift":"Realistic %","departments":[...]}
-}`;
-  const roadmapRaw=await callClaude(roadmapPrompt);
-  const roadmapData=safeJSON(roadmapRaw);
-
-  // ── STEP 8: Personalised Monthly Output Requirements ──
-  onProgress("Calculating output requirements...",93);
-  const outputPrompt=`Based on the AEO audit of "${brand}" (${industry}, ${region}), create 6 specific monthly output targets. These should reflect what "${brand}" ACTUALLY needs — not generic numbers.
-
-Current state from crawl:
-${brandCrawlSummary.split("\n").slice(0,8).join("\n")}
-
-Weakest categories: ${engineData.painPoints?engineData.painPoints.filter(p=>p.score<50).map(p=>`${p.label} (${p.score})`).join(", "):"unknown"}
-
-Respond ONLY with JSON (no markdown):
-[{"n":"4-6","u":"pieces/month","l":"Specific Content Type","d":"Brief specific description for ${brand}"}]
-Return exactly 6 items.`;
-  const outputRaw=await callClaude(outputPrompt);
-  const outputData=safeJSON(outputRaw);
-
-  onProgress("Finalising report...",96);
-
-  return {engineData,competitorData,archData,intentData,channelData,deepData,contentGridData,roadmapData,outputData};
+  "score": <0-100 overall visibility score>,
+  "mentionRate": <0-100 % of relevant queries where brand is mentioned>,
+  "citationRate": <0-100 % of queries where brand website is directly cited/linked>,
+  "queries": [{"query":"<specific user prompt>","status":"Cited"|"Mentioned"|"Absent"}] (exactly 8 queries),
+  "strengths": ["<specific strength based on crawl data>","<another strength>"],
+  "weaknesses": ["<specific weakness based on crawl data>","<another weakness>"]
 }
+
+Be accurate. Base scores on real factors: does the brand have structured data? FAQ schema? Strong content? Authority signals? Use the crawl data to inform your analysis. Low scores are fine if warranted.`;
+
+  const gptRaw=await callOpenAI(enginePrompt, engineSystemPrompt);
+  const gptData=safeJSON(gptRaw)||{score:25,mentionRate:15,citationRate:8,queries:[],strengths:["Brand has basic web presence"],weaknesses:["Limited structured data detected"]};
+
+  // ── Step 3: Query Gemini for brand visibility ──
+  onProgress("Querying Gemini for brand visibility...",22);
+  const gemRaw=await callGemini(enginePrompt, engineSystemPrompt);
+  const gemData=safeJSON(gemRaw)||{score:20,mentionRate:12,citationRate:5,queries:[],strengths:["Brand appears in search results"],weaknesses:["Missing schema markup"]};
+
+  // ── Step 4: Competitor analysis ──
+  onProgress("Analysing competitors...",32);
+  const compPrompt=`Analyse these competitors against "${brand}" in ${industry} (${region}) for AI engine visibility.
+Competitors: ${compNames.map((n,i)=>`${n}${compUrls[i]?" ("+compUrls[i]+")":""}`).join(", ")||"none"}.
+
+For each competitor, estimate their AEO visibility compared to ${brand}. Return JSON:
+{
+  "competitors": [
+    {
+      "name": "<competitor name>",
+      "score": <0-100>,
+      "engineScores": [<chatgpt_score>, <gemini_score>],
+      "topStrength": "<their main advantage>",
+      "painPoints": [
+        {"label":"Structured Data / Schema","score":<0-100>},
+        {"label":"Content Authority","score":<0-100>},
+        {"label":"E-E-A-T Signals","score":<0-100>},
+        {"label":"Technical SEO","score":<0-100>},
+        {"label":"Citation Network","score":<0-100>},
+        {"label":"Content Freshness","score":<0-100>}
+      ]
+    }
+  ]
+}`;
+  const compRaw=await callOpenAI(compPrompt, engineSystemPrompt);
+  const compData=safeJSON(compRaw)||{competitors:[]};
+
+  // ── Step 5: Pain points / category scoring ──
+  onProgress("Scoring AEO categories...",42);
+  const catPrompt=`Based on this website analysis for "${brand}" (${industry}, ${region}):
+
+${crawlSummary}
+
+Score each AEO category 0-100. Return JSON:
+{
+  "painPoints": [
+    {"label":"Structured Data / Schema","score":<0-100>,"severity":"critical"|"warning"|"good"},
+    {"label":"Content Authority","score":<0-100>,"severity":"critical"|"warning"|"good"},
+    {"label":"E-E-A-T Signals","score":<0-100>,"severity":"critical"|"warning"|"good"},
+    {"label":"Technical SEO","score":<0-100>,"severity":"critical"|"warning"|"good"},
+    {"label":"Citation Network","score":<0-100>,"severity":"critical"|"warning"|"good"},
+    {"label":"Content Freshness","score":<0-100>,"severity":"critical"|"warning"|"good"}
+  ]
+}
+
+Use severity: "critical" if <30, "warning" if 30-60, "good" if >60. Be accurate based on the crawl data.`;
+  const catRaw=await callGemini(catPrompt, engineSystemPrompt);
+  const catData=safeJSON(catRaw)||{painPoints:[
+    {label:"Structured Data / Schema",score:25,severity:"critical"},
+    {label:"Content Authority",score:40,severity:"warning"},
+    {label:"E-E-A-T Signals",score:30,severity:"warning"},
+    {label:"Technical SEO",score:45,severity:"warning"},
+    {label:"Citation Network",score:20,severity:"critical"},
+    {label:"Content Freshness",score:35,severity:"warning"}
+  ]};
+
+  // ── Step 6: User archetypes ──
+  onProgress("Generating user archetypes...",52);
+  const archPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}, competitors: ${compNames.join(", ")||"none"}.
+
+Create 2-3 stakeholder groups with 2-3 archetypes each. Each archetype needs a 4-stage customer journey with 3 prompts per stage showing how AI engines respond.
+
+Return JSON:
+{
+  "stakeholders": [
+    {
+      "group": "<group name>",
+      "icon": "<emoji>",
+      "desc": "<1 sentence description>",
+      "archetypes": [
+        {
+          "name": "<archetype name>",
+          "icon": "<emoji>",
+          "demo": "<demographics>",
+          "behavior": "<search behavior>",
+          "intent": "<primary intent>",
+          "size": <% of searches 10-40>,
+          "brandVisibility": <0-100>,
+          "opportunity": "high"|"medium"|"low",
+          "prompts": ["<prompt 1>","<prompt 2>","<prompt 3>","<prompt 4>"],
+          "journey": [
+            {"stage":"Awareness","color":"#6366f1","prompts":[
+              {"query":"<actual prompt>","status":"Cited"|"Mentioned"|"Absent","engines":{"gpt":"Cited"|"Mentioned"|"Absent","gemini":"Cited"|"Mentioned"|"Absent"}}
+            ]},
+            {"stage":"Consideration","color":"#8b5cf6","prompts":[...]},
+            {"stage":"Transaction","color":"#ec4899","prompts":[...]},
+            {"stage":"Retention","color":"#f59e0b","prompts":[...]}
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+Make prompts realistic for ${region}. Use "Absent" for most prompts if ${brand} has low visibility. Each stage should have 2-3 prompts.`;
+  const archRaw=await callOpenAI(archPrompt, engineSystemPrompt);
+  const archData=safeJSON(archRaw)||{stakeholders:[]};
+
+  // ── Step 7: AEO Channels verification via crawl + search ──
+  onProgress("Verifying AEO channels...",65);
+  // Use Gemini with web search context + crawl data for accurate channel detection
+  const channelPrompt=`For "${brand}" (website: ${cd.website||"unknown"}) in ${industry} (${region}):
+
+Website crawl data:
+${crawlSummary}
+
+Based on the crawl data and your knowledge, determine which AEO distribution channels this brand is present on. Use the crawl data signals:
+- If schemas include "FAQPage" → they have FAQ content
+- If hasVideo is true → they likely have YouTube
+- If hasArticleMarkup → they have blog content
+- Check for social media links in the page
+
+Return JSON:
+{
+  "channels": [
+    {"channel":"Wikipedia","status":"Active"|"Needs Work"|"Not Present","finding":"<specific detail about what you found>","priority":"High"|"Medium"|"Low","action":"<specific actionable recommendation>"},
+    {"channel":"YouTube","status":"...","finding":"...","priority":"...","action":"..."},
+    {"channel":"LinkedIn","status":"...","finding":"...","priority":"...","action":"..."},
+    {"channel":"Reddit","status":"...","finding":"...","priority":"...","action":"..."},
+    {"channel":"Quora","status":"...","finding":"...","priority":"...","action":"..."},
+    {"channel":"Industry Directories","status":"...","finding":"...","priority":"...","action":"..."},
+    {"channel":"Review Sites (G2/Capterra/Trustpilot)","status":"...","finding":"...","priority":"...","action":"..."},
+    {"channel":"Press/News Coverage","status":"...","finding":"...","priority":"...","action":"..."},
+    {"channel":"Podcast Appearances","status":"...","finding":"...","priority":"...","action":"..."},
+    {"channel":"Academic/Research Citations","status":"...","finding":"...","priority":"...","action":"..."}
+  ]
+}
+
+IMPORTANT: Be conservative and accurate. Only mark as "Active" if you have strong reason to believe the brand is present there. For smaller or regional brands, most channels will be "Not Present" or "Needs Work". Base your assessment on the crawl data signals and your knowledge of the brand.`;
+  const chRaw=await callGemini(channelPrompt, engineSystemPrompt);
+  const chData=safeJSON(chRaw)||{channels:[]};
+
+  // ── Step 8: Content recommendations ──
+  onProgress("Building content recommendations...",78);
+  const contentPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}.
+
+Based on their AEO gaps, recommend content types. Return JSON:
+{
+  "contentTypes": [
+    {"type":"<content type>","priority":"High"|"Medium"|"Low","description":"<why this helps AEO>","prompts":["<AI prompt this would help rank for>","<another prompt>"],"effort":"Low"|"Medium"|"High","impact":"High"|"Medium"|"Low"}
+  ]
+}
+
+Provide 6-8 content types. Focus on content that helps AI engines cite and mention ${brand}.`;
+  const contentRaw=await callOpenAI(contentPrompt, engineSystemPrompt);
+  const contentData=safeJSON(contentRaw)||{contentTypes:[]};
+
+  // ── Step 9: 90-Day Roadmap ──
+  onProgress("Creating 90-day roadmap...",88);
+  const roadmapPrompt=`Create a 90-day AEO roadmap for "${brand}" in ${industry} (${region}).
+
+Return JSON:
+{
+  "day30": {
+    "title": "Foundation Sprint",
+    "sub": "Days 1-30",
+    "accent": "#ef4444",
+    "lift": "10-15%",
+    "departments": [
+      {"dept": "Technical", "color": "#0c4cfc", "tasks": ["<specific task 1>", "<specific task 2>", "<specific task 3>"]},
+      {"dept": "Content", "color": "#059669", "tasks": ["<specific task 1>", "<specific task 2>", "<specific task 3>"]},
+      {"dept": "PR & Outreach", "color": "#8b5cf6", "tasks": ["<specific task 1>", "<specific task 2>", "<specific task 3>"]}
+    ]
+  },
+  "day60": {
+    "title": "Authority Building",
+    "sub": "Days 31-60",
+    "accent": "#f59e0b",
+    "lift": "20-30%",
+    "departments": [
+      {"dept": "Technical", "color": "#0c4cfc", "tasks": [...]},
+      {"dept": "Content", "color": "#059669", "tasks": [...]},
+      {"dept": "PR & Outreach", "color": "#8b5cf6", "tasks": [...]}
+    ]
+  },
+  "day90": {
+    "title": "Dominance & Scale",
+    "sub": "Days 61-90",
+    "accent": "#10b981",
+    "lift": "40-60%",
+    "departments": [
+      {"dept": "Technical", "color": "#0c4cfc", "tasks": [...]},
+      {"dept": "Content", "color": "#059669", "tasks": [...]},
+      {"dept": "PR & Outreach", "color": "#8b5cf6", "tasks": [...]}
+    ]
+  }
+}
+
+Each department should have 3-5 specific, actionable tasks tailored to ${brand}'s ${industry} context.`;
+  const roadRaw=await callGemini(roadmapPrompt, engineSystemPrompt);
+  const roadData=safeJSON(roadRaw)||{phases:[],kpis:[]};
+
+  onProgress("Compiling final report...",95);
+
+  return {
+    engineData:{
+      engines:[
+        {id:"chatgpt",...gptData,queries:(gptData.queries||[]).slice(0,8)},
+        {id:"gemini",...gemData,queries:(gemData.queries||[]).slice(0,8)}
+      ],
+      painPoints:(catData.painPoints||[]).slice(0,6)
+    },
+    competitorData:{competitors:(compData.competitors||[]).slice(0,5)},
+    archData:archData.stakeholders||[],
+    channelData:{channels:(chData.channels||[]).slice(0,10)},
+    contentGridData:(contentData.contentTypes||[]).slice(0,8),
+    roadmapData:roadData,
+    contentData:(contentData.contentTypes||[]).slice(0,8)
+  };
+}
+
 
 /* ─── MERGE API RESULTS WITH STATIC DATA ─── */
 function getInsight(cat,comp,brand,theyWin){
@@ -685,7 +474,7 @@ function generateAll(cd, apiData){
   const hasApi=apiData&&apiData.engineData;
 
   // Engines — use API data if available, fallback to simulated
-  const engineMeta=[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",Logo:ChatGPTLogo},{id:"claude",name:"Claude",color:"#D97706",Logo:ClaudeLogo},{id:"gemini",name:"Gemini",color:"#4285F4",Logo:GeminiLogo}];
+  const engineMeta=[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",Logo:ChatGPTLogo},{id:"gemini",name:"Gemini",color:"#4285F4",Logo:GeminiLogo}];
   const engines=engineMeta.map((e,i)=>{
     const t0=cd.topics[0]||cd.industry||"tech";
     // Filter out bad/placeholder strengths and weaknesses
@@ -699,16 +488,29 @@ function generateAll(cd, apiData){
       const ae=apiData.engineData.engines[i];
       const defStrengths=[`${cd.brand} has a clear niche positioning in ${cd.industry} that could differentiate it from larger competitors`,`Brand name includes relevant industry keywords which aids AI entity recognition`];
       const defWeaknesses=[`Limited third-party citations and reviews reduce AI engines' confidence to recommend ${cd.brand}`,`Larger competitors like ${cd.competitorNames[0]||"established firms"} dominate generic ${cd.industry} queries`];
-      return{...e,score:ae.score||Math.round(base),mentionRate:ae.mentionRate||50,citationRate:ae.citationRate||30,sentiment:ae.sentiment||50,
+      return{...e,score:ae.score||Math.round(base),mentionRate:ae.mentionRate||50,citationRate:ae.citationRate||30,
         queries:(ae.queries||[]).slice(0,8).map(q=>({query:q.query||"",status:q.status||"Absent"})),
         strengths:filterBad(ae.strengths,defStrengths),weaknesses:filterBad(ae.weaknesses,defWeaknesses)};
     }
     const score=Math.max(8,Math.min(95,Math.round(base+(pr(i*7+3)-.5)*20)));
-    return{...e,score,mentionRate:Math.min(100,Math.round(score*.8+pr(i*11)*15)),citationRate:Math.min(100,Math.round(score*.5+pr(i*13)*20)),sentiment:Math.min(100,Math.max(10,Math.round(50+(score-50)*.6+(pr(i*17)-.5)*20))),
+    return{...e,score,mentionRate:Math.min(100,Math.round(score*.8+pr(i*11)*15)),citationRate:Math.min(100,Math.round(score*.5+pr(i*13)*20)),
       queries:[`Best ${cd.industry} companies`,`${t0} recommendations`,`${cd.brand} reviews`,`Top ${cd.industry} providers`,`Is ${cd.brand} worth it`,`${t0} comparison`,`${cd.brand} vs ${cd.competitorNames[0]||"competitors"}`,`${cd.industry} buyer guide`].map((q,j)=>({query:q,status:pr(i*31+j*37)<.35?"Cited":pr(i*31+j*37)<.65?"Mentioned":"Absent"})),
       strengths:["Strong FAQ coverage detected","Cited in comparison queries"],weaknesses:["Missing from 'best of' queries","Not cited as authoritative source"]};
   });
+  // Score = weighted: Mentions 50% + Citations 50%
+  const calcEngineScore=(e)=>Math.round(e.mentionRate*0.5+e.citationRate*0.5);
+  engines.forEach(e=>{e.score=calcEngineScore(e);});
   const overall=Math.round(engines.reduce((a,e)=>a+e.score,0)/engines.length);
+
+  // Score interpretation
+  const getScoreLabel=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
+  const getScoreDesc=(s,brand)=>{
+    if(s>=80)return`${brand} is a dominant voice in AI engine responses — frequently cited and recommended across all major platforms.`;
+    if(s>=60)return`${brand} has strong AI visibility — regularly mentioned by engines but with room to increase direct citations and become the go-to recommendation.`;
+    if(s>=40)return`${brand} has moderate visibility — AI engines are aware of the brand but rarely cite it as a primary source. Competitors are more frequently recommended.`;
+    if(s>=20)return`${brand} has weak AI visibility — engines occasionally mention the brand but almost never cite the website. Significant work needed to build presence.`;
+    return`${brand} is largely invisible to AI engines — not mentioned in relevant queries. Competitors dominate the conversation entirely.`;
+  };
 
   // Pain points — use API data if available
   const painCats=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
@@ -717,7 +519,7 @@ function generateAll(cd, apiData){
   // Competitors — use API data if available
   const brandLower=cd.brand.toLowerCase().trim();
   const isNotSelf=(name)=>{const n=name.toLowerCase().trim();return n!==brandLower&&!n.includes(brandLower)&&!brandLower.includes(n);};
-  const competitors=(apiData&&apiData.competitorData&&apiData.competitorData.length>0)?apiData.competitorData.filter(c=>isNotSelf(c.name)).map(c=>{
+  const competitors=(apiData&&apiData.competitorData&&(Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors)&&((Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors)||[]).length>0)?(Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors).filter(c=>isNotSelf(c.name)).map(c=>{
     const cPain=(c.painPoints||[]).map(pp=>({label:pp.label,score:pp.score}));
     const advantages=cPain.map((cp,j)=>{const diff=cp.score-(painPoints[j]?.score||50);return{cat:cp.label,theirScore:cp.score,yourScore:painPoints[j]?.score||50,diff,insight:Math.abs(diff)>8?getInsight(cp.label,c.name,cd.brand,diff>0):null};}).filter(a=>a.insight);
     return{name:c.name,score:c.score,painPoints:cPain,advantages,engineScores:c.engineScores||[c.score,c.score-3,c.score+2],topStrength:c.topStrength||"Unknown"};
@@ -729,19 +531,61 @@ function generateAll(cd, apiData){
   });
 
   // Stakeholder-grouped archetypes — use API data if available
-  const stakeholders=(apiData&&apiData.archData&&Array.isArray(apiData.archData)&&apiData.archData.length>0)?apiData.archData.map(sg=>({group:sg.group,icon:sg.icon||"👤",desc:sg.desc||"",archetypes:(sg.archetypes||[]).map(a=>({name:a.name,icon:a.icon||"👤",demo:a.demo||"Various",behavior:a.behavior||"Research queries",intent:a.intent||"Find information",size:a.size||15,brandVisibility:a.brandVisibility||Math.round(overall*.6),opportunity:a.opportunity||"medium",prompts:a.prompts||[]}))})):[
+  const stakeholders=(apiData&&apiData.archData&&Array.isArray(apiData.archData)&&apiData.archData.length>0)?apiData.archData.map(sg=>({group:sg.group,icon:sg.icon||"👤",desc:sg.desc||"",archetypes:(sg.archetypes||[]).map(a=>({name:a.name,icon:a.icon||"👤",demo:a.demo||"Various",behavior:a.behavior||"Research queries",intent:a.intent||"Find information",size:a.size||15,brandVisibility:a.brandVisibility||Math.round(overall*.6),opportunity:a.opportunity||"medium",prompts:a.prompts||[],journey:a.journey||[]}))})):[
     {group:"End Users / Consumers",icon:"👤",desc:"People who directly use or purchase the product/service",archetypes:[
-      {name:"Budget-Conscious Researchers",icon:"🎓",demo:"18-25, Students",behavior:"Compare prices, seek free alternatives",intent:"Find affordable option",size:Math.round(10+pr(41)*30),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(53)-.5)*40))),opportunity:pr(47)>.5?"high":"medium",prompts:[`Best affordable ${cd.industry||"tech"} solutions`,`Cheap ${cd.topics[0]||"services"} for students`,`Free ${cd.topics[0]||"tools"} alternatives`,`${cd.industry||"Tech"} student discounts`]},
-      {name:"First-Time Buyers",icon:"🔍",demo:"All ages, New to category",behavior:"Educational queries, beginner guides",intent:"Understand before buying",size:Math.round(15+pr(44)*25),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(56)-.5)*40))),opportunity:"high",prompts:[`What is ${cd.topics[0]||cd.industry}`,`${cd.industry} beginner guide`,`How to choose ${cd.topics[0]||"provider"}`,`${cd.industry} explained`]},
-      {name:"Switchers & Upgraders",icon:"🔄",demo:"28-45, Competitor users",behavior:"Alternative-to queries, comparisons",intent:"Find better alternative",size:Math.round(8+pr(45)*20),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(57)-.5)*40))),opportunity:"high",prompts:[`${cd.competitorNames[0]||"Competitor"} alternatives`,`Switch to ${cd.brand}`,`${cd.brand} vs ${cd.competitorNames[0]||"competitor"}`,`${cd.industry} migration guide`]},
+      {name:"Budget-Conscious Researchers",icon:"🎓",demo:"18-25, Students",behavior:"Compare prices, seek free alternatives",intent:"Find affordable option",size:Math.round(10+pr(41)*30),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(53)-.5)*40))),opportunity:pr(47)>.5?"high":"medium",prompts:[`Best affordable ${cd.industry||"tech"} solutions`,`Cheap ${cd.topics[0]||"services"} for students`,`Free ${cd.topics[0]||"tools"} alternatives`,`${cd.industry||"Tech"} student discounts`],
+        journey:[
+          {stage:"Awareness",color:"#6366f1",prompts:[{query:`Cheapest ${cd.industry} options`,status:pr(70)<.3?"Mentioned":"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`Free ${cd.topics[0]||"tools"} alternatives`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.industry} student discounts`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Consideration",color:"#8b5cf6",prompts:[{query:`${cd.brand} vs ${cd.competitorNames[0]||"competitor"} pricing`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}},{query:`Best budget ${cd.industry} ${new Date().getFullYear()}`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Transaction",color:"#a855f7",prompts:[{query:`${cd.brand} free trial`,status:pr(73)<.3?"Cited":"Absent",engines:{gpt:pr(73)<.3?"Cited":"Absent",gemini:"Absent"}},{query:`${cd.brand} student plan sign up`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Retention",color:"#c084fc",prompts:[{query:`${cd.brand} referral program`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`How to save on ${cd.brand} renewal`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]}
+        ]},
+      {name:"First-Time Buyers",icon:"🔍",demo:"All ages, New to category",behavior:"Educational queries, beginner guides",intent:"Understand before buying",size:Math.round(15+pr(44)*25),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(56)-.5)*40))),opportunity:"high",prompts:[`What is ${cd.topics[0]||cd.industry}`,`${cd.industry} beginner guide`,`How to choose ${cd.topics[0]||"provider"}`,`${cd.industry} explained`],
+        journey:[
+          {stage:"Awareness",color:"#6366f1",prompts:[{query:`What is ${cd.topics[0]||cd.industry}`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.industry} beginner guide`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`How does ${cd.topics[0]||cd.industry} work`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Consideration",color:"#8b5cf6",prompts:[{query:`Best ${cd.industry} for beginners`,status:pr(74)<.3?"Mentioned":"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} reviews`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}},{query:`Easiest ${cd.industry} to use`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Transaction",color:"#a855f7",prompts:[{query:`How to start with ${cd.brand}`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}},{query:`${cd.brand} onboarding guide`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Retention",color:"#c084fc",prompts:[{query:`${cd.brand} tips for beginners`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]}
+        ]},
+      {name:"Switchers & Upgraders",icon:"🔄",demo:"28-45, Competitor users",behavior:"Alternative-to queries, comparisons",intent:"Find better alternative",size:Math.round(8+pr(45)*20),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(57)-.5)*40))),opportunity:"high",prompts:[`${cd.competitorNames[0]||"Competitor"} alternatives`,`Switch to ${cd.brand}`,`${cd.brand} vs ${cd.competitorNames[0]||"competitor"}`,`${cd.industry} migration guide`],
+        journey:[
+          {stage:"Awareness",color:"#6366f1",prompts:[{query:`${cd.competitorNames[0]||"Competitor"} alternatives`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`Best ${cd.industry} to switch to`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Consideration",color:"#8b5cf6",prompts:[{query:`${cd.brand} vs ${cd.competitorNames[0]||"competitor"}`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Mentioned"}},{query:`Is ${cd.brand} better than ${cd.competitorNames[0]||"competitor"}`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}},{query:`${cd.brand} migration experience`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Transaction",color:"#a855f7",prompts:[{query:`Switch to ${cd.brand} from ${cd.competitorNames[0]||"competitor"}`,status:pr(75)<.4?"Mentioned":"Absent",engines:{gpt:pr(75)<.4?"Mentioned":"Absent",gemini:"Absent"}},{query:`${cd.brand} transfer process`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Retention",color:"#c084fc",prompts:[{query:`${cd.brand} advanced features`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`Get more from ${cd.brand}`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]}
+        ]},
     ]},
     {group:"Business Decision Makers",icon:"💼",desc:"People evaluating solutions for their organisation",archetypes:[
-      {name:"Enterprise Decision Makers",icon:"📊",demo:"35-55, C-Suite & Directors",behavior:"Evaluate ROI, compare features",intent:"Find reliable enterprise solution",size:Math.round(10+pr(42)*25),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(54)-.5)*40))),opportunity:"high",prompts:[`Best enterprise ${cd.industry} platform`,`${cd.topics[0]||"Solution"} ROI comparison`,`Top ${cd.industry} for large companies`,`${cd.brand} enterprise reviews`]},
-      {name:"Procurement & Ops Managers",icon:"📋",demo:"30-50, Mid-management",behavior:"Vendor comparisons, compliance checks",intent:"Find compliant, cost-effective vendor",size:Math.round(6+pr(46)*15),brandVisibility:Math.max(5,Math.min(85,Math.round(base+(pr(58)-.5)*35))),opportunity:"medium",prompts:[`${cd.industry} vendor comparison`,`${cd.brand} compliance certifications`,`${cd.industry} procurement guide`,`${cd.brand} SLA details`]},
+      {name:"Enterprise Decision Makers",icon:"📊",demo:"35-55, C-Suite & Directors",behavior:"Evaluate ROI, compare features",intent:"Find reliable enterprise solution",size:Math.round(10+pr(42)*25),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(54)-.5)*40))),opportunity:"high",prompts:[`Best enterprise ${cd.industry} platform`,`${cd.topics[0]||"Solution"} ROI comparison`,`Top ${cd.industry} for large companies`,`${cd.brand} enterprise reviews`],
+        journey:[
+          {stage:"Awareness",color:"#6366f1",prompts:[{query:`Top enterprise ${cd.industry} platforms`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.industry} market leaders ${new Date().getFullYear()}`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Consideration",color:"#8b5cf6",prompts:[{query:`${cd.brand} enterprise reviews`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}},{query:`${cd.topics[0]||"Solution"} ROI comparison`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} vs ${cd.competitorNames[0]||"competitor"} for enterprise`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}}]},
+          {stage:"Transaction",color:"#a855f7",prompts:[{query:`${cd.brand} enterprise pricing`,status:pr(76)<.3?"Mentioned":"Absent",engines:{gpt:pr(76)<.3?"Mentioned":"Absent",gemini:"Absent"}},{query:`${cd.brand} demo request`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Retention",color:"#c084fc",prompts:[{query:`${cd.brand} enterprise support`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}},{query:`${cd.brand} uptime SLA`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]}
+        ]},
+      {name:"Procurement & Ops Managers",icon:"📋",demo:"30-50, Mid-management",behavior:"Vendor comparisons, compliance checks",intent:"Find compliant, cost-effective vendor",size:Math.round(6+pr(46)*15),brandVisibility:Math.max(5,Math.min(85,Math.round(base+(pr(58)-.5)*35))),opportunity:"medium",prompts:[`${cd.industry} vendor comparison`,`${cd.brand} compliance certifications`,`${cd.industry} procurement guide`,`${cd.brand} SLA details`],
+        journey:[
+          {stage:"Awareness",color:"#6366f1",prompts:[{query:`${cd.industry} vendor comparison ${new Date().getFullYear()}`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.industry} procurement guide`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Consideration",color:"#8b5cf6",prompts:[{query:`${cd.brand} compliance certifications`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} SLA details`,status:pr(77)<.3?"Mentioned":"Absent",engines:{gpt:pr(77)<.3?"Mentioned":"Absent",gemini:"Absent"}},{query:`${cd.brand} vs ${cd.competitorNames[0]||"competitor"} pricing for business`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Transaction",color:"#a855f7",prompts:[{query:`${cd.brand} business plan pricing`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} bulk licensing`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Retention",color:"#c084fc",prompts:[{query:`${cd.brand} vendor management portal`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]}
+        ]},
     ]},
     {group:"Technical Evaluators",icon:"⚙️",desc:"People assessing technical capabilities and integration",archetypes:[
-      {name:"Tech-Savvy Evaluators",icon:"⚡",demo:"25-40, Engineers & Leads",behavior:"Deep-dive specs, APIs, integrations",intent:"Find technically capable solution",size:Math.round(10+pr(43)*20),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(55)-.5)*40))),opportunity:pr(48)>.4?"high":"medium",prompts:[`${cd.topics[0]||"Platform"} technical comparison`,`Best ${cd.industry} API`,`${cd.brand} developer reviews`,`${cd.topics[0]||"Tool"} benchmarks`]},
-      {name:"IT Security & Compliance",icon:"🛡️",demo:"30-50, InfoSec & Legal",behavior:"Security audits, data privacy queries",intent:"Verify security and compliance",size:Math.round(4+pr(49)*10),brandVisibility:Math.max(5,Math.min(80,Math.round(base+(pr(59)-.5)*30))),opportunity:"medium",prompts:[`${cd.brand} security features`,`${cd.industry} data compliance`,`${cd.brand} SOC 2 certification`,`${cd.industry} GDPR compliance`]},
+      {name:"Tech-Savvy Evaluators",icon:"⚡",demo:"25-40, Engineers & Leads",behavior:"Deep-dive specs, APIs, integrations",intent:"Find technically capable solution",size:Math.round(10+pr(43)*20),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(55)-.5)*40))),opportunity:pr(48)>.4?"high":"medium",prompts:[`${cd.topics[0]||"Platform"} technical comparison`,`Best ${cd.industry} API`,`${cd.brand} developer reviews`,`${cd.topics[0]||"Tool"} benchmarks`],
+        journey:[
+          {stage:"Awareness",color:"#6366f1",prompts:[{query:`Best ${cd.industry} API ${new Date().getFullYear()}`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.topics[0]||"Tool"} benchmarks`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Consideration",color:"#8b5cf6",prompts:[{query:`${cd.brand} developer reviews`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}},{query:`${cd.brand} API documentation quality`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} integration capabilities`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Transaction",color:"#a855f7",prompts:[{query:`${cd.brand} developer plan`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} sandbox access`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Retention",color:"#c084fc",prompts:[{query:`${cd.brand} API changelog`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} developer community`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]}
+        ]},
+      {name:"IT Security & Compliance",icon:"🛡️",demo:"30-50, InfoSec & Legal",behavior:"Security audits, data privacy queries",intent:"Verify security and compliance",size:Math.round(4+pr(49)*10),brandVisibility:Math.max(5,Math.min(80,Math.round(base+(pr(59)-.5)*30))),opportunity:"medium",prompts:[`${cd.brand} security features`,`${cd.industry} data compliance`,`${cd.brand} SOC 2 certification`,`${cd.industry} GDPR compliance`],
+        journey:[
+          {stage:"Awareness",color:"#6366f1",prompts:[{query:`${cd.industry} data compliance requirements`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.industry} security best practices`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Consideration",color:"#8b5cf6",prompts:[{query:`${cd.brand} SOC 2 certification`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} GDPR compliance`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} security audit report`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Transaction",color:"#a855f7",prompts:[{query:`${cd.brand} security certification verification`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
+          {stage:"Retention",color:"#c084fc",prompts:[{query:`${cd.brand} security updates`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} incident response`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]}
+        ]},
     ]},
   ];
 
@@ -763,7 +607,7 @@ function generateAll(cd, apiData){
     {area:"Citation Velocity & Link Authority",rule:`Build a systematic citation acquisition strategy targeting domains with Domain Authority 50+. AI models track citation frequency and recency — a brand cited by 3 authoritative sources in the past 90 days outranks one with 10 stale citations. Prioritise co-citation (being mentioned alongside established competitors) and contextual citations (within topically relevant content, not generic directories).`,example:`Monthly targets: 2 guest articles on DA60+ publications, 3 expert quote placements via HARO/Connectively, 1 original data study pitched to industry press, weekly contributions to ${cd.industry} subreddits and Quora topics. Track new referring domains weekly and flag any lost citations for reclamation.`},
     {area:"Content Freshness & Update Cadence",rule:`Implement a systematic content refresh protocol. AI engines deprioritise content with stale lastmod signals. All evergreen content must be reviewed and updated minimum quarterly with visible "Last Updated" timestamps. Refresh triggers: new data available, competitor content updated, AI engine response changes detected, industry developments.`,example:`Create a content freshness calendar: flag all pages with traffic > 100/month for quarterly review. Update process: (1) check if AI engines are citing the current version, (2) add new data points or examples, (3) update dateModified in Article schema, (4) add "Updated [Month Year]" badge visible to users, (5) resubmit to Google Search Console.`},
     {area:"Multi-Modal Content Optimisation",rule:`AI engines increasingly index and cross-reference multi-modal content — video transcripts, podcast show notes, infographic alt-text, and PDF content. Every piece of ${cd.brand} content should exist in at least 2 formats. Video content must have complete, accurate transcripts (not auto-generated). Infographics must have comprehensive alt-text that captures all data points.`,example:`For every definitive guide published: (1) create a companion YouTube video with manually-reviewed transcript, (2) design a shareable infographic with detailed alt-text, (3) produce a LinkedIn carousel summarising key points, (4) extract FAQs for a standalone FAQ page. Ensure all formats link back to the canonical pillar page.`},
-    {area:"Competitor Response Protocol",rule:`Monitor competitor AEO positioning weekly. When a competitor is cited for a query where ${cd.brand} should appear, analyse the cited content's structure, schema, and authority signals. Create a superior response within 14 days. AI engines regularly re-evaluate citation sources — the window to displace a competitor citation is typically 30-60 days after publishing superior content.`,example:`Set up weekly monitoring: search each top-50 prompt in ChatGPT, Claude, and Gemini. Document: (1) which competitor is cited, (2) what content is being referenced, (3) what schema/signals that content has. Create a displacement brief: "Competitor X cited for [query] because of [reason]. Our response: publish [content type] with [superior signals] by [date]."`},
+    {area:"Competitor Response Protocol",rule:`Monitor competitor AEO positioning weekly. When a competitor is cited for a query where ${cd.brand} should appear, analyse the cited content's structure, schema, and authority signals. Create a superior response within 14 days. AI engines regularly re-evaluate citation sources — the window to displace a competitor citation is typically 30-60 days after publishing superior content.`,example:`Set up weekly monitoring: search each top-50 prompt in ChatGPT and Gemini. Document: (1) which competitor is cited, (2) what content is being referenced, (3) what schema/signals that content has. Create a displacement brief: "Competitor X cited for [query] because of [reason]. Our response: publish [content type] with [superior signals] by [date]."`},
     {area:"Brand Narrative Consistency Layer",rule:`Define a canonical brand description paragraph (150 words) that must appear verbatim or near-verbatim across all owned and third-party channels. AI models build entity understanding by finding consistent descriptions across multiple sources. Divergent descriptions fragment the entity signal and reduce citation confidence.`,example:`Canonical description: "${cd.brand} is a ${cd.region||"global"} ${cd.industry} company specialising in ${cd.topics.slice(0,3).join(", ")}. Founded in [year], ${cd.brand} serves [target market] with [key differentiator]. Recognised for [achievement/award], ${cd.brand} has helped [X]+ clients achieve [measurable outcome]." Deploy this exact text on: About page, LinkedIn Company, Crunchbase, all press releases, speaker bios, and directory listings.`},
     {area:"AI-Specific Content Formatting",rule:`Structure content for AI extraction: use clear H2/H3 hierarchies, place definitive answers in the first 2 sentences of each section, use "According to [Source]" citation patterns that AI engines can verify, and include structured comparison tables where relevant. Avoid ambiguous language — AI engines skip content with hedging phrases like "it depends" or "there are many factors" in favour of content that gives direct, citable answers.`,example:`Instead of: "There are many ${cd.industry} providers to choose from." Write: "${cd.brand} is one of the top 5 ${cd.industry} providers in ${cd.region||"the market"}, serving [X]+ clients since [year]. Key differentiators include: [Feature 1] which delivers [Outcome], [Feature 2] rated [Score] by [Source], and [Feature 3] with [Metric] performance." This gives AI engines a quotable, verifiable claim.`},
   ];
@@ -857,7 +701,7 @@ function generateAll(cd, apiData){
      {n:"Weekly",u:"posts",l:"Thought Leadership",d:`LinkedIn + industry publications`},
      {n:"Ongoing",u:"updates",l:"Schema & Technical",d:`Structured data on ${cd.website}`}];
 
-  return{overall,engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,clientData:cd};
+  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,clientData:cd};
 }
 
 /* ─── LOGIN FORM ─── */
@@ -865,24 +709,373 @@ function LoginForm({onSubmit,error,loading}){
   const[email,setEmail]=useState("");const[pw,setPw]=useState("");const[showPw,setShowPw]=useState(false);
   const ok=email.length>0&&pw.length>0;
   const submit=()=>{if(ok&&!loading)onSubmit(email,pw);};
-  return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
+  return(<div style={{display:"flex",flexDirection:"column",gap:18}}>
     <div>
-      <label style={{fontSize:12,fontWeight:600,color:C.sub,display:"block",marginBottom:6}}>Email</label>
-      <input value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")submit();}} placeholder="you@company.com" type="email" style={{width:"100%",padding:"10px 14px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit",transition:"border .15s"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
+      <label style={{fontSize:13,fontWeight:500,color:C.text,display:"block",marginBottom:6}}>Email</label>
+      <input value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")submit();}} placeholder="you@company.com" type="email" style={{width:"100%",padding:"11px 14px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit",transition:"all .15s"}}/>
     </div>
     <div>
-      <label style={{fontSize:12,fontWeight:600,color:C.sub,display:"block",marginBottom:6}}>Password</label>
+      <label style={{fontSize:13,fontWeight:500,color:C.text,display:"block",marginBottom:6}}>Password</label>
       <div style={{position:"relative"}}>
-        <input value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")submit();}} placeholder="••••••••" type={showPw?"text":"password"} style={{width:"100%",padding:"10px 14px",paddingRight:42,background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit",transition:"border .15s"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
-        <span onClick={()=>setShowPw(!showPw)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",cursor:"pointer",fontSize:12,color:C.muted,userSelect:"none"}}>{showPw?"Hide":"Show"}</span>
+        <input value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")submit();}} placeholder="••••••••" type={showPw?"text":"password"} style={{width:"100%",padding:"11px 14px",paddingRight:48,background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit",transition:"all .15s"}}/>
+        <span onClick={()=>setShowPw(!showPw)} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",cursor:"pointer",fontSize:12,color:C.muted,userSelect:"none",fontWeight:500}}>{showPw?"Hide":"Show"}</span>
       </div>
     </div>
-    {error&&<div style={{padding:"8px 12px",background:`${C.red}08`,border:`1px solid ${C.red}15`,borderRadius:6,fontSize:12,color:C.red}}>{error}</div>}
-    <button onClick={submit} disabled={!ok||loading} style={{width:"100%",padding:"11px",background:ok&&!loading?C.accent:"#c8cdd5",color:"#fff",border:"none",borderRadius:8,fontSize:14,fontWeight:600,cursor:ok&&!loading?"pointer":"not-allowed",fontFamily:"'Outfit'",transition:"background .15s",marginTop:4}}>{loading?"Signing in...":"Sign in"}</button>
+    {error&&<div style={{padding:"10px 14px",background:`${C.red}06`,border:`1px solid ${C.red}12`,borderRadius:10,fontSize:13,color:C.red}}>{error}</div>}
+    <button onClick={submit} disabled={!ok||loading} style={{width:"100%",padding:"12px",background:ok&&!loading?C.accent:"#d1d5db",color:"#fff",border:"none",borderRadius:10,fontSize:15,fontWeight:600,cursor:ok&&!loading?"pointer":"not-allowed",fontFamily:"'Outfit'",transition:"all .2s",marginTop:2}}>{loading?"Signing in...":"Sign in"}</button>
   </div>);
 }
 
-const STEPS=[{id:"input",label:"New Audit",n:"01"},{id:"audit",label:"AEO Audit",n:"02"},{id:"archetypes",label:"User Archetypes",n:"03"},{id:"intent",label:"Intent Pathway",n:"04"},{id:"playbook",label:"Brand Playbook",n:"05",comingSoon:true},{id:"channels",label:"AEO Channels",n:"06"},{id:"grid",label:"Content Grid",n:"07"},{id:"roadmap",label:"90-Day Roadmap",n:"08"}];
+/* ─── CHAT PANEL — Human-in-the-loop AI assistant ─── */
+function buildChatContext(step, results){
+  if(!results)return{section:"No audit data",data:""};
+  const r=results;
+  const brand=r.clientData?.brand||"Brand";
+  const base=`Brand: ${brand}\nIndustry: ${r.clientData?.industry||""}\nWebsite: ${r.clientData?.website||""}\nRegion: ${r.clientData?.region||""}\nOverall AEO Score: ${r.overall}% (${r.scoreLabel})\n`;
+  switch(step){
+    case "audit":return{section:"AEO Audit Results",data:base+
+      `\nEngine Scores:\n${r.engines.map(e=>`- ${e.name}: ${e.score}% (mentions:${e.mentionRate}%, citations:${e.citationRate}%)\n  Strengths: ${e.strengths.join("; ")}\n  Weaknesses: ${e.weaknesses.join("; ")}`).join("\n")}`+
+      `\n\nPain Points:\n${r.painPoints.map(p=>`- ${p.label}: ${p.score}% (${p.severity})`).join("\n")}`+
+      `\n\nCompetitors:\n${r.competitors.map(c=>`- ${c.name}: ${c.score}% (strength: ${c.topStrength})`).join("\n")}`};
+    case "archetypes":return{section:"User Archetypes",data:base+
+      `\nStakeholder Groups:\n${r.stakeholders.map(sg=>`\n${sg.icon} ${sg.group}: ${sg.desc}\n${sg.archetypes.map(a=>`  - ${a.name} (${a.demo}) — ${a.intent}, ~${a.size}% of searches, ${a.brandVisibility}% visibility, ${a.opportunity} opportunity`).join("\n")}`).join("\n")}`};
+    case "intent":return{section:"Intent Pathway",data:base+
+      `\nArchetype Journeys:\n${r.stakeholders.flatMap(sg=>sg.archetypes).filter(a=>a.journey?.length>0).map(a=>`\n${a.icon} ${a.name}:\n${a.journey.map(j=>`  ${j.stage}: ${(j.prompts||[]).map(p=>`"${p.query}" → ${p.status} (GPT:${p.engines?.gpt||"?"}, Gemini:${p.engines?.gemini||"?"})`).join("; ")}`).join("\n")}`).join("\n")}`};
+    case "channels":return{section:"AEO Channels",data:base+
+      `\nChannels:\n${r.aeoChannels.map(ch=>`- ${ch.channel}: Impact ${ch.impact}, Status: ${ch.status}${ch.finding?", Finding: "+ch.finding:""}`).join("\n")}`};
+    case "grid":return{section:"Content Grid",data:base+
+      `\nContent Types:\n${r.contentTypes.map(ct=>`- ${ct.type} [${ct.p}]: ${ct.channels.join(", ")} @ ${ct.freq} — Owner: ${ct.owner}${ct.rationale?"\n  Rationale: "+ct.rationale:""}`).join("\n")}`};
+    case "roadmap":return{section:"90-Day Roadmap",data:base+
+      `\nRoadmap:\n${["day30","day60","day90"].map(k=>{const p=r.roadmap[k];return p?`\n${p.title} (${p.sub}, lift: ${p.lift}):\n${p.departments.map(d=>`  ${d.dept}:\n${d.tasks.map(t=>`    → ${t}`).join("\n")}`).join("\n")}`:""}).join("\n")}`};
+    default:return{section:"Dashboard",data:base};
+  }
+}
+
+function ChatPanel({isOpen,onClose,step,results,onUpdateResults}){
+  const[messages,setMessages]=useState([]);
+  const[input,setInput]=useState("");
+  const[loading,setLoading]=useState(false);
+  const bottomRef=React.useRef(null);
+  const inputRef=React.useRef(null);
+
+  React.useEffect(()=>{if(bottomRef.current)bottomRef.current.scrollIntoView({behavior:"smooth"});},[messages]);
+  React.useEffect(()=>{if(isOpen&&inputRef.current)setTimeout(()=>inputRef.current.focus(),200);},[isOpen]);
+
+  const ctx=buildChatContext(step,results);
+
+  const send=async()=>{
+    if(!input.trim()||loading)return;
+    const userMsg=input.trim();
+    setInput("");
+    setMessages(prev=>[...prev,{role:"user",text:userMsg}]);
+    setLoading(true);
+
+    try{
+      const systemPrompt=`You are an expert AEO (AI Engine Optimisation) consultant embedded in the EnterRank dashboard. You have access to the full audit data for the current section.
+
+CURRENT SECTION: ${ctx.section}
+
+FULL DATA FOR THIS SECTION:
+${ctx.data}
+
+RULES:
+1. You can answer questions about the data — be specific, cite exact numbers, give actionable advice.
+2. If the user asks you to CHANGE, UPDATE, REGENERATE, or MODIFY any data in this section, respond with the updated data in a JSON block wrapped in <json_update> tags.
+3. For mutations, include ONLY the fields that need to change. Use the exact field names from the data structure.
+4. Keep responses concise and professional — this is a premium consultant tool.
+5. When answering, reference the brand name, actual scores, and specific data points. Never be generic.
+
+MUTATION FORMAT (only when user asks for changes):
+<json_update>
+{"field": "updated_value"}
+</json_update>
+
+For channel updates, use: {"aeoChannels": [{...full channel object...}]}
+For content grid updates, use: {"contentTypes": [{...full content type object...}]}
+For roadmap updates, use: {"roadmap": {"day30": {...}, "day60": {...}, "day90": {...}}}
+For archetype updates, use: {"stakeholders": [{...full stakeholder group...}]}
+For engine updates, use: {"engines": [{...full engine object...}]}
+For pain point updates, use: {"painPoints": [{...}]}
+
+If the user's request is ambiguous, ask a clarifying question instead of guessing.`;
+
+      const body={model:"claude-sonnet-4-20250514",max_tokens:3000,system:systemPrompt,messages:[
+        ...messages.map(m=>({role:m.role==="user"?"user":"assistant",content:m.text})),
+        {role:"user",content:userMsg}
+      ]};
+
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await res.json();
+      const reply=data.content?.map(b=>b.type==="text"?b.text:"").filter(Boolean).join("\n")||"Sorry, I couldn't process that.";
+
+      // Check for JSON mutation
+      const jsonMatch=reply.match(/<json_update>([\s\S]*?)<\/json_update>/);
+      if(jsonMatch){
+        try{
+          const updates=JSON.parse(jsonMatch[1].trim());
+          onUpdateResults(updates);
+          const cleanReply=reply.replace(/<json_update>[\s\S]*?<\/json_update>/,"").trim();
+          setMessages(prev=>[...prev,{role:"assistant",text:cleanReply||"Done — the dashboard has been updated.",mutation:true}]);
+        }catch(e){
+          setMessages(prev=>[...prev,{role:"assistant",text:reply.replace(/<json_update>[\s\S]*?<\/json_update>/,"").trim()+"\n\n(Note: I tried to update the data but the format was invalid. Please try again.)"}]);
+        }
+      }else{
+        setMessages(prev=>[...prev,{role:"assistant",text:reply}]);
+      }
+    }catch(e){
+      console.error("Chat error:",e);
+      setMessages(prev=>[...prev,{role:"assistant",text:"Sorry, there was an error connecting to the AI. Please try again."}]);
+    }
+    setLoading(false);
+  };
+
+  if(!isOpen)return null;
+
+  return(<div style={{position:"fixed",right:0,top:0,bottom:0,width:380,background:C.surface,borderLeft:`1px solid ${C.border}`,display:"flex",flexDirection:"column",zIndex:1000,boxShadow:"-8px 0 30px rgba(0,0,0,.08)",animation:"slideIn .2s ease-out"}}>
+    <style>{`@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+    {/* Header */}
+    <div style={{padding:"14px 18px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+      <div>
+        <div style={{fontSize:14,fontWeight:700,color:C.text,fontFamily:"'Outfit'",display:"flex",alignItems:"center",gap:6}}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect width="16" height="16" rx="4" fill={C.accent}/><path d="M4 6h8M4 8h6M4 10h7" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          AEO Copilot
+        </div>
+        <div style={{fontSize:10,color:C.muted,marginTop:1}}>Viewing: {ctx.section}</div>
+      </div>
+      <div style={{display:"flex",gap:6}}>
+        {messages.length>0&&<span onClick={()=>setMessages([])} style={{fontSize:10,color:C.muted,cursor:"pointer",padding:"3px 8px",borderRadius:4,border:`1px solid ${C.border}`}}>Clear</span>}
+        <span onClick={onClose} style={{fontSize:16,color:C.muted,cursor:"pointer",padding:"2px 6px",lineHeight:1}}>✕</span>
+      </div>
+    </div>
+
+    {/* Messages */}
+    <div style={{flex:1,overflowY:"auto",padding:"14px 16px",display:"flex",flexDirection:"column",gap:10}}>
+      {messages.length===0&&<div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,padding:20}}>
+        <div style={{width:48,height:48,borderRadius:12,background:`${C.accent}08`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>💬</div>
+        <div style={{fontSize:13,fontWeight:600,color:C.text,fontFamily:"'Outfit'",textAlign:"center"}}>Ask me anything about this section</div>
+        <div style={{fontSize:11,color:C.muted,textAlign:"center",lineHeight:1.6}}>I can explain the data, give strategic advice, or update the report based on your instructions.</div>
+        <div style={{display:"flex",flexDirection:"column",gap:6,width:"100%",marginTop:8}}>
+          {(step==="audit"?["Why is my citation rate so low?","What should I fix first?","Regenerate the diagnostic summary"]:
+            step==="channels"?["Localise the press section to Malaysia","Which channel should I prioritise?","Add a podcast strategy"]:
+            step==="archetypes"?["Rename the first segment","Which archetype is most valuable?","Add a new B2B segment"]:
+            step==="intent"?["Why am I absent on most prompts?","Which stage needs the most work?","Make prompts more specific to my region"]:
+            step==="grid"?["Reprioritise for a small team","Add social media content types","What should we publish first?"]:
+            step==="roadmap"?["Simplify the Day 1-30 tasks","Make this more aggressive","Add a social media department"]:
+            ["What does this data mean?","What should I focus on?","How can I improve my score?"]).map((q,i)=>(
+            <div key={i} onClick={()=>{setInput(q);}} style={{padding:"8px 12px",background:C.bg,borderRadius:6,fontSize:11,color:C.sub,cursor:"pointer",border:`1px solid ${C.borderSoft}`,transition:"all .1s"}}
+              onMouseEnter={e=>e.target.style.borderColor=C.accent+"40"}
+              onMouseLeave={e=>e.target.style.borderColor=C.borderSoft}>
+              "{q}"
+            </div>
+          ))}
+        </div>
+      </div>}
+      {messages.map((m,i)=>(<div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+        <div style={{maxWidth:"88%",padding:"10px 14px",borderRadius:m.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px",background:m.role==="user"?C.accent:`${C.bg}`,color:m.role==="user"?"#fff":C.text,fontSize:12,lineHeight:1.6,border:m.role==="user"?"none":`1px solid ${C.borderSoft}`}}>
+          {m.mutation&&<div style={{fontSize:9,fontWeight:600,color:C.green,marginBottom:4,display:"flex",alignItems:"center",gap:4}}>
+            <span style={{width:5,height:5,borderRadius:"50%",background:C.green,display:"inline-block"}}/>DASHBOARD UPDATED
+          </div>}
+          {m.text.split("\n").map((line,li)=><div key={li} style={{marginBottom:line?3:6}}>{line}</div>)}
+        </div>
+      </div>))}
+      {loading&&<div style={{display:"flex",justifyContent:"flex-start"}}><div style={{padding:"10px 14px",borderRadius:"14px 14px 14px 4px",background:C.bg,border:`1px solid ${C.borderSoft}`}}>
+        <div style={{display:"flex",gap:4}}>{[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:C.muted,animation:`pulse 1s ${i*.2}s infinite`}}/>)}</div>
+      </div></div>}
+      <div ref={bottomRef}/>
+    </div>
+
+    {/* Input */}
+    <div style={{padding:"12px 14px",borderTop:`1px solid ${C.border}`,flexShrink:0}}>
+      <div style={{display:"flex",gap:8}}>
+        <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}
+          placeholder={`Ask about ${ctx.section.toLowerCase()}...`}
+          style={{flex:1,padding:"10px 14px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:10,fontSize:12,color:C.text,outline:"none",fontFamily:"inherit"}}/>
+        <button onClick={send} disabled={loading||!input.trim()} style={{padding:"10px 16px",background:loading||!input.trim()?C.borderSoft:C.accent,color:"#fff",border:"none",borderRadius:10,fontSize:12,fontWeight:600,cursor:loading?"wait":"pointer",fontFamily:"'Outfit'",transition:"all .15s"}}>
+          {loading?"···":"Send"}
+        </button>
+      </div>
+      <div style={{fontSize:9,color:C.muted,marginTop:6,textAlign:"center"}}>Powered by Claude · Responses are contextual to the current section</div>
+    </div>
+  </div>);
+}
+
+const NAV_ITEMS=[
+  {group:"Analytics",items:[
+    {id:"audit",label:"Overview",icon:"grid"},
+    {id:"archetypes",label:"User Archetypes",icon:"users"},
+    {id:"intent",label:"Intent Pathway",icon:"route"},
+  ]},
+  {group:"Action",items:[
+    {id:"channels",label:"AEO Channels",icon:"broadcast"},
+    {id:"grid",label:"Content Grid",icon:"edit"},
+    {id:"roadmap",label:"90-Day Roadmap",icon:"calendar"},
+  ]},
+  {group:"Context",items:[
+    {id:"brandhub",label:"Brand Hub",icon:"book",comingSoon:true},
+    {id:"contenthub",label:"Content Hub",icon:"edit",comingSoon:true},
+  ]},
+];
+const STEPS=NAV_ITEMS.flatMap(g=>g.items).map((s,i)=>({...s,n:String(i+1).padStart(2,"0")}));
+
+/* ─── SIDEBAR ICONS ─── */
+const SidebarIcon=({name,size=18,color="#9ca3af"})=>{
+  const p={grid:<><rect x="3" y="3" width="7" height="7" rx="1" stroke={color} strokeWidth="1.5" fill="none"/><rect x="14" y="3" width="7" height="7" rx="1" stroke={color} strokeWidth="1.5" fill="none"/><rect x="3" y="14" width="7" height="7" rx="1" stroke={color} strokeWidth="1.5" fill="none"/><rect x="14" y="14" width="7" height="7" rx="1" stroke={color} strokeWidth="1.5" fill="none"/></>,
+    users:<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke={color} strokeWidth="1.5" fill="none"/><circle cx="9" cy="7" r="4" stroke={color} strokeWidth="1.5" fill="none"/><path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke={color} strokeWidth="1.5" fill="none"/><path d="M16 3.13a4 4 0 0 1 0 7.75" stroke={color} strokeWidth="1.5" fill="none"/></>,
+    route:<><circle cx="6" cy="19" r="3" stroke={color} strokeWidth="1.5" fill="none"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" stroke={color} strokeWidth="1.5" fill="none"/><circle cx="18" cy="5" r="3" stroke={color} strokeWidth="1.5" fill="none"/></>,
+    broadcast:<><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round"/><circle cx="12" cy="12" r="2" stroke={color} strokeWidth="1.5" fill="none"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round"/><path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round"/></>,
+    edit:<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke={color} strokeWidth="1.5" fill="none"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke={color} strokeWidth="1.5" fill="none"/></>,
+    calendar:<><rect x="3" y="4" width="18" height="18" rx="2" stroke={color} strokeWidth="1.5" fill="none"/><line x1="16" y1="2" x2="16" y2="6" stroke={color} strokeWidth="1.5"/><line x1="8" y1="2" x2="8" y2="6" stroke={color} strokeWidth="1.5"/><line x1="3" y1="10" x2="21" y2="10" stroke={color} strokeWidth="1.5"/></>,
+    book:<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke={color} strokeWidth="1.5" fill="none"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke={color} strokeWidth="1.5" fill="none"/></>};
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none">{p[name]||null}</svg>;
+};
+
+function Sidebar({step,setStep,results,brand,onBack,isArtifact,onLogout,collapsed,setCollapsed}){
+  const sideW=collapsed?60:220;
+  return(<div style={{position:"fixed",left:0,top:0,bottom:0,width:sideW,background:"#fff",borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",transition:"width .2s ease",zIndex:100,overflow:"hidden"}}>
+    {/* Logo area */}
+    <div style={{padding:collapsed?"16px 12px":"16px 20px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:10}}>
+      <svg width="28" height="28" viewBox="0 0 28 28" style={{flexShrink:0}}><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
+      {!collapsed&&<div style={{overflow:"hidden",whiteSpace:"nowrap"}}>
+        <div style={{fontSize:11,color:C.muted,display:"flex",alignItems:"center",gap:4}}>
+          {!isArtifact&&<span onClick={onBack} style={{cursor:"pointer",color:C.accent,fontSize:11}}>←</span>}
+          <span style={{fontWeight:600,color:C.text,fontSize:13}}>{brand||"EnterRank"}</span>
+        </div>
+      </div>}
+    </div>
+
+    {/* New Audit button */}
+    <div style={{padding:collapsed?"10px 8px":"12px 16px"}}>
+      <button onClick={()=>setStep("input")} style={{width:"100%",padding:collapsed?"8px":"9px 14px",background:step==="input"?`${C.accent}08`:"transparent",border:`1px solid ${step==="input"?C.accent+"30":C.border}`,borderRadius:8,fontSize:12,fontWeight:600,color:step==="input"?C.accent:C.sub,cursor:"pointer",fontFamily:"'Outfit'",display:"flex",alignItems:"center",justifyContent:collapsed?"center":"flex-start",gap:8,transition:"all .15s"}}>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+        {!collapsed&&"New Audit"}
+      </button>
+    </div>
+
+    {/* Navigation groups */}
+    <div style={{flex:1,overflowY:"auto",padding:collapsed?"4px 6px":"4px 12px"}}>
+      {NAV_ITEMS.map(g=>(<div key={g.group} style={{marginBottom:16}}>
+        {!collapsed&&<div style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:".08em",padding:"8px 8px 6px",userSelect:"none"}}>{g.group}</div>}
+        {g.items.map(item=>{
+          const active=step===item.id;
+          const dis=!results||item.comingSoon;
+          return(<div key={item.id} onClick={()=>{if(!dis)setStep(item.id);}}
+            style={{display:"flex",alignItems:"center",gap:10,padding:collapsed?"10px 12px":"8px 10px",borderRadius:8,cursor:dis?"default":"pointer",background:active?"#111827":"transparent",color:active?"#fff":dis?"#d1d5db":C.sub,fontSize:13,fontWeight:active?600:500,marginBottom:2,transition:"all .12s",opacity:item.comingSoon?.5:1,justifyContent:collapsed?"center":"flex-start"}}
+            onMouseEnter={e=>{if(!dis&&!active)e.currentTarget.style.background=C.bg;}}
+            onMouseLeave={e=>{if(!active)e.currentTarget.style.background="transparent";}}>
+            <SidebarIcon name={item.icon} size={18} color={active?"#fff":dis?"#d1d5db":"#6b7280"}/>
+            {!collapsed&&<span>{item.label}</span>}
+            {!collapsed&&item.comingSoon&&<span style={{fontSize:8,fontWeight:700,color:"#fff",background:"#d1d5db",padding:"1px 5px",borderRadius:3,marginLeft:"auto"}}>SOON</span>}
+          </div>);
+        })}
+      </div>))}
+    </div>
+
+    {/* Bottom section */}
+    <div style={{borderTop:`1px solid ${C.border}`,padding:collapsed?"10px 6px":"10px 12px"}}>
+      <div onClick={()=>setCollapsed(!collapsed)} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:6,cursor:"pointer",fontSize:12,color:C.muted,justifyContent:collapsed?"center":"flex-start"}}
+        onMouseEnter={e=>e.currentTarget.style.background=C.bg}
+        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+        <span style={{fontSize:14}}>{collapsed?"»":"«"}</span>
+        {!collapsed&&<span>Collapse</span>}
+      </div>
+      {!collapsed&&<div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",marginTop:4}}>
+        <div style={{width:28,height:28,borderRadius:"50%",background:C.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:600,fontFamily:"'Outfit'",flexShrink:0}}>AZ</div>
+        <div style={{overflow:"hidden"}}><div style={{fontSize:12,fontWeight:500,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Aris Zainul</div></div>
+      </div>}
+    </div>
+  </div>);
+}
+
+/* ─── VISIBILITY CHART — Bar chart with hover scores ─── */
+function VisibilityChart({engines,overall,brand}){
+  const[hover,setHover]=useState(null);
+  const barH=200;
+  return(<div>
+    <div style={{marginBottom:16}}>
+      <div style={{fontSize:13,color:C.muted,marginBottom:4}}>Visibility Score for {brand}</div>
+      <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+        <span style={{fontSize:36,fontWeight:700,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>{overall}%</span>
+        <span style={{fontSize:13,color:C.muted}}>–</span>
+      </div>
+    </div>
+    <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:32,height:barH,paddingBottom:30,position:"relative"}}>
+      {/* Y-axis labels */}
+      {[0,25,50,75,100].map(v=>(<div key={v} style={{position:"absolute",left:0,bottom:30+(v/100)*(barH-30),fontSize:10,color:C.muted,transform:"translateY(50%)"}}>{v}%</div>))}
+      {/* Grid lines */}
+      {[0,25,50,75,100].map(v=>(<div key={`g${v}`} style={{position:"absolute",left:30,right:0,bottom:30+(v/100)*(barH-30),height:1,background:C.borderSoft,borderStyle:v===0?"solid":"dashed"}}/>))}
+      {/* Bars with hover */}
+      <div style={{display:"flex",alignItems:"flex-end",gap:40,paddingLeft:40,flex:1,justifyContent:"center",position:"relative",zIndex:1}}>
+        {engines.map((e,i)=>{const bH=Math.max(4,(e.score/100)*(barH-50));return(<div key={e.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,position:"relative"}} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)}>
+          {hover===i&&<div style={{position:"absolute",bottom:bH+36,background:C.text,color:"#fff",padding:"5px 10px",borderRadius:6,fontSize:12,fontWeight:600,fontFamily:"'Outfit'",whiteSpace:"nowrap",boxShadow:"0 4px 12px rgba(0,0,0,.15)",zIndex:2}}>
+            {e.name}: {e.score}%
+            <div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%) rotate(45deg)",width:8,height:8,background:C.text}}/>
+          </div>}
+          <div style={{width:52,height:bH,background:hover===i?e.color:`${e.color}cc`,borderRadius:"4px 4px 0 0",transition:"all .2s ease-out",cursor:"default"}}/>
+          <e.Logo size={18}/>
+        </div>);})}
+      </div>
+    </div>
+  </div>);
+}
+
+/* ─── SHARE OF VOICE — Large donut + ranked list like Profound ─── */
+function ShareOfVoiceSection({title,rankTitle,brands,metricKey}){
+  const[hover,setHover]=useState(null);
+  const size=200,cx=size/2,cy=size/2,r=size/2-8,ir=r*.65;
+  const total=brands.reduce((a,b)=>a+b[metricKey],0)||1;
+  let cumAngle=-Math.PI/2;
+  const gapAngle=0.03;
+  const arcs=brands.map(b=>{const val=b[metricKey];const angle=Math.max(0.02,(val/total)*2*Math.PI)-gapAngle;const start=cumAngle;cumAngle+=angle+gapAngle;const end=start+angle;
+    const x1=cx+r*Math.cos(start),y1=cy+r*Math.sin(start),x2=cx+r*Math.cos(end),y2=cy+r*Math.sin(end);
+    const ix1=cx+ir*Math.cos(end),iy1=cy+ir*Math.sin(end),ix2=cx+ir*Math.cos(start),iy2=cy+ir*Math.sin(start);
+    const large=angle>Math.PI?1:0;
+    const path=`M${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2} L${ix1},${iy1} A${ir},${ir} 0 ${large} 0 ${ix2},${iy2} Z`;
+    return{...b,path,pct:Math.round(val/total*100)};
+  });
+  const ownBrand=arcs[0];
+  // Sort to find actual rank of the user's brand (arcs[0])
+  const sorted=[...arcs].sort((a,b)=>b.pct-a.pct);
+  const brandRank=sorted.findIndex(a=>a.name===ownBrand?.name)+1;
+
+  return(<div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",overflow:"hidden"}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr"}}>
+      {/* Left: donut */}
+      <div style={{padding:"24px 28px",borderRight:`1px solid ${C.border}`}}>
+        <div style={{fontSize:13,color:C.muted,marginBottom:4}}>{title}</div>
+        <div style={{fontSize:28,fontWeight:700,color:C.text,fontFamily:"'Outfit'",marginBottom:16}}>{ownBrand?.pct||0}%<span style={{fontSize:14,color:C.muted,fontWeight:400,marginLeft:6}}>–</span></div>
+        <div style={{display:"flex",justifyContent:"center"}}>
+          <svg width={size} height={size} onMouseLeave={()=>setHover(null)}>
+            {arcs.map((a,i)=>(<path key={i} d={a.path} fill={hover===i?a.color:`${a.color}cc`} stroke="none" onMouseEnter={()=>setHover(i)} style={{cursor:"default",transition:"fill .15s"}}/>))}
+          </svg>
+        </div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:12,marginTop:14,justifyContent:"center"}}>
+          {arcs.map((a,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:4,fontSize:11,cursor:"default"}} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)}>
+            <div style={{width:8,height:8,borderRadius:2,background:a.color}}/>
+            <span style={{color:hover===i?C.text:C.muted,fontWeight:hover===i?600:400}}>{a.name}</span>
+          </div>))}
+        </div>
+      </div>
+      {/* Right: ranked list */}
+      <div style={{padding:"24px 28px"}}>
+        <div style={{fontSize:13,color:C.muted,marginBottom:4}}>{rankTitle}</div>
+        <div style={{fontSize:28,fontWeight:700,color:C.text,fontFamily:"'Outfit'",marginBottom:16}}>#{brandRank}<span style={{fontSize:14,color:C.muted,fontWeight:400,marginLeft:6}}>–</span></div>
+        <div style={{borderTop:`1px solid ${C.border}`,paddingTop:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"30px 1fr auto",gap:8,padding:"6px 0",fontSize:11,color:C.muted,fontWeight:500}}>
+            <span></span><span>Brand</span><span>Share</span>
+          </div>
+          {sorted.map((a,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"30px 1fr auto",gap:8,padding:"10px 0",borderTop:`1px solid ${C.borderSoft}`,alignItems:"center"}} onMouseEnter={()=>setHover(arcs.indexOf(a))} onMouseLeave={()=>setHover(null)}>
+            <span style={{fontSize:12,color:C.muted,fontWeight:500}}>{i+1}.</span>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:22,height:22,borderRadius:6,background:`${a.color}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:a.color}}>{a.name[0]}</div>
+              <span style={{fontSize:13,fontWeight:500,color:C.text}}>{a.name}</span>
+            </div>
+            <span style={{fontSize:14,fontWeight:600,color:C.text,fontFamily:"'Outfit'"}}>{a.pct}%</span>
+          </div>))}
+        </div>
+      </div>
+    </div>
+  </div>);
+}
 
 /* ─── PAGE: NEW AUDIT ─── */
 function NewAuditPage({data,setData,onRun,history=[]}){
@@ -912,11 +1105,11 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     {at:6,msg:"Connecting to OpenAI API → gpt-4o..."},
     {at:9,msg:"Sending 8 query probes to ChatGPT..."},
     {at:12,msg:"Connecting to Anthropic API → claude-sonnet-4-20250514..."},
-    {at:15,msg:"Sending 8 query probes to Claude..."},
+    {at:15,msg:"Sending 8 query probes to Gemini..."},
     {at:18,msg:"Connecting to Google AI API → gemini-2.0-flash..."},
     {at:21,msg:"Sending 8 query probes to Gemini..."},
     {at:24,msg:"Extracting mention rates from ChatGPT response..."},
-    {at:27,msg:"Extracting citation data from Claude response..."},
+    {at:27,msg:"Extracting citation data from Gemini response..."},
     {at:29,msg:"Cross-referencing entity signals across 3 engines..."},
     {at:31,msg:"Scoring Structured Data / Schema..."},
     {at:33,msg:"Scoring Content Authority & E-E-A-T..."},
@@ -925,7 +1118,7 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     {at:41,msg:"Calculating category-level differentials..."},
     {at:44,msg:"Mapping authority distribution curves..."},
     {at:47,msg:"Generating user archetypes from crawl data..."},
-    {at:50,msg:"Testing archetype prompts across ChatGPT, Claude, Gemini..."},
+    {at:50,msg:"Testing archetype prompts across ChatGPT and Gemini..."},
     {at:52,msg:"Calculating real visibility for each user segment..."},
     {at:55,msg:"Archetype verification complete — real engine data applied..."},
     {at:58,msg:`Testing intent pathway prompts for ${data.brand}...`},
@@ -1019,14 +1212,14 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     </div>
     {/* Engine status row */}
     <div style={{display:"flex",gap:16}}>
-      {[{L:ChatGPTLogo,n:"ChatGPT",a:progress>=8,done:progress>=26},{L:ClaudeLogo,n:"Claude",a:progress>=14,done:progress>=26},{L:GeminiLogo,n:"Gemini",a:progress>=20,done:progress>=26}].map(e=>(<div key={e.n} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:8,background:e.done?`${C.green}08`:e.a?`${C.accent}06`:C.bg,border:`1px solid ${e.done?`${C.green}20`:e.a?`${C.accent}15`:C.border}`,transition:"all .3s"}}>
+      {[{L:ChatGPTLogo,n:"ChatGPT",a:progress>=8,done:progress>=26},{L:GeminiLogo,n:"Gemini",a:progress>=14,done:progress>=26}].map(e=>(<div key={e.n} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:8,background:e.done?`${C.green}08`:e.a?`${C.accent}06`:C.bg,border:`1px solid ${e.done?`${C.green}20`:e.a?`${C.accent}15`:C.border}`,transition:"all .3s"}}>
         <e.L size={18}/><span style={{fontSize:11,fontWeight:600,color:e.done?C.green:e.a?C.text:C.muted}}>{e.n}</span>
         {e.done?<span style={{fontSize:10,color:C.green}}>✓</span>:e.a?<span style={{width:4,height:4,borderRadius:"50%",background:C.accent,animation:"pulse 1s infinite"}}/>:null}
       </div>))}
     </div>
     {/* Step progress bars */}
     <div style={{width:"100%",display:"flex",flexDirection:"column",gap:6}}>
-      {[{l:"ChatGPT (gpt-4o)",p:Math.min(100,progress*100/14),c:"#10A37F"},{l:"Claude (Sonnet)",p:Math.max(0,Math.min(100,(progress-8)*100/12)),c:"#D97706"},{l:"Gemini (Flash)",p:Math.max(0,Math.min(100,(progress-14)*100/12)),c:"#4285F4"},{l:"Competitor Analysis",p:Math.max(0,Math.min(100,(progress-30)*100/15)),c:"#8b5cf6"},{l:"Archetype Generation",p:Math.max(0,Math.min(100,(progress-45)*100/17)),c:"#ec4899"},{l:"Intent Pathway",p:Math.max(0,Math.min(100,(progress-62)*100/10)),c:"#f59e0b"},{l:"Channel Verification",p:Math.max(0,Math.min(100,(progress-72)*100/18)),c:"#059669"},{l:"Report Compilation",p:Math.max(0,Math.min(100,(progress-90)*100/10)),c:C.accent}].map(s=>(<div key={s.l} style={{display:"flex",alignItems:"center",gap:8}}>
+      {[{l:"ChatGPT (gpt-4o)",p:Math.min(100,progress*100/14),c:"#10A37F"},{l:"Gemini (Flash)",p:Math.max(0,Math.min(100,(progress-8)*100/12)),c:"#4285F4"},{l:"Competitor Analysis",p:Math.max(0,Math.min(100,(progress-30)*100/15)),c:"#8b5cf6"},{l:"Archetype Generation",p:Math.max(0,Math.min(100,(progress-45)*100/17)),c:"#ec4899"},{l:"Intent Pathway",p:Math.max(0,Math.min(100,(progress-62)*100/10)),c:"#f59e0b"},{l:"Channel Verification",p:Math.max(0,Math.min(100,(progress-72)*100/18)),c:"#059669"},{l:"Report Compilation",p:Math.max(0,Math.min(100,(progress-90)*100/10)),c:C.accent}].map(s=>(<div key={s.l} style={{display:"flex",alignItems:"center",gap:8}}>
         <span style={{fontSize:10,color:s.p>=100?C.green:s.p>0?C.text:C.muted,minWidth:120,fontWeight:s.p>0&&s.p<100?600:400,fontFamily:"'Outfit'"}}>{s.p>=100?"✓ ":s.p>0?"◉ ":"○ "}{s.l}</span>
         <div style={{flex:1,height:3,background:C.borderSoft,borderRadius:2}}><div style={{width:`${Math.max(0,s.p)}%`,height:"100%",background:s.p>=100?C.green:s.c,borderRadius:2,transition:"width .15s linear"}}/></div>
       </div>))}
@@ -1053,105 +1246,147 @@ function NewAuditPage({data,setData,onRun,history=[]}){
       </div>
     </div>
     <div style={{marginTop:20,paddingTop:18,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div style={{display:"flex",gap:12,alignItems:"center"}}><span style={{fontSize:11,color:C.muted}}>Engines:</span><ChatGPTLogo size={18}/><ClaudeLogo size={18}/><GeminiLogo size={18}/></div>
+      <div style={{display:"flex",gap:12,alignItems:"center"}}><span style={{fontSize:11,color:C.muted}}>Engines:</span><ChatGPTLogo size={18}/><GeminiLogo size={18}/></div>
       <button onClick={go} disabled={!ok} style={{padding:"10px 24px",background:ok?C.accent:"#dde1e7",color:ok?"#fff":"#9ca3af",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:ok?"pointer":"not-allowed",fontFamily:"'Outfit'"}}>Run AEO Audit →</button>
     </div></Card></div>);
 }
 
-/* ─── PAGE: AEO AUDIT ─── */
+/* ─── PAGE: AEO AUDIT (Overview) ─── */
 function AuditPage({r,history,goTo}){
-  const[ex,setEx]=useState(null);
   const[expandComp,setExpandComp]=useState(null);
-  const[radarComp,setRadarComp]=useState(0);
-  const[showTrack,setShowTrack]=useState(false);
   const trend=history.map(h=>({label:h.date,overall:h.overall}));
-  const engineTrend=history.map(h=>({label:h.date,ChatGPT:h.engines[0],Claude:h.engines[1],Gemini:h.engines[2]}));
-  const selComp=r.competitors[radarComp]||r.competitors[0];
-  const radarData=r.painPoints.map(pp=>({label:pp.label.split(" ").slice(0,2).join(" "),you:pp.score,comp:selComp?selComp.painPoints.find(c=>c.label===pp.label)?.score||50:50}));
+  const engineTrend=history.map(h=>({label:h.date,ChatGPT:h.engines[0],Gemini:h.engines[1]}));
   const latestChange=history.length>1?r.overall-history[history.length-2].overall:0;
   const catChanges=r.painPoints.map(pp=>{const hist=history.map(h=>{const f=h.categories.find(c=>c.label===pp.label);return f?f.score:null;}).filter(Boolean);const prev=hist.length>1?hist[hist.length-2]:pp.score;return{...pp,change:pp.score-prev};});
 
+  // Compute share-of-voice data: brand + competitors
+  const allBrands=[{name:r.clientData.brand,mentionRate:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citationRate:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),color:C.accent},...r.competitors.map((c,i)=>({name:c.name,mentionRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length):c.score,citationRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length*.6):Math.round(c.score*.6),color:["#10A37F","#D97706","#4285F4","#8b5cf6","#ec4899","#0ea5e9","#f97316"][i%7]}))];
+
+  // Compute diagnostics
+  const avgMention=Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length);
+  const avgCitation=Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length);
+  const worstEngine=r.engines.reduce((a,e)=>e.score<a.score?e:a,r.engines[0]);
+  const bestEngine=r.engines.reduce((a,e)=>e.score>a.score?e:a,r.engines[0]);
+  const criticalCats=r.painPoints.filter(p=>p.severity==="critical");
+  const weakestCat=r.painPoints.reduce((a,b)=>b.score<a.score?b:a,r.painPoints[0]);
+  const strongestCat=r.painPoints.reduce((a,b)=>b.score>a.score?b:a,r.painPoints[0]);
+  const compsAhead=r.competitors.filter(c=>c.score>r.overall);
+  const channels=r.aeoChannels||[];
+  const missingChannels=channels.filter(ch=>ch.status==="Not Present"||ch.statusLabel==="Not Present");
+
+  const diags=[];
+  if(bestEngine.score-worstEngine.score>15) diags.push({icon:"⚡",severity:"warning",text:`${bestEngine.score-worstEngine.score}pt gap between ${bestEngine.name} (${bestEngine.score}%) and ${worstEngine.name} (${worstEngine.score}%).`});
+  if(avgCitation<10) diags.push({icon:"🔗",severity:"critical",text:`${avgCitation}% citation rate. Users get answers about your space but aren't sent to your site.`});
+  else if(avgCitation<25) diags.push({icon:"🔗",severity:"warning",text:`${avgCitation}% citation rate — ${100-avgCitation}% of mentions don't link back to you.`});
+  if(avgMention<15) diags.push({icon:"💬",severity:"critical",text:`${avgMention}% mention rate across engines. ${r.clientData.brand} isn't part of the AI conversation yet.`});
+  else if(avgMention<35) diags.push({icon:"💬",severity:"warning",text:`Mentioned in ~1 of ${Math.round(100/avgMention)} relevant responses (${avgMention}%).`});
+  if(criticalCats.length>0) diags.push({icon:"🚨",severity:"critical",text:`${criticalCats.map(c=>c.label.split("/")[0].trim()+" "+c.score+"%").join(", ")} — ${criticalCats.length>1?"these need":"needs"} immediate attention.`});
+  if(weakestCat.score<30) diags.push({icon:"📉",severity:"critical",text:`${weakestCat.label.split("/")[0].trim()} at ${weakestCat.score}% — lowest category score.`});
+  if(compsAhead.length>0) diags.push({icon:"🏁",severity:compsAhead.length>1?"critical":"warning",text:`${compsAhead.map(c=>c.name+" "+c.score+"%").join(", ")} ${compsAhead.length>1?"are":"is"} scoring above you.`});
+  if(missingChannels.length>0) diags.push({icon:"📡",severity:"warning",text:`Not found on ${missingChannels.length} distribution channel${missingChannels.length>1?"s":""}.`});
+  if(strongestCat.score>60) diags.push({icon:"✅",severity:"good",text:`${strongestCat.label.split("/")[0].trim()} is your strongest signal at ${strongestCat.score}%.`});
+  const sevOrder={critical:0,warning:1,info:2,good:3};
+  diags.sort((a,b)=>(sevOrder[a.severity]??2)-(sevOrder[b.severity]??2));
+  const sevColors={critical:C.red,warning:C.amber,info:C.accent,good:C.green};
+
   return(<div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
-      <div><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>AEO Audit Results</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Visibility report for <strong>{r.clientData.brand}</strong> <span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>⚡ Live AI Analysis</span></p></div>
-      <div style={{display:"flex",alignItems:"center",gap:12}}>
-        {latestChange!==0&&<div style={{padding:"5px 10px",borderRadius:8,background:latestChange>0?`${C.green}10`:`${C.red}10`}}><span style={{fontSize:13,fontWeight:700,color:latestChange>0?C.green:C.red}}>{latestChange>0?"▲ +":"▼ "}{Math.abs(latestChange)}</span><span style={{fontSize:9,color:C.muted,display:"block"}}>vs last</span></div>}
-        <Ring score={r.overall} size={84}/>
+    {/* Page title */}
+    <h2 style={{fontSize:24,fontWeight:700,color:C.text,margin:"0 0 24px",fontFamily:"'Outfit'"}}>Overview</h2>
+
+    {/* Top row: Visibility Score (left) + System Diagnostics (right) */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:20,marginBottom:24}}>
+      {/* Visibility Score chart */}
+      <div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"24px 28px"}}>
+        <VisibilityChart engines={r.engines} overall={r.overall} brand={r.clientData.brand}/>
+      </div>
+
+      {/* System Diagnostics */}
+      <div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"20px 22px",display:"flex",flexDirection:"column"}}>
+        <div style={{fontSize:14,fontWeight:600,color:C.text,fontFamily:"'Outfit'",marginBottom:14}}>System Diagnostics</div>
+        <div style={{flex:1,display:"flex",flexDirection:"column",gap:6,overflowY:"auto"}}>
+          {diags.slice(0,6).map((d,i)=>(<div key={i} style={{display:"flex",gap:8,padding:"10px 12px",background:`${sevColors[d.severity]||C.accent}05`,borderRadius:8,border:`1px solid ${sevColors[d.severity]||C.accent}12`}}>
+            <span style={{fontSize:14,lineHeight:1,flexShrink:0}}>{d.icon}</span>
+            <span style={{fontSize:12,color:C.sub,lineHeight:1.5}}>{d.text}</span>
+          </div>))}
+        </div>
+        <div style={{fontSize:11,color:C.muted,marginTop:10,paddingTop:8,borderTop:`1px solid ${C.borderSoft}`}}>{diags.filter(d=>d.severity==="critical").length} critical · {diags.filter(d=>d.severity==="warning").length} warnings · {diags.filter(d=>d.severity==="good").length} healthy</div>
       </div>
     </div>
-    <SectionNote text={`Your overall AEO score of ${r.overall}/100 measures how visible ${r.clientData.brand} is when people ask AI chatbots questions about your industry. Higher = AI engines are more likely to cite your brand.`}/>
 
-    {/* Engine cards */}
-    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
-      {r.engines.map(e=>(<Card key={e.id} onClick={()=>setEx(ex===e.id?null:e.id)} style={{cursor:"pointer",border:ex===e.id?`1px solid ${e.color}40`:`1px solid ${C.border}`}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={{display:"flex",alignItems:"center",gap:8}}><e.Logo size={20}/><span style={{fontWeight:600,fontSize:13,color:C.text}}>{e.name}</span></div><Ring score={e.score} size={44} color={e.color} sw={3}/></div>
-        {[{l:"Mentions",v:e.mentionRate,tip:"How often this AI mentions your brand in relevant answers."},{l:"Citations",v:e.citationRate,tip:"How often this AI links to your website as a source."},{l:"Sentiment",v:e.sentiment,tip:"How positively this AI talks about your brand."}].map(m=>(<div key={m.l} style={{marginBottom:7}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}><span style={{fontSize:10,color:C.muted,display:"flex",alignItems:"center"}}>{m.l}<InfoTip text={m.tip}/></span><span style={{fontSize:10,fontWeight:600}}>{m.v}%</span></div><Bar value={m.v} color={e.color}/></div>))}
-        {ex===e.id&&<div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${C.borderSoft}`}}>
-          <div style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",marginBottom:6}}>Query Visibility</div>
-          {e.queries.map((q,j)=>(<div key={j} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0"}}><span style={{fontSize:11,color:C.sub}}>{q.query}</span><Pill color={q.status==="Cited"?C.green:q.status==="Mentioned"?C.amber:C.red}>{q.status}</Pill></div>))}
-          <div style={{marginTop:10}}><div style={{fontSize:10,fontWeight:600,color:C.green,marginBottom:3}}>✓ Strengths</div>{e.strengths.map((s,i)=><div key={i} style={{fontSize:11,color:C.sub,padding:"2px 0"}}>• {s}</div>)}<div style={{fontSize:10,fontWeight:600,color:C.red,marginBottom:3,marginTop:6}}>✗ Weaknesses</div>{e.weaknesses.map((s,i)=><div key={i} style={{fontSize:11,color:C.sub,padding:"2px 0"}}>• {s}</div>)}</div>
-        </div>}
-        <div style={{textAlign:"center",marginTop:4}}><span style={{fontSize:10,color:C.muted}}>{ex===e.id?"collapse ↑":"details ↓"}</span></div>
-      </Card>))}
-    </div>
+    {/* Share of Voice sections — row by row, each full width with donut + ranked list */}
+    {r.competitors.length>0&&<div style={{display:"flex",flexDirection:"column",gap:20,marginBottom:24}}>
+      <ShareOfVoiceSection title="Share of Mentions" rankTitle="Mentions Rank" brands={allBrands} metricKey="mentionRate"/>
+      <ShareOfVoiceSection title="Share of Citations" rankTitle="Citation Rank" brands={allBrands} metricKey="citationRate"/>
+    </div>}
 
-    {/* Competitors */}
-    {r.competitors.length>0&&<Card style={{marginBottom:20}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><h3 style={{fontSize:14,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Competitive Landscape</h3><InfoTip text="Scores compare AI visibility across all engines. +/- shows points ahead or behind you."/></div>
-      <p style={{fontSize:12,color:C.muted,margin:"0 0 14px"}}>AEO visibility scores — bar length shows share of AI engine visibility.</p>
-      <div style={{display:"flex",flexDirection:"column",gap:8}}><BRow name={`${r.clientData.brand} (You)`} score={r.overall} color={C.accent} bold/>
-      {r.competitors.map((c,i)=><BRow key={i} name={c.name} score={c.score} color={c.score>r.overall?C.red:"#94a3b8"} diff={c.score-r.overall}/>)}</div>
-    </Card>}
-
-    {/* Competitor Deep-Dive */}
-    {r.competitors.length>0&&<Card style={{marginBottom:20}}>
-      <h3 style={{fontSize:14,fontWeight:600,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'"}}>Competitor Deep-Dive</h3>
-      <p style={{fontSize:12,color:C.muted,margin:"0 0 14px"}}>Why competitors rank higher or lower — and what you can learn.</p>
-      {r.competitors.map((c,ci)=>{const isOpen=expandComp===ci;const ahead=c.score>r.overall;return(<div key={ci} style={{border:`1px solid ${isOpen?(ahead?`${C.red}30`:`${C.green}30`):C.border}`,borderRadius:C.rs,overflow:"hidden",marginBottom:8}}>
-        <div onClick={()=>setExpandComp(isOpen?null:ci)} style={{padding:"12px 14px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",background:isOpen?`${ahead?C.red:C.green}03`:"transparent"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:34,height:34,borderRadius:8,background:ahead?`${C.red}08`:`${C.green}08`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:ahead?C.red:C.green,fontFamily:"'Outfit'"}}>{c.score}</div><div><div style={{fontWeight:600,fontSize:13,color:C.text}}>{c.name}</div><div style={{fontSize:11,color:C.muted}}>{ahead?`${c.score-r.overall}pts ahead`:`${r.overall-c.score}pts behind`}</div></div></div>
-          <div style={{display:"flex",alignItems:"center",gap:6}}><Pill color={ahead?C.red:C.green} filled>{ahead?"Outranking":"Behind"}</Pill><span style={{fontSize:10,color:C.muted}}>{isOpen?"▲":"▼"}</span></div>
-        </div>
-        {isOpen&&<div style={{padding:"0 14px 14px"}}>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:14,marginTop:4}}>
-            {c.painPoints.map((cp,j)=>{const yours=r.painPoints[j]?.score||50;const diff=cp.score-yours;return(<div key={j} style={{padding:"8px 10px",background:C.bg,borderRadius:6}}><div style={{fontSize:10,color:C.muted,marginBottom:4}}>{cp.label.split("/")[0].trim()}</div><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:11,color:C.accent,fontWeight:600}}>You: {yours}</span><span style={{fontSize:11,fontWeight:600,color:diff>0?C.red:C.green}}>{c.name.split(" ")[0]}: {cp.score}</span></div><div style={{marginTop:4}}><Bar value={yours} color={C.accent} h={3}/><div style={{marginTop:2}}><Bar value={cp.score} color={diff>0?C.red:"#94a3b8"} h={3}/></div></div></div>);})}
+    {/* Platform Breakdown */}
+    <div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"24px 28px",marginBottom:24}}>
+      <h3 style={{fontSize:16,fontWeight:600,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'"}}>{r.clientData.brand} — Platform Breakdown</h3>
+      <p style={{fontSize:13,color:C.muted,margin:"0 0 24px"}}>How each AI engine sees your brand</p>
+      <div style={{display:"flex",flexDirection:"column",gap:20}}>
+        {r.engines.map(e=>(<div key={e.id} style={{padding:"20px 24px",background:C.bg,borderRadius:12,border:`1px solid ${C.borderSoft}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+            <e.Logo size={22}/>
+            <span style={{fontSize:15,fontWeight:600,color:C.text}}>{e.name}</span>
+            <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:12}}>
+              <div style={{textAlign:"right"}}><div style={{fontSize:11,color:C.muted}}>Mentions</div><div style={{fontSize:14,fontWeight:700,color:C.text,fontFamily:"'Outfit'"}}>{e.mentionRate}%</div></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:11,color:C.muted}}>Citations</div><div style={{fontSize:14,fontWeight:700,color:C.text,fontFamily:"'Outfit'"}}>{e.citationRate}%</div></div>
+            </div>
           </div>
-          {c.advantages.length>0&&<div>{c.advantages.map((adv,ai)=>(<div key={ai} style={{padding:"10px 12px",background:adv.insight.advantage==="them"?`${C.red}04`:`${C.green}04`,borderRadius:6,borderLeft:`3px solid ${adv.insight.advantage==="them"?C.red:C.green}`,marginBottom:6}}><div style={{fontSize:11,fontWeight:600,color:C.text,marginBottom:2}}>{adv.cat.split("/")[0].trim()} <span style={{color:C.muted,fontWeight:400}}>— You: {adv.yourScore} vs {adv.theirScore}</span></div><div style={{fontSize:12,color:C.sub,lineHeight:1.5}}>{adv.insight.text}</div></div>))}</div>}
-        </div>}
-      </div>);})}
-    </Card>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:600,color:C.green,textTransform:"uppercase",letterSpacing:".05em",marginBottom:10}}>Strengths</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {e.strengths.map((s,i)=><div key={i} style={{fontSize:13,color:C.sub,lineHeight:1.7,padding:"6px 12px",background:"#fff",borderRadius:8,borderLeft:`3px solid ${C.green}30`}}>{s}</div>)}
+              </div>
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:600,color:C.red,textTransform:"uppercase",letterSpacing:".05em",marginBottom:10}}>Weaknesses</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {e.weaknesses.map((s,i)=><div key={i} style={{fontSize:13,color:C.sub,lineHeight:1.7,padding:"6px 12px",background:"#fff",borderRadius:8,borderLeft:`3px solid ${C.red}30`}}>{s}</div>)}
+              </div>
+            </div>
+          </div>
+        </div>))}
+      </div>
+    </div>
 
     {/* Performance Tracking */}
-    <Card style={{marginBottom:20}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}} onClick={()=>setShowTrack(!showTrack)}>
-        <div><h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'"}}>📈 Performance Tracking</h3><p style={{fontSize:12,color:C.muted,margin:"2px 0 0"}}>Score history and category trends</p></div>
-        <span style={{fontSize:12,color:C.accent,fontWeight:600}}>{showTrack?"Hide ↑":"Show ↓"}</span>
-      </div>
-      {showTrack&&<div style={{marginTop:18}}>
-        <SectionNote text="Each audit adds a data point. Run audits over time to track whether your AEO strategy is working."/>
-        {history.length<2?<div style={{textAlign:"center",padding:"32px 20px",background:C.bg,borderRadius:C.rs}}>
+    <div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"24px 28px",marginBottom:24}}>
+      <h3 style={{fontSize:16,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Performance Tracking</h3>
+      <p style={{fontSize:13,color:C.muted,margin:"2px 0 0 0"}}>Score history and category trends</p>
+      <div style={{marginTop:18}}>
+        {history.length<2?<div style={{textAlign:"center",padding:"32px 20px",background:C.bg,borderRadius:10}}>
           <div style={{fontSize:28,marginBottom:8}}>📊</div>
-          <div style={{fontSize:14,fontWeight:600,color:C.text,marginBottom:4,fontFamily:"'Outfit'"}}>First Audit Complete</div>
-          <div style={{fontSize:12,color:C.muted,maxWidth:340,margin:"0 auto"}}>This is your baseline. Run another audit in 30+ days to see trends, score changes, and category movement.</div>
-        </div>:<><div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>AEO Score Trend</div><MiniAreaChart data={trend} dataKey="overall" color={C.accent}/></div>
-        <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>Engine Performance</div><MiniLineChart data={engineTrend} lines={[{key:"ChatGPT",color:"#10A37F",label:"ChatGPT"},{key:"Claude",color:"#D97706",label:"Claude"},{key:"Gemini",color:"#4285F4",label:"Gemini"}]}/></div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-          <div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><span style={{fontSize:13,fontWeight:600,color:C.text}}>Category Radar</span>
-              {r.competitors.length>0&&<select value={radarComp} onChange={e=>setRadarComp(Number(e.target.value))} style={{fontSize:11,padding:"4px 8px",borderRadius:6,border:`1px solid ${C.border}`,background:C.bg,color:C.text,fontFamily:"inherit"}}>
-                {r.competitors.map((c,i)=>(<option key={i} value={i}>vs {c.name}</option>))}
-              </select>}
-            </div>
-            <MiniRadar data={radarData} keys={[{key:"you",color:C.accent,label:r.clientData.brand},{key:"comp",color:C.red,label:selComp?.name||"Competitor"}]}/>
-          </div>
+          <div style={{fontSize:15,fontWeight:600,color:C.text,marginBottom:4,fontFamily:"'Outfit'"}}>First Audit Complete</div>
+          <div style={{fontSize:13,color:C.muted,maxWidth:360,margin:"0 auto"}}>Run another audit to see trends and score changes.</div>
+        </div>:<>
+          <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>AEO Score Trend</div><MiniAreaChart data={trend} dataKey="overall" color={C.accent}/></div>
+          <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>Engine Performance</div><MiniLineChart data={engineTrend} lines={[{key:"ChatGPT",color:"#10A37F",label:"ChatGPT"},{key:"Gemini",color:"#4285F4",label:"Gemini"}]}/></div>
           <div><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>Category Movement</div>
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>{catChanges.map((cat,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:10,color:C.sub,minWidth:70}}>{cat.label.split(" ").slice(0,2).join(" ")}</span><div style={{flex:1}}><Bar value={cat.score} color={SC(cat.severity)} h={5}/></div><span style={{fontSize:12,fontWeight:700,color:C.text,minWidth:20,textAlign:"right"}}>{cat.score}</span><span style={{fontSize:10,fontWeight:600,minWidth:28,textAlign:"right",color:cat.change>0?C.green:cat.change<0?C.red:C.muted}}>{cat.change>0?`+${cat.change}`:cat.change===0?"—":cat.change}</span></div>))}</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>{catChanges.map((cat,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:11,color:C.sub,minWidth:100}}>{cat.label.split(" ").slice(0,2).join(" ")}</span><div style={{flex:1}}><Bar value={cat.score} color={SC(cat.severity)} h={5}/></div><span style={{fontSize:12,fontWeight:700,color:C.text,minWidth:26,textAlign:"right"}}>{cat.score}%</span><span style={{fontSize:10,fontWeight:600,minWidth:32,textAlign:"right",color:cat.change>0?C.green:cat.change<0?C.red:C.muted}}>{cat.change>0?`+${cat.change}`:cat.change===0?"—":cat.change}</span></div>))}</div>
           </div>
+        </>}
+      </div>
+    </div>
+
+    {/* Competitor Deep-Dive */}
+    {r.competitors.length>0&&<div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"24px 28px",marginBottom:24}}>
+      <h3 style={{fontSize:16,fontWeight:600,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'"}}>Looking Under The Hood</h3>
+      <p style={{fontSize:13,color:C.muted,margin:"0 0 16px"}}>Why competitors rank higher or lower</p>
+      {r.competitors.map((c,ci)=>{const isOpen=expandComp===ci;const ahead=c.score>r.overall;return(<div key={ci} style={{border:`1px solid ${isOpen?(ahead?`${C.red}25`:`${C.green}25`):C.border}`,borderRadius:10,overflow:"hidden",marginBottom:8}}>
+        <div onClick={()=>setExpandComp(isOpen?null:ci)} style={{padding:"14px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",background:isOpen?`${ahead?C.red:C.green}03`:"transparent"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:36,height:36,borderRadius:8,background:ahead?`${C.red}08`:`${C.green}08`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:ahead?C.red:C.green,fontFamily:"'Outfit'"}}>{c.score}%</div><div><div style={{fontWeight:600,fontSize:13,color:C.text}}>{c.name}</div><div style={{fontSize:11,color:C.muted}}>{ahead?`${c.score-r.overall} points ahead`:`${r.overall-c.score} points behind`}</div></div></div>
+          <div style={{display:"flex",alignItems:"center",gap:6}}><Pill color={ahead?C.red:C.green} filled>{ahead?"Outranking":"Behind"}</Pill><span style={{fontSize:10,color:C.muted}}>{isOpen?"▲":"▼"}</span></div>
         </div>
-      </>}
-      </div>}
-    </Card>
-    <NavBtn onClick={()=>goTo("archetypes")} label="Next: User Archetypes →"/>
+        {isOpen&&<div style={{padding:"0 16px 16px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:14,marginTop:4}}>
+            {c.painPoints.map((cp,j)=>{const yours=r.painPoints[j]?.score||50;const diff=cp.score-yours;return(<div key={j} style={{padding:"8px 10px",background:C.bg,borderRadius:6}}><div style={{fontSize:10,color:C.muted,marginBottom:4}}>{cp.label.split("/")[0].trim()}</div><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:11,color:C.accent,fontWeight:600}}>You: {yours}%</span><span style={{fontSize:11,fontWeight:600,color:diff>0?C.red:C.green}}>{c.name.split(" ")[0]}: {cp.score}%</span></div><div style={{marginTop:4}}><Bar value={yours} color={C.accent} h={3}/><div style={{marginTop:2}}><Bar value={cp.score} color={diff>0?C.red:"#94a3b8"} h={3}/></div></div></div>);})}
+          </div>
+          {c.advantages.length>0&&<div>{c.advantages.map((adv,ai)=>(<div key={ai} style={{padding:"10px 12px",background:adv.insight.advantage==="them"?`${C.red}04`:`${C.green}04`,borderRadius:6,borderLeft:`3px solid ${adv.insight.advantage==="them"?C.red:C.green}`,marginBottom:6}}><div style={{fontSize:11,fontWeight:600,color:C.text,marginBottom:2}}>{adv.cat.split("/")[0].trim()} <span style={{color:C.muted,fontWeight:400}}>— You: {adv.yourScore}% vs {adv.theirScore}%</span></div><div style={{fontSize:12,color:C.sub,lineHeight:1.5}}>{adv.insight.text}</div></div>))}</div>}
+        </div>}
+      </div>);})}
+    </div>}
   </div>);
 }
 
@@ -1195,19 +1430,118 @@ function ArchetypesPage({r,goTo}){
 
 /* ─── PAGE: INTENT PATHWAY ─── */
 function IntentPage({r,goTo}){
-  const[os,setOs]=useState(0);
-  const stats=r.funnelStages.map(s=>({cited:s.prompts.filter(p=>p.status==="Cited").length,mentioned:s.prompts.filter(p=>p.status==="Mentioned").length,absent:s.prompts.filter(p=>p.status==="Absent").length}));
+  // Flatten all archetypes from all groups
+  const allArchetypes=r.stakeholders.flatMap(sg=>sg.archetypes.map(a=>({...a,groupName:sg.group,groupIcon:sg.icon})));
+  const[selArch,setSelArch]=useState(0);
+  const[selStage,setSelStage]=useState(0);
+  const arch=allArchetypes[selArch]||allArchetypes[0];
+  const journey=arch.journey||[];
+  const stageColors=["#6366f1","#8b5cf6","#a855f7","#c084fc"];
+  const stageNames=["Awareness","Consideration","Transaction","Retention"];
+  const stageDescs=["User discovers the problem or category","User evaluates and compares options","User is ready to purchase or commit","Existing user seeks ongoing value"];
+
+  // Compute stats per stage for the selected archetype
+  const stageStats=journey.map(s=>{const prompts=s.prompts||[];return{cited:prompts.filter(p=>p.status==="Cited").length,mentioned:prompts.filter(p=>p.status==="Mentioned").length,absent:prompts.filter(p=>p.status==="Absent").length,total:prompts.length};});
+
+  // Overall archetype visibility across all stages
+  const allPrompts=journey.flatMap(s=>s.prompts||[]);
+  const archCited=allPrompts.filter(p=>p.status==="Cited").length;
+  const archMentioned=allPrompts.filter(p=>p.status==="Mentioned").length;
+  const archTotal=allPrompts.length||1;
+  const archVisibility=Math.round((archCited*1+archMentioned*0.5)/archTotal*100);
+
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Intent Pathway</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Where does your brand appear across the customer journey?</p></div>
-    <SectionNote text="'Cited' = AI links to your site. 'Mentioned' = brand name appears without link. 'Absent' = not referenced. Only real, verified prompts are shown — no filler. The % shows citation rate per stage."/>
-    <Card style={{marginBottom:20,padding:0,overflow:"hidden"}}><div style={{display:"flex"}}>
-      {r.funnelStages.map((s,i)=>{const total=s.prompts.length||1;const pct=Math.round(stats[i].cited/total*100);return(<div key={i} onClick={()=>setOs(i)} style={{flex:1,padding:"16px 12px",cursor:"pointer",background:os===i?`${s.color}08`:"transparent",borderBottom:os===i?`3px solid ${s.color}`:"3px solid transparent",textAlign:"center",transition:"all .15s"}}><div style={{fontSize:20,fontWeight:700,color:s.color,fontFamily:"'Outfit'"}}>{pct}%</div><div style={{fontSize:11,fontWeight:600,color:C.text,marginTop:2}}>{s.stage}</div><div style={{fontSize:10,color:C.muted}}>{stats[i].cited}/{total} cited</div></div>);})}
-    </div></Card>
-    <Card><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-      <div><h3 style={{fontSize:14,fontWeight:600,color:r.funnelStages[os].color,margin:0,fontFamily:"'Outfit'"}}>{r.funnelStages[os].stage}</h3><p style={{fontSize:11,color:C.muted,margin:"2px 0 0"}}>{r.funnelStages[os].desc} · {r.funnelStages[os].prompts.length} prompts identified</p></div>
-      <div style={{display:"flex",gap:4}}><Pill color={C.green} filled>{stats[os].cited} Cited</Pill><Pill color={C.amber} filled>{stats[os].mentioned} Mentioned</Pill><Pill color={C.red} filled>{stats[os].absent} Absent</Pill></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Intent Pathway</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Each user segment has a unique search journey — select an archetype to see their specific prompts across all 4 stages.</p></div>
+    <SectionNote text="Different user segments ask very different questions at each stage. A 'Price-Conscious Switcher' asking about deals is a completely different intent from an 'IT Manager' evaluating SLAs — and AI engines respond differently to each."/>
+
+    {/* Archetype selector */}
+    <div style={{marginBottom:16}}>
+      <div style={{fontSize:11,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:8}}>Select User Segment</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+        {allArchetypes.map((a,i)=>(<div key={i} onClick={()=>{setSelArch(i);setSelStage(0);}} style={{padding:"7px 14px",background:selArch===i?`${C.accent}10`:C.surface,border:`1px solid ${selArch===i?`${C.accent}40`:C.border}`,borderRadius:100,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .15s"}}>
+          <span style={{fontSize:14}}>{a.icon}</span>
+          <span style={{fontSize:11,fontWeight:selArch===i?600:400,color:selArch===i?C.accent:C.text}}>{a.name}</span>
+        </div>))}
+      </div>
     </div>
-    <div style={{fontSize:12}}>{r.funnelStages[os].prompts.map((p,j)=>(<div key={j} style={{display:"grid",gridTemplateColumns:"1fr 50px 70px",padding:"7px 8px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center"}}><span style={{color:C.sub,fontSize:11}}>{p.query}</span><span style={{textAlign:"center",fontWeight:600,fontSize:11,color:p.rank<=3?C.green:p.rank<=7?C.amber:C.red}}>#{p.rank}</span><span style={{textAlign:"center"}}><Pill color={p.status==="Cited"?C.green:p.status==="Mentioned"?C.amber:C.red}>{p.status}</Pill></span></div>))}</div></Card>
+
+    {/* Selected archetype summary */}
+    <Card style={{marginBottom:16,background:`${C.accent}04`,borderColor:`${C.accent}15`}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <div style={{width:44,height:44,borderRadius:10,background:`${C.accent}10`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>{arch.icon}</div>
+          <div>
+            <div style={{fontWeight:600,fontSize:14,color:C.text}}>{arch.name}</div>
+            <div style={{fontSize:11,color:C.muted}}>{arch.groupIcon} {arch.groupName} · {arch.demo} · ~{arch.size}% of searches</div>
+          </div>
+        </div>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontSize:20,fontWeight:700,color:archVisibility>=40?C.green:archVisibility>=20?C.amber:C.red,fontFamily:"'Outfit'"}}>{archVisibility}%</div>
+          <div style={{fontSize:9,color:C.muted}}>journey visibility</div>
+        </div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:12,paddingTop:12,borderTop:`1px solid ${C.accent}10`}}>
+        <div><span style={{fontSize:10,fontWeight:600,color:C.muted}}>INTENT: </span><span style={{fontSize:11,color:C.sub}}>{arch.intent}</span></div>
+        <div><span style={{fontSize:10,fontWeight:600,color:C.muted}}>BEHAVIOUR: </span><span style={{fontSize:11,color:C.sub}}>{arch.behavior}</span></div>
+      </div>
+    </Card>
+
+    {/* Funnel stage tabs */}
+    <Card style={{marginBottom:16,padding:0,overflow:"hidden"}}>
+      <div style={{display:"flex"}}>
+        {stageNames.map((name,i)=>{
+          const s=stageStats[i]||{cited:0,mentioned:0,absent:0,total:0};
+          const total=s.total||1;
+          const visPct=Math.round((s.cited+s.mentioned)/total*100);
+          const color=stageColors[i];
+          return(<div key={i} onClick={()=>setSelStage(i)} style={{flex:1,padding:"14px 10px",cursor:"pointer",background:selStage===i?`${color}08`:"transparent",borderBottom:selStage===i?`3px solid ${color}`:"3px solid transparent",textAlign:"center",transition:"all .15s"}}>
+            <div style={{fontSize:18,fontWeight:700,color:color,fontFamily:"'Outfit'"}}>{visPct}%</div>
+            <div style={{fontSize:11,fontWeight:600,color:selStage===i?C.text:C.sub,marginTop:2}}>{name}</div>
+            <div style={{fontSize:10,color:C.muted}}>{s.cited} cited · {s.mentioned} mentioned</div>
+          </div>);
+        })}
+      </div>
+    </Card>
+
+    {/* Stage prompt detail */}
+    {(()=>{
+      const stage=journey[selStage];
+      if(!stage||!stage.prompts||stage.prompts.length===0)return(<Card><div style={{textAlign:"center",padding:20,color:C.muted,fontSize:12}}>No prompts mapped for this stage yet.</div></Card>);
+      const color=stageColors[selStage];
+      const prompts=stage.prompts;
+      return(<Card>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div>
+            <h3 style={{fontSize:14,fontWeight:600,color:color,margin:0,fontFamily:"'Outfit'"}}>{stageNames[selStage]}</h3>
+            <p style={{fontSize:11,color:C.muted,margin:"2px 0 0"}}>{stageDescs[selStage]} · {prompts.length} prompts for this segment</p>
+          </div>
+          <div style={{display:"flex",gap:4}}>
+            <Pill color={C.green} filled>{(stageStats[selStage]||{}).cited||0} Cited</Pill>
+            <Pill color={C.amber} filled>{(stageStats[selStage]||{}).mentioned||0} Mentioned</Pill>
+            <Pill color={C.red} filled>{(stageStats[selStage]||{}).absent||0} Absent</Pill>
+          </div>
+        </div>
+        {/* Column headers */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 55px 55px 65px",padding:"6px 8px",borderBottom:`2px solid ${C.borderSoft}`,marginBottom:2}}>
+          <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Prompt</span>
+          <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}><ChatGPTLogo size={12}/></span>
+          <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}><GeminiLogo size={12}/></span>
+          <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}>Overall</span>
+        </div>
+        {prompts.map((p,j)=>{
+          const engines=p.engines||{};
+          const statuses=["gpt","gemini"].map(e=>engines[e]||p.status||"Absent");
+          const statusColor=(s)=>s==="Cited"?C.green:s==="Mentioned"?C.amber:C.red;
+          const statusIcon=(s)=>s==="Cited"?"✓":s==="Mentioned"?"◐":"✗";
+          return(<div key={j} style={{display:"grid",gridTemplateColumns:"1fr 55px 55px 65px",padding:"8px 8px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center"}}>
+            <span style={{color:C.sub,fontSize:11,lineHeight:1.4}}>"{p.query}"</span>
+            {statuses.map((s,si)=>(<span key={si} style={{textAlign:"center",fontSize:11,fontWeight:600,color:statusColor(s)}}>{statusIcon(s)}</span>))}
+            <span style={{textAlign:"center"}}><Pill color={statusColor(p.status||"Absent")}>{p.status||"Absent"}</Pill></span>
+          </div>);
+        })}
+      </Card>);
+    })()}
+
     <NavBtn onClick={()=>goTo("channels")} label="Next: AEO Channels →"/>
   </div>);
 }
@@ -1389,9 +1723,11 @@ function RoadmapPage({r}){
     const scCol=r.overall>=70?"#059669":r.overall>=40?"#d97706":"#dc2626";
     const scBg=r.overall>=70?"green":r.overall>=40?"amber":"red";
     const compRows=r.competitors.map(c=>`<tr><td>${c.name}</td><td><strong>${c.score}</strong></td><td style="color:${c.score>r.overall?"#dc2626":"#059669"}">${c.score>r.overall?"+":""}${c.score-r.overall}</td></tr>`).join("");
-    const engRows=r.engines.map(e=>`<tr><td>${e.name}</td><td><strong>${e.score}</strong></td><td>${e.mentionRate}%</td><td>${e.citationRate}%</td><td>${e.sentiment}%</td></tr>`).join("");
+    const engRows=r.engines.map(e=>`<tr><td>${e.name}</td><td><strong>${e.score}</strong></td><td>${e.mentionRate}%</td><td>${e.citationRate}%</td></tr>`).join("");
     const archHtml=r.stakeholders.map(sg=>`<h3>${sg.icon} ${sg.group}</h3>${sg.archetypes.map(a=>`<div class="dept"><div class="dept-title" style="border-color:#0c4cfc">${a.name}</div><div style="color:#4a5568">${a.demo} · ~${a.size}% of searches · ${a.brandVisibility}% visibility</div><div style="margin-top:4px"><strong>Behaviour:</strong> ${a.behavior} | <strong>Intent:</strong> ${a.intent}</div><div style="margin-top:4px">${a.prompts.map(p=>`<span style="display:inline-block;padding:2px 8px;background:#f0f4ff;border-radius:4px;margin:2px;font-size:10px">"${p}"</span>`).join("")}</div></div>`).join("")}`).join("");
-    const funnelHtml=r.funnelStages.map(s=>{const st={c:s.prompts.filter(p=>p.status==="Cited").length,m:s.prompts.filter(p=>p.status==="Mentioned").length,a:s.prompts.filter(p=>p.status==="Absent").length};return`<h3 style="color:${s.color}">${s.stage} (${st.c} cited, ${st.m} mentioned, ${st.a} absent)</h3><table><tr><th>Prompt</th><th>Rank</th><th>Status</th></tr>${s.prompts.map(p=>`<tr><td>${p.query}</td><td>#${p.rank}</td><td style="color:${p.status==="Cited"?"#059669":p.status==="Mentioned"?"#d97706":"#dc2626"}">${p.status}</td></tr>`).join("")}</table>`;}).join("");
+    const funnelHtml=r.stakeholders.flatMap(sg=>sg.archetypes).filter(a=>a.journey&&a.journey.length>0).map(a=>{
+      return`<h3>${a.icon} ${a.name}</h3>${(a.journey||[]).map(s=>{const st={c:(s.prompts||[]).filter(p=>p.status==="Cited").length,m:(s.prompts||[]).filter(p=>p.status==="Mentioned").length,a:(s.prompts||[]).filter(p=>p.status==="Absent").length};return`<div style="margin-bottom:8px"><strong style="color:${s.color}">${s.stage}</strong> <span style="color:#8896a6">(${st.c} cited, ${st.m} mentioned, ${st.a} absent)</span></div><table><tr><th>Prompt</th><th>ChatGPT</th><th>Gemini</th><th>Overall</th></tr>${(s.prompts||[]).map(p=>{const e=p.engines||{};return`<tr><td>${p.query}</td><td style="color:${e.gpt==="Cited"?"#059669":e.gpt==="Mentioned"?"#d97706":"#dc2626"}">${e.gpt||p.status}</td><td style="color:${e.gemini==="Cited"?"#059669":e.gemini==="Mentioned"?"#d97706":"#dc2626"}">${e.gemini||p.status}</td><td style="color:${p.status==="Cited"?"#059669":p.status==="Mentioned"?"#d97706":"#dc2626"}">${p.status}</td></tr>`;}).join("")}</table>`;}).join("")}`;
+    }).join("");
     const chHtml=r.aeoChannels.sort((a,b)=>b.impact-a.impact).map((ch,i)=>`<tr><td>${i+1}</td><td><strong>${ch.channel}</strong><br><span style="color:#8896a6">${ch.desc}</span></td><td>${ch.impact}</td><td style="color:${ch.status==="Active"?"#059669":ch.status==="Needs Work"?"#d97706":"#dc2626"}">${ch.status}</td></tr>`).join("");
     const gridHtml=[...r.contentTypes].sort((a,b)=>{const po={"P0":0,"P1":1,"P2":2,"P3":3};return(po[a.p]??9)-(po[b.p]??9);}).map(ct=>`<tr><td><strong>${ct.type}</strong>${ct.rationale?`<br><span style="color:#8896a6;font-size:9px">${ct.rationale}</span>`:""}</td><td>${ct.channels.join(", ")}</td><td>${ct.freq}</td><td>${ct.p}</td><td>${ct.owner}</td></tr>`).join("");
     const rmHtml=phases.map(p=>`<h3 style="color:${p.accent}">${p.title} (${p.sub}) — Expected lift: ${p.lift}</h3>${p.departments.map(d=>`<div class="dept"><div class="dept-title" style="border-color:${d.color};color:${d.color}">${d.dept}</div>${d.tasks.map(t=>`<div class="task">→ ${t}</div>`).join("")}</div>`).join("")}`).join("");
@@ -1405,7 +1741,7 @@ function RoadmapPage({r}){
         <h1>${r.clientData.brand}</h1>
         <div class="sub">${r.clientData.industry||"N/A"} · ${r.clientData.region||"Global"}</div>
         <div class="cover-line"></div>
-        <div class="score-ring"><span class="score-val" style="color:${scCol}">${r.overall}</span></div>
+        <div class="score-ring"><span class="score-val" style="color:${scCol}">${r.overall}%</span></div>
         <div class="score-label">Overall AEO Score</div>
         <div class="cover-dots"><span class="cover-dot"></span><span class="cover-dot"></span><span class="cover-dot"></span></div>
         <div class="meta">${r.clientData.website}<br>Generated ${new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"long",year:"numeric"})}</div>
@@ -1416,12 +1752,12 @@ function RoadmapPage({r}){
     <div class="toc"><h2>Table of Contents</h2>${tocItems.map((t,i)=>`<div class="toc-item"><span><span class="toc-num">${i+1}</span>${t}</span><span style="color:#8896a6">${i+2}</span></div>`).join("")}</div>
 
     <div class="page"><h2>1. Executive Summary</h2>
-    <div class="kpi-row"><div class="kpi"><div class="val" style="color:${scCol}">${r.overall}</div><div class="label">Overall AEO Score</div></div><div class="kpi"><div class="val" style="color:#0c4cfc">${Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/3)}%</div><div class="label">Avg Mention Rate</div></div><div class="kpi"><div class="val" style="color:#8b5cf6">${Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/3)}%</div><div class="label">Avg Citation Rate</div></div><div class="kpi"><div class="val" style="color:${r.engines.reduce((a,e)=>e.score>a.score?e:a,r.engines[0]).color}">${r.engines.reduce((a,e)=>e.score>a.score?e:a,r.engines[0]).name}</div><div class="label">Best Engine</div></div></div>
+    <div class="kpi-row"><div class="kpi"><div class="val" style="color:${scCol}">${r.overall}</div><div class="label">Overall AEO Score</div></div><div class="kpi"><div class="val" style="color:#0c4cfc">${Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length)}%</div><div class="label">Avg Mention Rate</div></div><div class="kpi"><div class="val" style="color:#8b5cf6">${Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length)}%</div><div class="label">Avg Citation Rate</div></div><div class="kpi"><div class="val" style="color:${r.engines.reduce((a,e)=>e.score>a.score?e:a,r.engines[0]).color}">${r.engines.reduce((a,e)=>e.score>a.score?e:a,r.engines[0]).name}</div><div class="label">Best Engine</div></div></div>
 
-    <h2>2. AI Engine Scores</h2><table><tr><th>Engine</th><th>Score</th><th>Mentions</th><th>Citations</th><th>Sentiment</th></tr>${engRows}</table>
+    <h2>2. AI Engine Scores</h2><table><tr><th>Engine</th><th>Score</th><th>Mentions</th><th>Citations</th></tr>${engRows}</table>
 
-    <h2>3. Competitive Landscape</h2><table><tr><th>Brand</th><th>Score</th><th>vs You</th></tr><tr style="background:#eff6ff"><td><strong>${r.clientData.brand}</strong></td><td>${r.overall}</td><td>—</td></tr>${compRows}</table>
-    ${r.competitors.filter(c=>c.advantages.length>0).map(c=>`<h3>${c.name} — Key Insights</h3>${c.advantages.map(a=>`<div class="insight" style="border-color:${a.insight.advantage==="them"?"#dc2626":"#059669"};background:${a.insight.advantage==="them"?"#fef2f2":"#f0fdf4"}">${a.cat.split("/")[0].trim()}: You ${a.yourScore} vs ${a.theirScore} — ${a.insight.text}</div>`).join("")}`).join("")}
+    <h2>3. Competitive Landscape</h2><table><tr><th>Brand</th><th>Score</th><th>vs You</th></tr><tr style="background:#eff6ff"><td><strong>${r.clientData.brand}</strong></td><td>${r.overall}%</td><td>—</td></tr>${compRows}</table>
+    ${r.competitors.filter(c=>c.advantages.length>0).map(c=>`<h3>${c.name} — Looking Under The Hood</h3>${c.advantages.map(a=>`<div class="insight" style="border-color:${a.insight.advantage==="them"?"#dc2626":"#059669"};background:${a.insight.advantage==="them"?"#fef2f2":"#f0fdf4"}">${a.cat.split("/")[0].trim()}: You ${a.yourScore}% vs ${a.theirScore}% — ${a.insight.text}</div>`).join("")}`).join("")}
 
     <h2>4. User Archetypes</h2>${archHtml}
     <h2>5. Intent Pathway</h2>${funnelHtml}
@@ -1471,96 +1807,149 @@ function RoadmapPage({r}){
 }
 
 /* ─── MAIN APP ─── */
+/* ─── LOCAL PROJECT STORAGE (fallback for Vercel /tmp) ─── */
+const LS_KEY="enterrank_projects";
+function lsGetProjects(){try{return JSON.parse(localStorage.getItem(LS_KEY)||"[]");}catch(e){return[];}}
+function lsSaveProject(project){try{const all=lsGetProjects().filter(p=>p.id!==project.id);all.push(project);localStorage.setItem(LS_KEY,JSON.stringify(all));}catch(e){}}
+function lsDeleteProject(id){try{const all=lsGetProjects().filter(p=>p.id!==id);localStorage.setItem(LS_KEY,JSON.stringify(all));}catch(e){}}
+function lsGetProject(id){return lsGetProjects().find(p=>p.id===id)||null;}
+
 /* ─── PROJECT HUB ─── */
 function ProjectHub({onSelect,onNew,onLogout}){
   const[projects,setProjects]=useState(null);
   const[loading,setLoading]=useState(true);
   const[deleting,setDeleting]=useState(null);
+  const[hovered,setHovered]=useState(null);
 
   React.useEffect(()=>{
-    fetch("/api/projects").then(r=>r.json()).then(d=>{setProjects(d.projects||[]);setLoading(false);}).catch(()=>{setProjects([]);setLoading(false);});
+    const localProjects=lsGetProjects();
+    fetch("/api/projects").then(r=>r.json()).then(d=>{
+      const apiProjects=d.projects||[];
+      // Merge: API projects win on duplicates, add any local-only
+      const merged=[...apiProjects];
+      localProjects.forEach(lp=>{if(!merged.find(ap=>ap.id===lp.id))merged.push(lp);});
+      setProjects(merged);setLoading(false);
+    }).catch(()=>{setProjects(localProjects);setLoading(false);});
   },[]);
 
   const handleDelete=async(id,e)=>{
     e.stopPropagation();
     if(!confirm("Delete this project and all its audit history?"))return;
     setDeleting(id);
-    try{await fetch(`/api/projects?id=${id}`,{method:"DELETE"});setProjects(projects.filter(p=>p.id!==id));}catch(e){}
+    try{await fetch(`/api/projects?id=${id}`,{method:"DELETE"});lsDeleteProject(id);setProjects(projects.filter(p=>p.id!==id));}catch(e){}
     setDeleting(null);
   };
 
   const scoreColor=(s)=>!s?C.muted:s>=70?C.green:s>=40?C.amber:C.red;
 
-  return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,sans-serif"}}>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box}::selection{background:#0c4cfc18}`}</style>
-    <div style={{padding:"11px 24px",borderBottom:`1px solid ${C.border}`,background:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center"}}><Logo/><span onClick={onLogout} style={{fontSize:11,color:C.muted,cursor:"pointer",padding:"4px 10px",borderRadius:6,border:`1px solid ${C.border}`,fontWeight:500,fontFamily:"'Outfit'"}}>Sign out</span></div>
-    <div style={{maxWidth:820,margin:"0 auto",padding:"40px 24px",animation:"fadeIn .4s ease-out"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:28}}>
-        <div><h1 style={{fontSize:26,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Projects</h1><p style={{color:C.sub,fontSize:13,marginTop:4}}>Select an existing client or start a new audit.</p></div>
-        <button onClick={onNew} style={{padding:"10px 20px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",display:"flex",alignItems:"center",gap:6}}>
-          <span style={{fontSize:16,lineHeight:1}}>+</span> New Project
-        </button>
+  return(<div style={{minHeight:"100vh",background:"#fff",fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif"}}>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}*{box-sizing:border-box}::selection{background:${C.accent}18}`}</style>
+
+    {/* Top nav */}
+    <div style={{padding:"14px 32px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <Logo/>
+      <div style={{display:"flex",alignItems:"center",gap:16}}>
+        <span style={{fontSize:13,color:C.muted,cursor:"pointer",fontWeight:500}}>Support</span>
+        <span style={{fontSize:13,color:C.muted,cursor:"pointer",fontWeight:500}}>Settings</span>
+        <span onClick={onLogout} style={{width:32,height:32,borderRadius:"50%",background:C.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>AZ</span>
+      </div>
+    </div>
+
+    <div style={{maxWidth:960,margin:"0 auto",padding:"40px 32px",animation:"fadeIn .5s ease-out"}}>
+      {/* Page header */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:36}}>
+        <div>
+          <h1 style={{fontSize:28,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Client Management</h1>
+        </div>
       </div>
 
-      {loading?<div style={{textAlign:"center",padding:60,color:C.muted}}><div style={{width:28,height:28,border:`3px solid ${C.borderSoft}`,borderTopColor:C.accent,borderRadius:"50%",animation:"spin 1s linear infinite",margin:"0 auto 12px"}}/><span style={{fontSize:13}}>Loading projects...</span></div>:
-       projects.length===0?<Card style={{textAlign:"center",padding:"60px 40px"}}>
-        <div style={{fontSize:40,marginBottom:12}}>📊</div>
-        <h3 style={{fontSize:16,fontWeight:600,color:C.text,margin:"0 0 6px",fontFamily:"'Outfit'"}}>No projects yet</h3>
-        <p style={{color:C.muted,fontSize:13,margin:"0 0 20px"}}>Create your first project to start tracking AEO performance.</p>
-        <button onClick={onNew} style={{padding:"10px 20px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>+ New Project</button>
-      </Card>:
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340,1fr))",gap:14}}>
-        {projects.sort((a,b)=>new Date(b.lastAudit||b.createdAt)-new Date(a.lastAudit||a.createdAt)).map(p=>(
-          <Card key={p.id} onClick={()=>onSelect(p)} style={{cursor:"pointer",transition:"all .15s",position:"relative",overflow:"hidden"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-              <div style={{flex:1}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                  <h3 style={{fontSize:16,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>{p.brand}</h3>
-                  {p.lastScore&&<span style={{fontSize:13,fontWeight:700,color:scoreColor(p.lastScore)}}>{p.lastScore}</span>}
+      {/* Workspaces section */}
+      <div style={{border:`1px solid ${C.border}`,borderRadius:14,overflow:"hidden",background:"#fff"}}>
+        <div style={{padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.border}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/></svg>
+            <span style={{fontSize:15,fontWeight:600,color:C.text,fontFamily:"'Outfit'"}}>Workspaces</span>
+          </div>
+          <button onClick={onNew} style={{padding:"8px 18px",background:C.text,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",display:"flex",alignItems:"center",gap:5,transition:"opacity .15s"}}
+            onMouseEnter={e=>e.currentTarget.style.opacity=".85"}
+            onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
+            New workspace
+          </button>
+        </div>
+
+        {loading?<div style={{textAlign:"center",padding:60,color:C.muted}}><div style={{width:24,height:24,border:`2.5px solid ${C.borderSoft}`,borderTopColor:C.accent,borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 12px"}}/><span style={{fontSize:13}}>Loading...</span></div>:
+         projects.length===0?<div style={{textAlign:"center",padding:"64px 40px"}}>
+          <div style={{width:48,height:48,borderRadius:12,background:C.bg,display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}>
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 4v14M4 11h14" stroke={C.muted} strokeWidth="2" strokeLinecap="round"/></svg>
+          </div>
+          <h3 style={{fontSize:16,fontWeight:600,color:C.text,margin:"0 0 6px",fontFamily:"'Outfit'"}}>No workspaces yet</h3>
+          <p style={{color:C.muted,fontSize:13,margin:"0 0 20px"}}>Create your first workspace to start tracking AEO visibility.</p>
+          <button onClick={onNew} style={{padding:"10px 22px",background:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>Create workspace</button>
+        </div>:
+        <div>
+          {projects.sort((a,b)=>new Date(b.lastAudit||b.createdAt)-new Date(a.lastAudit||a.createdAt)).map((p,pi)=>(
+            <div key={p.id} onClick={()=>onSelect(p)}
+              onMouseEnter={()=>setHovered(p.id)} onMouseLeave={()=>setHovered(null)}
+              style={{padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",borderBottom:pi<projects.length-1?`1px solid ${C.borderSoft}`:"none",background:hovered===p.id?"#f8fafc":"transparent",transition:"background .15s"}}>
+              <div style={{display:"flex",alignItems:"center",gap:14}}>
+                <div style={{width:36,height:36,borderRadius:10,background:`${C.accent}08`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <span style={{fontSize:16,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{(p.brand||"?")[0].toUpperCase()}</span>
                 </div>
-                <div style={{fontSize:12,color:C.sub,marginBottom:8}}>{[p.industry,p.region].filter(Boolean).join(" · ")||"No details yet"}</div>
-                <div style={{fontSize:11,color:C.muted}}>{p.website||""}</div>
+                <div>
+                  <div style={{fontSize:14,fontWeight:600,color:C.text}}>{p.brand}</div>
+                  <div style={{fontSize:12,color:C.muted,marginTop:1}}>
+                    {p.lastScore?<><span style={{color:scoreColor(p.lastScore),fontWeight:600}}>{p.lastScore}%</span><span> visibility score</span></>:"No audits yet"}
+                    {p.auditCount>0&&<span> · {p.auditCount} audit{p.auditCount>1?"s":""}</span>}
+                  </div>
+                </div>
               </div>
-              <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
-                <span onClick={(e)=>handleDelete(p.id,e)} style={{fontSize:12,color:C.muted,cursor:"pointer",padding:"2px 6px",borderRadius:4,opacity:deleting===p.id?.5:1}}>
-                  {deleting===p.id?"...":"✕"}
-                </span>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                {p.lastAudit&&<span style={{fontSize:12,color:C.muted}}>{Math.ceil((Date.now()-new Date(p.lastAudit))/(1000*60*60*24))}d ago</span>}
+                <button onClick={(e)=>{e.stopPropagation();onSelect(p);}} style={{padding:"6px 16px",background:"#fff",color:C.text,border:`1px solid ${C.border}`,borderRadius:7,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",transition:"all .15s"}}
+                  onMouseEnter={e=>{e.currentTarget.style.background=C.text;e.currentTarget.style.color="#fff";e.currentTarget.style.borderColor=C.text;}}
+                  onMouseLeave={e=>{e.currentTarget.style.background="#fff";e.currentTarget.style.color=C.text;e.currentTarget.style.borderColor=C.border;}}>
+                  Open
+                </button>
+                <span onClick={(e)=>handleDelete(p.id,e)} style={{fontSize:14,color:C.muted,cursor:"pointer",padding:"4px 6px",borderRadius:4,opacity:deleting===p.id?.4:.6,transition:"opacity .15s"}}
+                  onMouseEnter={e=>e.currentTarget.style.opacity="1"}
+                  onMouseLeave={e=>e.currentTarget.style.opacity=".6"}>✕</span>
               </div>
             </div>
-            <div style={{display:"flex",gap:12,marginTop:12,paddingTop:10,borderTop:`1px solid ${C.borderSoft}`}}>
-              <div style={{display:"flex",alignItems:"center",gap:4}}>
-                <span style={{fontSize:11,color:C.muted}}>Audits:</span>
-                <span style={{fontSize:12,fontWeight:600,color:C.text}}>{p.auditCount||0}</span>
+          ))}
+          {/* Empty workspace slots */}
+          {projects.length<6&&Array.from({length:Math.min(3,6-projects.length)}).map((_,i)=>(
+            <div key={`empty-${i}`} onClick={onNew} style={{padding:"16px 24px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",borderBottom:i<Math.min(3,6-projects.length)-1?`1px solid ${C.borderSoft}`:"none",opacity:.4,transition:"opacity .15s"}}
+              onMouseEnter={e=>e.currentTarget.style.opacity=".7"}
+              onMouseLeave={e=>e.currentTarget.style.opacity=".4"}>
+              <div style={{width:36,height:36,borderRadius:10,background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke={C.muted} strokeWidth="1.5" strokeLinecap="round"/></svg>
               </div>
-              {p.lastAudit&&<div style={{display:"flex",alignItems:"center",gap:4}}>
-                <span style={{fontSize:11,color:C.muted}}>Last:</span>
-                <span style={{fontSize:12,fontWeight:500,color:C.sub}}>{new Date(p.lastAudit).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})}</span>
-              </div>}
-              {p.competitors&&p.competitors.length>0&&<div style={{display:"flex",alignItems:"center",gap:4}}>
-                <span style={{fontSize:11,color:C.muted}}>vs</span>
-                <span style={{fontSize:12,fontWeight:500,color:C.sub}}>{p.competitors.filter(c=>(typeof c==="string"?c:c.name||"").trim()).length} competitors</span>
-              </div>}
+              <span style={{fontSize:13,color:C.muted}}>Workspace available</span>
             </div>
-          </Card>
-        ))}
-      </div>}
+          ))}
+        </div>}
+      </div>
     </div>
   </div>);
 }
 
 export default function App(){
-  const[authed,setAuthed]=useState(()=>{try{return sessionStorage.getItem("enterrank_token")?true:false;}catch(e){return false;}});
-  const[screen,setScreen]=useState("hub"); // "hub" | "dashboard"
+  const isArtifact=typeof window!=="undefined"&&(window.location.hostname.includes("claude")||window.location.hostname.includes("localhost"));
+  const[authed,setAuthed]=useState(()=>{if(isArtifact)return true;try{return sessionStorage.getItem("enterrank_token")?true:false;}catch(e){return false;}});
+  const[screen,setScreen]=useState(isArtifact?"dashboard":"hub");
   const[activeProject,setActiveProject]=useState(null);
   const[step,setStep]=useState("input");
   const[data,setData]=useState({brand:"",industry:"",website:"",region:"",topics:[],competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
   const[results,setResults]=useState(null);
   const[history,setHistory]=useState([]);
+  const[chatOpen,setChatOpen]=useState(false);
+  const[sideCollapsed,setSideCollapsed]=useState(false);
   const[loginError,setLoginError]=useState("");
   const[loggingIn,setLoggingIn]=useState(false);
 
   const handleLogin=async(email,password)=>{
+    if(isArtifact){setAuthed(true);return;}
     setLoggingIn(true);setLoginError("");
     try{
       const res=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
@@ -1571,14 +1960,19 @@ export default function App(){
     setLoggingIn(false);
   };
 
-  const handleLogout=()=>{try{sessionStorage.removeItem("enterrank_token");}catch(e){}setAuthed(false);setResults(null);setStep("input");setScreen("hub");setActiveProject(null);};
+  const handleLogout=()=>{if(isArtifact){setResults(null);setStep("input");return;}try{sessionStorage.removeItem("enterrank_token");}catch(e){}setAuthed(false);setResults(null);setStep("input");setScreen("hub");setActiveProject(null);};
 
   const handleSelectProject=async(projectSummary)=>{
-    // Load full project data
+    // Load full project data — try API first, fallback to localStorage
     try{
-      const res=await fetch(`/api/projects?id=${projectSummary.id}`);
-      const project=await res.json();
-      if(project.error){alert("Failed to load project");return;}
+      let project=null;
+      try{
+        const res=await fetch(`/api/projects?id=${projectSummary.id}`);
+        const data=await res.json();
+        if(!data.error)project=data;
+      }catch(e){}
+      if(!project)project=lsGetProject(projectSummary.id);
+      if(!project){alert("Failed to load project");return;}
       setActiveProject(project);
       setData({brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors&&project.competitors.length>0?project.competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
       // Load history from project
@@ -1600,23 +1994,23 @@ export default function App(){
 
   const handleBackToHub=()=>{setScreen("hub");setResults(null);setStep("input");};
 
-  if(!authed)return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,sans-serif",display:"flex",alignItems:"center",justifyContent:"center"}}>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}*{box-sizing:border-box}::selection{background:#0c4cfc18}`}</style>
-    <div style={{width:"100%",maxWidth:400,padding:"0 24px",animation:"fadeIn .4s ease-out"}}>
-      <div style={{textAlign:"center",marginBottom:32}}>
-        <div style={{display:"inline-flex",alignItems:"center",gap:8,marginBottom:8}}>
-          <svg width="32" height="32" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
-          <span style={{fontSize:22,fontWeight:700,fontFamily:"'Outfit'",color:C.text,letterSpacing:"-.02em"}}>EnterRank</span>
+  if(!authed)return(<div style={{minHeight:"100vh",background:"#fff",fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",alignItems:"center",justifyContent:"center"}}>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}10!important}`}</style>
+    <div style={{width:"100%",maxWidth:380,padding:"0 24px",animation:"fadeIn .5s ease-out"}}>
+      <div style={{textAlign:"center",marginBottom:40}}>
+        <div style={{display:"inline-flex",alignItems:"center",gap:10,marginBottom:6}}>
+          <svg width="36" height="36" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
+          <span style={{fontSize:24,fontWeight:800,fontFamily:"'Outfit'",color:C.text,letterSpacing:"-.03em"}}>EnterRank</span>
         </div>
-        <div style={{fontSize:13,color:C.muted}}>AI Engine Optimisation Platform</div>
+        <div style={{fontSize:14,color:C.muted,fontWeight:400}}>AI Engine Optimisation Platform</div>
       </div>
-      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:C.r,padding:"32px 28px",boxShadow:"0 4px 24px rgba(0,0,0,.06)"}}>
-        <h2 style={{fontSize:18,fontWeight:700,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'",textAlign:"center"}}>Welcome back</h2>
-        <p style={{fontSize:13,color:C.muted,margin:"0 0 24px",textAlign:"center"}}>Sign in to access your AEO dashboard</p>
+      <div style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:16,padding:"36px 32px",boxShadow:"0 1px 3px rgba(0,0,0,.04),0 8px 32px rgba(0,0,0,.04)"}}>
+        <h2 style={{fontSize:20,fontWeight:700,color:C.text,margin:"0 0 2px",fontFamily:"'Outfit'",textAlign:"center"}}>Welcome back</h2>
+        <p style={{fontSize:13,color:C.muted,margin:"0 0 28px",textAlign:"center"}}>Sign in to your account</p>
         <LoginForm onSubmit={handleLogin} error={loginError} loading={loggingIn}/>
       </div>
-      <div style={{textAlign:"center",marginTop:16,fontSize:11,color:C.muted}}>Powered by Entermind</div>
+      <div style={{textAlign:"center",marginTop:20,fontSize:12,color:C.muted}}>Powered by <span style={{fontWeight:600,color:C.sub}}>Entermind</span></div>
     </div>
   </div>);
 
@@ -1624,55 +2018,88 @@ export default function App(){
 
   const run=async(apiData)=>{
     const r=generateAll(data, apiData);setResults(r);
-    const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score,r.engines[2].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/3),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/3),categories:r.painPoints.map(p=>({label:p.label,score:p.score}))};
+    const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),categories:r.painPoints.map(p=>({label:p.label,score:p.score}))};
     setHistory(prev=>[...prev,entry]);
     setStep("audit");
 
-    // Save to project (create if new, update if existing)
-    try{
+    // Save to project (create if new, update if existing) — skip in artifact mode
+    if(!isArtifact){try{
       if(activeProject){
-        // Update existing project with new audit entry
         const res=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:activeProject.id,auditEntry:entry})});
         const updated=await res.json();
-        if(!updated.error)setActiveProject(updated);
+        if(!updated.error){setActiveProject(updated);lsSaveProject(updated);}
+        else{const lp=lsGetProject(activeProject.id);if(lp){lp.history=[...(lp.history||[]),{...entry,timestamp:new Date().toISOString()}];lp.lastAudit=new Date().toISOString();lp.lastScore=entry.overall;lsSaveProject(lp);setActiveProject(lp);}}
       }else{
-        // Create new project
         const res=await fetch("/api/projects",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({brand:data.brand,industry:data.industry,website:data.website,region:data.region,topics:data.topics,competitors:data.competitors})});
         const created=await res.json();
         if(!created.error){
-          // Now add the audit entry
           setActiveProject(created);
-          await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:created.id,auditEntry:entry})});
+          const res2=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:created.id,auditEntry:entry})});
+          const updated2=await res2.json();
+          if(!updated2.error){setActiveProject(updated2);lsSaveProject(updated2);}else{lsSaveProject(created);}
+        }else{
+          // API failed — save locally
+          const localId=data.brand.toLowerCase().replace(/[^a-z0-9]+/g,"-")+"-"+Date.now().toString(36);
+          const localProject={id:localId,brand:data.brand,industry:data.industry,website:data.website,region:data.region,topics:data.topics,competitors:data.competitors,history:[{...entry,timestamp:new Date().toISOString()}],lastAudit:new Date().toISOString(),lastScore:entry.overall,createdAt:new Date().toISOString()};
+          lsSaveProject(localProject);setActiveProject(localProject);
         }
       }
-    }catch(e){console.error("Failed to save project:",e);}
+    }catch(e){console.error("Failed to save project:",e);}}
   };
-  return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,sans-serif",color:C.text}}>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box}::selection{background:#0c4cfc18}`}</style>
-    <div style={{padding:"11px 24px",borderBottom:`1px solid ${C.border}`,background:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div style={{display:"flex",alignItems:"center",gap:16}}>
-        <Logo/>
-        <span onClick={handleBackToHub} style={{fontSize:11,color:C.accent,cursor:"pointer",padding:"4px 10px",borderRadius:6,border:`1px solid ${C.accent}25`,fontWeight:500,fontFamily:"'Outfit'",display:"flex",alignItems:"center",gap:4}}>← Projects</span>
-      </div>
-      <div style={{display:"flex",alignItems:"center",gap:12}}>
-        {results&&<div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:6,height:6,borderRadius:"50%",background:C.green}}/><span style={{fontSize:12,color:C.muted}}>Active: <strong style={{color:C.text}}>{results.clientData.brand}</strong> · Score: <strong style={{color:results.overall>=70?C.green:results.overall>=40?C.amber:C.red}}>{results.overall}</strong></span></div>}
-        {activeProject&&<span style={{fontSize:11,color:C.muted,padding:"3px 8px",background:`${C.accent}06`,borderRadius:4}}>Audit #{(history||[]).length+1}</span>}
-        <span onClick={handleLogout} style={{fontSize:11,color:C.muted,cursor:"pointer",padding:"4px 10px",borderRadius:6,border:`1px solid ${C.border}`,fontWeight:500,fontFamily:"'Outfit'"}}>Sign out</span>
+
+  const handleUpdateResults=(updates)=>{
+    setResults(prev=>{
+      if(!prev)return prev;
+      const next={...prev};
+      // Merge top-level fields
+      if(updates.engines) next.engines=updates.engines;
+      if(updates.painPoints) next.painPoints=updates.painPoints;
+      if(updates.competitors) next.competitors=updates.competitors;
+      if(updates.stakeholders) next.stakeholders=updates.stakeholders;
+      if(updates.aeoChannels) next.aeoChannels=updates.aeoChannels;
+      if(updates.contentTypes) next.contentTypes=updates.contentTypes;
+      if(updates.roadmap) next.roadmap={...next.roadmap,...updates.roadmap};
+      if(updates.funnelStages) next.funnelStages=updates.funnelStages;
+      // Recalculate overall if engines changed
+      if(updates.engines){
+        next.overall=Math.round(next.engines.reduce((a,e)=>a+e.score,0)/next.engines.length);
+        next.scoreLabel=next.overall>=80?"Dominant":next.overall>=60?"Strong":next.overall>=40?"Moderate":next.overall>=20?"Weak":"Invisible";
+      }
+      return next;
+    });
+  };
+
+  return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",color:C.text,display:"flex"}}>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}`}</style>
+
+    {/* Sidebar */}
+    <Sidebar step={step} setStep={setStep} results={results} brand={results?.clientData?.brand||data.brand} onBack={handleBackToHub} isArtifact={isArtifact} onLogout={handleLogout} collapsed={sideCollapsed} setCollapsed={setSideCollapsed}/>
+
+    {/* Main content */}
+    <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",marginLeft:sideCollapsed?60:220,transition:"margin-left .2s ease"}}>
+      <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto",transition:"padding-right .2s",paddingRight:chatOpen?420:32}}>
+        {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={run} history={history}/>}
+        {step==="audit"&&results&&<AuditPage r={results} history={history} goTo={setStep}/>}
+        {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep}/>}
+        {step==="intent"&&results&&<IntentPage r={results} goTo={setStep}/>}
+        {step==="playbook"&&results&&<PlaybookPage r={results} goTo={setStep}/>}
+        {step==="channels"&&results&&<ChannelsPage r={results} goTo={setStep}/>}
+        {step==="grid"&&results&&<GridPage r={results} goTo={setStep}/>}
+        {step==="roadmap"&&results&&<RoadmapPage r={results}/>}
       </div>
     </div>
-    <div style={{padding:"0 24px",borderBottom:`1px solid ${C.border}`,background:"#fff",overflowX:"auto"}}><div style={{display:"flex",minWidth:"max-content"}}>
-      {STEPS.map(s=>{const dis=(!results&&s.id!=="input")||s.comingSoon;return(<button key={s.id} onClick={()=>{if(!dis)setStep(s.id);}} style={{padding:"10px 14px",background:"none",border:"none",borderBottom:step===s.id&&!s.comingSoon?`2px solid ${C.accent}`:"2px solid transparent",color:s.comingSoon?"#c8cdd5":step===s.id?C.accent:dis?"#d0d5dd":C.muted,fontSize:12,fontWeight:600,cursor:dis?"default":"pointer",fontFamily:"'Plus Jakarta Sans'",transition:"all .15s",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5,opacity:s.comingSoon?.5:1}}><span style={{fontSize:10,opacity:.5}}>{s.n}</span>{s.label}{s.comingSoon&&<span style={{fontSize:8,fontWeight:700,color:"#fff",background:"#c8cdd5",padding:"1px 5px",borderRadius:3,marginLeft:3}}>SOON</span>}</button>);})}
-    </div></div>
-    <div style={{padding:24,maxWidth:1020,margin:"0 auto"}}>
-      {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={run} history={history}/>}
-      {step==="audit"&&results&&<AuditPage r={results} history={history} goTo={setStep}/>}
-      {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep}/>}
-      {step==="intent"&&results&&<IntentPage r={results} goTo={setStep}/>}
-      {step==="playbook"&&results&&<PlaybookPage r={results} goTo={setStep}/>}
-      {step==="channels"&&results&&<ChannelsPage r={results} goTo={setStep}/>}
-      {step==="grid"&&results&&<GridPage r={results} goTo={setStep}/>}
-      {step==="roadmap"&&results&&<RoadmapPage r={results}/>}
-    </div>
+
+    {/* Chat toggle button */}
+    {results&&step!=="input"&&!chatOpen&&(
+      <div onClick={()=>setChatOpen(true)} style={{position:"fixed",bottom:24,right:24,width:52,height:52,borderRadius:16,background:C.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:"0 4px 20px rgba(37,99,235,.3)",zIndex:999,transition:"transform .15s"}}
+        onMouseEnter={e=>e.currentTarget.style.transform="scale(1.08)"}
+        onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M4 4h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4l-4 3v-3H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" fill="#fff"/><path d="M6 8h10M6 11h7" stroke={C.accent} strokeWidth="1.5" strokeLinecap="round"/></svg>
+      </div>
+    )}
+
+    {/* Chat Panel */}
+    <ChatPanel isOpen={chatOpen} onClose={()=>setChatOpen(false)} step={step} results={results} onUpdateResults={handleUpdateResults}/>
   </div>);
 }
