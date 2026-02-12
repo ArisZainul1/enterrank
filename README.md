@@ -1,86 +1,47 @@
-# EnterRank by Entermind
+# EnterRank — AI Engine Optimisation Platform
+
+AEO audit dashboard that measures brand visibility across ChatGPT and Gemini.
 
 ## Quick Deploy to Vercel
 
-### Step 1: Push to GitHub
+1. Push this repo to GitHub
+2. Import to [Vercel](https://vercel.com/new)
+3. Add environment variables in Vercel Dashboard → Settings → Environment Variables:
 
-```bash
-# In terminal, navigate to this folder
-cd enterrank-deploy
+| Variable | Description |
+|----------|-------------|
+| `LOGIN_EMAIL` | Login email address |
+| `LOGIN_PASSWORD` | Login password |
+| `OPENAI_API_KEY` | OpenAI API key (ChatGPT audit engine) |
+| `GOOGLE_AI_KEY` | Google AI API key (Gemini audit engine) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (Copilot chatbot) |
 
-# Initialize git
-git init
-git add .
-git commit -m "EnterRank v3 — AEO Dashboard"
+4. Deploy
 
-# Create a repo on GitHub (github.com/new), then:
-git remote add origin https://github.com/YOUR_USERNAME/enterrank.git
-git branch -M main
-git push -u origin main
-```
+## Architecture
 
-### Step 2: Deploy on Vercel
+- **Frontend**: React + Vite (single `App.jsx`)
+- **Backend**: Vercel Serverless Functions (`/api/`)
+  - `/api/openai.js` — ChatGPT engine queries
+  - `/api/gemini.js` — Gemini engine queries  
+  - `/api/claude.js` — Copilot chatbot (Claude)
+  - `/api/crawl.js` — Website crawler for AEO signals
+  - `/api/projects.js` — Project CRUD with `/tmp` storage
+  - `/api/login.js` — Authentication
 
-1. Go to [vercel.com](https://vercel.com) and sign in with GitHub
-2. Click **"Add New Project"**
-3. Select your `enterrank` repository
-4. Vercel auto-detects Vite — just click **"Deploy"**
-5. Wait ~60 seconds for the build
+## Audit Flow
 
-### Step 3: Add your API Key
-
-1. In your Vercel project, go to **Settings → Environment Variables**
-2. Add:
-   - **Key:** `ANTHROPIC_API_KEY`
-   - **Value:** Your Anthropic API key (get one at https://console.anthropic.com/)
-3. Click **Save**
-4. Go to **Deployments** → click the **three dots** on the latest deployment → **Redeploy**
-
-### Done!
-
-Your EnterRank dashboard is now live at `https://enterrank.vercel.app` (or whatever Vercel assigns).
-
----
-
-## How it works
-
-- **Frontend:** React + Vite (static, served by Vercel CDN)
-- **API Proxy:** `/api/claude.js` is a Vercel Serverless Function that forwards requests to the Anthropic API with your key
-- **No database needed** — all data is generated per-audit session
-
-## Project Structure
-
-```
-enterrank-deploy/
-├── api/
-│   └── claude.js          # Serverless API proxy (keeps API key secure)
-├── src/
-│   ├── App.jsx            # The entire dashboard (single-file React app)
-│   └── main.jsx           # React entry point
-├── index.html             # HTML shell
-├── package.json           # Dependencies
-├── vite.config.js         # Build config
-├── vercel.json            # Vercel routing config
-├── .env.example           # Environment variable template
-└── .gitignore
-```
+1. **Login** → Credentials checked against env vars
+2. **Project Hub** → New Project or select Existing Project
+3. **New Audit** → Enter brand details (persisted to project)
+4. **API Calls**: OpenAI + Gemini for visibility scoring, archetypes, intent pathways
+5. **Crawler**: Website analysis for structured data, schema, E-E-A-T signals
+6. **Results**: Overview → Archetypes → Intent Pathway → AEO Channels → Content Grid → 90-Day Roadmap
 
 ## Local Development
 
 ```bash
 npm install
-echo "ANTHROPIC_API_KEY=sk-ant-xxxxx" > .env.local
+cp .env.example .env.local  # Add your API keys
 npm run dev
 ```
-
-Note: For local dev, you'll need to update the API proxy to read from `.env.local`. The current setup reads from Vercel environment variables.
-
-## Future: Adding OpenAI + Gemini Keys
-
-To call ChatGPT and Gemini directly (instead of having Claude estimate), you'd:
-
-1. Add `OPENAI_API_KEY` and `GOOGLE_AI_KEY` to Vercel environment variables
-2. Create `/api/openai.js` and `/api/gemini.js` serverless functions
-3. Update the audit flow to call all 3 APIs in parallel
-
-This is the recommended path for production accuracy.
