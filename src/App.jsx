@@ -793,6 +793,7 @@ const NAV_ITEMS=[
     {id:"audit",label:"Overview",icon:"grid"},
     {id:"archetypes",label:"User Archetypes",icon:"users"},
     {id:"intent",label:"Intent Pathway",icon:"route"},
+    {id:"volume",label:"Prompt Volume",icon:"bar-chart"},
   ]},
   {group:"Action",items:[
     {id:"channels",label:"AEO Channels",icon:"broadcast"},
@@ -814,7 +815,8 @@ const SidebarIcon=({name,size=18,color="#9ca3af"})=>{
     broadcast:<><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round"/><circle cx="12" cy="12" r="2" stroke={color} strokeWidth="1.5" fill="none"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round"/><path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round"/></>,
     edit:<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke={color} strokeWidth="1.5" fill="none"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke={color} strokeWidth="1.5" fill="none"/></>,
     calendar:<><rect x="3" y="4" width="18" height="18" rx="2" stroke={color} strokeWidth="1.5" fill="none"/><line x1="16" y1="2" x2="16" y2="6" stroke={color} strokeWidth="1.5"/><line x1="8" y1="2" x2="8" y2="6" stroke={color} strokeWidth="1.5"/><line x1="3" y1="10" x2="21" y2="10" stroke={color} strokeWidth="1.5"/></>,
-    book:<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke={color} strokeWidth="1.5" fill="none"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke={color} strokeWidth="1.5" fill="none"/></>};
+    book:<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke={color} strokeWidth="1.5" fill="none"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke={color} strokeWidth="1.5" fill="none"/></>,
+    "bar-chart":<><line x1="12" y1="20" x2="12" y2="10" stroke={color} strokeWidth="1.5"/><line x1="18" y1="20" x2="18" y2="4" stroke={color} strokeWidth="1.5"/><line x1="6" y1="20" x2="6" y2="16" stroke={color} strokeWidth="1.5"/></>};
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none">{p[name]||null}</svg>;
 };
 
@@ -1508,17 +1510,28 @@ function IntentPage({r,goTo}){
 
   const allPrompts=stageNames.flatMap((_,si)=>getMergedPrompts(si));
 
-  // Aggregate trigger word analysis
+  // Known high-impact trigger words for extraction fallback
+  const knownTriggers=["best","top","leading","recommended","vs","compare","alternative","review","pricing","how to","guide","trusted","popular","affordable","fastest","cheapest","most","rated","award","expert","certified","free","demo","trial","buy","cost","near me","in "+r.clientData.region,r.clientData.brand.toLowerCase(),...(r.clientData.topics||[]).map(t=>t.toLowerCase())];
+
+  // Aggregate trigger word analysis (with fallback extraction)
   const allTriggers={};
-  allPrompts.forEach(p=>{(p.triggerWords||[]).forEach(tw=>{
-    const k=tw.toLowerCase();
-    if(!allTriggers[k])allTriggers[k]={word:tw,count:0,cited:0,mentioned:0,absent:0,totalWeight:0};
-    allTriggers[k].count++;
-    allTriggers[k].totalWeight+=(p.weight||5);
-    if(p.status==="Cited")allTriggers[k].cited++;
-    else if(p.status==="Mentioned")allTriggers[k].mentioned++;
-    else allTriggers[k].absent++;
-  });});
+  allPrompts.forEach(p=>{
+    let tw=p.triggerWords||[];
+    // Fallback: if API didn't return trigger words, extract from query text
+    if(tw.length===0&&p.query){
+      const q=p.query.toLowerCase();
+      tw=knownTriggers.filter(t=>q.includes(t.toLowerCase()));
+    }
+    tw.forEach(tw=>{
+      const k=tw.toLowerCase();
+      if(!allTriggers[k])allTriggers[k]={word:tw,count:0,cited:0,mentioned:0,absent:0,totalWeight:0};
+      allTriggers[k].count++;
+      allTriggers[k].totalWeight+=(p.weight||5);
+      if(p.status==="Cited")allTriggers[k].cited++;
+      else if(p.status==="Mentioned")allTriggers[k].mentioned++;
+      else allTriggers[k].absent++;
+    });
+  });
   const triggerRank=Object.values(allTriggers).sort((a,b)=>b.totalWeight-a.totalWeight).slice(0,12);
 
   // Weight colour
@@ -1603,7 +1616,7 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
             {t.word} <span style={{opacity:.6,fontWeight:400}}>×{t.count}</span>
             <span style={{marginLeft:4,fontSize:9}}>{eff}% effective</span>
           </div>);
-        }):<span style={{fontSize:11,color:C.muted}}>Run audit to see trigger words</span>}
+        }):<span style={{fontSize:11,color:C.muted}}>No trigger words detected in current prompts</span>}
       </div>
     </Card>
 
@@ -1632,7 +1645,7 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
           <div style={{marginBottom:4}}><Icon name={stageIcons[i]} size={18} color={color}/></div>
           <div style={{fontSize:18,fontWeight:700,color:color}}>{s.total>0?Math.round((s.cited+s.mentioned)/Math.max(1,s.total)*100):0}%</div>
           <div style={{fontSize:12,fontWeight:600,color:active?C.text:C.sub,marginTop:2}}>{name}</div>
-          <div style={{fontSize:10,color:C.muted,marginTop:2}}>{s.total} prompts · avg wt {avgWeight}</div>
+          <div style={{fontSize:10,color:C.muted,marginTop:2}}>{s.total} prompts</div>
         </div>);
       })}
     </div>
@@ -1721,6 +1734,122 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
         })}
       </Card>);
     })()}
+
+    <NavBtn onClick={()=>goTo("volume")} label="Next: Prompt Volume →"/>
+  </div>);
+}
+
+/* ─── PAGE: PROMPT VOLUME ─── */
+function PromptVolumePage({r,goTo}){
+  const[engine,setEngine]=useState("google");
+  const[volumeData,setVolumeData]=useState(null);
+  const[loading,setLoading]=useState(false);
+
+  const allPrompts=[];
+  const stages=r.funnelStages||[];
+  const stageNames=["Awareness","Consideration","Decision","Retention"];
+  stages.forEach((s,si)=>{
+    (s.prompts||[]).forEach(p=>{
+      if(p.query)allPrompts.push({query:p.query,stage:stageNames[si]||s.stage||"Unknown"});
+    });
+  });
+
+  const engineLabel=engine==="google"?"Google":engine==="chatgpt"?"ChatGPT":"Gemini";
+
+  const generate=async()=>{
+    if(allPrompts.length===0||loading)return;
+    setLoading(true);
+    const queryList=allPrompts.map((p,i)=>`${i+1}. "${p.query}"`).join("\n");
+    const prompt=`Estimate the average monthly search volume on ${engineLabel} for each of these queries in the ${r.clientData.industry} space (${r.clientData.region}).
+
+Queries:
+${queryList}
+
+Return JSON array only:
+[{"query":"<exact query>","volume":<number>,"competition":"Low"|"Medium"|"High"}]
+
+Rules:
+- volume = estimated average monthly searches/prompts on ${engineLabel}
+- Be realistic — most long-tail queries have <500 monthly volume
+- competition: Low (<3 strong competitors), Medium (3-8), High (8+)`;
+
+    try{
+      const raw=engine==="gemini"?await callGemini(prompt):await callOpenAI(prompt);
+      const parsed=safeJSON(raw);
+      if(Array.isArray(parsed)){
+        const merged=allPrompts.map(ap=>{
+          const match=parsed.find(v=>v.query&&v.query.toLowerCase()===ap.query.toLowerCase());
+          return{query:ap.query,stage:ap.stage,volume:match?match.volume:0,competition:match?match.competition:"Low"};
+        });
+        merged.sort((a,b)=>b.volume-a.volume);
+        setVolumeData(merged);
+      }else{setVolumeData([]);}
+    }catch(e){console.error("Volume generation error:",e);setVolumeData([]);}
+    setLoading(false);
+  };
+
+  const stageColor=(s)=>s==="Awareness"?"#6366f1":s==="Consideration"?"#8b5cf6":s==="Decision"?"#a855f7":"#c084fc";
+  const compColor=(c)=>c==="High"?C.red:c==="Medium"?C.amber:C.green;
+  const fmt=(n)=>typeof n==="number"?n.toLocaleString():"-";
+  const engines=[{id:"google",label:"Google"},{id:"chatgpt",label:"ChatGPT"},{id:"gemini",label:"Gemini"}];
+
+  const totalPrompts=volumeData?volumeData.length:0;
+  const avgVolume=totalPrompts>0?Math.round(volumeData.reduce((s,v)=>s+v.volume,0)/totalPrompts):0;
+
+  return(<div>
+    <div style={{marginBottom:24}}>
+      <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0}}>Prompt Volume</h2>
+      <p style={{color:C.sub,fontSize:13,marginTop:3}}>Estimate monthly search volume for your audit prompts across search and AI platforms.</p>
+    </div>
+
+    <SectionNote text="Volume estimates are AI-generated approximations based on industry patterns. Use them to prioritise which prompts to create content for, not as exact figures."/>
+
+    <Card style={{marginBottom:16}}>
+      <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:10}}>Select Platform</div>
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        {engines.map(e=>(<button key={e.id} onClick={()=>setEngine(e.id)} style={{padding:"8px 20px",borderRadius:8,fontSize:13,fontWeight:600,border:`1.5px solid ${engine===e.id?C.accent:C.border}`,background:engine===e.id?`${C.accent}10`:"#fff",color:engine===e.id?C.accent:C.sub,cursor:"pointer",transition:"all .15s"}}>{e.label}</button>))}
+      </div>
+      <button onClick={generate} disabled={loading||allPrompts.length===0} style={{padding:"10px 24px",background:loading?C.muted:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:loading?"not-allowed":"pointer",transition:"all .15s",display:"flex",alignItems:"center",gap:8}}>
+        {loading&&<span style={{width:14,height:14,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",display:"inline-block",animation:"spin .6s linear infinite"}}/>}
+        {loading?"Generating...":"Generate Volumes"}
+      </button>
+      {allPrompts.length===0&&<div style={{fontSize:11,color:C.muted,marginTop:8}}>No prompts found — run an audit first.</div>}
+    </Card>
+
+    {volumeData&&volumeData.length>0&&<Card>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:600,color:C.text}}>Volume Estimates — {engineLabel}</div>
+        <div style={{display:"flex",gap:12}}>
+          <Pill color={C.accent}>{totalPrompts} prompts</Pill>
+          <Pill color={C.green}>avg {fmt(avgVolume)}/mo</Pill>
+        </div>
+      </div>
+
+      <div style={{overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+          <thead>
+            <tr style={{borderBottom:`2px solid ${C.border}`}}>
+              <th style={{textAlign:"left",padding:"8px 10px",color:C.muted,fontWeight:600,fontSize:10,textTransform:"uppercase"}}>#</th>
+              <th style={{textAlign:"left",padding:"8px 10px",color:C.muted,fontWeight:600,fontSize:10,textTransform:"uppercase"}}>Prompt</th>
+              <th style={{textAlign:"left",padding:"8px 10px",color:C.muted,fontWeight:600,fontSize:10,textTransform:"uppercase"}}>Stage</th>
+              <th style={{textAlign:"right",padding:"8px 10px",color:C.muted,fontWeight:600,fontSize:10,textTransform:"uppercase"}}>Est. Monthly Volume</th>
+              <th style={{textAlign:"center",padding:"8px 10px",color:C.muted,fontWeight:600,fontSize:10,textTransform:"uppercase"}}>Competition</th>
+            </tr>
+          </thead>
+          <tbody>
+            {volumeData.map((v,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
+              <td style={{padding:"10px 10px",color:C.muted,fontWeight:500}}>{i+1}</td>
+              <td style={{padding:"10px 10px",color:C.text,fontWeight:500,maxWidth:340}}>{v.query}</td>
+              <td style={{padding:"10px 10px"}}><Pill color={stageColor(v.stage)}>{v.stage}</Pill></td>
+              <td style={{padding:"10px 10px",textAlign:"right",fontWeight:700,color:C.text,fontVariantNumeric:"tabular-nums"}}>{fmt(v.volume)}</td>
+              <td style={{padding:"10px 10px",textAlign:"center"}}><Pill color={compColor(v.competition)}>{v.competition}</Pill></td>
+            </tr>))}
+          </tbody>
+        </table>
+      </div>
+    </Card>}
+
+    {volumeData&&volumeData.length===0&&<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>No volume data returned. Try again or switch platforms.</div></Card>}
 
     <NavBtn onClick={()=>goTo("channels")} label="Next: AEO Channels →"/>
   </div>);
@@ -2283,6 +2412,7 @@ export default function App(){
         {step==="audit"&&results&&<AuditPage r={results} history={history} goTo={setStep}/>}
         {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep}/>}
         {step==="intent"&&results&&<IntentPage r={results} goTo={setStep}/>}
+        {step==="volume"&&results&&<PromptVolumePage r={results} goTo={setStep}/>}
         {step==="playbook"&&results&&<PlaybookPage r={results} goTo={setStep}/>}
         {step==="channels"&&results&&<ChannelsPage r={results} goTo={setStep}/>}
         {step==="grid"&&results&&<GridPage r={results} goTo={setStep}/>}
