@@ -596,27 +596,33 @@ Rules:
   const verifyMap={};
   if(allIntentQueries.length>0){
     const neutralSystem=`You are a helpful AI assistant. Answer each question directly and accurately. Include specific company names, products, tools, and websites you would genuinely recommend.`;
-    const realAnswerPrompt=`Answer each of the following questions as you would for a real user. Give a helpful, accurate response of 2-4 sentences for each.
+    // Batch into groups of 8 — Gemini struggles with large JSON arrays
+    const batchSize=8;
+    const batches=[];
+    for(let i=0;i<allIntentQueries.length;i+=batchSize){batches.push(allIntentQueries.slice(i,i+batchSize));}
+    const batchResults=await Promise.all(batches.map(async(batch,bi)=>{
+      onProgress(`Testing prompts ${bi*batchSize+1}-${bi*batchSize+batch.length} on both engines...`,60+Math.round((bi/batches.length)*8));
+      const bp=`Answer each of the following questions as you would for a real user. Give a helpful, accurate response of 2-4 sentences for each.
 
-${allIntentQueries.map((q,i)=>`${i+1}. "${q}"`).join("\n")}
+${batch.map((q,i)=>`${i+1}. "${q}"`).join("\n")}
 
 Return JSON array in the same order:
 [{"query":"<exact question>","answer":"<your actual response>"}]
 
 Be thorough and accurate. Do NOT skip any question.`;
-
-    const[gptAnswerRaw,gemAnswerRaw]=await Promise.all([
-      callOpenAI(realAnswerPrompt, neutralSystem),
-      callGemini(realAnswerPrompt, neutralSystem)
-    ]);
-    const gptAnswers=safeJSON(gptAnswerRaw)||[];
-    const gemAnswers=safeJSON(gemAnswerRaw)||[];
-    allIntentQueries.forEach((q,i)=>{
-      const gptA=Array.isArray(gptAnswers)&&gptAnswers[i]?gptAnswers[i]:{};
-      const gemA=Array.isArray(gemAnswers)&&gemAnswers[i]?gemAnswers[i]:{};
-      const gptStatus=detectBrandStatus(gptA.answer,brand,cd.website);
-      const gemStatus=detectBrandStatus(gemA.answer,brand,cd.website);
-      verifyMap[q.toLowerCase()]={gpt:gptStatus,gemini:gemStatus,gptAnswer:gptA.answer||"",gemAnswer:gemA.answer||""};
+      const[gptRaw,gemRaw]=await Promise.all([callOpenAI(bp,neutralSystem),callGemini(bp,neutralSystem)]);
+      return{gptRaw,gemRaw,queries:batch};
+    }));
+    batchResults.forEach(({gptRaw,gemRaw,queries})=>{
+      const gptAnswers=safeJSON(gptRaw)||[];
+      const gemAnswers=safeJSON(gemRaw)||[];
+      queries.forEach((q,i)=>{
+        const gptA=Array.isArray(gptAnswers)&&gptAnswers[i]?gptAnswers[i]:{};
+        const gemA=Array.isArray(gemAnswers)&&gemAnswers[i]?gemAnswers[i]:{};
+        const gptStatus=detectBrandStatus(gptA.answer,brand,cd.website);
+        const gemStatus=detectBrandStatus(gemA.answer,brand,cd.website);
+        verifyMap[q.toLowerCase()]={gpt:gptStatus,gemini:gemStatus,gptAnswer:gptA.answer||"",gemAnswer:gemA.answer||""};
+      });
     });
   }
 
@@ -1747,15 +1753,6 @@ Return JSON only:
 
     <SectionNote text={`Every prompt was sent to both ChatGPT and Gemini during the audit. The status shows whether ${r.clientData.brand} actually appeared in each engine's real response. Expand any row to see the full response.`}/>
 
-    <div style={{display:"flex",gap:8,marginBottom:16}}>
-      <button onClick={()=>goTo("input")} style={{padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:600,border:`1px solid ${C.border}`,background:"#fff",color:C.sub,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .15s"}}>
-        <Icon name="zap" size={14} color={C.accent}/>Run AEO Audit
-      </button>
-      <button onClick={()=>goTo("archetypes")} style={{padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:600,border:`1px solid ${C.border}`,background:"#fff",color:C.sub,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .15s"}}>
-        <Icon name="lightbulb" size={14} color={C.accent}/>User Archetypes
-      </button>
-    </div>
-
     {/* Add prompt input */}
     <Card style={{marginBottom:16,background:`${C.accent}03`,borderColor:`${C.accent}20`}}>
       <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:4}}>Test a Prompt</div>
@@ -1877,8 +1874,6 @@ Return JSON only:
         })}
       </Card>);
     })()}
-
-    <NavBtn onClick={()=>goTo("volume")} label="Next: Prompt Volume →"/>
   </div>);
 }
 
