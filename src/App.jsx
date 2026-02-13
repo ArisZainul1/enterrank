@@ -457,23 +457,23 @@ Be accurate. "Cited" = you would link to their website. "Mentioned" = you'd name
     }
   }
 
-  // ── Step 6b: Intent Pathway — real data from BOTH engines ──
-  onProgress("Testing intent pathway prompts...",58);
-  const intentPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}.
+  // ── Step 6b: Intent Pathway — generate prompts then VERIFY against both engines ──
+  onProgress("Generating intent pathway prompts...",55);
+  const intentGenPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}.
 Competitors: ${compNames.join(", ")}.
 
 Create an intent funnel with 4 stages. For each stage, list 6-8 realistic prompts a real user would actually type into ChatGPT or Gemini. For each prompt:
-1. Assess whether each engine would mention or cite ${brand}
-2. Assign a "weight" score (1-10) indicating how important this prompt is for ${brand}'s AEO visibility. Higher weight = more likely to drive conversions, more search volume, more competitive.
-3. Identify the trigger words in the prompt that influence AI engine citation behavior
-4. Suggest an optimised version of the prompt that ${brand} should create content to target
+1. Assign a "weight" score (1-10) indicating how important this prompt is for ${brand}'s AEO visibility.
+2. Identify the trigger words in the prompt that influence AI engine citation behavior.
+3. Suggest an optimised version of the prompt that ${brand} should create content to target.
+4. Give a content tip for winning this prompt.
 
 Website data: ${crawlSummary.slice(0,400)}
 
 Return JSON array:
 [
   {"stage":"Awareness","desc":"User discovers the category","color":"#6366f1","prompts":[
-    {"query":"<real user prompt>","engines":{"gpt":"Cited"|"Mentioned"|"Absent","gemini":"Cited"|"Mentioned"|"Absent"},"weight":<1-10>,"triggerWords":["best","top","recommended"],"optimisedPrompt":"<reworded prompt ${brand} should target with content>","contentTip":"<1-sentence tip on what content to create to win this prompt>"}
+    {"query":"<real user prompt>","weight":<1-10>,"triggerWords":["best","top"],"optimisedPrompt":"<version to target>","contentTip":"<tip>"}
   ]},
   {"stage":"Consideration","desc":"User evaluates options","color":"#8b5cf6","prompts":[...]},
   {"stage":"Decision","desc":"User ready to commit","color":"#a855f7","prompts":[...]},
@@ -482,42 +482,63 @@ Return JSON array:
 
 WEIGHT SCORING GUIDE:
 - 9-10: High commercial intent, superlative/comparison triggers ("best", "top", "vs", "recommended", "leading"), brand-name queries
-- 7-8: Strong intent with industry-specific triggers ("${industry} solutions", "how to choose", "pricing comparison")  
+- 7-8: Strong intent with industry-specific triggers ("${industry} solutions", "how to choose", "pricing comparison")
 - 5-6: Moderate intent, informational queries with some brand opportunity ("what is", "how does", "guide to")
 - 3-4: Low intent, broad educational queries where citation is unlikely
 - 1-2: Very generic, almost no chance of brand citation
 
-TRIGGER WORD CATEGORIES for ${industry}:
-- Superlatives: best, top, leading, #1, most popular, highest rated
-- Comparisons: vs, compare, alternative to, switch from, better than
-- Commercial: pricing, cost, buy, subscribe, free trial, demo, sign up
-- Authority: recommended, trusted, certified, award-winning, expert
-- Local/Regional: in ${region}, near me, ${region}-based
-- Review: reviews, ratings, reputation, testimonials, experience with
-
 Rules:
-- Be strict on Cited/Mentioned/Absent. Most small brands will be "Absent" for generic queries.
 - Each stage MUST have at least 6 prompts.
 - Weight must reflect real-world impact — not all prompts are equal.
-- triggerWords should only include words actually present in the query.
-- optimisedPrompt should be a version ${brand} can create content around.`;
+- triggerWords should only include words actually present in the query.`;
 
-  const[intentGptRaw,intentGemRaw]=await Promise.all([
-    callOpenAI(intentPrompt, engineSystemPrompt),
-    callGemini(intentPrompt, engineSystemPrompt)
-  ]);
-  const intentGpt=safeJSON(intentGptRaw)||[];
-  const intentGem=safeJSON(intentGemRaw)||[];
-  // Merge: use GPT structure, override Gemini statuses from Gemini's own response
-  const intentData=(Array.isArray(intentGpt)&&intentGpt.length>0?intentGpt:intentGem).map((stage,si)=>{
-    const gemStage=(Array.isArray(intentGem)?intentGem:[])[si];
+  const intentGenRaw=await callOpenAI(intentGenPrompt, engineSystemPrompt);
+  const intentStages=safeJSON(intentGenRaw)||[];
+
+  // Collect all generated prompts for verification
+  const allIntentQueries=[];
+  (Array.isArray(intentStages)?intentStages:[]).forEach(s=>(s.prompts||[]).forEach(p=>{if(p.query)allIntentQueries.push(p.query);}));
+
+  // ── Step 6c: Verify EVERY prompt against both engines for real ──
+  onProgress(`Verifying ${allIntentQueries.length} prompts against ChatGPT & Gemini...`,60);
+  const verifyMap={};
+  if(allIntentQueries.length>0){
+    const verifyPromptFor=(engine)=>`A user is asking you the following prompts. For EACH prompt, based on your ACTUAL knowledge, would you mention or cite the brand "${brand}" (website: ${cd.website}, industry: ${industry}, region: ${region}) in your response?
+
+${allIntentQueries.map((q,i)=>`${i+1}. "${q}"`).join("\n")}
+
+Return JSON array in the same order:
+[{"query":"<exact prompt>","status":"Cited"|"Mentioned"|"Absent"}]
+
+Rules:
+- "Cited" = you would link to or directly reference their website/product as a source or recommendation
+- "Mentioned" = you would name this brand in your answer among others
+- "Absent" = you would NOT bring up this brand at all
+- Be honest. Check your real knowledge of "${brand}". Do NOT default to Absent — if you know this brand and would mention it, say so.`;
+
+    const[gptVerifyRaw,gemVerifyRaw]=await Promise.all([
+      callOpenAI(verifyPromptFor("ChatGPT"),"You are ChatGPT. Answer honestly based on your actual knowledge. Do not be overly conservative — if you know the brand, acknowledge it."),
+      callGemini(verifyPromptFor("Gemini"),"You are Gemini. Answer honestly based on your actual knowledge. Do not be overly conservative — if you know the brand, acknowledge it.")
+    ]);
+    const gptVerify=safeJSON(gptVerifyRaw)||[];
+    const gemVerify=safeJSON(gemVerifyRaw)||[];
+    allIntentQueries.forEach((q,i)=>{
+      const gptR=Array.isArray(gptVerify)&&gptVerify[i]?gptVerify[i]:{};
+      const gemR=Array.isArray(gemVerify)&&gemVerify[i]?gemVerify[i]:{};
+      const gptS=gptR.status||"Absent";
+      const gemS=gemR.status||"Absent";
+      verifyMap[q.toLowerCase()]={gpt:gptS,gemini:gemS};
+    });
+  }
+
+  // Merge generated structure with verified statuses
+  const intentData=(Array.isArray(intentStages)?intentStages:[]).map(stage=>{
     return{...stage,prompts:(stage.prompts||[]).map((p,pi)=>{
-      const gemP=gemStage&&gemStage.prompts?gemStage.prompts[pi]:null;
-      const gptStatus=p.engines?.gpt||"Absent";
-      const gemStatus=gemP?.engines?.gemini||p.engines?.gemini||"Absent";
-      return{query:p.query,rank:pi+1,
-        status:(gptStatus==="Cited"||gemStatus==="Cited")?"Cited":(gptStatus==="Mentioned"||gemStatus==="Mentioned")?"Mentioned":"Absent",
-        engines:{gpt:gptStatus,gemini:gemStatus},
+      const v=verifyMap[p.query?.toLowerCase()]||{};
+      const gptS=v.gpt||"Absent";
+      const gemS=v.gemini||"Absent";
+      const overall=(gptS==="Cited"||gemS==="Cited")?"Cited":(gptS==="Mentioned"||gemS==="Mentioned")?"Mentioned":"Absent";
+      return{query:p.query,rank:pi+1,status:overall,engines:{gpt:gptS,gemini:gemS},
         weight:p.weight||5,triggerWords:p.triggerWords||[],optimisedPrompt:p.optimisedPrompt||"",contentTip:p.contentTip||""};
     })};
   });
@@ -1514,13 +1535,11 @@ function ArchetypesPage({r,goTo}){
 }
 
 /* ─── PAGE: INTENT PATHWAY ─── */
-function IntentPage({r,goTo,verified,setVerified}){
+function IntentPage({r,goTo}){
   const[selStage,setSelStage]=useState(0);
   const[customPrompts,setCustomPrompts]=useState({0:[],1:[],2:[],3:[]});
   const[newPrompt,setNewPrompt]=useState("");
   const[testing,setTesting]=useState(false);
-  const[verifying,setVerifying]=useState(false);
-  const[verifyProgress,setVerifyProgress]=useState(0);
   const[expandedRow,setExpandedRow]=useState(null);
   const stageColors=["#6366f1","#8b5cf6","#a855f7","#c084fc"];
   const stageNames=["Awareness","Consideration","Decision","Retention"];
@@ -1528,17 +1547,10 @@ function IntentPage({r,goTo,verified,setVerified}){
   const stageIcons=["search","scale","credit-card","refresh-cw"];
   const stages=r.funnelStages||[];
 
-  // Apply verified statuses on top of base prompt data
-  const applyVerified=(p)=>{
-    const v=verified[p.query?.toLowerCase()];
-    if(!v)return p;
-    return{...p,status:v.status,engines:v.engines,weight:v.weight||p.weight,triggerWords:v.triggerWords||p.triggerWords,optimisedPrompt:v.optimisedPrompt||p.optimisedPrompt,contentTip:v.contentTip||p.contentTip,reason:v.reason||p.reason,verified:true};
-  };
-
   const getMergedPrompts=(si)=>{
     const apiPrompts=(stages[si]&&stages[si].prompts)||[];
     const custom=customPrompts[si]||[];
-    return[...apiPrompts,...custom].map(applyVerified);
+    return[...apiPrompts,...custom];
   };
 
   const stageStats=stageNames.map((_,si)=>{
@@ -1547,59 +1559,6 @@ function IntentPage({r,goTo,verified,setVerified}){
   });
 
   const allPrompts=stageNames.flatMap((_,si)=>getMergedPrompts(si));
-  const isVerified=Object.keys(verified).length>0;
-
-  // Verify ALL prompts by calling both ChatGPT and Gemini for real
-  const verifyAll=async()=>{
-    const rawPrompts=stageNames.flatMap((_,si)=>{
-      const apiP=(stages[si]&&stages[si].prompts)||[];
-      const customP=customPrompts[si]||[];
-      return[...apiP,...customP];
-    }).filter(p=>p.query);
-    if(rawPrompts.length===0||verifying)return;
-    setVerifying(true);setVerifyProgress(0);
-    const newVerified={...verified};
-    // Process in batches of 4 for speed
-    const batchSize=4;
-    for(let i=0;i<rawPrompts.length;i+=batchSize){
-      const batch=rawPrompts.slice(i,i+batchSize);
-      await Promise.all(batch.map(async(p)=>{
-        const q=p.query;
-        const testPr=`A user typed this prompt into your AI engine: "${q}"
-Brand: "${r.clientData.brand}" in ${r.clientData.industry} (${r.clientData.website}).
-
-Would you mention or cite this brand in your response to this prompt? Check your actual knowledge.
-
-Return JSON only:
-{"status":"Cited"|"Mentioned"|"Absent","reason":"<1-sentence why>","weight":<1-10>,"triggerWords":["word1","word2"],"optimisedPrompt":"<version to target>","contentTip":"<what content to create>"}
-
-Rules:
-- "Cited" = you would link to or directly reference their website/product as a source
-- "Mentioned" = you would name this brand in your answer
-- "Absent" = you would not bring up this brand at all
-- Be honest and accurate based on your real knowledge`;
-        try{
-          const[gptRaw,gemRaw]=await Promise.all([callOpenAI(testPr),callGemini(testPr)]);
-          const gptR=safeJSON(gptRaw)||{status:"Absent"};
-          const gemR=safeJSON(gemRaw)||{status:"Absent"};
-          const gptS=gptR.status||"Absent";
-          const gemS=gemR.status||"Absent";
-          const overall=(gptS==="Cited"||gemS==="Cited")?"Cited":(gptS==="Mentioned"||gemS==="Mentioned")?"Mentioned":"Absent";
-          newVerified[q.toLowerCase()]={
-            status:overall,engines:{gpt:gptS,gemini:gemS},
-            weight:gptR.weight||gemR.weight||p.weight||5,
-            triggerWords:[...new Set([...(gptR.triggerWords||[]),...(gemR.triggerWords||[])])],
-            optimisedPrompt:gptR.optimisedPrompt||gemR.optimisedPrompt||"",
-            contentTip:gptR.contentTip||gemR.contentTip||"",
-            reason:gptR.reason||gemR.reason||""
-          };
-        }catch(e){console.error("Verify error for:",q,e);}
-      }));
-      setVerifyProgress(Math.min(i+batchSize,rawPrompts.length));
-      setVerified({...newVerified});
-    }
-    setVerifying(false);
-  };
 
   // Known high-impact trigger words for extraction fallback
   const knownTriggers=["best","top","leading","recommended","vs","compare","alternative","review","pricing","how to","guide","trusted","popular","affordable","fastest","cheapest","most","rated","award","expert","certified","free","demo","trial","buy","cost","near me","in "+r.clientData.region,r.clientData.brand.toLowerCase(),...(r.clientData.topics||[]).map(t=>t.toLowerCase())];
@@ -1608,7 +1567,6 @@ Rules:
   const allTriggers={};
   allPrompts.forEach(p=>{
     let tw=p.triggerWords||[];
-    // Fallback: if API didn't return trigger words, extract from query text
     if(tw.length===0&&p.query){
       const q=p.query.toLowerCase();
       tw=knownTriggers.filter(t=>q.includes(t.toLowerCase()));
@@ -1625,18 +1583,13 @@ Rules:
   });
   const triggerRank=Object.values(allTriggers).sort((a,b)=>b.totalWeight-a.totalWeight).slice(0,12);
 
-  // Weight colour
   const weightColor=(w)=>w>=8?"#059669":w>=6?C.accent:w>=4?C.amber:"#94a3b8";
-  const weightLabel=(w)=>w>=8?"High":w>=6?"Medium":w>=4?"Low":"Minimal";
 
-  // Highlight trigger words in query text
   const highlightQuery=(query,triggers)=>{
     if(!triggers||triggers.length===0)return <span>{query}</span>;
-    const parts=[];
-    let remaining=query;
     const sorted=[...triggers].sort((a,b)=>b.length-a.length);
     const regex=new RegExp(`(${sorted.map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join("|")})`,"gi");
-    const split=remaining.split(regex);
+    const split=query.split(regex);
     return <span>{split.map((part,i)=>{
       const isT=sorted.some(t=>t.toLowerCase()===part.toLowerCase());
       return isT?<span key={i} style={{background:`${C.accent}18`,color:C.accent,fontWeight:600,borderRadius:4,padding:"0 2px"}}>{part}</span>:<span key={i}>{part}</span>;
@@ -1667,14 +1620,11 @@ Rules:
       const gemR=safeJSON(gemRaw)||{status:"Absent"};
       const overall=(gptR.status==="Cited"||gemR.status==="Cited")?"Cited":(gptR.status==="Mentioned"||gemR.status==="Mentioned")?"Mentioned":"Absent";
       const newP={query:q,status:overall,engines:{gpt:gptR.status||"Absent",gemini:gemR.status||"Absent"},
-        reason:gptR.reason||gemR.reason||"",custom:true,verified:true,
+        reason:gptR.reason||gemR.reason||"",custom:true,
         weight:gptR.weight||gemR.weight||5,
         triggerWords:[...new Set([...(gptR.triggerWords||[]),...(gemR.triggerWords||[])])],
         optimisedPrompt:gptR.optimisedPrompt||gemR.optimisedPrompt||"",
         contentTip:gptR.contentTip||gemR.contentTip||""};
-
-      // Also store in verified cache
-      setVerified(prev=>({...prev,[q.toLowerCase()]:{status:overall,engines:{gpt:gptR.status||"Absent",gemini:gemR.status||"Absent"},weight:newP.weight,triggerWords:newP.triggerWords,optimisedPrompt:newP.optimisedPrompt,contentTip:newP.contentTip,reason:newP.reason}}));
 
       const classifyPr=`Classify this prompt into ONE stage: Awareness, Consideration, Decision, or Retention.
 Prompt: "${q}" | Brand: "${r.clientData.brand}" in ${r.clientData.industry}.
@@ -1691,38 +1641,23 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
 
   const statusColor=(s)=>s==="Cited"?C.green:s==="Mentioned"?C.amber:C.red;
   const statusIcon=(s)=>s==="Cited"?"✓":s==="Mentioned"?"◐":"✗";
-  const totalRaw=stageNames.reduce((a,_,si)=>a+((stages[si]&&stages[si].prompts)||[]).length+(customPrompts[si]||[]).length,0);
 
   return(<div>
     <div style={{marginBottom:24}}>
       <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0}}>Intent Pathway</h2>
-      <p style={{color:C.sub,fontSize:13,marginTop:3}}>How visible is {r.clientData.brand} at each stage of the customer journey? Prompts are verified live against ChatGPT and Gemini.</p>
+      <p style={{color:C.sub,fontSize:13,marginTop:3}}>How visible is {r.clientData.brand} at each stage of the customer journey? Each prompt is verified against ChatGPT and Gemini.</p>
     </div>
 
-    <SectionNote text={`Prompts are sourced from your audit topics and user archetypes. Click "Verify All" to test every prompt against both ChatGPT and Gemini for real citation status.`}/>
+    <SectionNote text={`All prompts have been verified against both ChatGPT and Gemini during the audit. Use "Test a Prompt" to check additional queries in real time.`}/>
 
-    {/* Verify All + nav links */}
-    <Card style={{marginBottom:16}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-        <button onClick={verifyAll} disabled={verifying||totalRaw===0} style={{padding:"9px 22px",background:verifying?C.muted:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:verifying?"not-allowed":"pointer",transition:"all .15s",display:"flex",alignItems:"center",gap:8}}>
-          {verifying&&<span style={{width:14,height:14,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",display:"inline-block",animation:"spin .6s linear infinite"}}/>}
-          {verifying?`Verifying ${verifyProgress}/${totalRaw}...`:isVerified?"Re-verify All":"Verify All"}
-        </button>
-        {isVerified&&<Pill color={C.green} filled>Verified</Pill>}
-        <span style={{fontSize:11,color:C.muted}}>{totalRaw} prompts · both engines</span>
-        <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-          <button onClick={()=>goTo("input")} style={{padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:600,border:`1px solid ${C.border}`,background:"#fff",color:C.sub,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
-            <Icon name="zap" size={12} color={C.accent}/>Run AEO Audit
-          </button>
-          <button onClick={()=>goTo("archetypes")} style={{padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:600,border:`1px solid ${C.border}`,background:"#fff",color:C.sub,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
-            <Icon name="lightbulb" size={12} color={C.accent}/>User Archetypes
-          </button>
-        </div>
-      </div>
-      {verifying&&<div style={{marginTop:10,background:C.bg,borderRadius:6,height:6,overflow:"hidden"}}>
-        <div style={{height:"100%",background:C.accent,borderRadius:6,transition:"width .3s ease",width:`${totalRaw>0?Math.round(verifyProgress/totalRaw*100):0}%`}}/>
-      </div>}
-    </Card>
+    <div style={{display:"flex",gap:8,marginBottom:16}}>
+      <button onClick={()=>goTo("input")} style={{padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:600,border:`1px solid ${C.border}`,background:"#fff",color:C.sub,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .15s"}}>
+        <Icon name="zap" size={14} color={C.accent}/>Run AEO Audit
+      </button>
+      <button onClick={()=>goTo("archetypes")} style={{padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:600,border:`1px solid ${C.border}`,background:"#fff",color:C.sub,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .15s"}}>
+        <Icon name="lightbulb" size={14} color={C.accent}/>User Archetypes
+      </button>
+    </div>
 
     {/* Trigger word analysis */}
     <Card style={{marginBottom:16}}>
@@ -1821,7 +1756,6 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
               <div>
                 <div style={{fontSize:12,lineHeight:1.4,color:C.text}}>"{highlightQuery(p.query,p.triggerWords)}"</div>
                 {p.custom&&<span style={{fontSize:9,fontWeight:600,color:C.accent,padding:"1px 5px",background:`${C.accent}10`,borderRadius:3}}>CUSTOM</span>}
-                {p.verified&&<span style={{fontSize:9,fontWeight:600,color:C.green,padding:"1px 5px",background:`${C.green}10`,borderRadius:3,marginLeft:3}}>VERIFIED</span>}
                 {hasTips&&<span style={{fontSize:9,color:C.muted,marginLeft:4}}>{isExpanded?"▲":"▼ details"}</span>}
               </div>
               <div style={{textAlign:"center"}}>
@@ -2495,7 +2429,6 @@ export default function App(){
   const[history,setHistory]=useState([]);
 
   const[sideCollapsed,setSideCollapsed]=useState(false);
-  const[intentCache,setIntentCache]=useState({});
   const[volumeCache,setVolumeCache]=useState({engine:"google",volumeData:null,customVolumes:[]});
   const[loginError,setLoginError]=useState("");
   const[loggingIn,setLoggingIn]=useState(false);
@@ -2614,7 +2547,7 @@ export default function App(){
   </>);
 
   const run=async(apiData)=>{
-    const r=generateAll(data, apiData);setResults(r);setIntentCache({});setVolumeCache({engine:"google",volumeData:null,customVolumes:[]});
+    const r=generateAll(data, apiData);setResults(r);setVolumeCache({engine:"google",volumeData:null,customVolumes:[]});
     const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
     setHistory(prev=>[...prev,entry]);
     setStep("audit");
@@ -2658,7 +2591,7 @@ export default function App(){
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={run} history={history}/>}
         {step==="audit"&&results&&<AuditPage r={results} history={history} goTo={setStep}/>}
         {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep}/>}
-        {step==="intent"&&results&&<IntentPage r={results} goTo={setStep} verified={intentCache} setVerified={setIntentCache}/>}
+        {step==="intent"&&results&&<IntentPage r={results} goTo={setStep}/>}
         {step==="volume"&&results&&<PromptVolumePage r={results} goTo={setStep} cache={volumeCache} setCache={setVolumeCache}/>}
         {step==="playbook"&&results&&<PlaybookPage r={results} goTo={setStep}/>}
         {step==="channels"&&results&&<ChannelsPage r={results} goTo={setStep}/>}
