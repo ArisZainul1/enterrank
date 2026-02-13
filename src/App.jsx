@@ -1514,11 +1514,13 @@ function ArchetypesPage({r,goTo}){
 }
 
 /* ─── PAGE: INTENT PATHWAY ─── */
-function IntentPage({r,goTo}){
+function IntentPage({r,goTo,verified,setVerified}){
   const[selStage,setSelStage]=useState(0);
   const[customPrompts,setCustomPrompts]=useState({0:[],1:[],2:[],3:[]});
   const[newPrompt,setNewPrompt]=useState("");
   const[testing,setTesting]=useState(false);
+  const[verifying,setVerifying]=useState(false);
+  const[verifyProgress,setVerifyProgress]=useState(0);
   const[expandedRow,setExpandedRow]=useState(null);
   const stageColors=["#6366f1","#8b5cf6","#a855f7","#c084fc"];
   const stageNames=["Awareness","Consideration","Decision","Retention"];
@@ -1526,10 +1528,17 @@ function IntentPage({r,goTo}){
   const stageIcons=["search","scale","credit-card","refresh-cw"];
   const stages=r.funnelStages||[];
 
+  // Apply verified statuses on top of base prompt data
+  const applyVerified=(p)=>{
+    const v=verified[p.query?.toLowerCase()];
+    if(!v)return p;
+    return{...p,status:v.status,engines:v.engines,weight:v.weight||p.weight,triggerWords:v.triggerWords||p.triggerWords,optimisedPrompt:v.optimisedPrompt||p.optimisedPrompt,contentTip:v.contentTip||p.contentTip,reason:v.reason||p.reason,verified:true};
+  };
+
   const getMergedPrompts=(si)=>{
     const apiPrompts=(stages[si]&&stages[si].prompts)||[];
     const custom=customPrompts[si]||[];
-    return[...apiPrompts,...custom];
+    return[...apiPrompts,...custom].map(applyVerified);
   };
 
   const stageStats=stageNames.map((_,si)=>{
@@ -1538,6 +1547,59 @@ function IntentPage({r,goTo}){
   });
 
   const allPrompts=stageNames.flatMap((_,si)=>getMergedPrompts(si));
+  const isVerified=Object.keys(verified).length>0;
+
+  // Verify ALL prompts by calling both ChatGPT and Gemini for real
+  const verifyAll=async()=>{
+    const rawPrompts=stageNames.flatMap((_,si)=>{
+      const apiP=(stages[si]&&stages[si].prompts)||[];
+      const customP=customPrompts[si]||[];
+      return[...apiP,...customP];
+    }).filter(p=>p.query);
+    if(rawPrompts.length===0||verifying)return;
+    setVerifying(true);setVerifyProgress(0);
+    const newVerified={...verified};
+    // Process in batches of 4 for speed
+    const batchSize=4;
+    for(let i=0;i<rawPrompts.length;i+=batchSize){
+      const batch=rawPrompts.slice(i,i+batchSize);
+      await Promise.all(batch.map(async(p)=>{
+        const q=p.query;
+        const testPr=`A user typed this prompt into your AI engine: "${q}"
+Brand: "${r.clientData.brand}" in ${r.clientData.industry} (${r.clientData.website}).
+
+Would you mention or cite this brand in your response to this prompt? Check your actual knowledge.
+
+Return JSON only:
+{"status":"Cited"|"Mentioned"|"Absent","reason":"<1-sentence why>","weight":<1-10>,"triggerWords":["word1","word2"],"optimisedPrompt":"<version to target>","contentTip":"<what content to create>"}
+
+Rules:
+- "Cited" = you would link to or directly reference their website/product as a source
+- "Mentioned" = you would name this brand in your answer
+- "Absent" = you would not bring up this brand at all
+- Be honest and accurate based on your real knowledge`;
+        try{
+          const[gptRaw,gemRaw]=await Promise.all([callOpenAI(testPr),callGemini(testPr)]);
+          const gptR=safeJSON(gptRaw)||{status:"Absent"};
+          const gemR=safeJSON(gemRaw)||{status:"Absent"};
+          const gptS=gptR.status||"Absent";
+          const gemS=gemR.status||"Absent";
+          const overall=(gptS==="Cited"||gemS==="Cited")?"Cited":(gptS==="Mentioned"||gemS==="Mentioned")?"Mentioned":"Absent";
+          newVerified[q.toLowerCase()]={
+            status:overall,engines:{gpt:gptS,gemini:gemS},
+            weight:gptR.weight||gemR.weight||p.weight||5,
+            triggerWords:[...new Set([...(gptR.triggerWords||[]),...(gemR.triggerWords||[])])],
+            optimisedPrompt:gptR.optimisedPrompt||gemR.optimisedPrompt||"",
+            contentTip:gptR.contentTip||gemR.contentTip||"",
+            reason:gptR.reason||gemR.reason||""
+          };
+        }catch(e){console.error("Verify error for:",q,e);}
+      }));
+      setVerifyProgress(Math.min(i+batchSize,rawPrompts.length));
+      setVerified({...newVerified});
+    }
+    setVerifying(false);
+  };
 
   // Known high-impact trigger words for extraction fallback
   const knownTriggers=["best","top","leading","recommended","vs","compare","alternative","review","pricing","how to","guide","trusted","popular","affordable","fastest","cheapest","most","rated","award","expert","certified","free","demo","trial","buy","cost","near me","in "+r.clientData.region,r.clientData.brand.toLowerCase(),...(r.clientData.topics||[]).map(t=>t.toLowerCase())];
@@ -1590,24 +1652,29 @@ function IntentPage({r,goTo}){
       const testPr=`A user typed this prompt into your AI engine: "${q}"
 Brand: "${r.clientData.brand}" in ${r.clientData.industry} (${r.clientData.website}).
 
-1. Would you mention or cite this brand in your response?
-2. Rate the prompt weight (1-10) for AEO importance.
-3. Identify trigger words that influence citation behavior.
-4. Suggest an optimised version of this prompt that ${r.clientData.brand} should create content to target.
-5. Give a content tip for winning this prompt.
+Would you mention or cite this brand in your response to this prompt? Check your actual knowledge.
 
 Return JSON only:
-{"status":"Cited"|"Mentioned"|"Absent","reason":"<1-sentence>","weight":<1-10>,"triggerWords":["word1","word2"],"optimisedPrompt":"<version to target>","contentTip":"<what content to create>"}`;
+{"status":"Cited"|"Mentioned"|"Absent","reason":"<1-sentence why>","weight":<1-10>,"triggerWords":["word1","word2"],"optimisedPrompt":"<version to target>","contentTip":"<what content to create>"}
+
+Rules:
+- "Cited" = you would link to or directly reference their website/product as a source
+- "Mentioned" = you would name this brand in your answer
+- "Absent" = you would not bring up this brand at all
+- Be honest and accurate based on your real knowledge`;
       const[gptRaw,gemRaw]=await Promise.all([callOpenAI(testPr),callGemini(testPr)]);
       const gptR=safeJSON(gptRaw)||{status:"Absent"};
       const gemR=safeJSON(gemRaw)||{status:"Absent"};
       const overall=(gptR.status==="Cited"||gemR.status==="Cited")?"Cited":(gptR.status==="Mentioned"||gemR.status==="Mentioned")?"Mentioned":"Absent";
       const newP={query:q,status:overall,engines:{gpt:gptR.status||"Absent",gemini:gemR.status||"Absent"},
-        reason:gptR.reason||gemR.reason||"",custom:true,
+        reason:gptR.reason||gemR.reason||"",custom:true,verified:true,
         weight:gptR.weight||gemR.weight||5,
         triggerWords:[...new Set([...(gptR.triggerWords||[]),...(gemR.triggerWords||[])])],
         optimisedPrompt:gptR.optimisedPrompt||gemR.optimisedPrompt||"",
         contentTip:gptR.contentTip||gemR.contentTip||""};
+
+      // Also store in verified cache
+      setVerified(prev=>({...prev,[q.toLowerCase()]:{status:overall,engines:{gpt:gptR.status||"Absent",gemini:gemR.status||"Absent"},weight:newP.weight,triggerWords:newP.triggerWords,optimisedPrompt:newP.optimisedPrompt,contentTip:newP.contentTip,reason:newP.reason}}));
 
       const classifyPr=`Classify this prompt into ONE stage: Awareness, Consideration, Decision, or Retention.
 Prompt: "${q}" | Brand: "${r.clientData.brand}" in ${r.clientData.industry}.
@@ -1624,23 +1691,38 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
 
   const statusColor=(s)=>s==="Cited"?C.green:s==="Mentioned"?C.amber:C.red;
   const statusIcon=(s)=>s==="Cited"?"✓":s==="Mentioned"?"◐":"✗";
+  const totalRaw=stageNames.reduce((a,_,si)=>a+((stages[si]&&stages[si].prompts)||[]).length+(customPrompts[si]||[]).length,0);
 
   return(<div>
     <div style={{marginBottom:24}}>
       <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0}}>Intent Pathway</h2>
-      <p style={{color:C.sub,fontSize:13,marginTop:3}}>How visible is {r.clientData.brand} at each stage of the customer journey? Prompts are weighted by their AEO impact.</p>
+      <p style={{color:C.sub,fontSize:13,marginTop:3}}>How visible is {r.clientData.brand} at each stage of the customer journey? Prompts are verified live against ChatGPT and Gemini.</p>
     </div>
 
-    <SectionNote text={`Prompts are sourced from your audit topics and user archetypes. Edit topics in Run AEO Audit, or explore who's searching in User Archetypes.`}/>
+    <SectionNote text={`Prompts are sourced from your audit topics and user archetypes. Click "Verify All" to test every prompt against both ChatGPT and Gemini for real citation status.`}/>
 
-    <div style={{display:"flex",gap:8,marginBottom:16}}>
-      <button onClick={()=>goTo("input")} style={{padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:600,border:`1px solid ${C.border}`,background:"#fff",color:C.sub,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .15s"}}>
-        <Icon name="zap" size={14} color={C.accent}/>Run AEO Audit
-      </button>
-      <button onClick={()=>goTo("archetypes")} style={{padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:600,border:`1px solid ${C.border}`,background:"#fff",color:C.sub,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .15s"}}>
-        <Icon name="lightbulb" size={14} color={C.accent}/>User Archetypes
-      </button>
-    </div>
+    {/* Verify All + nav links */}
+    <Card style={{marginBottom:16}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+        <button onClick={verifyAll} disabled={verifying||totalRaw===0} style={{padding:"9px 22px",background:verifying?C.muted:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:verifying?"not-allowed":"pointer",transition:"all .15s",display:"flex",alignItems:"center",gap:8}}>
+          {verifying&&<span style={{width:14,height:14,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",display:"inline-block",animation:"spin .6s linear infinite"}}/>}
+          {verifying?`Verifying ${verifyProgress}/${totalRaw}...`:isVerified?"Re-verify All":"Verify All"}
+        </button>
+        {isVerified&&<Pill color={C.green} filled>Verified</Pill>}
+        <span style={{fontSize:11,color:C.muted}}>{totalRaw} prompts · both engines</span>
+        <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+          <button onClick={()=>goTo("input")} style={{padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:600,border:`1px solid ${C.border}`,background:"#fff",color:C.sub,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
+            <Icon name="zap" size={12} color={C.accent}/>Run AEO Audit
+          </button>
+          <button onClick={()=>goTo("archetypes")} style={{padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:600,border:`1px solid ${C.border}`,background:"#fff",color:C.sub,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
+            <Icon name="lightbulb" size={12} color={C.accent}/>User Archetypes
+          </button>
+        </div>
+      </div>
+      {verifying&&<div style={{marginTop:10,background:C.bg,borderRadius:6,height:6,overflow:"hidden"}}>
+        <div style={{height:"100%",background:C.accent,borderRadius:6,transition:"width .3s ease",width:`${totalRaw>0?Math.round(verifyProgress/totalRaw*100):0}%`}}/>
+      </div>}
+    </Card>
 
     {/* Trigger word analysis */}
     <Card style={{marginBottom:16}}>
@@ -1739,6 +1821,7 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
               <div>
                 <div style={{fontSize:12,lineHeight:1.4,color:C.text}}>"{highlightQuery(p.query,p.triggerWords)}"</div>
                 {p.custom&&<span style={{fontSize:9,fontWeight:600,color:C.accent,padding:"1px 5px",background:`${C.accent}10`,borderRadius:3}}>CUSTOM</span>}
+                {p.verified&&<span style={{fontSize:9,fontWeight:600,color:C.green,padding:"1px 5px",background:`${C.green}10`,borderRadius:3,marginLeft:3}}>VERIFIED</span>}
                 {hasTips&&<span style={{fontSize:9,color:C.muted,marginLeft:4}}>{isExpanded?"▲":"▼ details"}</span>}
               </div>
               <div style={{textAlign:"center"}}>
@@ -1780,14 +1863,17 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
 }
 
 /* ─── PAGE: PROMPT VOLUME ─── */
-function PromptVolumePage({r,goTo}){
-  const[engine,setEngine]=useState("google");
-  const[volumeData,setVolumeData]=useState(null);
+function PromptVolumePage({r,goTo,cache,setCache}){
+  const engine=cache.engine||"google";
+  const volumeData=cache.volumeData;
+  const customVolumes=cache.customVolumes||[];
+  const setEngine=(e)=>setCache(prev=>({...prev,engine:e}));
+  const setVolumeData=(d)=>setCache(prev=>({...prev,volumeData:d}));
+  const setCustomVolumes=(fn)=>setCache(prev=>({...prev,customVolumes:typeof fn==="function"?fn(prev.customVolumes||[]):fn}));
   const[loading,setLoading]=useState(false);
   const[selStage,setSelStage]=useState(0);
   const[newPrompt,setNewPrompt]=useState("");
   const[checking,setChecking]=useState(false);
-  const[customVolumes,setCustomVolumes]=useState([]);
   const[dropOpen,setDropOpen]=useState(false);
 
   const stageNames=["Awareness","Consideration","Decision","Retention"];
@@ -2409,6 +2495,8 @@ export default function App(){
   const[history,setHistory]=useState([]);
 
   const[sideCollapsed,setSideCollapsed]=useState(false);
+  const[intentCache,setIntentCache]=useState({});
+  const[volumeCache,setVolumeCache]=useState({engine:"google",volumeData:null,customVolumes:[]});
   const[loginError,setLoginError]=useState("");
   const[loggingIn,setLoggingIn]=useState(false);
 
@@ -2526,7 +2614,7 @@ export default function App(){
   </>);
 
   const run=async(apiData)=>{
-    const r=generateAll(data, apiData);setResults(r);
+    const r=generateAll(data, apiData);setResults(r);setIntentCache({});setVolumeCache({engine:"google",volumeData:null,customVolumes:[]});
     const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
     setHistory(prev=>[...prev,entry]);
     setStep("audit");
@@ -2570,8 +2658,8 @@ export default function App(){
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={run} history={history}/>}
         {step==="audit"&&results&&<AuditPage r={results} history={history} goTo={setStep}/>}
         {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep}/>}
-        {step==="intent"&&results&&<IntentPage r={results} goTo={setStep}/>}
-        {step==="volume"&&results&&<PromptVolumePage r={results} goTo={setStep}/>}
+        {step==="intent"&&results&&<IntentPage r={results} goTo={setStep} verified={intentCache} setVerified={setIntentCache}/>}
+        {step==="volume"&&results&&<PromptVolumePage r={results} goTo={setStep} cache={volumeCache} setCache={setVolumeCache}/>}
         {step==="playbook"&&results&&<PlaybookPage r={results} goTo={setStep}/>}
         {step==="channels"&&results&&<ChannelsPage r={results} goTo={setStep}/>}
         {step==="grid"&&results&&<GridPage r={results} goTo={setStep}/>}
