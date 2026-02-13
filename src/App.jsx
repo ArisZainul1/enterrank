@@ -462,27 +462,45 @@ Be accurate. "Cited" = you would link to their website. "Mentioned" = you'd name
   const intentPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}.
 Competitors: ${compNames.join(", ")}.
 
-Create an intent funnel with 4 stages. For each stage, list 6-8 realistic prompts a real user would actually type into ChatGPT or Gemini. For each prompt, honestly assess whether each engine would mention or cite ${brand}.
+Create an intent funnel with 4 stages. For each stage, list 6-8 realistic prompts a real user would actually type into ChatGPT or Gemini. For each prompt:
+1. Assess whether each engine would mention or cite ${brand}
+2. Assign a "weight" score (1-10) indicating how important this prompt is for ${brand}'s AEO visibility. Higher weight = more likely to drive conversions, more search volume, more competitive.
+3. Identify the trigger words in the prompt that influence AI engine citation behavior
+4. Suggest an optimised version of the prompt that ${brand} should create content to target
 
 Website data: ${crawlSummary.slice(0,400)}
 
 Return JSON array:
 [
   {"stage":"Awareness","desc":"User discovers the category","color":"#6366f1","prompts":[
-    {"query":"<real user prompt>","engines":{"gpt":"Cited"|"Mentioned"|"Absent","gemini":"Cited"|"Mentioned"|"Absent"}}
+    {"query":"<real user prompt>","engines":{"gpt":"Cited"|"Mentioned"|"Absent","gemini":"Cited"|"Mentioned"|"Absent"},"weight":<1-10>,"triggerWords":["best","top","recommended"],"optimisedPrompt":"<reworded prompt ${brand} should target with content>","contentTip":"<1-sentence tip on what content to create to win this prompt>"}
   ]},
   {"stage":"Consideration","desc":"User evaluates options","color":"#8b5cf6","prompts":[...]},
   {"stage":"Decision","desc":"User ready to commit","color":"#a855f7","prompts":[...]},
   {"stage":"Retention","desc":"User seeks ongoing value","color":"#c084fc","prompts":[...]}
 ]
 
+WEIGHT SCORING GUIDE:
+- 9-10: High commercial intent, superlative/comparison triggers ("best", "top", "vs", "recommended", "leading"), brand-name queries
+- 7-8: Strong intent with industry-specific triggers ("${industry} solutions", "how to choose", "pricing comparison")  
+- 5-6: Moderate intent, informational queries with some brand opportunity ("what is", "how does", "guide to")
+- 3-4: Low intent, broad educational queries where citation is unlikely
+- 1-2: Very generic, almost no chance of brand citation
+
+TRIGGER WORD CATEGORIES for ${industry}:
+- Superlatives: best, top, leading, #1, most popular, highest rated
+- Comparisons: vs, compare, alternative to, switch from, better than
+- Commercial: pricing, cost, buy, subscribe, free trial, demo, sign up
+- Authority: recommended, trusted, certified, award-winning, expert
+- Local/Regional: in ${region}, near me, ${region}-based
+- Review: reviews, ratings, reputation, testimonials, experience with
+
 Rules:
-- "Cited" = the engine would directly link to or quote from ${brand}'s website
-- "Mentioned" = the engine would name ${brand} but not cite the site
-- "Absent" = the engine would NOT mention ${brand} at all
-- Be strict. Most small/medium brands will be "Absent" for generic queries.
-- Include competitor comparison prompts, "best of" queries, pricing queries, review queries etc.
-- Each stage MUST have at least 6 prompts.`;
+- Be strict on Cited/Mentioned/Absent. Most small brands will be "Absent" for generic queries.
+- Each stage MUST have at least 6 prompts.
+- Weight must reflect real-world impact — not all prompts are equal.
+- triggerWords should only include words actually present in the query.
+- optimisedPrompt should be a version ${brand} can create content around.`;
 
   const[intentGptRaw,intentGemRaw]=await Promise.all([
     callOpenAI(intentPrompt, engineSystemPrompt),
@@ -495,8 +513,12 @@ Rules:
     const gemStage=(Array.isArray(intentGem)?intentGem:[])[si];
     return{...stage,prompts:(stage.prompts||[]).map((p,pi)=>{
       const gemP=gemStage&&gemStage.prompts?gemStage.prompts[pi]:null;
-      return{query:p.query,rank:pi+1,status:(p.engines?.gpt==="Cited"||p.engines?.gemini==="Cited")?"Cited":(p.engines?.gpt==="Mentioned"||p.engines?.gemini==="Mentioned")?"Mentioned":"Absent",
-        engines:{gpt:p.engines?.gpt||"Absent",gemini:gemP?.engines?.gemini||p.engines?.gemini||"Absent"}};
+      const gptStatus=p.engines?.gpt||"Absent";
+      const gemStatus=gemP?.engines?.gemini||p.engines?.gemini||"Absent";
+      return{query:p.query,rank:pi+1,
+        status:(gptStatus==="Cited"||gemStatus==="Cited")?"Cited":(gptStatus==="Mentioned"||gemStatus==="Mentioned")?"Mentioned":"Absent",
+        engines:{gpt:gptStatus,gemini:gemStatus},
+        weight:p.weight||5,triggerWords:p.triggerWords||[],optimisedPrompt:p.optimisedPrompt||"",contentTip:p.contentTip||""};
     })};
   });
 
@@ -699,7 +721,7 @@ function generateAll(cd, apiData){
   const painPoints=(hasApi&&apiData.engineData.painPoints&&apiData.engineData.painPoints.length>0)?apiData.engineData.painPoints.map(pp=>({label:pp.label,score:pp.score,severity:pp.score<30?"critical":pp.score<60?"warning":"good"})):painCats.map(label=>({label,score:0,severity:"critical"}));
   const competitors=(hasApi&&apiData.competitorData)?(()=>{const raw=Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors||[];return raw.map(c=>{const cPain=(c.painPoints||painCats.map(l=>({label:l,score:c.score||0}))).map(p=>({label:p.label,score:p.score}));const advantages=cPain.map(pp=>{const brandPP=painPoints.find(bp=>bp.label===pp.label);const diff=pp.score-(brandPP?brandPP.score:0);return{category:pp.label,diff,insight:getInsight(pp.label,c.name,cd.brand,diff>0)};}).filter(a=>a.insight);return{name:c.name,score:c.score||0,painPoints:cPain,advantages,engineScores:c.engineScores||[c.score||0,c.score||0],topStrength:c.topStrength||"N/A"};});})():[];
   const stakeholders=(hasApi&&apiData.archData&&Array.isArray(apiData.archData)&&apiData.archData.length>0)?apiData.archData:[];
-  const funnelStages=(hasApi&&apiData.intentData&&Array.isArray(apiData.intentData)&&apiData.intentData.length>0)?apiData.intentData.map(s=>({stage:s.stage,desc:s.desc||"",color:s.color||"#6366f1",prompts:(s.prompts||[]).map(p=>({query:p.query||"",rank:p.rank||0,status:p.status||"Absent",engines:p.engines||{gpt:"Absent",gemini:"Absent"}}))})):[{stage:"Awareness",desc:"",color:"#6366f1",prompts:[]},{stage:"Consideration",desc:"",color:"#8b5cf6",prompts:[]},{stage:"Decision",desc:"",color:"#a855f7",prompts:[]},{stage:"Retention",desc:"",color:"#c084fc",prompts:[]}];
+  const funnelStages=(hasApi&&apiData.intentData&&Array.isArray(apiData.intentData)&&apiData.intentData.length>0)?apiData.intentData.map(s=>({stage:s.stage,desc:s.desc||"",color:s.color||"#6366f1",prompts:(s.prompts||[]).map(p=>({query:p.query||"",rank:p.rank||0,status:p.status||"Absent",engines:p.engines||{gpt:"Absent",gemini:"Absent"},weight:p.weight||5,triggerWords:p.triggerWords||[],optimisedPrompt:p.optimisedPrompt||"",contentTip:p.contentTip||""}))})):[{stage:"Awareness",desc:"",color:"#6366f1",prompts:[]},{stage:"Consideration",desc:"",color:"#8b5cf6",prompts:[]},{stage:"Decision",desc:"",color:"#a855f7",prompts:[]},{stage:"Retention",desc:"",color:"#c084fc",prompts:[]}];
   const brandGuidelines=[{area:"Entity Disambiguation",rule:"Establish "+cd.brand+" as a distinct entity across knowledge graph sources.",example:"Audit Wikidata, Knowledge Panel, Crunchbase for consistency."},{area:"Semantic Content Architecture",rule:"Structure content using topic clusters with pillar pages.",example:"Pillar: "+cd.brand+"'s Guide to "+(cd.topics[0]||cd.industry)},{area:"JSON-LD Schema",rule:"Deploy Organization, Product, FAQ, Article, Speakable schema.",example:"Every blog: Article schema with author, dates, FAQ markup."},{area:"E-E-A-T Signals",rule:"Every piece must demonstrate Experience, Expertise, Authority, Trust.",example:"Author bios with credentials, Person schema, cited sources."},{area:"Citation Velocity",rule:"Target DA50+ domains. 3 fresh citations beat 10 stale ones.",example:"Monthly: 2 guest articles DA60+, 3 HARO quotes, 1 data study."},{area:"Content Freshness",rule:"Quarterly review cycle. Update dateModified in schema.",example:"Flag pages >100 traffic/month for quarterly refresh."},{area:"Multi-Modal Content",rule:"Every piece in 2+ formats. Manual video transcripts.",example:"Guide → YouTube + infographic + LinkedIn carousel."},{area:"Competitor Response",rule:"Weekly monitoring. 14-day response to competitor citations.",example:"Monitor top-50 prompts weekly. Create displacement briefs."},{area:"Brand Narrative Consistency",rule:"150-word canonical description across all channels.",example:cd.brand+" is a "+(cd.region||"global")+" "+cd.industry+" company specialising in "+cd.topics.slice(0,3).join(", ")+"."},{area:"AI-Specific Formatting",rule:"Clear H2/H3, definitive answers in first 2 sentences.",example:"Direct claims with verifiable data points."}];
   const getChStatus=(chName)=>{if(!hasApi||!apiData.channelData||!apiData.channelData.channels)return null;return apiData.channelData.channels.find(c=>{const cn=c.channel||"";const parts=chName.split("/").map(s=>s.trim().toLowerCase());return parts.some(p=>cn.toLowerCase().includes(p))||cn.toLowerCase().includes(chName.toLowerCase());})||null;};
   const getRecSites=(type)=>{if(apiData&&apiData.deepData&&apiData.deepData.recommendedSites){const s=apiData.deepData.recommendedSites[type];if(Array.isArray(s)&&s.length>3)return s;}return null;};
@@ -1440,35 +1462,61 @@ function IntentPage({r,goTo}){
   const[customPrompts,setCustomPrompts]=useState({0:[],1:[],2:[],3:[]});
   const[newPrompt,setNewPrompt]=useState("");
   const[testing,setTesting]=useState(false);
+  const[expandedRow,setExpandedRow]=useState(null);
   const stageColors=["#6366f1","#8b5cf6","#a855f7","#c084fc"];
   const stageNames=["Awareness","Consideration","Decision","Retention"];
   const stageDescs=["User discovers the problem or category","User evaluates and compares options","User is ready to purchase or commit","User seeks ongoing value"];
   const stageIcons=["🔍","⚖️","💳","🔄"];
-
-  // Use funnelStages from audit (not archetype-based)
   const stages=r.funnelStages||[];
 
-  // Merge API prompts + user custom prompts per stage
   const getMergedPrompts=(si)=>{
     const apiPrompts=(stages[si]&&stages[si].prompts)||[];
     const custom=customPrompts[si]||[];
     return[...apiPrompts,...custom];
   };
 
-  // Stats per stage
   const stageStats=stageNames.map((_,si)=>{
     const prompts=getMergedPrompts(si);
     return{cited:prompts.filter(p=>p.status==="Cited").length,mentioned:prompts.filter(p=>p.status==="Mentioned").length,absent:prompts.filter(p=>p.status==="Absent").length,total:prompts.length};
   });
 
-  // Overall funnel stats
   const allPrompts=stageNames.flatMap((_,si)=>getMergedPrompts(si));
   const totalCited=allPrompts.filter(p=>p.status==="Cited").length;
   const totalMentioned=allPrompts.filter(p=>p.status==="Mentioned").length;
   const totalAll=allPrompts.length||1;
   const funnelScore=Math.round((totalCited*1+totalMentioned*0.5)/totalAll*100);
 
-  // Test a custom prompt against both engines
+  // Aggregate trigger word analysis
+  const allTriggers={};
+  allPrompts.forEach(p=>{(p.triggerWords||[]).forEach(tw=>{
+    const k=tw.toLowerCase();
+    if(!allTriggers[k])allTriggers[k]={word:tw,count:0,cited:0,mentioned:0,absent:0,totalWeight:0};
+    allTriggers[k].count++;
+    allTriggers[k].totalWeight+=(p.weight||5);
+    if(p.status==="Cited")allTriggers[k].cited++;
+    else if(p.status==="Mentioned")allTriggers[k].mentioned++;
+    else allTriggers[k].absent++;
+  });});
+  const triggerRank=Object.values(allTriggers).sort((a,b)=>b.totalWeight-a.totalWeight).slice(0,12);
+
+  // Weight colour
+  const weightColor=(w)=>w>=8?"#059669":w>=6?C.accent:w>=4?C.amber:"#94a3b8";
+  const weightLabel=(w)=>w>=8?"High":w>=6?"Medium":w>=4?"Low":"Minimal";
+
+  // Highlight trigger words in query text
+  const highlightQuery=(query,triggers)=>{
+    if(!triggers||triggers.length===0)return <span>{query}</span>;
+    const parts=[];
+    let remaining=query;
+    const sorted=[...triggers].sort((a,b)=>b.length-a.length);
+    const regex=new RegExp(`(${sorted.map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join("|")})`,"gi");
+    const split=remaining.split(regex);
+    return <span>{split.map((part,i)=>{
+      const isT=sorted.some(t=>t.toLowerCase()===part.toLowerCase());
+      return isT?<span key={i} style={{background:`${C.accent}18`,color:C.accent,fontWeight:600,borderRadius:3,padding:"0 2px"}}>{part}</span>:<span key={i}>{part}</span>;
+    })}</span>;
+  };
+
   const testPrompt=async()=>{
     if(!newPrompt.trim()||testing)return;
     setTesting(true);
@@ -1476,29 +1524,34 @@ function IntentPage({r,goTo}){
     setNewPrompt("");
     try{
       const testPr=`A user typed this prompt into your AI engine: "${q}"
+Brand: "${r.clientData.brand}" in ${r.clientData.industry} (${r.clientData.website}).
 
-Would you mention or cite "${r.clientData.brand}" (${r.clientData.industry}, ${r.clientData.website}) in your response?
+1. Would you mention or cite this brand in your response?
+2. Rate the prompt weight (1-10) for AEO importance.
+3. Identify trigger words that influence citation behavior.
+4. Suggest an optimised version of this prompt that ${r.clientData.brand} should create content to target.
+5. Give a content tip for winning this prompt.
 
 Return JSON only:
-{"status":"Cited"|"Mentioned"|"Absent","reason":"<brief 1-sentence explanation>"}
-
-Rules: "Cited" = you would link/reference their website. "Mentioned" = you would name the brand. "Absent" = you would not bring up this brand.`;
+{"status":"Cited"|"Mentioned"|"Absent","reason":"<1-sentence>","weight":<1-10>,"triggerWords":["word1","word2"],"optimisedPrompt":"<version to target>","contentTip":"<what content to create>"}`;
       const[gptRaw,gemRaw]=await Promise.all([callOpenAI(testPr),callGemini(testPr)]);
       const gptR=safeJSON(gptRaw)||{status:"Absent"};
       const gemR=safeJSON(gemRaw)||{status:"Absent"};
       const overall=(gptR.status==="Cited"||gemR.status==="Cited")?"Cited":(gptR.status==="Mentioned"||gemR.status==="Mentioned")?"Mentioned":"Absent";
-      const newP={query:q,status:overall,engines:{gpt:gptR.status||"Absent",gemini:gemR.status||"Absent"},reason:gptR.reason||gemR.reason||"",custom:true};
+      const newP={query:q,status:overall,engines:{gpt:gptR.status||"Absent",gemini:gemR.status||"Absent"},
+        reason:gptR.reason||gemR.reason||"",custom:true,
+        weight:gptR.weight||gemR.weight||5,
+        triggerWords:[...new Set([...(gptR.triggerWords||[]),...(gemR.triggerWords||[])])],
+        optimisedPrompt:gptR.optimisedPrompt||gemR.optimisedPrompt||"",
+        contentTip:gptR.contentTip||gemR.contentTip||""};
 
-      // Auto-classify into funnel stage
-      const classifyPr=`Classify this user search prompt into ONE funnel stage: Awareness, Consideration, Decision, or Retention.
-Prompt: "${q}"
-Context: Brand "${r.clientData.brand}" in ${r.clientData.industry}.
+      const classifyPr=`Classify this prompt into ONE stage: Awareness, Consideration, Decision, or Retention.
+Prompt: "${q}" | Brand: "${r.clientData.brand}" in ${r.clientData.industry}.
 Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
       const classRaw=await callOpenAI(classifyPr);
       const classR=safeJSON(classRaw)||{stage:"Awareness"};
       const stageIdx=stageNames.indexOf(classR.stage);
       const targetStage=stageIdx>=0?stageIdx:0;
-
       setCustomPrompts(prev=>({...prev,[targetStage]:[...prev[targetStage],newP]}));
       setSelStage(targetStage);
     }catch(e){console.error("Prompt test error:",e);}
@@ -1507,57 +1560,71 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
 
   const statusColor=(s)=>s==="Cited"?C.green:s==="Mentioned"?C.amber:C.red;
   const statusIcon=(s)=>s==="Cited"?"✓":s==="Mentioned"?"◐":"✗";
-  const statusBg=(s)=>s==="Cited"?`${C.green}08`:s==="Mentioned"?`${C.amber}08`:`${C.red}06`;
 
   return(<div>
     <div style={{marginBottom:24}}>
       <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Intent Pathway</h2>
-      <p style={{color:C.sub,fontSize:13,marginTop:3}}>How visible is {r.clientData.brand} at each stage of the customer journey? Test your own prompts below.</p>
+      <p style={{color:C.sub,fontSize:13,marginTop:3}}>How visible is {r.clientData.brand} at each stage of the customer journey? Prompts are weighted by their AEO impact.</p>
     </div>
 
-    {/* Overall funnel score bar */}
-    <Card style={{marginBottom:16}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-        <div>
-          <div style={{fontSize:13,fontWeight:600,color:C.text}}>Funnel Visibility</div>
-          <div style={{fontSize:11,color:C.muted}}>{allPrompts.length} prompts tested across 4 stages</div>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{display:"flex",gap:4}}>
-            <Pill color={C.green}>{totalCited} Cited</Pill>
-            <Pill color={C.amber}>{totalMentioned} Mentioned</Pill>
-            <Pill color={C.red}>{allPrompts.length-totalCited-totalMentioned} Absent</Pill>
+    {/* Funnel overview + trigger word analysis side by side */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+      <Card>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div>
+            <div style={{fontSize:13,fontWeight:600,color:C.text}}>Funnel Visibility</div>
+            <div style={{fontSize:11,color:C.muted}}>{allPrompts.length} prompts · weighted by AEO impact</div>
           </div>
           <div style={{fontSize:28,fontWeight:800,color:funnelScore>=40?C.green:funnelScore>=20?C.amber:C.red,fontFamily:"'Outfit'"}}>{funnelScore}%</div>
         </div>
-      </div>
-      {/* Mini funnel bars */}
-      <div style={{display:"flex",gap:4,height:6,borderRadius:4,overflow:"hidden"}}>
-        {stageNames.map((_,si)=>{
-          const s=stageStats[si];
-          const total=s.total||1;
-          return(<div key={si} style={{flex:1,background:C.bg,borderRadius:3,overflow:"hidden",display:"flex"}}>
-            <div style={{width:`${(s.cited/total)*100}%`,background:C.green,transition:"width .4s"}}/>
-            <div style={{width:`${(s.mentioned/total)*100}%`,background:C.amber,transition:"width .4s"}}/>
-          </div>);
-        })}
-      </div>
-      <div style={{display:"flex",gap:4,marginTop:4}}>
-        {stageNames.map((name,i)=>(<div key={i} style={{flex:1,textAlign:"center",fontSize:9,color:C.muted,fontWeight:500}}>{name}</div>))}
-      </div>
-    </Card>
+        <div style={{display:"flex",gap:4,marginBottom:6}}>
+          <Pill color={C.green}>{totalCited} Cited</Pill>
+          <Pill color={C.amber}>{totalMentioned} Mentioned</Pill>
+          <Pill color={C.red}>{allPrompts.length-totalCited-totalMentioned} Absent</Pill>
+        </div>
+        <div style={{display:"flex",gap:4,height:6,borderRadius:4,overflow:"hidden"}}>
+          {stageNames.map((_,si)=>{const s=stageStats[si];const t=s.total||1;
+            return(<div key={si} style={{flex:1,background:C.bg,borderRadius:3,overflow:"hidden",display:"flex"}}>
+              <div style={{width:`${(s.cited/t)*100}%`,background:C.green}}/>
+              <div style={{width:`${(s.mentioned/t)*100}%`,background:C.amber}}/>
+            </div>);
+          })}
+        </div>
+        <div style={{display:"flex",gap:4,marginTop:4}}>
+          {stageNames.map((n,i)=>(<div key={i} style={{flex:1,textAlign:"center",fontSize:9,color:C.muted}}>{n}</div>))}
+        </div>
+      </Card>
+
+      {/* Trigger word analysis */}
+      <Card>
+        <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:4}}>High-Impact Trigger Words</div>
+        <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Words in prompts that influence AI citation behavior for {r.clientData.industry}.</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+          {triggerRank.length>0?triggerRank.map((t,i)=>{
+            const eff=t.count>0?Math.round(((t.cited+t.mentioned*0.5)/t.count)*100):0;
+            return(<div key={i} style={{padding:"4px 10px",borderRadius:6,fontSize:11,fontWeight:600,
+              background:eff>=50?`${C.green}10`:eff>=25?`${C.amber}10`:`${C.red}06`,
+              color:eff>=50?C.green:eff>=25?C.amber:C.red,
+              border:`1px solid ${eff>=50?`${C.green}25`:eff>=25?`${C.amber}25`:`${C.red}15`}`}}>
+              {t.word} <span style={{opacity:.6,fontWeight:400}}>×{t.count}</span>
+              <span style={{marginLeft:4,fontSize:9}}>{eff}% effective</span>
+            </div>);
+          }):<span style={{fontSize:11,color:C.muted}}>Run audit to see trigger words</span>}
+        </div>
+      </Card>
+    </div>
 
     {/* Add prompt input */}
     <Card style={{marginBottom:16,background:`${C.accent}03`,borderColor:`${C.accent}20`}}>
-      <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>Test a Prompt</div>
-      <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Type any prompt a user might ask. We'll test it on ChatGPT and Gemini in real-time and slot it into the right funnel stage.</div>
+      <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:4}}>Test a Prompt</div>
+      <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Type any prompt. We'll test it on both engines, score its weight, and identify trigger words.</div>
       <div style={{display:"flex",gap:8}}>
         <input value={newPrompt} onChange={e=>setNewPrompt(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")testPrompt();}}
           placeholder={`e.g. "Best ${r.clientData.industry||"tech"} companies in ${r.clientData.region||"my area"}"`}
           style={{flex:1,padding:"10px 14px",border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit",background:"#fff"}}
           onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
         <button onClick={testPrompt} disabled={!newPrompt.trim()||testing}
-          style={{padding:"10px 20px",background:!newPrompt.trim()||testing?"#d1d5db":C.accent,color:"#fff",border:"none",borderRadius:10,fontSize:13,fontWeight:600,cursor:!newPrompt.trim()||testing?"not-allowed":"pointer",fontFamily:"'Outfit'",whiteSpace:"nowrap",minWidth:100}}>
+          style={{padding:"10px 20px",background:!newPrompt.trim()||testing?"#d1d5db":C.accent,color:"#fff",border:"none",borderRadius:10,fontSize:13,fontWeight:600,cursor:!newPrompt.trim()||testing?"not-allowed":"pointer",fontFamily:"'Outfit'",whiteSpace:"nowrap",minWidth:110}}>
           {testing?"Testing...":"Test Prompt"}
         </button>
       </div>
@@ -1566,33 +1633,33 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
     {/* Stage tabs */}
     <div style={{display:"flex",gap:6,marginBottom:16}}>
       {stageNames.map((name,i)=>{
-        const s=stageStats[i];
-        const active=selStage===i;
-        const color=stageColors[i];
-        return(<div key={i} onClick={()=>setSelStage(i)} style={{flex:1,padding:"14px 10px",cursor:"pointer",background:active?"#fff":C.surface,border:`1.5px solid ${active?color:C.border}`,borderRadius:12,textAlign:"center",transition:"all .15s",boxShadow:active?`0 2px 8px ${color}15`:"none"}}>
+        const s=stageStats[i];const active=selStage===i;const color=stageColors[i];
+        const avgWeight=getMergedPrompts(i).length>0?Math.round(getMergedPrompts(i).reduce((a,p)=>a+(p.weight||5),0)/getMergedPrompts(i).length*10)/10:0;
+        return(<div key={i} onClick={()=>{setSelStage(i);setExpandedRow(null);}} style={{flex:1,padding:"14px 10px",cursor:"pointer",background:active?"#fff":C.surface,border:`1.5px solid ${active?color:C.border}`,borderRadius:12,textAlign:"center",transition:"all .15s",boxShadow:active?`0 2px 8px ${color}15`:"none"}}>
           <div style={{fontSize:18,marginBottom:4}}>{stageIcons[i]}</div>
           <div style={{fontSize:18,fontWeight:700,color:color,fontFamily:"'Outfit'"}}>{s.total>0?Math.round((s.cited+s.mentioned)/Math.max(1,s.total)*100):0}%</div>
           <div style={{fontSize:12,fontWeight:600,color:active?C.text:C.sub,marginTop:2}}>{name}</div>
-          <div style={{fontSize:10,color:C.muted,marginTop:2}}>{s.total} prompts</div>
+          <div style={{fontSize:10,color:C.muted,marginTop:2}}>{s.total} prompts · avg wt {avgWeight}</div>
         </div>);
       })}
     </div>
 
-    {/* Stage detail */}
+    {/* Stage detail with weighted prompts */}
     {(()=>{
       const prompts=getMergedPrompts(selStage);
       const color=stageColors[selStage];
       const s=stageStats[selStage];
-      if(prompts.length===0)return(<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>No prompts mapped for {stageNames[selStage]} yet. Use "Test a Prompt" above to add some.</div></Card>);
+      if(prompts.length===0)return(<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>No prompts for {stageNames[selStage]} yet. Use "Test a Prompt" above.</div></Card>);
+      // Sort by weight descending
+      const sorted=[...prompts].sort((a,b)=>(b.weight||5)-(a.weight||5));
       return(<Card style={{padding:0,overflow:"hidden"}}>
-        {/* Stage header */}
         <div style={{padding:"16px 20px",borderBottom:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:18}}>{stageIcons[selStage]}</span>
               <h3 style={{fontSize:16,fontWeight:700,color:color,margin:0,fontFamily:"'Outfit'"}}>{stageNames[selStage]}</h3>
             </div>
-            <p style={{fontSize:11,color:C.muted,margin:"3px 0 0"}}>{stageDescs[selStage]}</p>
+            <p style={{fontSize:11,color:C.muted,margin:"3px 0 0"}}>{stageDescs[selStage]} · sorted by AEO weight</p>
           </div>
           <div style={{display:"flex",gap:4}}>
             <Pill color={C.green} filled>{s.cited} Cited</Pill>
@@ -1601,32 +1668,64 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
           </div>
         </div>
         {/* Column headers */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 65px 65px 70px",padding:"8px 20px",borderBottom:`2px solid ${C.borderSoft}`,background:C.bg}}>
+        <div style={{display:"grid",gridTemplateColumns:"46px 1fr 60px 60px 60px",padding:"8px 20px",borderBottom:`2px solid ${C.borderSoft}`,background:C.bg}}>
+          <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Weight</span>
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Prompt</span>
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}>ChatGPT</span>
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}>Gemini</span>
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}>Overall</span>
         </div>
-        {/* Prompt rows */}
-        {prompts.map((p,j)=>{
+        {sorted.map((p,j)=>{
           const eng=p.engines||{};
           const gptS=eng.gpt||p.status||"Absent";
           const gemS=eng.gemini||p.status||"Absent";
-          return(<div key={j} style={{display:"grid",gridTemplateColumns:"1fr 65px 65px 70px",padding:"10px 20px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center",background:p.custom?`${C.accent}04`:"transparent"}}>
-            <div>
-              <span style={{color:C.text,fontSize:12,lineHeight:1.4,fontWeight:p.custom?500:400}}>"{p.query}"</span>
-              {p.custom&&<span style={{fontSize:9,fontWeight:600,color:C.accent,marginLeft:6,padding:"1px 5px",background:`${C.accent}10`,borderRadius:3}}>CUSTOM</span>}
-              {p.reason&&<div style={{fontSize:10,color:C.muted,marginTop:2}}>{p.reason}</div>}
+          const w=p.weight||5;
+          const isExpanded=expandedRow===`${selStage}-${j}`;
+          const hasTips=p.optimisedPrompt||p.contentTip||(p.triggerWords&&p.triggerWords.length>0);
+          return(<div key={j}>
+            <div onClick={()=>hasTips&&setExpandedRow(isExpanded?null:`${selStage}-${j}`)}
+              style={{display:"grid",gridTemplateColumns:"46px 1fr 60px 60px 60px",padding:"10px 20px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center",
+                background:p.custom?`${C.accent}04`:isExpanded?`${color}04`:"transparent",cursor:hasTips?"pointer":"default",transition:"background .1s"}}>
+              {/* Weight badge */}
+              <div style={{display:"flex",alignItems:"center",gap:4}}>
+                <div style={{width:28,height:28,borderRadius:6,background:`${weightColor(w)}12`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:weightColor(w),fontFamily:"'Outfit'"}}>{w}</div>
+              </div>
+              {/* Query with highlighted trigger words */}
+              <div>
+                <div style={{fontSize:12,lineHeight:1.4,color:C.text}}>"{highlightQuery(p.query,p.triggerWords)}"</div>
+                {p.custom&&<span style={{fontSize:9,fontWeight:600,color:C.accent,padding:"1px 5px",background:`${C.accent}10`,borderRadius:3}}>CUSTOM</span>}
+                {hasTips&&<span style={{fontSize:9,color:C.muted,marginLeft:4}}>{isExpanded?"▲":"▼ details"}</span>}
+              </div>
+              <div style={{textAlign:"center"}}>
+                <span style={{fontSize:12,fontWeight:700,color:statusColor(gptS)}}>{statusIcon(gptS)}</span>
+                <div style={{fontSize:9,color:statusColor(gptS),marginTop:1}}>{gptS}</div>
+              </div>
+              <div style={{textAlign:"center"}}>
+                <span style={{fontSize:12,fontWeight:700,color:statusColor(gemS)}}>{statusIcon(gemS)}</span>
+                <div style={{fontSize:9,color:statusColor(gemS),marginTop:1}}>{gemS}</div>
+              </div>
+              <span style={{textAlign:"center"}}><Pill color={statusColor(p.status||"Absent")}>{p.status||"Absent"}</Pill></span>
             </div>
-            <div style={{textAlign:"center"}}>
-              <span style={{fontSize:12,fontWeight:700,color:statusColor(gptS)}}>{statusIcon(gptS)}</span>
-              <div style={{fontSize:9,color:statusColor(gptS),marginTop:1}}>{gptS}</div>
-            </div>
-            <div style={{textAlign:"center"}}>
-              <span style={{fontSize:12,fontWeight:700,color:statusColor(gemS)}}>{statusIcon(gemS)}</span>
-              <div style={{fontSize:9,color:statusColor(gemS),marginTop:1}}>{gemS}</div>
-            </div>
-            <span style={{textAlign:"center"}}><Pill color={statusColor(p.status||"Absent")}>{p.status||"Absent"}</Pill></span>
+            {/* Expanded detail row */}
+            {isExpanded&&<div style={{padding:"12px 20px 14px 66px",borderBottom:`1px solid ${C.borderSoft}`,background:`${color}03`}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                {p.triggerWords&&p.triggerWords.length>0&&<div>
+                  <div style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",marginBottom:4}}>Trigger Words</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                    {p.triggerWords.map((tw,ti)=>(<span key={ti} style={{padding:"2px 8px",borderRadius:4,fontSize:11,fontWeight:600,background:`${C.accent}12`,color:C.accent}}>{tw}</span>))}
+                  </div>
+                </div>}
+                {p.optimisedPrompt&&<div>
+                  <div style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",marginBottom:4}}>Optimised Prompt to Target</div>
+                  <div style={{fontSize:11,color:C.sub,fontStyle:"italic",lineHeight:1.5}}>"{p.optimisedPrompt}"</div>
+                </div>}
+              </div>
+              {p.contentTip&&<div style={{marginTop:10,padding:"8px 12px",background:`${C.green}06`,borderRadius:6,borderLeft:`3px solid ${C.green}`}}>
+                <div style={{fontSize:10,fontWeight:600,color:C.green,marginBottom:2}}>CONTENT STRATEGY TIP</div>
+                <div style={{fontSize:11,color:C.sub,lineHeight:1.5}}>{p.contentTip}</div>
+              </div>}
+              {p.reason&&<div style={{marginTop:8,fontSize:11,color:C.muted,lineHeight:1.4}}>{p.reason}</div>}
+            </div>}
           </div>);
         })}
       </Card>);
