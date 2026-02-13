@@ -8,6 +8,13 @@ function Ring({score,size=100,color,sw=5}){const r2=(size-sw*2)/2,ci=2*Math.PI*r
 function Bar({value,color=C.accent,h=5}){return <div style={{width:"100%",height:h,background:C.borderSoft,borderRadius:h}}><div style={{width:`${Math.max(2,value)}%`,height:"100%",background:color,borderRadius:h,transition:"width .8s ease-out"}}/></div>;}
 function Pill({children,color=C.accent,filled}){return <span style={{display:"inline-flex",padding:"3px 10px",borderRadius:100,fontSize:11,fontWeight:600,background:filled?color:`${color}10`,color:filled?"#fff":color}}>{children}</span>;}
 function Card({children,style={},onClick}){return <div onClick={onClick} style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:14,padding:22,boxShadow:"0 1px 2px rgba(0,0,0,.03)",...(onClick?{cursor:"pointer"}:{}),...style}}>{children}</div>;}
+function BrandLogo({name,website,size=22,color}){
+  const[err,setErr]=useState(false);
+  const domain=website?website.replace(/^https?:\/\//,"").replace(/\/.*$/,""):null;
+  const faviconUrl=domain?`https://www.google.com/s2/favicons?domain=${domain}&sz=${size*2}`:null;
+  if(faviconUrl&&!err)return <img src={faviconUrl} width={size} height={size} style={{borderRadius:4,objectFit:"contain"}} onError={()=>setErr(true)} alt={name}/>;
+  return <div style={{width:size,height:size,borderRadius:4,background:`${color||C.accent}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:Math.round(size*.45),fontWeight:700,color:color||C.accent,fontFamily:"'Outfit'"}}>{(name||"?")[0]}</div>;
+}
 function TagInput({label,tags,setTags,placeholder}){const[input,setInput]=useState("");const add=()=>{const v=input.trim();if(v&&!tags.includes(v)){setTags([...tags,v]);setInput("");}};return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label}</label><div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,minHeight:40,alignItems:"center"}}>{tags.map((tag,i)=>(<span key={i} style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",background:`${C.accent}15`,color:C.accent,borderRadius:100,fontSize:12,fontWeight:500}}>{tag}<span onClick={()=>setTags(tags.filter((_,j)=>j!==i))} style={{cursor:"pointer",opacity:.6,fontSize:14}}>×</span></span>))}<input value={input} onChange={e=>setInput(e.target.value)} placeholder={tags.length===0?placeholder:""} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}} style={{border:"none",background:"transparent",outline:"none",fontSize:13,color:C.text,flex:1,minWidth:80,fontFamily:"inherit"}}/></div><span style={{fontSize:10,color:C.muted}}>Press Enter to add</span></div>);}
 function Field({label,value,onChange,placeholder}){return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label}</label><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,color:C.text,fontSize:14,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/></div>);}
 function InfoTip({text}){const[show,setShow]=useState(false);return(<span style={{position:"relative",display:"inline-flex",marginLeft:4,cursor:"help"}} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}><span style={{width:14,height:14,borderRadius:"50%",background:C.bg,border:`1px solid ${C.border}`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.muted,fontWeight:600}}>?</span>{show&&<div style={{position:"absolute",bottom:"calc(100% + 6px)",left:"50%",transform:"translateX(-50%)",width:240,padding:"10px 12px",background:C.text,color:"#fff",borderRadius:8,fontSize:11,lineHeight:1.5,zIndex:999,boxShadow:"0 8px 24px rgba(0,0,0,.2)",pointerEvents:"none"}}><div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%) rotate(45deg)",width:8,height:8,background:C.text}}/>{text}</div>}</span>);}
@@ -214,54 +221,112 @@ async function runRealAudit(cd, onProgress){
   const compNames=(cd.competitors||[]).map(c=>typeof c==="string"?c:c.name).filter(Boolean);
   const compUrls=(cd.competitors||[]).map(c=>typeof c==="object"?c.website:"").filter(Boolean);
   const topicList=topics.join(", ");
+  const engineSystemPrompt=`You are an AEO (Answer Engine Optimization) analyst. Respond ONLY with valid JSON, no markdown fences, no explanations.`;
 
-  // ── Step 1: Crawl brand website ──
-  onProgress("Crawling brand website...",5);
+  // ── Step 1: Crawl brand website AND competitor websites ──
+  onProgress("Crawling brand website...",3);
   let brandCrawl=null;
   try{brandCrawl=await crawlWebsite(cd.website);}catch(e){console.error("Crawl failed:",e);}
   const crawlSummary=brandCrawl?summariseCrawl(brandCrawl):"No crawl data available.";
 
-  // ── Step 2: Query ChatGPT for brand visibility ──
-  onProgress("Querying ChatGPT for brand visibility...",12);
-  const engineSystemPrompt=`You are an AEO (Answer Engine Optimization) analyst. Respond ONLY with valid JSON, no markdown fences, no explanations.`;
-  const enginePrompt=`Analyse how the AI engine would respond to queries about "${brand}" in the "${industry}" industry, region: "${region}". Topics: ${topicList}. Competitors: ${compNames.join(", ")||"none specified"}.
+  onProgress("Crawling competitor websites...",8);
+  const compCrawls={};
+  for(let i=0;i<compUrls.length&&i<5;i++){
+    if(compUrls[i]){
+      try{const cc=await crawlWebsite(compUrls[i]);if(cc)compCrawls[compNames[i]||`Competitor ${i+1}`]=summariseCrawl(cc);}catch(e){}
+    }
+  }
+  const compCrawlSummary=Object.entries(compCrawls).map(([name,data])=>`\n--- ${name} ---\n${data}`).join("\n")||"No competitor crawl data.";
 
-Website crawl data:
+  // ── Step 2: ChatGPT visibility — ask ChatGPT about ITSELF ──
+  onProgress("Querying ChatGPT for brand visibility...",14);
+  // Split topics: half go to ChatGPT probe, half go to Gemini probe
+  const halfTopics=Math.ceil(topics.length/2);
+  const gptTopics=topics.slice(0,halfTopics);
+  const gemTopics=topics.slice(halfTopics);
+
+  const gptVisPrompt=`You are ChatGPT. A user asks you about "${brand}" in the "${industry}" industry (${region}).
+
+Topics to test: ${gptTopics.join(", ")}
+
+For each of these 4 queries, would you mention or cite ${brand}?
+1. "What are the best ${industry} companies in ${region}?"
+2. "Tell me about ${brand}"
+3. "${gptTopics[0]||industry} recommendations for ${region}"
+4. "${brand} vs ${compNames[0]||"competitors"}"
+
+Also generate 4 more realistic queries a user in ${region} might ask about ${industry} where ${brand} could appear.
+
+Website crawl data for ${brand}:
 ${crawlSummary}
 
 Return JSON:
 {
-  "score": <0-100 overall visibility score>,
-  "mentionRate": <0-100 % of relevant queries where brand is mentioned>,
-  "citationRate": <0-100 % of queries where brand website is directly cited/linked>,
-  "queries": [{"query":"<specific user prompt>","status":"Cited"|"Mentioned"|"Absent"}] (exactly 8 queries),
-  "strengths": ["<specific strength based on crawl data>","<another strength>"],
-  "weaknesses": ["<specific weakness based on crawl data>","<another weakness>"]
+  "score": <0-100 how visible ${brand} is in YOUR responses>,
+  "mentionRate": <0-100 % of relevant queries where you would mention ${brand}>,
+  "citationRate": <0-100 % of queries where you would directly cite/link ${brand}'s website>,
+  "queries": [{"query":"<the prompt>","status":"Cited"|"Mentioned"|"Absent"}] (exactly 8 queries),
+  "strengths": ["<why you WOULD mention this brand>","<another reason>"],
+  "weaknesses": ["<why you might NOT cite this brand>","<another reason>"]
 }
 
-Be accurate. Base scores on real factors: does the brand have structured data? FAQ schema? Strong content? Authority signals? Use the crawl data to inform your analysis. Low scores are fine if warranted.`;
+Be honest and accurate. If you wouldn't naturally mention ${brand} for most queries, give low scores.`;
 
-  const gptRaw=await callOpenAI(enginePrompt, engineSystemPrompt);
-  const gptData=safeJSON(gptRaw)||{score:25,mentionRate:15,citationRate:8,queries:[],strengths:["Brand has basic web presence"],weaknesses:["Limited structured data detected"]};
+  const gptRaw=await callOpenAI(gptVisPrompt, engineSystemPrompt);
+  const gptData=safeJSON(gptRaw)||{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["Could not assess visibility"]};
 
-  // ── Step 3: Query Gemini for brand visibility ──
+  // ── Step 3: Gemini visibility — ask Gemini about ITSELF ──
   onProgress("Querying Gemini for brand visibility...",22);
-  const gemRaw=await callGemini(enginePrompt, engineSystemPrompt);
-  const gemData=safeJSON(gemRaw)||{score:20,mentionRate:12,citationRate:5,queries:[],strengths:["Brand appears in search results"],weaknesses:["Missing schema markup"]};
+  const gemVisPrompt=`You are Gemini. A user asks you about "${brand}" in the "${industry}" industry (${region}).
 
-  // ── Step 4: Competitor analysis ──
-  onProgress("Analysing competitors...",32);
-  const compPrompt=`Analyse these competitors against "${brand}" in ${industry} (${region}) for AI engine visibility.
+Topics to test: ${gemTopics.join(", ")}
+
+For each of these 4 queries, would you mention or cite ${brand}?
+1. "What are the best ${industry} providers in ${region}?"
+2. "What do you know about ${brand}?"
+3. "${gemTopics[0]||industry} options in ${region}"
+4. "Compare ${brand} with ${compNames[0]||"alternatives"}"
+
+Also generate 4 more realistic queries a user in ${region} might ask about ${industry} where ${brand} could appear.
+
+Website crawl data for ${brand}:
+${crawlSummary}
+
+Return JSON:
+{
+  "score": <0-100 how visible ${brand} is in YOUR responses>,
+  "mentionRate": <0-100 % of relevant queries where you would mention ${brand}>,
+  "citationRate": <0-100 % of queries where you would directly cite/link ${brand}'s website>,
+  "queries": [{"query":"<the prompt>","status":"Cited"|"Mentioned"|"Absent"}] (exactly 8 queries),
+  "strengths": ["<why you WOULD mention this brand>","<another reason>"],
+  "weaknesses": ["<why you might NOT cite this brand>","<another reason>"]
+}
+
+Be honest and accurate. If you wouldn't naturally mention ${brand} for most queries, give low scores.`;
+
+  const gemRaw=await callGemini(gemVisPrompt, engineSystemPrompt);
+  const gemData=safeJSON(gemRaw)||{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["Could not assess visibility"]};
+
+  // ── Step 4: Competitor analysis — BOTH engines + crawl data ──
+  onProgress("Analysing competitors across both engines...",30);
+  const compPromptBase=`Analyse these competitors against "${brand}" in ${industry} (${region}) for AI engine visibility.
+
+Brand website crawl data:
+${crawlSummary}
+
+Competitor website crawl data:
+${compCrawlSummary}
+
 Competitors: ${compNames.map((n,i)=>`${n}${compUrls[i]?" ("+compUrls[i]+")":""}`).join(", ")||"none"}.
 
-For each competitor, estimate their AEO visibility compared to ${brand}. Return JSON:
+Based on the actual crawl data, score each competitor. Return JSON:
 {
   "competitors": [
     {
       "name": "<competitor name>",
-      "score": <0-100>,
+      "score": <0-100 overall AEO visibility>,
       "engineScores": [<chatgpt_score>, <gemini_score>],
-      "topStrength": "<their main advantage>",
+      "topStrength": "<their main AEO advantage based on crawl data>",
       "painPoints": [
         {"label":"Structured Data / Schema","score":<0-100>},
         {"label":"Content Authority","score":<0-100>},
@@ -272,12 +337,30 @@ For each competitor, estimate their AEO visibility compared to ${brand}. Return 
       ]
     }
   ]
-}`;
-  const compRaw=await callOpenAI(compPrompt, engineSystemPrompt);
-  const compData=safeJSON(compRaw)||{competitors:[]};
+}
 
-  // ── Step 5: Pain points / category scoring ──
-  onProgress("Scoring AEO categories...",42);
+Use the crawl data to give accurate scores. If a competitor has better schema markup, score them higher on Structured Data.`;
+
+  const[compGptRaw,compGemRaw]=await Promise.all([
+    callOpenAI(compPromptBase, engineSystemPrompt),
+    callGemini(compPromptBase, engineSystemPrompt)
+  ]);
+  const compGpt=safeJSON(compGptRaw)||{competitors:[]};
+  const compGem=safeJSON(compGemRaw)||{competitors:[]};
+  // Merge: average scores from both engines
+  const mergedComps=(compGpt.competitors||[]).map(gc=>{
+    const gemMatch=(compGem.competitors||[]).find(g=>g.name&&gc.name&&g.name.toLowerCase()===gc.name.toLowerCase());
+    if(gemMatch){
+      return{...gc,score:Math.round((gc.score+gemMatch.score)/2),
+        engineScores:[gc.engineScores?gc.engineScores[0]:gc.score, gemMatch.engineScores?gemMatch.engineScores[1]:gemMatch.score],
+        painPoints:(gc.painPoints||[]).map((pp,j)=>{const gp=(gemMatch.painPoints||[])[j];return{label:pp.label,score:gp?Math.round((pp.score+gp.score)/2):pp.score};})};
+    }
+    return gc;
+  });
+  const compData={competitors:mergedComps.length>0?mergedComps:(compGem.competitors||[])};
+
+  // ── Step 5: Pain points — BOTH engines + crawl data ──
+  onProgress("Scoring AEO categories across both engines...",40);
   const catPrompt=`Based on this website analysis for "${brand}" (${industry}, ${region}):
 
 ${crawlSummary}
@@ -294,22 +377,28 @@ Score each AEO category 0-100. Return JSON:
   ]
 }
 
-Use severity: "critical" if <30, "warning" if 30-60, "good" if >60. Be accurate based on the crawl data.`;
-  const catRaw=await callGemini(catPrompt, engineSystemPrompt);
-  const catData=safeJSON(catRaw)||{painPoints:[
-    {label:"Structured Data / Schema",score:25,severity:"critical"},
-    {label:"Content Authority",score:40,severity:"warning"},
-    {label:"E-E-A-T Signals",score:30,severity:"warning"},
-    {label:"Technical SEO",score:45,severity:"warning"},
-    {label:"Citation Network",score:20,severity:"critical"},
-    {label:"Content Freshness",score:35,severity:"warning"}
-  ]};
+Use severity: "critical" if <30, "warning" if 30-60, "good" if >60. Base scores strictly on the crawl data.`;
 
-  // ── Step 6: User archetypes ──
-  onProgress("Generating user archetypes...",52);
+  const[catGptRaw,catGemRaw]=await Promise.all([
+    callOpenAI(catPrompt, engineSystemPrompt),
+    callGemini(catPrompt, engineSystemPrompt)
+  ]);
+  const catGpt=safeJSON(catGptRaw)||{painPoints:[]};
+  const catGem=safeJSON(catGemRaw)||{painPoints:[]};
+  // Merge: average pain point scores from both engines
+  const mergedPainPoints=(catGpt.painPoints&&catGpt.painPoints.length>0?catGpt.painPoints:catGem.painPoints||[]).map((pp,i)=>{
+    const gemPP=(catGem.painPoints||[])[i];
+    const avgScore=gemPP?Math.round((pp.score+gemPP.score)/2):pp.score;
+    return{label:pp.label,score:avgScore,severity:avgScore<30?"critical":avgScore<60?"warning":"good"};
+  });
+
+  // ── Step 6: User archetypes + journeys — OpenAI generates, Gemini verifies engine statuses ──
+  onProgress("Generating user archetypes...",48);
   const archPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}, competitors: ${compNames.join(", ")||"none"}.
 
-Create 2-3 stakeholder groups with 2-3 archetypes each. Each archetype needs a 4-stage customer journey with 3 prompts per stage showing how AI engines respond.
+Create 2-3 stakeholder groups with 2-3 archetypes each. Each archetype needs a 4-stage customer journey with 2-3 prompts per stage.
+
+For each prompt, assess: would ChatGPT mention/cite ${brand}? Would Gemini?
 
 Return JSON:
 {
@@ -317,21 +406,21 @@ Return JSON:
     {
       "group": "<group name>",
       "icon": "<emoji>",
-      "desc": "<1 sentence description>",
+      "desc": "<1 sentence>",
       "archetypes": [
         {
-          "name": "<archetype name>",
+          "name": "<name>",
           "icon": "<emoji>",
           "demo": "<demographics>",
           "behavior": "<search behavior>",
           "intent": "<primary intent>",
-          "size": <% of searches 10-40>,
+          "size": <10-40>,
           "brandVisibility": <0-100>,
           "opportunity": "high"|"medium"|"low",
-          "prompts": ["<prompt 1>","<prompt 2>","<prompt 3>","<prompt 4>"],
+          "prompts": ["<prompt1>","<prompt2>","<prompt3>","<prompt4>"],
           "journey": [
             {"stage":"Awareness","color":"#6366f1","prompts":[
-              {"query":"<actual prompt>","status":"Cited"|"Mentioned"|"Absent","engines":{"gpt":"Cited"|"Mentioned"|"Absent","gemini":"Cited"|"Mentioned"|"Absent"}}
+              {"query":"<actual user prompt>","status":"Cited"|"Mentioned"|"Absent","engines":{"gpt":"Cited"|"Mentioned"|"Absent","gemini":"Cited"|"Mentioned"|"Absent"}}
             ]},
             {"stage":"Consideration","color":"#8b5cf6","prompts":[...]},
             {"stage":"Transaction","color":"#ec4899","prompts":[...]},
@@ -343,86 +432,175 @@ Return JSON:
   ]
 }
 
-Make prompts realistic for ${region}. Use "Absent" for most prompts if ${brand} has low visibility. Each stage should have 2-3 prompts.`;
+Be accurate for ${region}. ${brand} likely has low visibility on most prompts — use "Absent" where appropriate. ChatGPT and Gemini may differ.`;
   const archRaw=await callOpenAI(archPrompt, engineSystemPrompt);
   const archData=safeJSON(archRaw)||{stakeholders:[]};
 
-  // ── Step 7: AEO Channels verification via REAL web crawling ──
+  // Now ask Gemini to verify/correct the engine statuses
+  onProgress("Verifying archetype journeys with Gemini...",54);
+  if(archData.stakeholders&&archData.stakeholders.length>0){
+    const allPrompts=[];
+    archData.stakeholders.forEach(sg=>(sg.archetypes||[]).forEach(a=>(a.journey||[]).forEach(j=>(j.prompts||[]).forEach(p=>allPrompts.push(p.query)))));
+    if(allPrompts.length>0){
+      const verifyPrompt=`You are Gemini. For each of these prompts about "${brand}" in ${industry} (${region}), would you mention or cite ${brand} in your response?
+
+Prompts:
+${allPrompts.map((p,i)=>`${i+1}. "${p}"`).join("\n")}
+
+Return JSON array — one entry per prompt in order:
+[{"query":"<prompt>","geminiStatus":"Cited"|"Mentioned"|"Absent"}]
+
+Be accurate. "Cited" = you would link to their website. "Mentioned" = you'd name them. "Absent" = you wouldn't bring them up.`;
+      const verifyRaw=await callGemini(verifyPrompt, engineSystemPrompt);
+      const verifyData=safeJSON(verifyRaw);
+      if(verifyData&&Array.isArray(verifyData)){
+        let idx=0;
+        archData.stakeholders.forEach(sg=>(sg.archetypes||[]).forEach(a=>(a.journey||[]).forEach(j=>(j.prompts||[]).forEach(p=>{
+          if(verifyData[idx]){p.engines={...p.engines,gemini:verifyData[idx].geminiStatus||p.engines?.gemini||"Absent"};}
+          idx++;
+        }))));
+      }
+    }
+  }
+
+  // ── Step 6b: Intent Pathway — real data from BOTH engines ──
+  onProgress("Testing intent pathway prompts...",58);
+  const intentPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}.
+
+Create an intent funnel with 4 stages. For each stage, list 5-7 realistic prompts a user would type into an AI engine. For each prompt, assess whether ChatGPT and Gemini would mention/cite ${brand}.
+
+Return JSON:
+[
+  {"stage":"Awareness","desc":"User discovers the category","color":"#6366f1","prompts":[
+    {"query":"<real user prompt>","engines":{"gpt":"Cited"|"Mentioned"|"Absent","gemini":"Cited"|"Mentioned"|"Absent"}}
+  ]},
+  {"stage":"Consideration","desc":"User evaluates options","color":"#8b5cf6","prompts":[...]},
+  {"stage":"Decision","desc":"User ready to choose","color":"#a855f7","prompts":[...]},
+  {"stage":"Retention","desc":"User seeks ongoing value","color":"#c084fc","prompts":[...]}
+]
+
+Be accurate. Most queries will be "Absent" if ${brand} has low visibility. ChatGPT and Gemini may differ.`;
+
+  const[intentGptRaw,intentGemRaw]=await Promise.all([
+    callOpenAI(intentPrompt, engineSystemPrompt),
+    callGemini(intentPrompt, engineSystemPrompt)
+  ]);
+  const intentGpt=safeJSON(intentGptRaw)||[];
+  const intentGem=safeJSON(intentGemRaw)||[];
+  // Merge: use GPT structure, override Gemini statuses from Gemini's own response
+  const intentData=(Array.isArray(intentGpt)&&intentGpt.length>0?intentGpt:intentGem).map((stage,si)=>{
+    const gemStage=(Array.isArray(intentGem)?intentGem:[])[si];
+    return{...stage,prompts:(stage.prompts||[]).map((p,pi)=>{
+      const gemP=gemStage&&gemStage.prompts?gemStage.prompts[pi]:null;
+      return{query:p.query,rank:pi+1,status:(p.engines?.gpt==="Cited"||p.engines?.gemini==="Cited")?"Cited":(p.engines?.gpt==="Mentioned"||p.engines?.gemini==="Mentioned")?"Mentioned":"Absent",
+        engines:{gpt:p.engines?.gpt||"Absent",gemini:gemP?.engines?.gemini||p.engines?.gemini||"Absent"}};
+    })};
+  });
+
+  // ── Step 7: AEO Channel verification via REAL web crawling ──
   onProgress("Verifying AEO channels via web search...",65);
-  
-  // First: actually crawl Wikipedia, YouTube, LinkedIn, etc.
   let realChannels=null;
   try{realChannels=await verifyChannels(brand, cd.website, industry, region);}catch(e){console.error("Channel verify failed:",e);}
-  
-  // If real crawl returned results, use them. Fill gaps with AI estimation.
+
   let chData={channels:[]};
   if(realChannels&&realChannels.channels&&realChannels.channels.length>0){
     chData.channels=realChannels.channels;
-    // Add Podcast and Academic channels via AI (can't easily crawl)
-    onProgress("Checking podcast & academic presence...",72);
-    const gapPrompt=`For "${brand}" in ${industry} (${region}), I've already verified these channels via web crawl:
-${realChannels.channels.map(c=>`- ${c.channel}: ${c.status}`).join("\n")}
-
-Now assess ONLY these 2 remaining channels that can't be easily verified via URL crawling:
+    onProgress("Checking podcast & academic presence...",70);
+    const gapPrompt=`For "${brand}" in ${industry} (${region}), assess ONLY these 2 channels:
 1. Podcast Appearances
 2. Academic/Research Citations
 
 Return JSON:
-{
-  "channels": [
-    {"channel":"Podcast Appearances","status":"Active"|"Needs Work"|"Not Present","finding":"<specific detail>","priority":"High"|"Medium"|"Low","action":"<recommendation>"},
-    {"channel":"Academic/Research Citations","status":"Active"|"Needs Work"|"Not Present","finding":"<specific detail>","priority":"High"|"Medium"|"Low","action":"<recommendation>"}
-  ]
-}
+{"channels":[
+  {"channel":"Podcast Appearances","status":"Active"|"Needs Work"|"Not Present","finding":"<detail>","priority":"High"|"Medium"|"Low","action":"<recommendation>"},
+  {"channel":"Academic/Research Citations","status":"Active"|"Needs Work"|"Not Present","finding":"<detail>","priority":"High"|"Medium"|"Low","action":"<recommendation>"}
+]}
 
-Be accurate. Only mark "Active" if ${brand} is well-known enough to likely have these.`;
+Be accurate. Only "Active" if ${brand} is well-known enough.`;
     const gapRaw=await callGemini(gapPrompt, engineSystemPrompt);
     const gapData=safeJSON(gapRaw);
     if(gapData&&gapData.channels)chData.channels=[...chData.channels,...gapData.channels];
   }else{
-    // Fallback: AI estimation for all channels (less accurate)
     const channelPrompt=`For "${brand}" (website: ${cd.website||"unknown"}) in ${industry} (${region}):
-
-Website crawl data:
-${crawlSummary}
-
-Determine which AEO distribution channels this brand is present on. Return JSON:
-{
-  "channels": [
-    {"channel":"Wikipedia","status":"Active"|"Needs Work"|"Not Present","finding":"<detail>","priority":"High"|"Medium"|"Low","action":"<recommendation>"},
-    {"channel":"YouTube","status":"...","finding":"...","priority":"...","action":"..."},
-    {"channel":"LinkedIn","status":"...","finding":"...","priority":"...","action":"..."},
-    {"channel":"Reddit","status":"...","finding":"...","priority":"...","action":"..."},
-    {"channel":"Social Media (X, Reddit, Quora)","status":"...","finding":"...","priority":"...","action":"..."},
-    {"channel":"Industry Directories","status":"...","finding":"...","priority":"...","action":"..."},
-    {"channel":"Review Sites (G2/Capterra/Trustpilot)","status":"...","finding":"...","priority":"...","action":"..."},
-    {"channel":"Press/News Coverage","status":"...","finding":"...","priority":"...","action":"..."},
-    {"channel":"Podcast Appearances","status":"...","finding":"...","priority":"...","action":"..."},
-    {"channel":"Academic/Research Citations","status":"...","finding":"...","priority":"...","action":"..."}
-  ]
-}`;
+Website crawl: ${crawlSummary}
+Determine channel presence. Return JSON:
+{"channels":[
+  {"channel":"Wikipedia","status":"Active"|"Needs Work"|"Not Present","finding":"<detail>","priority":"High"|"Medium"|"Low","action":"<rec>"},
+  {"channel":"YouTube","status":"...","finding":"...","priority":"...","action":"..."},
+  {"channel":"LinkedIn","status":"...","finding":"...","priority":"...","action":"..."},
+  {"channel":"Reddit","status":"...","finding":"...","priority":"...","action":"..."},
+  {"channel":"Social Media (X, Reddit, Quora)","status":"...","finding":"...","priority":"...","action":"..."},
+  {"channel":"Industry Directories","status":"...","finding":"...","priority":"...","action":"..."},
+  {"channel":"Review Sites (G2/Capterra/Trustpilot)","status":"...","finding":"...","priority":"...","action":"..."},
+  {"channel":"Press/News Coverage","status":"...","finding":"...","priority":"...","action":"..."},
+  {"channel":"Podcast Appearances","status":"...","finding":"...","priority":"...","action":"..."},
+  {"channel":"Academic/Research Citations","status":"...","finding":"...","priority":"...","action":"..."}
+]}`;
     const chRaw=await callGemini(channelPrompt, engineSystemPrompt);
     chData=safeJSON(chRaw)||{channels:[]};
   }
 
-  // ── Step 8: Content recommendations ──
-  onProgress("Building content recommendations...",78);
+  // ── Step 8: Content recommendations — BOTH engines, using ALL audit data ──
+  onProgress("Building content recommendations from both engines...",78);
+  const critCats=(mergedPainPoints||[]).filter(p=>p.severity==="critical").map(p=>`${p.label} (${p.score}%)`).join(", ");
+  const warnCats=(mergedPainPoints||[]).filter(p=>p.severity==="warning").map(p=>`${p.label} (${p.score}%)`).join(", ");
+  const chGaps=(chData.channels||[]).filter(c=>c.status==="Not Present"||c.status==="Needs Work").map(c=>c.channel).join(", ");
   const contentPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}.
 
-Based on their AEO gaps, recommend content types. Return JSON:
+AUDIT DATA TO BASE RECOMMENDATIONS ON:
+- ChatGPT score: ${gptData.score||0}%, Gemini score: ${gemData.score||0}%
+- Critical AEO categories: ${critCats||"none"}
+- Warning categories: ${warnCats||"none"}
+- Channel gaps: ${chGaps||"none"}
+- Competitors outperforming on: ${(mergedComps||[]).slice(0,3).map(c=>`${c.name} (${c.topStrength||"N/A"})`).join(", ")||"none"}
+- Website findings: ${crawlSummary.slice(0,300)}
+
+Create 8-10 SPECIFIC content types. Each must:
+1. Directly address an AEO gap found above
+2. Have a DIFFERENT channel mix (not all "Blog")
+3. Have VARIED frequencies (weekly, 2/month, monthly, quarterly)
+4. Have DIFFERENT priorities (mix of P0, P1, P2)
+5. Have DIFFERENT owners (Content Team, Dev Team, Marketing, PR, Analytics, Product)
+6. Explain exactly HOW it improves visibility on ChatGPT AND Gemini
+
+Return JSON:
 {
   "contentTypes": [
-    {"type":"<content type>","priority":"High"|"Medium"|"Low","description":"<why this helps AEO>","prompts":["<AI prompt this would help rank for>","<another prompt>"],"effort":"Low"|"Medium"|"High","impact":"High"|"Medium"|"Low"}
+    {"type":"<specific content type name>","channels":["<primary channel>","<secondary>"],"freq":"<specific frequency>","p":"P0"|"P1"|"P2","owner":"<specific team>","impact":<0-100>,"rationale":"<how this addresses specific AEO gaps found in audit>"}
   ]
 }
 
-Provide 6-8 content types. Focus on content that helps AI engines cite and mention ${brand}.`;
-  const contentRaw=await callOpenAI(contentPrompt, engineSystemPrompt);
-  const contentData=safeJSON(contentRaw)||{contentTypes:[]};
+IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, markup), video, social, PR, research, partnerships. Vary the owners — dev team for technical, PR for outreach, analytics for research. Each content type must tie back to a specific finding from the audit.`;
 
-  // ── Step 9: 90-Day Roadmap ──
-  onProgress("Creating 90-day roadmap...",88);
+  const[contentGptRaw,contentGemRaw]=await Promise.all([
+    callOpenAI(contentPrompt, engineSystemPrompt),
+    callGemini(contentPrompt, engineSystemPrompt)
+  ]);
+  const contentGpt=safeJSON(contentGptRaw)||{contentTypes:[]};
+  const contentGem=safeJSON(contentGemRaw)||{contentTypes:[]};
+  const allContentTypes=[...(contentGpt.contentTypes||[])];
+  (contentGem.contentTypes||[]).forEach(gc=>{
+    if(!allContentTypes.find(c=>c.type&&gc.type&&c.type.toLowerCase()===gc.type.toLowerCase()))allContentTypes.push(gc);
+  });
+  const contentData={contentTypes:allContentTypes.slice(0,10)};
+
+  // ── Step 9: 90-Day Roadmap — using ALL previous data ──
+  onProgress("Creating 90-day roadmap from audit data...",88);
+  const overallScore=Math.round(((gptData.score||0)+(gemData.score||0))/2);
+  const criticalCats=(mergedPainPoints||[]).filter(p=>p.severity==="critical").map(p=>p.label).join(", ");
+  const weakCats=(mergedPainPoints||[]).filter(p=>p.severity==="warning").map(p=>p.label).join(", ");
+  const channelGaps=(chData.channels||[]).filter(c=>c.status==="Not Present").map(c=>c.channel).join(", ");
+
   const roadmapPrompt=`Create a 90-day AEO roadmap for "${brand}" in ${industry} (${region}).
+
+AUDIT FINDINGS TO ADDRESS:
+- Overall visibility score: ${overallScore}%
+- ChatGPT score: ${gptData.score||0}%, Gemini score: ${gemData.score||0}%
+- Critical categories: ${criticalCats||"none"}
+- Warning categories: ${weakCats||"none"}
+- Missing channels: ${channelGaps||"none"}
+- Website issues from crawl: ${crawlSummary.slice(0,500)}
+- Top competitor advantages: ${(compData.competitors||[]).slice(0,3).map(c=>`${c.name} (${c.score}%): ${c.topStrength||"N/A"}`).join("; ")}
 
 Return JSON:
 {
@@ -432,9 +610,9 @@ Return JSON:
     "accent": "#ef4444",
     "lift": "10-15%",
     "departments": [
-      {"dept": "Technical", "color": "#0c4cfc", "tasks": ["<specific task 1>", "<specific task 2>", "<specific task 3>"]},
-      {"dept": "Content", "color": "#059669", "tasks": ["<specific task 1>", "<specific task 2>", "<specific task 3>"]},
-      {"dept": "PR & Outreach", "color": "#8b5cf6", "tasks": ["<specific task 1>", "<specific task 2>", "<specific task 3>"]}
+      {"dept": "Technical", "color": "#0c4cfc", "tasks": ["<specific task addressing critical issues>", "<task>", "<task>"]},
+      {"dept": "Content", "color": "#059669", "tasks": ["<specific task>", "<task>", "<task>"]},
+      {"dept": "PR & Outreach", "color": "#8b5cf6", "tasks": ["<specific task addressing channel gaps>", "<task>", "<task>"]}
     ]
   },
   "day60": {
@@ -461,9 +639,9 @@ Return JSON:
   }
 }
 
-Each department should have 3-5 specific, actionable tasks tailored to ${brand}'s ${industry} context.`;
-  const roadRaw=await callGemini(roadmapPrompt, engineSystemPrompt);
-  const roadData=safeJSON(roadRaw)||{phases:[],kpis:[]};
+Each department: 3-5 specific tasks that directly address the audit findings above. Reference actual issues found.`;
+  const roadRaw=await callOpenAI(roadmapPrompt, engineSystemPrompt);
+  const roadData=safeJSON(roadRaw)||null;
 
   onProgress("Compiling final report...",95);
 
@@ -473,14 +651,15 @@ Each department should have 3-5 specific, actionable tasks tailored to ${brand}'
         {id:"chatgpt",...gptData,queries:(gptData.queries||[]).slice(0,8)},
         {id:"gemini",...gemData,queries:(gemData.queries||[]).slice(0,8)}
       ],
-      painPoints:(catData.painPoints||[]).slice(0,6)
+      painPoints:mergedPainPoints.length>0?mergedPainPoints.slice(0,6):null
     },
     competitorData:{competitors:(compData.competitors||[]).slice(0,5)},
     archData:archData.stakeholders||[],
-    channelData:{channels:(chData.channels||[]).slice(0,10)},
-    contentGridData:(contentData.contentTypes||[]).slice(0,8),
+    intentData:intentData.length>0?intentData:null,
+    channelData:{channels:(chData.channels||[]).slice(0,12)},
+    contentGridData:(contentData.contentTypes||[]).slice(0,10),
     roadmapData:roadData,
-    contentData:(contentData.contentTypes||[]).slice(0,8)
+    contentData:(contentData.contentTypes||[]).slice(0,10)
   };
 }
 
@@ -498,244 +677,38 @@ function getInsight(cat,comp,brand,theyWin){
 }
 
 function generateAll(cd, apiData){
-  // Normalize competitors to {name, website} objects and extract name strings
   const normComps=(cd.competitors||[]).map(c=>typeof c==="string"?{name:c,website:""}:c).filter(c=>c.name&&c.name.trim());
-  const compNameList=normComps.map(c=>c.name);
-  // Create a shallow copy with normalized competitors for downstream use
-  cd={...cd, competitors:normComps, competitorNames:compNameList};
-  const seed=cd.brand.length+cd.website.length+(cd.industry||"").length+cd.topics.length;
-  const pr=o=>{const x=Math.sin(seed+o)*10000;return x-Math.floor(x);};
-  const base=30+pr(1)*45;
+  cd={...cd, competitors:normComps, competitorNames:normComps.map(c=>c.name)};
   const hasApi=apiData&&apiData.engineData;
-
-  // Engines — use API data if available, fallback to simulated
   const engineMeta=[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",Logo:ChatGPTLogo},{id:"gemini",name:"Gemini",color:"#4285F4",Logo:GeminiLogo}];
+  const badP=["specific strength","specific weakness","data unavailable","REPLACE WITH","as a language model","as an ai","limited knowledge"];
+  const fB=(arr,fb)=>{if(!arr||!Array.isArray(arr))return fb;const f=arr.filter(s=>s&&typeof s==="string"&&!badP.some(bp=>s.toLowerCase().includes(bp))&&s.length>10);return f.length>=2?f:fb;};
   const engines=engineMeta.map((e,i)=>{
-    const t0=cd.topics[0]||cd.industry||"tech";
-    // Filter out bad/placeholder strengths and weaknesses
-    const badPatterns=["specific strength","specific weakness","data unavailable","REPLACE WITH","as a language model","as an ai","limited knowledge available","would acknowledge"];
-    const filterBad=(arr,fallbacks)=>{
-      if(!arr||!Array.isArray(arr))return fallbacks;
-      const filtered=arr.filter(s=>s&&typeof s==="string"&&!badPatterns.some(bp=>s.toLowerCase().includes(bp))&&s.length>10);
-      return filtered.length>=2?filtered:fallbacks;
-    };
-    if(hasApi&&apiData.engineData.engines&&apiData.engineData.engines[i]){
-      const ae=apiData.engineData.engines[i];
-      const defStrengths=[`${cd.brand} has a clear niche positioning in ${cd.industry} that could differentiate it from larger competitors`,`Brand name includes relevant industry keywords which aids AI entity recognition`];
-      const defWeaknesses=[`Limited third-party citations and reviews reduce AI engines' confidence to recommend ${cd.brand}`,`Larger competitors like ${cd.competitorNames[0]||"established firms"} dominate generic ${cd.industry} queries`];
-      return{...e,score:ae.score||Math.round(base),mentionRate:ae.mentionRate||50,citationRate:ae.citationRate||30,
-        queries:(ae.queries||[]).slice(0,8).map(q=>({query:q.query||"",status:q.status||"Absent"})),
-        strengths:filterBad(ae.strengths,defStrengths),weaknesses:filterBad(ae.weaknesses,defWeaknesses)};
-    }
-    const score=Math.max(8,Math.min(95,Math.round(base+(pr(i*7+3)-.5)*20)));
-    return{...e,score,mentionRate:Math.min(100,Math.round(score*.8+pr(i*11)*15)),citationRate:Math.min(100,Math.round(score*.5+pr(i*13)*20)),
-      queries:[`Best ${cd.industry} companies`,`${t0} recommendations`,`${cd.brand} reviews`,`Top ${cd.industry} providers`,`Is ${cd.brand} worth it`,`${t0} comparison`,`${cd.brand} vs ${cd.competitorNames[0]||"competitors"}`,`${cd.industry} buyer guide`].map((q,j)=>({query:q,status:pr(i*31+j*37)<.35?"Cited":pr(i*31+j*37)<.65?"Mentioned":"Absent"})),
-      strengths:["Strong FAQ coverage detected","Cited in comparison queries"],weaknesses:["Missing from 'best of' queries","Not cited as authoritative source"]};
+    if(hasApi&&apiData.engineData.engines&&apiData.engineData.engines[i]){const ae=apiData.engineData.engines[i];
+      return{...e,score:ae.score||0,mentionRate:ae.mentionRate||0,citationRate:ae.citationRate||0,queries:(ae.queries||[]).slice(0,8).map(q=>({query:q.query||"",status:q.status||"Absent"})),strengths:fB(ae.strengths,[`${cd.brand} appears in some ${cd.industry} queries`]),weaknesses:fB(ae.weaknesses,[`Competitors cited more frequently`])};}
+    return{...e,score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["No API data received"]};
   });
-  // Score = weighted: Mentions 50% + Citations 50%
-  const calcEngineScore=(e)=>Math.round(e.mentionRate*0.5+e.citationRate*0.5);
-  engines.forEach(e=>{e.score=calcEngineScore(e);});
+  engines.forEach(e=>{e.score=Math.round(e.mentionRate*0.5+e.citationRate*0.5);});
   const overall=Math.round(engines.reduce((a,e)=>a+e.score,0)/engines.length);
-
-  // Score interpretation
   const getScoreLabel=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
-  const getScoreDesc=(s,brand)=>{
-    if(s>=80)return`${brand} is a dominant voice in AI engine responses — frequently cited and recommended across all major platforms.`;
-    if(s>=60)return`${brand} has strong AI visibility — regularly mentioned by engines but with room to increase direct citations and become the go-to recommendation.`;
-    if(s>=40)return`${brand} has moderate visibility — AI engines are aware of the brand but rarely cite it as a primary source. Competitors are more frequently recommended.`;
-    if(s>=20)return`${brand} has weak AI visibility — engines occasionally mention the brand but almost never cite the website. Significant work needed to build presence.`;
-    return`${brand} is largely invisible to AI engines — not mentioned in relevant queries. Competitors dominate the conversation entirely.`;
-  };
-
-  // Pain points — use API data if available
+  const getScoreDesc=(s,b)=>s>=80?b+" is dominant — frequently cited and recommended.":s>=60?b+" has strong visibility — regularly mentioned.":s>=40?b+" has moderate visibility — rarely cited as primary source.":s>=20?b+" has weak visibility — occasionally mentioned.":b+" is invisible to AI engines.";
   const painCats=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
-  const painPoints=(hasApi&&apiData.engineData.painPoints)?apiData.engineData.painPoints.map(pp=>({label:pp.label,score:pp.score,severity:pp.score<40?"critical":pp.score<65?"warning":"good"})):painCats.map((label,i)=>{const s=Math.max(5,Math.min(95,Math.round(base+(pr(i*19+7)-.5)*40)));return{label,score:s,severity:s<40?"critical":s<65?"warning":"good"};});
-
-  // Competitors — use API data if available
-  const brandLower=cd.brand.toLowerCase().trim();
-  const isNotSelf=(name)=>{const n=name.toLowerCase().trim();return n!==brandLower&&!n.includes(brandLower)&&!brandLower.includes(n);};
-  const competitors=(apiData&&apiData.competitorData&&(Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors)&&((Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors)||[]).length>0)?(Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors).filter(c=>isNotSelf(c.name)).map(c=>{
-    const cPain=(c.painPoints||[]).map(pp=>({label:pp.label,score:pp.score}));
-    const advantages=cPain.map((cp,j)=>{const diff=cp.score-(painPoints[j]?.score||50);return{cat:cp.label,theirScore:cp.score,yourScore:painPoints[j]?.score||50,diff,insight:Math.abs(diff)>8?getInsight(cp.label,c.name,cd.brand,diff>0):null};}).filter(a=>a.insight);
-    return{name:c.name,score:c.score,painPoints:cPain,advantages,engineScores:c.engineScores||[c.score,c.score-3,c.score+2],topStrength:c.topStrength||"Unknown"};
-  }):cd.competitorNames.filter(n=>isNotSelf(n)).map((name,i)=>{
-    const cs=Math.max(15,Math.min(95,Math.round(base+(pr(i*23+11)-.5)*50)));
-    const cPain=painCats.map((l,j)=>({label:l,score:Math.max(10,Math.min(95,Math.round(cs+(pr(i*29+j*31)-.5)*30)))}) );
-    const advantages=cPain.map((cp,j)=>{const diff=cp.score-painPoints[j].score;return{cat:cp.label,theirScore:cp.score,yourScore:painPoints[j].score,diff,insight:Math.abs(diff)>8?getInsight(cp.label,name,cd.brand,diff>0):null};}).filter(a=>a.insight);
-    return{name,score:cs,painPoints:cPain,advantages,engineScores:[Math.max(8,Math.min(95,Math.round(cs+(pr(i*37)-.5)*15))),Math.max(8,Math.min(95,Math.round(cs+(pr(i*41)-.5)*15))),Math.max(8,Math.min(95,Math.round(cs+(pr(i*43)-.5)*15)))],topStrength:cPain.reduce((a,b)=>b.score>a.score?b:a,cPain[0]).label};
-  });
-
-  // Stakeholder-grouped archetypes — use API data if available
-  const stakeholders=(apiData&&apiData.archData&&Array.isArray(apiData.archData)&&apiData.archData.length>0)?apiData.archData.map(sg=>({group:sg.group,icon:sg.icon||"👤",desc:sg.desc||"",archetypes:(sg.archetypes||[]).map(a=>({name:a.name,icon:a.icon||"👤",demo:a.demo||"Various",behavior:a.behavior||"Research queries",intent:a.intent||"Find information",size:a.size||15,brandVisibility:a.brandVisibility||Math.round(overall*.6),opportunity:a.opportunity||"medium",prompts:a.prompts||[],journey:a.journey||[]}))})):[
-    {group:"End Users / Consumers",icon:"👤",desc:"People who directly use or purchase the product/service",archetypes:[
-      {name:"Budget-Conscious Researchers",icon:"🎓",demo:"18-25, Students",behavior:"Compare prices, seek free alternatives",intent:"Find affordable option",size:Math.round(10+pr(41)*30),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(53)-.5)*40))),opportunity:pr(47)>.5?"high":"medium",prompts:[`Best affordable ${cd.industry||"tech"} solutions`,`Cheap ${cd.topics[0]||"services"} for students`,`Free ${cd.topics[0]||"tools"} alternatives`,`${cd.industry||"Tech"} student discounts`],
-        journey:[
-          {stage:"Awareness",color:"#6366f1",prompts:[{query:`Cheapest ${cd.industry} options`,status:pr(70)<.3?"Mentioned":"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`Free ${cd.topics[0]||"tools"} alternatives`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.industry} student discounts`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Consideration",color:"#8b5cf6",prompts:[{query:`${cd.brand} vs ${cd.competitorNames[0]||"competitor"} pricing`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}},{query:`Best budget ${cd.industry} ${new Date().getFullYear()}`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Transaction",color:"#a855f7",prompts:[{query:`${cd.brand} free trial`,status:pr(73)<.3?"Cited":"Absent",engines:{gpt:pr(73)<.3?"Cited":"Absent",gemini:"Absent"}},{query:`${cd.brand} student plan sign up`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Retention",color:"#c084fc",prompts:[{query:`${cd.brand} referral program`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`How to save on ${cd.brand} renewal`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]}
-        ]},
-      {name:"First-Time Buyers",icon:"🔍",demo:"All ages, New to category",behavior:"Educational queries, beginner guides",intent:"Understand before buying",size:Math.round(15+pr(44)*25),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(56)-.5)*40))),opportunity:"high",prompts:[`What is ${cd.topics[0]||cd.industry}`,`${cd.industry} beginner guide`,`How to choose ${cd.topics[0]||"provider"}`,`${cd.industry} explained`],
-        journey:[
-          {stage:"Awareness",color:"#6366f1",prompts:[{query:`What is ${cd.topics[0]||cd.industry}`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.industry} beginner guide`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`How does ${cd.topics[0]||cd.industry} work`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Consideration",color:"#8b5cf6",prompts:[{query:`Best ${cd.industry} for beginners`,status:pr(74)<.3?"Mentioned":"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} reviews`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}},{query:`Easiest ${cd.industry} to use`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Transaction",color:"#a855f7",prompts:[{query:`How to start with ${cd.brand}`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}},{query:`${cd.brand} onboarding guide`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Retention",color:"#c084fc",prompts:[{query:`${cd.brand} tips for beginners`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]}
-        ]},
-      {name:"Switchers & Upgraders",icon:"🔄",demo:"28-45, Competitor users",behavior:"Alternative-to queries, comparisons",intent:"Find better alternative",size:Math.round(8+pr(45)*20),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(57)-.5)*40))),opportunity:"high",prompts:[`${cd.competitorNames[0]||"Competitor"} alternatives`,`Switch to ${cd.brand}`,`${cd.brand} vs ${cd.competitorNames[0]||"competitor"}`,`${cd.industry} migration guide`],
-        journey:[
-          {stage:"Awareness",color:"#6366f1",prompts:[{query:`${cd.competitorNames[0]||"Competitor"} alternatives`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`Best ${cd.industry} to switch to`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Consideration",color:"#8b5cf6",prompts:[{query:`${cd.brand} vs ${cd.competitorNames[0]||"competitor"}`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Mentioned"}},{query:`Is ${cd.brand} better than ${cd.competitorNames[0]||"competitor"}`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}},{query:`${cd.brand} migration experience`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Transaction",color:"#a855f7",prompts:[{query:`Switch to ${cd.brand} from ${cd.competitorNames[0]||"competitor"}`,status:pr(75)<.4?"Mentioned":"Absent",engines:{gpt:pr(75)<.4?"Mentioned":"Absent",gemini:"Absent"}},{query:`${cd.brand} transfer process`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Retention",color:"#c084fc",prompts:[{query:`${cd.brand} advanced features`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`Get more from ${cd.brand}`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]}
-        ]},
-    ]},
-    {group:"Business Decision Makers",icon:"💼",desc:"People evaluating solutions for their organisation",archetypes:[
-      {name:"Enterprise Decision Makers",icon:"📊",demo:"35-55, C-Suite & Directors",behavior:"Evaluate ROI, compare features",intent:"Find reliable enterprise solution",size:Math.round(10+pr(42)*25),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(54)-.5)*40))),opportunity:"high",prompts:[`Best enterprise ${cd.industry} platform`,`${cd.topics[0]||"Solution"} ROI comparison`,`Top ${cd.industry} for large companies`,`${cd.brand} enterprise reviews`],
-        journey:[
-          {stage:"Awareness",color:"#6366f1",prompts:[{query:`Top enterprise ${cd.industry} platforms`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.industry} market leaders ${new Date().getFullYear()}`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Consideration",color:"#8b5cf6",prompts:[{query:`${cd.brand} enterprise reviews`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}},{query:`${cd.topics[0]||"Solution"} ROI comparison`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} vs ${cd.competitorNames[0]||"competitor"} for enterprise`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}}]},
-          {stage:"Transaction",color:"#a855f7",prompts:[{query:`${cd.brand} enterprise pricing`,status:pr(76)<.3?"Mentioned":"Absent",engines:{gpt:pr(76)<.3?"Mentioned":"Absent",gemini:"Absent"}},{query:`${cd.brand} demo request`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Retention",color:"#c084fc",prompts:[{query:`${cd.brand} enterprise support`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}},{query:`${cd.brand} uptime SLA`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]}
-        ]},
-      {name:"Procurement & Ops Managers",icon:"📋",demo:"30-50, Mid-management",behavior:"Vendor comparisons, compliance checks",intent:"Find compliant, cost-effective vendor",size:Math.round(6+pr(46)*15),brandVisibility:Math.max(5,Math.min(85,Math.round(base+(pr(58)-.5)*35))),opportunity:"medium",prompts:[`${cd.industry} vendor comparison`,`${cd.brand} compliance certifications`,`${cd.industry} procurement guide`,`${cd.brand} SLA details`],
-        journey:[
-          {stage:"Awareness",color:"#6366f1",prompts:[{query:`${cd.industry} vendor comparison ${new Date().getFullYear()}`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.industry} procurement guide`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Consideration",color:"#8b5cf6",prompts:[{query:`${cd.brand} compliance certifications`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} SLA details`,status:pr(77)<.3?"Mentioned":"Absent",engines:{gpt:pr(77)<.3?"Mentioned":"Absent",gemini:"Absent"}},{query:`${cd.brand} vs ${cd.competitorNames[0]||"competitor"} pricing for business`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Transaction",color:"#a855f7",prompts:[{query:`${cd.brand} business plan pricing`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} bulk licensing`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Retention",color:"#c084fc",prompts:[{query:`${cd.brand} vendor management portal`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]}
-        ]},
-    ]},
-    {group:"Technical Evaluators",icon:"⚙️",desc:"People assessing technical capabilities and integration",archetypes:[
-      {name:"Tech-Savvy Evaluators",icon:"⚡",demo:"25-40, Engineers & Leads",behavior:"Deep-dive specs, APIs, integrations",intent:"Find technically capable solution",size:Math.round(10+pr(43)*20),brandVisibility:Math.max(5,Math.min(90,Math.round(base+(pr(55)-.5)*40))),opportunity:pr(48)>.4?"high":"medium",prompts:[`${cd.topics[0]||"Platform"} technical comparison`,`Best ${cd.industry} API`,`${cd.brand} developer reviews`,`${cd.topics[0]||"Tool"} benchmarks`],
-        journey:[
-          {stage:"Awareness",color:"#6366f1",prompts:[{query:`Best ${cd.industry} API ${new Date().getFullYear()}`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.topics[0]||"Tool"} benchmarks`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Consideration",color:"#8b5cf6",prompts:[{query:`${cd.brand} developer reviews`,status:"Mentioned",engines:{gpt:"Mentioned",gemini:"Absent"}},{query:`${cd.brand} API documentation quality`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} integration capabilities`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Transaction",color:"#a855f7",prompts:[{query:`${cd.brand} developer plan`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} sandbox access`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Retention",color:"#c084fc",prompts:[{query:`${cd.brand} API changelog`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} developer community`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]}
-        ]},
-      {name:"IT Security & Compliance",icon:"🛡️",demo:"30-50, InfoSec & Legal",behavior:"Security audits, data privacy queries",intent:"Verify security and compliance",size:Math.round(4+pr(49)*10),brandVisibility:Math.max(5,Math.min(80,Math.round(base+(pr(59)-.5)*30))),opportunity:"medium",prompts:[`${cd.brand} security features`,`${cd.industry} data compliance`,`${cd.brand} SOC 2 certification`,`${cd.industry} GDPR compliance`],
-        journey:[
-          {stage:"Awareness",color:"#6366f1",prompts:[{query:`${cd.industry} data compliance requirements`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.industry} security best practices`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Consideration",color:"#8b5cf6",prompts:[{query:`${cd.brand} SOC 2 certification`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} GDPR compliance`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} security audit report`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Transaction",color:"#a855f7",prompts:[{query:`${cd.brand} security certification verification`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]},
-          {stage:"Retention",color:"#c084fc",prompts:[{query:`${cd.brand} security updates`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}},{query:`${cd.brand} incident response`,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"}}]}
-        ]},
-    ]},
-  ];
-
-  // Intent funnel — use API data if available
-  const t0=cd.topics[0]||cd.industry||"tech";
-  const mkP=(temps,off)=>temps.map((q,j)=>({query:q,rank:Math.round(1+pr(j*61+off)*15),status:pr(j*63+off)<.3?"Cited":pr(j*63+off)<.6?"Mentioned":"Absent"}));
-  const funnelStages=(apiData&&apiData.intentData&&Array.isArray(apiData.intentData)&&apiData.intentData.length>0)?apiData.intentData.map(s=>({stage:s.stage,desc:s.desc||"",color:s.color||"#6366f1",prompts:(s.prompts||[]).map(p=>({query:p.query||"",rank:p.rank||8,status:p.status||"Absent"}))})):[
-    {stage:"Awareness",desc:"User discovers the category",color:"#6366f1",prompts:mkP([`What is ${t0}`,`${cd.industry} trends`,`How does ${t0} work`,`Benefits of ${t0}`,`${cd.industry} overview`,`Why use ${t0}`,`${cd.industry} use cases`],0)},
-    {stage:"Consideration",desc:"User evaluates options",color:"#8b5cf6",prompts:mkP([`Best ${cd.industry} companies`,`${cd.brand} reviews`,`${cd.brand} vs ${cd.competitorNames[0]||"competitors"}`,`Top ${t0} providers`,`${cd.brand} pricing`,`Is ${cd.brand} worth it`,`${cd.industry} comparison`],100)},
-    {stage:"Decision",desc:"User ready to choose",color:"#a855f7",prompts:mkP([`${cd.brand} free trial`,`${cd.brand} onboarding`,`${cd.brand} pricing plans`,`How to start with ${cd.brand}`,`${cd.brand} implementation`],200)},
-    {stage:"Retention",desc:"User seeks more value",color:"#c084fc",prompts:mkP([`${cd.brand} best practices`,`${cd.brand} advanced features`,`${cd.brand} tips`,`Get more from ${cd.brand}`],300)},
-  ];
-
-  const brandGuidelines=[
-    {area:"Entity Disambiguation & Knowledge Graph Presence",rule:`Establish ${cd.brand} as a distinct, unambiguous entity across all knowledge graph sources. Ensure Wikidata QID, Google Knowledge Panel, and Crunchbase entries use identical entity attributes (founding date, HQ location, CEO, industry classification). AI models resolve entity conflicts by cross-referencing these sources — inconsistencies cause citation suppression.`,example:`Audit all structured databases: Wikidata entry must list ${cd.brand} with correct P31 (instance of: technology company), P17 (country), P856 (official website: ${cd.clientData?.website||"yoursite.com"}). File a Google Knowledge Panel claim and verify all attributes match.`},
-    {area:"Semantic Content Architecture",rule:`Structure all ${cd.brand} web content using topic clusters with defined pillar pages and supporting content. Each pillar page should target a primary entity (e.g., "${cd.topics[0]||cd.industry}") and be semantically linked to 8-12 supporting articles. AI engines extract topical authority from the density and interconnection of content within a domain's semantic graph.`,example:`Create pillar: "${cd.brand}'s Complete Guide to ${cd.topics[0]||cd.industry}" → Link to supporting pages: "How ${cd.topics[0]||cd.industry} Works", "${cd.topics[0]||cd.industry} vs Traditional Methods", "${cd.topics[0]||cd.industry} ROI Calculator", "Case Study: [Client] + ${cd.brand}". Use exact-match internal anchor text.`},
-    {area:"JSON-LD Schema Implementation",rule:`Deploy comprehensive JSON-LD schema markup across all page types. Minimum required: Organization (with sameAs to all social profiles), Product/Service, FAQ, HowTo, Article (with author → Person schema linking to LinkedIn), and Speakable markup on key content blocks. AI engines preferentially extract content wrapped in speakable schema for voice and chat responses.`,example:`Every blog post must include: Article schema (headline, datePublished, dateModified, author.name, author.url → LinkedIn, publisher → Organization), FAQ schema for any Q&A content, and Speakable schema on the introduction paragraph and any key statistics or claims you want AI to quote directly.`},
-    {area:"E-E-A-T Signal Maximisation",rule:`Every content piece published by ${cd.brand} must demonstrate Experience, Expertise, Authoritativeness, and Trustworthiness through verifiable signals. Author bylines must link to Person schema with credentials. All claims must be cited with links to primary sources. Include methodology disclosures on research content. AI engines weight E-E-A-T signals heavily when deciding which sources to cite.`,example:`Author bio format: "[Name], [Title] at ${cd.brand} | [X]+ years in ${cd.industry} | [Credential/Certification] | Published in [Notable Publication]". Link author name to a dedicated /team/[name] page with full bio, photo, social links, and list of authored content. Add ReviewedBy schema for medical/financial/legal topics.`},
-    {area:"Citation Velocity & Link Authority",rule:`Build a systematic citation acquisition strategy targeting domains with Domain Authority 50+. AI models track citation frequency and recency — a brand cited by 3 authoritative sources in the past 90 days outranks one with 10 stale citations. Prioritise co-citation (being mentioned alongside established competitors) and contextual citations (within topically relevant content, not generic directories).`,example:`Monthly targets: 2 guest articles on DA60+ publications, 3 expert quote placements via HARO/Connectively, 1 original data study pitched to industry press, weekly contributions to ${cd.industry} subreddits and Quora topics. Track new referring domains weekly and flag any lost citations for reclamation.`},
-    {area:"Content Freshness & Update Cadence",rule:`Implement a systematic content refresh protocol. AI engines deprioritise content with stale lastmod signals. All evergreen content must be reviewed and updated minimum quarterly with visible "Last Updated" timestamps. Refresh triggers: new data available, competitor content updated, AI engine response changes detected, industry developments.`,example:`Create a content freshness calendar: flag all pages with traffic > 100/month for quarterly review. Update process: (1) check if AI engines are citing the current version, (2) add new data points or examples, (3) update dateModified in Article schema, (4) add "Updated [Month Year]" badge visible to users, (5) resubmit to Google Search Console.`},
-    {area:"Multi-Modal Content Optimisation",rule:`AI engines increasingly index and cross-reference multi-modal content — video transcripts, podcast show notes, infographic alt-text, and PDF content. Every piece of ${cd.brand} content should exist in at least 2 formats. Video content must have complete, accurate transcripts (not auto-generated). Infographics must have comprehensive alt-text that captures all data points.`,example:`For every definitive guide published: (1) create a companion YouTube video with manually-reviewed transcript, (2) design a shareable infographic with detailed alt-text, (3) produce a LinkedIn carousel summarising key points, (4) extract FAQs for a standalone FAQ page. Ensure all formats link back to the canonical pillar page.`},
-    {area:"Competitor Response Protocol",rule:`Monitor competitor AEO positioning weekly. When a competitor is cited for a query where ${cd.brand} should appear, analyse the cited content's structure, schema, and authority signals. Create a superior response within 14 days. AI engines regularly re-evaluate citation sources — the window to displace a competitor citation is typically 30-60 days after publishing superior content.`,example:`Set up weekly monitoring: search each top-50 prompt in ChatGPT and Gemini. Document: (1) which competitor is cited, (2) what content is being referenced, (3) what schema/signals that content has. Create a displacement brief: "Competitor X cited for [query] because of [reason]. Our response: publish [content type] with [superior signals] by [date]."`},
-    {area:"Brand Narrative Consistency Layer",rule:`Define a canonical brand description paragraph (150 words) that must appear verbatim or near-verbatim across all owned and third-party channels. AI models build entity understanding by finding consistent descriptions across multiple sources. Divergent descriptions fragment the entity signal and reduce citation confidence.`,example:`Canonical description: "${cd.brand} is a ${cd.region||"global"} ${cd.industry} company specialising in ${cd.topics.slice(0,3).join(", ")}. Founded in [year], ${cd.brand} serves [target market] with [key differentiator]. Recognised for [achievement/award], ${cd.brand} has helped [X]+ clients achieve [measurable outcome]." Deploy this exact text on: About page, LinkedIn Company, Crunchbase, all press releases, speaker bios, and directory listings.`},
-    {area:"AI-Specific Content Formatting",rule:`Structure content for AI extraction: use clear H2/H3 hierarchies, place definitive answers in the first 2 sentences of each section, use "According to [Source]" citation patterns that AI engines can verify, and include structured comparison tables where relevant. Avoid ambiguous language — AI engines skip content with hedging phrases like "it depends" or "there are many factors" in favour of content that gives direct, citable answers.`,example:`Instead of: "There are many ${cd.industry} providers to choose from." Write: "${cd.brand} is one of the top 5 ${cd.industry} providers in ${cd.region||"the market"}, serving [X]+ clients since [year]. Key differentiators include: [Feature 1] which delivers [Outcome], [Feature 2] rated [Score] by [Source], and [Feature 3] with [Metric] performance." This gives AI engines a quotable, verifiable claim.`},
-  ];
-
-  // AEO Channels — merge real verification data if available
-  const channelNames=["Company Blog / Knowledge Base","Wikipedia / Wikidata","YouTube / Video","Review Platforms","Press / News Coverage","LinkedIn","Industry Directories","Podcasts","Social Media (X, Reddit, Quora)","Academic Citations"];
-  const getChStatus=(chName)=>{
-    // First check deep verification data for key channels
-    if(apiData&&apiData.deepData){
-      const dd=apiData.deepData;
-      if(chName.includes("Wikipedia")&&dd.wikipedia) return {status:dd.wikipedia.exists?"Active":"Not Present",finding:dd.wikipedia.details||""};
-      if(chName.includes("YouTube")&&dd.youtube) return {status:dd.youtube.exists?"Active":"Not Present",finding:dd.youtube.details||""};
-      if(chName.includes("LinkedIn")&&dd.linkedin) return {status:dd.linkedin.exists?"Active":"Not Present",finding:dd.linkedin.details||""};
-      if(chName.includes("Press")&&dd.news) return {status:dd.news.exists?"Active":"Needs Work",finding:dd.news.details||""};
-      if(chName.includes("Review")&&dd.reviews) return {status:dd.reviews.exists?"Active":"Needs Work",finding:dd.reviews.details||""};
-    }
-    // Then check Claude estimation data
-    if(apiData&&apiData.channelData&&apiData.channelData.channels){
-      const match=apiData.channelData.channels.find(c=>c.channel===chName||chName.includes(c.channel.split("/")[0].trim())||c.channel.includes(chName.split("/")[0].trim()));
-      if(match) return {status:match.status||"Needs Work",finding:match.finding||""};
-    }
-    return null;
-  };
-  const getRecSites=(key)=>{
-    if(apiData&&apiData.channelData&&apiData.channelData.recommendedSites&&apiData.channelData.recommendedSites[key]){
-      const sites=apiData.channelData.recommendedSites[key];
-      if(Array.isArray(sites)&&sites.length>3) return sites;
-    }
-    return null;
-  };
-
-  const defaultReviewSites=[{name:"G2",url:"g2.com",focus:"Enterprise software reviews"},{name:"Trustpilot",url:"trustpilot.com",focus:"Consumer trust reviews"},{name:"Capterra",url:"capterra.com",focus:"Software comparison"},{name:"TrustRadius",url:"trustradius.com",focus:"B2B technology reviews"},{name:"Product Hunt",url:"producthunt.com",focus:"New product launches"},{name:"Clutch.co",url:"clutch.co",focus:"Agency & services reviews"},{name:"Google Business Profile",url:"business.google.com",focus:"Local search & reviews"},{name:"Apple App Store",url:"apps.apple.com",focus:"Mobile app reviews"},{name:"Gartner Peer Insights",url:"gartner.com/reviews",focus:"Enterprise tech reviews"},{name:"Software Advice",url:"softwareadvice.com",focus:"Software recommendations"},{name:"Glassdoor",url:"glassdoor.com",focus:"Employer brand (impacts trust)"},{name:"BBB",url:"bbb.org",focus:"Business credibility"},{name:"Yelp",url:"yelp.com",focus:"Local business reviews"},{name:"Comparably",url:"comparably.com",focus:"Culture & compensation"},{name:"GetApp",url:"getapp.com",focus:"SaaS discovery"}];
-  const defaultPressSites=[{name:"TechCrunch",url:"techcrunch.com",focus:"Tech startups & innovation"},{name:"Forbes",url:"forbes.com",focus:"Business & leadership"},{name:"Bloomberg",url:"bloomberg.com",focus:"Finance & markets"},{name:"Reuters",url:"reuters.com",focus:"Global news wire"},{name:"The Verge",url:"theverge.com",focus:"Technology & culture"},{name:"Wired",url:"wired.com",focus:"Tech deep-dives"},{name:"VentureBeat",url:"venturebeat.com",focus:"AI & enterprise tech"},{name:"Business Insider",url:"businessinsider.com",focus:"Business news"},{name:"CNBC",url:"cnbc.com",focus:"Financial news"},{name:"The Guardian",url:"theguardian.com",focus:"Global news"},{name:"PR Newswire",url:"prnewswire.com",focus:"Press release distribution"},{name:"GlobeNewswire",url:"globenewswire.com",focus:"Press release wire"},{name:"Mashable",url:"mashable.com",focus:"Tech & digital culture"},{name:"Fast Company",url:"fastcompany.com",focus:"Innovation & design"},{name:"Inc.com",url:"inc.com",focus:"Entrepreneurship"}];
-  const defaultDirSites=[{name:"Crunchbase",url:"crunchbase.com",focus:"Company data & funding"},{name:"AngelList",url:"angel.co",focus:"Startup ecosystem"},{name:"CB Insights",url:"cbinsights.com",focus:"Market intelligence"},{name:"PitchBook",url:"pitchbook.com",focus:"Private capital data"},{name:"Owler",url:"owler.com",focus:"Competitive intelligence"},{name:`${cd.industry} Association Directory`,url:"varies",focus:"Industry-specific listing"},{name:"Chamber of Commerce",url:"varies",focus:"Local business directory"},{name:"Yellow Pages / Kompass",url:"kompass.com",focus:"B2B directory"},{name:"Manta",url:"manta.com",focus:"Small business directory"},{name:"LinkedIn Company Directory",url:"linkedin.com",focus:"Professional network listing"},{name:"ZoomInfo",url:"zoominfo.com",focus:"B2B contact database"},{name:"Dun & Bradstreet",url:"dnb.com",focus:"Business credit & data"},{name:"Hoovers",url:"hoovers.com",focus:"Company information"},{name:"Bloomberg Terminal",url:"bloomberg.com",focus:"Financial data"},{name:"S&P Capital IQ",url:"capitaliq.com",focus:"Financial intelligence"}];
-  const defaultSocialSites=[{name:"Reddit",url:"reddit.com",focus:`Post in r/${cd.industry?.toLowerCase()||"technology"} and related subreddits`},{name:"Quora",url:"quora.com",focus:`Answer questions about ${cd.topics[0]||cd.industry}`},{name:"X (Twitter)",url:"x.com",focus:"Industry conversations & thought leadership"},{name:"Hacker News",url:"news.ycombinator.com",focus:"Tech community (high authority)"},{name:"Stack Overflow",url:"stackoverflow.com",focus:"Technical Q&A (if applicable)"},{name:"Medium",url:"medium.com",focus:"Long-form content & republishing"},{name:"Substack",url:"substack.com",focus:"Newsletter thought leadership"},{name:"Discord Communities",url:"discord.com",focus:"Niche community engagement"},{name:"Facebook Groups",url:"facebook.com",focus:"Industry-specific groups"},{name:"Threads",url:"threads.net",focus:"Conversational social"},{name:"Pinterest",url:"pinterest.com",focus:"Visual content (infographics)"},{name:"TikTok",url:"tiktok.com",focus:"Short-form video education"},{name:"Mastodon",url:"mastodon.social",focus:"Decentralised social"},{name:"IndieHackers",url:"indiehackers.com",focus:"Startup community"},{name:"DEV Community",url:"dev.to",focus:"Developer content"}];
-
-  const rawChannels=[
-    {channel:"Company Blog / Knowledge Base",impact:95,desc:"Primary content hub for AI engines",sites:null},
-    {channel:"Wikipedia / Wikidata",impact:92,desc:"Knowledge graph source for AI",sites:null},
-    {channel:"YouTube / Video",impact:88,desc:"Video transcripts indexed by AI",sites:null},
-    {channel:"Review Platforms",impact:85,desc:"Social proof for AI recommendations",sites:getRecSites("reviewPlatforms")||defaultReviewSites},
-    {channel:"Press / News Coverage",impact:82,desc:"Authority from trusted domains",sites:getRecSites("pressNews")||defaultPressSites},
-    {channel:"LinkedIn",impact:78,desc:"Professional authority signals",sites:null},
-    {channel:"Industry Directories",impact:75,desc:"Structured listings AI references",sites:getRecSites("industryDirectories")||defaultDirSites},
-    {channel:"Podcasts",impact:68,desc:"Long-form content indexed by AI",sites:null},
-    {channel:"Social Media (X, Reddit, Quora)",impact:65,desc:"Community discussions training AI",sites:getRecSites("socialMedia")||defaultSocialSites},
-    {channel:"Academic Citations",impact:72,desc:"High-trust expertise signals",sites:null},
-  ];
-  const aeoChannels=rawChannels.map((ch,i)=>{
-    const verified=getChStatus(ch.channel);
-    return {...ch,status:verified?verified.status:(pr(i*7+3)>.5?"Active":"Needs Work"),finding:verified?verified.finding:null};
-  });
-
-  // Content types — use API-generated personalised data, fallback to basic defaults
-  const contentTypes=(hasApi&&apiData.contentGridData&&Array.isArray(apiData.contentGridData)&&apiData.contentGridData.length>0)?
-    apiData.contentGridData.map(ct=>({type:ct.type||"Content",channels:ct.channels||["Blog"],freq:ct.freq||"Monthly",p:ct.p||"P1",owner:ct.owner||"Content Team",impact:ct.impact||70,rationale:ct.rationale||""})):
-    [
-      {type:`${cd.industry} Definitive Guides`,channels:["Blog","LinkedIn"],freq:"2/month",p:"P0",owner:"Content Team",impact:95,rationale:`Address knowledge gaps in ${cd.industry}`},
-      {type:"FAQ & Knowledge Base",channels:["Website"],freq:"Weekly",p:"P0",owner:"Content Team",impact:92,rationale:"Cover common queries AI engines pull from"},
-      {type:`${cd.brand} Case Studies`,channels:["Blog","LinkedIn"],freq:"2/month",p:"P1",owner:"Marketing",impact:88,rationale:"Build E-E-A-T through demonstrated expertise"},
-      {type:"Schema Markup Updates",channels:["Website"],freq:"Ongoing",p:"P0",owner:"Dev Team",impact:94,rationale:"Enable AI engines to parse and cite content"},
-      {type:`${cd.industry} Comparison Content`,channels:["Blog","YouTube"],freq:"Monthly",p:"P1",owner:"Content Team",impact:90,rationale:`Compete for 'vs' and comparison queries`},
-      {type:"Original Research",channels:["Blog","PR"],freq:"Quarterly",p:"P0",owner:"Analytics",impact:96,rationale:"Generate citable, authoritative data"},
-    ];
-
-  // Roadmap — use API-generated personalised data, fallback to basic framework
-  const roadmap=(hasApi&&apiData.roadmapData&&apiData.roadmapData.day30)?apiData.roadmapData:{
-    day30:{title:"Foundation Sprint",sub:"Days 1-30",accent:"#ef4444",lift:"10-15%",departments:[
-      {dept:"Technical",color:"#0c4cfc",tasks:[`Implement Organization schema on ${cd.website}`,`Fix missing meta descriptions and Open Graph tags`,`Add structured data for ${cd.industry}-specific content types`,`Create XML sitemap with proper lastmod dates`,`Add author markup and date stamps to all content`]},
-      {dept:"Content",color:"#059669",tasks:[`Create FAQ page covering top 10 ${cd.industry} queries`,`Publish 2 definitive guides on ${cd.topics.slice(0,2).join(" and ")||cd.industry}`,`Add case studies demonstrating ${cd.brand} expertise`,`Audit and update all existing content for accuracy`]},
-      {dept:"PR & Outreach",color:"#8b5cf6",tasks:[`Verify/create ${cd.brand} profiles on key industry directories`,`Audit review platform presence (G2, Trustpilot, etc.)`,`Prepare media outreach list for ${cd.region||"target"} region`]},
-    ]},
-    day60:{title:"Authority Building",sub:"Days 31-60",accent:"#f59e0b",lift:"20-30%",departments:[
-      {dept:"Technical",color:"#0c4cfc",tasks:[`Implement FAQ and HowTo schema across content`,`Optimise Core Web Vitals to sub-2s load times`,`Build automated schema injection pipeline`]},
-      {dept:"Content",color:"#059669",tasks:[`Publish comparison content: ${cd.brand} vs ${cd.competitorNames[0]||"competitors"}`,`Create ${cd.industry} buyer's guide`,`Launch weekly thought leadership on LinkedIn`,`Produce original research report on ${cd.topics[0]||cd.industry}`]},
-      {dept:"PR & Outreach",color:"#8b5cf6",tasks:[`Secure 5+ guest contributions in ${cd.industry} publications`,`Build citation network through industry partnerships`,`Launch digital PR campaign in ${cd.region||"target"} market`]},
-    ]},
-    day90:{title:"Dominance & Scale",sub:"Days 61-90",accent:"#10b981",lift:"40-60%",departments:[
-      {dept:"Technical",color:"#0c4cfc",tasks:[`Achieve 95%+ schema coverage across ${cd.website}`,`Build AEO monitoring dashboard`,`Automate content freshness signals`]},
-      {dept:"Content",color:"#059669",tasks:[`Cover 50+ long-tail ${cd.industry} queries`,`Establish 2/week publishing cadence`,`Create video content for YouTube presence`]},
-      {dept:"PR & Outreach",color:"#8b5cf6",tasks:[`Secure 15+ authoritative backlinks`,`Get featured in ${cd.industry} roundups and lists`,`Build ongoing media relationships`]},
-    ]},
-  };
-
-  // Monthly output requirements — use API data or generate from audit findings
-  const outputReqs=(hasApi&&apiData.outputData&&Array.isArray(apiData.outputData)&&apiData.outputData.length>=4)?apiData.outputData:
-    [{n:"6-8",u:"pieces/month",l:`${cd.industry} Guides & Articles`,d:`Covering ${cd.topics.slice(0,2).join(", ")||cd.industry} topics`},
-     {n:"4-6",u:"pages/month",l:"FAQ & Knowledge Base",d:`Answering real ${cd.industry} queries`},
-     {n:"2-3",u:"per month",l:"Case Studies",d:`Demonstrating ${cd.brand} expertise`},
-     {n:"1",u:"per quarter",l:"Original Research",d:`${cd.industry}-specific data and insights`},
-     {n:"Weekly",u:"posts",l:"Thought Leadership",d:`LinkedIn + industry publications`},
-     {n:"Ongoing",u:"updates",l:"Schema & Technical",d:`Structured data on ${cd.website}`}];
-
+  const painPoints=(hasApi&&apiData.engineData.painPoints&&apiData.engineData.painPoints.length>0)?apiData.engineData.painPoints.map(pp=>({label:pp.label,score:pp.score,severity:pp.score<30?"critical":pp.score<60?"warning":"good"})):painCats.map(label=>({label,score:0,severity:"critical"}));
+  const competitors=(hasApi&&apiData.competitorData)?(()=>{const raw=Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors||[];return raw.map(c=>{const cPain=(c.painPoints||painCats.map(l=>({label:l,score:c.score||0}))).map(p=>({label:p.label,score:p.score}));const advantages=cPain.map(pp=>{const brandPP=painPoints.find(bp=>bp.label===pp.label);const diff=pp.score-(brandPP?brandPP.score:0);return{category:pp.label,diff,insight:getInsight(pp.label,c.name,cd.brand,diff>0)};}).filter(a=>a.insight);return{name:c.name,score:c.score||0,painPoints:cPain,advantages,engineScores:c.engineScores||[c.score||0,c.score||0],topStrength:c.topStrength||"N/A"};});})():[];
+  const stakeholders=(hasApi&&apiData.archData&&Array.isArray(apiData.archData)&&apiData.archData.length>0)?apiData.archData:[];
+  const funnelStages=(hasApi&&apiData.intentData&&Array.isArray(apiData.intentData)&&apiData.intentData.length>0)?apiData.intentData.map(s=>({stage:s.stage,desc:s.desc||"",color:s.color||"#6366f1",prompts:(s.prompts||[]).map(p=>({query:p.query||"",rank:p.rank||0,status:p.status||"Absent",engines:p.engines||{gpt:"Absent",gemini:"Absent"}}))})):[{stage:"Awareness",desc:"",color:"#6366f1",prompts:[]},{stage:"Consideration",desc:"",color:"#8b5cf6",prompts:[]},{stage:"Decision",desc:"",color:"#a855f7",prompts:[]},{stage:"Retention",desc:"",color:"#c084fc",prompts:[]}];
+  const brandGuidelines=[{area:"Entity Disambiguation",rule:"Establish "+cd.brand+" as a distinct entity across knowledge graph sources.",example:"Audit Wikidata, Knowledge Panel, Crunchbase for consistency."},{area:"Semantic Content Architecture",rule:"Structure content using topic clusters with pillar pages.",example:"Pillar: "+cd.brand+"'s Guide to "+(cd.topics[0]||cd.industry)},{area:"JSON-LD Schema",rule:"Deploy Organization, Product, FAQ, Article, Speakable schema.",example:"Every blog: Article schema with author, dates, FAQ markup."},{area:"E-E-A-T Signals",rule:"Every piece must demonstrate Experience, Expertise, Authority, Trust.",example:"Author bios with credentials, Person schema, cited sources."},{area:"Citation Velocity",rule:"Target DA50+ domains. 3 fresh citations beat 10 stale ones.",example:"Monthly: 2 guest articles DA60+, 3 HARO quotes, 1 data study."},{area:"Content Freshness",rule:"Quarterly review cycle. Update dateModified in schema.",example:"Flag pages >100 traffic/month for quarterly refresh."},{area:"Multi-Modal Content",rule:"Every piece in 2+ formats. Manual video transcripts.",example:"Guide → YouTube + infographic + LinkedIn carousel."},{area:"Competitor Response",rule:"Weekly monitoring. 14-day response to competitor citations.",example:"Monitor top-50 prompts weekly. Create displacement briefs."},{area:"Brand Narrative Consistency",rule:"150-word canonical description across all channels.",example:cd.brand+" is a "+(cd.region||"global")+" "+cd.industry+" company specialising in "+cd.topics.slice(0,3).join(", ")+"."},{area:"AI-Specific Formatting",rule:"Clear H2/H3, definitive answers in first 2 sentences.",example:"Direct claims with verifiable data points."}];
+  const getChStatus=(chName)=>{if(!hasApi||!apiData.channelData||!apiData.channelData.channels)return null;return apiData.channelData.channels.find(c=>{const cn=c.channel||"";const parts=chName.split("/").map(s=>s.trim().toLowerCase());return parts.some(p=>cn.toLowerCase().includes(p))||cn.toLowerCase().includes(chName.toLowerCase());})||null;};
+  const getRecSites=(type)=>{if(apiData&&apiData.deepData&&apiData.deepData.recommendedSites){const s=apiData.deepData.recommendedSites[type];if(Array.isArray(s)&&s.length>3)return s;}return null;};
+  const defaultReviewSites=[{name:"G2",url:"g2.com",focus:"Software reviews"},{name:"Trustpilot",url:"trustpilot.com",focus:"Consumer reviews"},{name:"Capterra",url:"capterra.com",focus:"Software comparison"},{name:"TrustRadius",url:"trustradius.com",focus:"B2B reviews"},{name:"Product Hunt",url:"producthunt.com",focus:"Product launches"},{name:"Clutch.co",url:"clutch.co",focus:"Agency reviews"},{name:"Google Business",url:"business.google.com",focus:"Local reviews"},{name:"Gartner Peer Insights",url:"gartner.com/reviews",focus:"Enterprise reviews"},{name:"Software Advice",url:"softwareadvice.com",focus:"Recommendations"},{name:"Glassdoor",url:"glassdoor.com",focus:"Employer brand"},{name:"Yelp",url:"yelp.com",focus:"Local business"},{name:"GetApp",url:"getapp.com",focus:"SaaS discovery"}];
+  const defaultPressSites=[{name:"TechCrunch",url:"techcrunch.com",focus:"Tech"},{name:"Forbes",url:"forbes.com",focus:"Business"},{name:"Bloomberg",url:"bloomberg.com",focus:"Finance"},{name:"Reuters",url:"reuters.com",focus:"News"},{name:"The Verge",url:"theverge.com",focus:"Technology"},{name:"VentureBeat",url:"venturebeat.com",focus:"AI"},{name:"Business Insider",url:"businessinsider.com",focus:"Business"},{name:"CNBC",url:"cnbc.com",focus:"Finance"},{name:"PR Newswire",url:"prnewswire.com",focus:"PR"},{name:"Fast Company",url:"fastcompany.com",focus:"Innovation"}];
+  const defaultDirSites=[{name:"Crunchbase",url:"crunchbase.com",focus:"Company data"},{name:"AngelList",url:"angel.co",focus:"Startups"},{name:"Owler",url:"owler.com",focus:"Intel"},{name:"LinkedIn",url:"linkedin.com",focus:"Professional"},{name:"ZoomInfo",url:"zoominfo.com",focus:"B2B"},{name:"Dun & Bradstreet",url:"dnb.com",focus:"Business data"},{name:"Kompass",url:"kompass.com",focus:"B2B directory"},{name:"Manta",url:"manta.com",focus:"Small biz"}];
+  const defaultSocialSites=[{name:"Reddit",url:"reddit.com",focus:"r/"+(cd.industry?.toLowerCase()||"technology")},{name:"Quora",url:"quora.com",focus:"Q&A"},{name:"X",url:"x.com",focus:"Conversations"},{name:"Hacker News",url:"news.ycombinator.com",focus:"Tech"},{name:"Medium",url:"medium.com",focus:"Long-form"},{name:"LinkedIn",url:"linkedin.com",focus:"Thought leadership"},{name:"Discord",url:"discord.com",focus:"Communities"},{name:"Facebook Groups",url:"facebook.com",focus:"Groups"}];
+  const rawChannels=[{channel:"Company Blog / Knowledge Base",impact:95,desc:"Primary content hub",sites:null},{channel:"Wikipedia / Wikidata",impact:92,desc:"Knowledge graph source",sites:null},{channel:"YouTube / Video",impact:88,desc:"Video transcripts",sites:null},{channel:"Review Platforms",impact:85,desc:"Social proof",sites:getRecSites("reviewPlatforms")||defaultReviewSites},{channel:"Press / News Coverage",impact:82,desc:"Authority signals",sites:getRecSites("pressNews")||defaultPressSites},{channel:"LinkedIn",impact:78,desc:"Professional authority",sites:null},{channel:"Industry Directories",impact:75,desc:"Structured listings",sites:getRecSites("industryDirectories")||defaultDirSites},{channel:"Podcasts",impact:68,desc:"Long-form content",sites:null},{channel:"Social Media (X, Reddit, Quora)",impact:65,desc:"Community discussions",sites:getRecSites("socialMedia")||defaultSocialSites},{channel:"Academic Citations",impact:72,desc:"High-trust signals",sites:null}];
+  const aeoChannels=rawChannels.map(ch=>{const v=getChStatus(ch.channel);return{...ch,status:v?v.status:"Unknown",finding:v?v.finding:"Not verified",statusLabel:v?v.status:"Unknown"};});
+  const contentTypes=(hasApi&&apiData.contentGridData&&Array.isArray(apiData.contentGridData)&&apiData.contentGridData.length>0)?apiData.contentGridData.map(ct=>({type:ct.type||"Content",channels:ct.channels||["Blog"],freq:ct.freq||"Monthly",p:ct.p||"P1",owner:ct.owner||"Content Team",impact:typeof ct.impact==="number"?ct.impact:70,rationale:ct.rationale||ct.description||""})):[];
+  const roadmap=(hasApi&&apiData.roadmapData&&apiData.roadmapData.day30)?apiData.roadmapData:null;
+  const outputReqs=contentTypes.slice(0,6).map(ct=>({n:ct.freq||"Monthly",u:"",l:ct.type,d:ct.rationale||""}));
   return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,clientData:cd};
 }
 
@@ -1024,37 +997,40 @@ function Sidebar({step,setStep,results,brand,onBack,isArtifact,onLogout,collapse
 /* ─── VISIBILITY CHART — Bar chart with hover scores ─── */
 function VisibilityChart({engines,overall,brand}){
   const[hover,setHover]=useState(null);
+  const maxScore=100;
   const getGrade=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
   const gradeColor=(s)=>s>=80?C.green:s>=60?"#10A37F":s>=40?C.amber:s>=20?"#f97316":C.red;
-  const bars=[{id:"overall",label:"Overall",score:overall,color:C.accent},...engines.map(e=>({id:e.id,label:e.name,score:e.score,color:e.color,mentionRate:e.mentionRate,citationRate:e.citationRate,Logo:e.Logo}))];
-  const svgW=420,svgH=240,pad={t:30,r:20,b:50,l:38};
-  const chartW=svgW-pad.l-pad.r,chartH=svgH-pad.t-pad.b;
-  const gap=chartW/bars.length,barW=Math.min(48,gap*.55);
-  const getX=(i)=>pad.l+gap*i+(gap-barW)/2;
-  const getY=(s)=>pad.t+chartH*(1-s/100);
-  const getH=(s)=>chartH*(s/100);
   return(<div>
-    <div style={{marginBottom:16}}>
+    <div style={{marginBottom:20}}>
       <div style={{fontSize:13,color:C.muted,marginBottom:6,fontWeight:500}}>Visibility Score for {brand}</div>
       <div style={{display:"flex",alignItems:"baseline",gap:10}}>
         <span style={{fontSize:42,fontWeight:800,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.03em",lineHeight:1}}>{overall}%</span>
         <span style={{fontSize:14,fontWeight:600,color:gradeColor(overall),fontFamily:"'Outfit'",padding:"3px 10px",background:`${gradeColor(overall)}12`,borderRadius:20}}>{getGrade(overall)}</span>
       </div>
     </div>
-    <svg width="100%" height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} style={{overflow:"visible"}} onMouseLeave={()=>setHover(null)}>
-      <defs>{bars.map(b=>(<linearGradient key={`g_${b.id}`} id={`bg_${b.id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={b.color} stopOpacity="1"/><stop offset="100%" stopColor={b.color} stopOpacity=".7"/></linearGradient>))}</defs>
-      {[0,25,50,75,100].map(v=>{const y=pad.t+chartH*(1-v/100);return(<g key={v}><line x1={pad.l} y1={y} x2={svgW-pad.r} y2={y} stroke={C.borderSoft} strokeDasharray="3 3"/><text x={pad.l-6} y={y+4} textAnchor="end" fontSize="10" fill={C.muted} fontFamily="Outfit">{v}</text></g>);})}
-      {bars.map((b,i)=>{const x=getX(i),y=getY(b.score),h=getH(Math.max(2,b.score)),isH=hover===i;return(<g key={b.id} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)} style={{cursor:"default"}}>
-        <rect x={x} y={y} width={barW} height={h} rx={4} fill={`url(#bg_${b.id})`} opacity={isH?1:.82} style={{transition:"opacity .2s, y .5s ease-out, height .5s ease-out"}}/>
-        <text x={x+barW/2} y={y-8} textAnchor="middle" fontSize="13" fontWeight="700" fill={isH?b.color:C.text} fontFamily="Outfit" style={{transition:"fill .2s"}}>{b.score}%</text>
-        <text x={x+barW/2} y={pad.t+chartH+16} textAnchor="middle" fontSize="11" fontWeight={isH?"600":"500"} fill={isH?b.color:C.sub} fontFamily="Outfit" style={{transition:"fill .2s"}}>{b.label}</text>
-        {isH&&b.mentionRate!=null&&<g>
-          <rect x={x+barW/2-52} y={pad.t+chartH+24} width={104} height={16} rx={4} fill={C.text} opacity=".9"/>
-          <text x={x+barW/2} y={pad.t+chartH+36} textAnchor="middle" fontSize="9" fill="#fff" fontFamily="Outfit">M: {b.mentionRate}%  ·  C: {b.citationRate}%</text>
-        </g>}
-        <rect x={x-4} y={pad.t} width={barW+8} height={chartH+24} fill="transparent"/>
-      </g>);})}
-    </svg>
+    {/* Engine bars — horizontal */}
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      {engines.map((e,i)=>{
+        const pct=Math.max(2,e.score);
+        return(<div key={e.id} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)} style={{cursor:"default"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <e.Logo size={16}/>
+              <span style={{fontSize:13,fontWeight:600,color:C.text,fontFamily:"'Outfit'"}}>{e.name}</span>
+            </div>
+            <span style={{fontSize:13,fontWeight:700,color:hover===i?e.color:C.text,fontFamily:"'Outfit'",transition:"color .2s"}}>{e.score}%</span>
+          </div>
+          <div style={{height:10,background:C.bg,borderRadius:6,overflow:"hidden",border:`1px solid ${C.borderSoft}`}}>
+            <div style={{height:"100%",width:`${pct}%`,background:`linear-gradient(90deg, ${e.color}cc, ${e.color})`,borderRadius:5,transition:"width .6s ease-out, opacity .2s",opacity:hover===i?1:.85}}/>
+          </div>
+          {/* Sub-metrics */}
+          <div style={{display:"flex",gap:16,marginTop:5}}>
+            <span style={{fontSize:11,color:C.muted}}>Mentions: <span style={{fontWeight:600,color:C.sub}}>{e.mentionRate}%</span></span>
+            <span style={{fontSize:11,color:C.muted}}>Citations: <span style={{fontWeight:600,color:C.sub}}>{e.citationRate}%</span></span>
+          </div>
+        </div>);
+      })}
+    </div>
   </div>);
 }
 
@@ -1106,7 +1082,7 @@ function ShareOfVoiceSection({title,rankTitle,brands,metricKey}){
           {sorted.map((a,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"30px 1fr auto",gap:8,padding:"10px 0",borderTop:`1px solid ${C.borderSoft}`,alignItems:"center"}} onMouseEnter={()=>setHover(arcs.indexOf(a))} onMouseLeave={()=>setHover(null)}>
             <span style={{fontSize:12,color:C.muted,fontWeight:500}}>{i+1}.</span>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <div style={{width:22,height:22,borderRadius:6,background:`${a.color}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:a.color}}>{a.name[0]}</div>
+              <BrandLogo name={a.name} website={a.website} size={22} color={a.color}/>
               <span style={{fontSize:13,fontWeight:500,color:C.text}}>{a.name}</span>
             </div>
             <span style={{fontSize:14,fontWeight:600,color:C.text,fontFamily:"'Outfit'"}}>{a.pct}%</span>
@@ -1418,7 +1394,7 @@ function AuditPage({r,history,goTo}){
   const catChanges=r.painPoints.map(pp=>{const hist=history.map(h=>{const f=h.categories.find(c=>c.label===pp.label);return f?f.score:null;}).filter(Boolean);const prev=hist.length>1?hist[hist.length-2]:pp.score;return{...pp,change:pp.score-prev};});
 
   // Compute share-of-voice data: brand + competitors
-  const allBrands=[{name:r.clientData.brand,mentionRate:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citationRate:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),color:C.accent},...r.competitors.map((c,i)=>({name:c.name,mentionRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length):c.score,citationRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length*.6):Math.round(c.score*.6),color:["#10A37F","#D97706","#4285F4","#8b5cf6","#ec4899","#0ea5e9","#f97316"][i%7]}))];
+  const allBrands=[{name:r.clientData.brand,website:r.clientData.website,mentionRate:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citationRate:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),color:C.accent},...r.competitors.map((c,i)=>{const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);return{name:c.name,website:compObj?compObj.website:"",mentionRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length):c.score,citationRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length*.6):Math.round(c.score*.6),color:["#10A37F","#D97706","#4285F4","#8b5cf6","#ec4899","#0ea5e9","#f97316"][i%7]};})];
 
   // Compute diagnostics
   const avgMention=Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length);
