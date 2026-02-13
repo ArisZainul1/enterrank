@@ -1886,14 +1886,11 @@ function PromptVolumePage({r,goTo,cache,setCache}){
   const setVolumeData=(d)=>setCache(prev=>({...prev,volumeData:d}));
   const setCustomVolumes=(fn)=>setCache(prev=>({...prev,customVolumes:typeof fn==="function"?fn(prev.customVolumes||[]):fn}));
   const[loading,setLoading]=useState(false);
-  const[selStage,setSelStage]=useState(0);
   const[newPrompt,setNewPrompt]=useState("");
   const[checking,setChecking]=useState(false);
   const[dropOpen,setDropOpen]=useState(false);
 
   const stageNames=["Awareness","Consideration","Decision","Retention"];
-  const stageColors=["#6366f1","#8b5cf6","#a855f7","#c084fc"];
-  const stageIcons=["search","scale","credit-card","refresh-cw"];
   const stages=r.funnelStages||[];
 
   const getStagePrompts=(si)=>{
@@ -1905,21 +1902,6 @@ function PromptVolumePage({r,goTo,cache,setCache}){
   const engineOpts=[{id:"google",label:"Google",color:"#4285F4"},{id:"chatgpt",label:"ChatGPT",color:"#10A37F"},{id:"gemini",label:"Gemini",color:"#4285F4"}];
   const engineLabel=engine==="google"?"Google":engine==="chatgpt"?"ChatGPT":"Gemini";
   const engineColor=engineOpts.find(e=>e.id===engine)?.color||C.accent;
-
-  // Volume data grouped by stage
-  const getStageVolumes=(si)=>{
-    if(!volumeData)return[];
-    const name=stageNames[si];
-    return[...volumeData.filter(v=>v.stage===name),...customVolumes.filter(v=>v.stage===name)].sort((a,b)=>b.volume-a.volume);
-  };
-
-  const stageStats=stageNames.map((_,si)=>{
-    const vols=getStageVolumes(si);
-    const total=vols.length;
-    const avgVol=total>0?Math.round(vols.reduce((s,v)=>s+v.volume,0)/total):0;
-    const highComp=vols.filter(v=>v.competition==="High").length;
-    return{total,avgVol,highComp};
-  });
 
   const generate=async()=>{
     if(allPrompts.length===0||loading)return;
@@ -1978,30 +1960,24 @@ Rules:
 
 Query: "${q}"
 
-Also classify it into one funnel stage: Awareness, Consideration, Decision, or Retention.
-
 Return JSON only:
-{"query":"<exact query>","volume":<number>,"competition":"Low"|"Medium"|"High","stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
+{"query":"<exact query>","volume":<number>,"competition":"Low"|"Medium"|"High"}`;
     try{
       const raw=engine==="gemini"?await callGemini(prompt,sysPrompt):await callOpenAI(prompt,sysPrompt);
       const parsed=safeJSON(raw);
       if(parsed&&parsed.query){
-        const entry={query:parsed.query,volume:parsed.volume||0,competition:parsed.competition||"Low",stage:parsed.stage||"Awareness"};
+        const entry={query:parsed.query,volume:parsed.volume||0,competition:parsed.competition||"Low"};
         setCustomVolumes(prev=>[...prev,entry]);
-        const si=stageNames.indexOf(entry.stage);
-        if(si>=0)setSelStage(si);
       }
     }catch(e){console.error("Volume check error:",e);}
     setChecking(false);
   };
 
-  const stageColor=(s)=>s==="Awareness"?"#6366f1":s==="Consideration"?"#8b5cf6":s==="Decision"?"#a855f7":"#c084fc";
   const compColor=(c)=>c==="High"?C.red:c==="Medium"?C.amber:C.green;
   const fmt=(n)=>typeof n==="number"?n.toLocaleString():"-";
 
-  const currentVols=getStageVolumes(selStage);
-  const totalAll=volumeData?volumeData.length+customVolumes.length:customVolumes.length;
-  const allVols=[...(volumeData||[]),...customVolumes];
+  const allVols=[...(volumeData||[]),...customVolumes].sort((a,b)=>b.volume-a.volume);
+  const totalAll=allVols.length;
   const avgAll=allVols.length>0?Math.round(allVols.reduce((s,v)=>s+v.volume,0)/allVols.length):0;
 
   return(<div>
@@ -2032,7 +2008,7 @@ Return JSON only:
           {loading&&<span style={{width:14,height:14,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",display:"inline-block",animation:"spin .6s linear infinite"}}/>}
           {loading?`Checking ${allPrompts.length} prompts...`:"Generate Volumes"}
         </button>
-        {allPrompts.length>0&&<span style={{fontSize:11,color:C.muted}}>{allPrompts.length} prompts across {stageNames.length} stages</span>}
+        {allPrompts.length>0&&<span style={{fontSize:11,color:C.muted}}>{allPrompts.length} prompts</span>}
       </div>
       {allPrompts.length===0&&<div style={{fontSize:11,color:C.muted,marginTop:10}}>No prompts found — run an audit first.</div>}
     </Card>
@@ -2053,19 +2029,6 @@ Return JSON only:
       </div>
     </Card>
 
-    {/* Stage tabs */}
-    <div style={{display:"flex",gap:6,marginBottom:16}}>
-      {stageNames.map((name,i)=>{
-        const s=stageStats[i];const active=selStage===i;const color=stageColors[i];
-        return(<div key={i} onClick={()=>setSelStage(i)} style={{flex:1,padding:"12px 12px",cursor:"pointer",background:active?"#fff":C.surface,border:`1.5px solid ${active?color:C.border}`,borderRadius:10,textAlign:"center",transition:"all .15s",boxShadow:active?`0 2px 8px ${color}15`:"none"}}>
-          <div style={{marginBottom:4}}><Icon name={stageIcons[i]} size={18} color={color}/></div>
-          <div style={{fontSize:18,fontWeight:700,color:color}}>{s.total>0?fmt(s.avgVol):"-"}</div>
-          <div style={{fontSize:12,fontWeight:600,color:active?C.text:C.sub,marginTop:2}}>{name}</div>
-          <div style={{fontSize:10,color:C.muted,marginTop:2}}>{s.total} prompts</div>
-        </div>);
-      })}
-    </div>
-
     {/* Summary bar */}
     {allVols.length>0&&<div style={{display:"flex",gap:12,marginBottom:16}}>
       <Pill color={C.accent}>{totalAll} prompts</Pill>
@@ -2073,23 +2036,22 @@ Return JSON only:
       <Pill color={engineColor}>{engineLabel}</Pill>
     </div>}
 
-    {/* Stage detail table */}
+    {/* Prompt list */}
     {(()=>{
       if(!volumeData&&customVolumes.length===0)return(<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>
         <div style={{marginBottom:8}}><Icon name="bar-chart" size={28} color={C.muted}/></div>
         Select a platform and click Generate Volumes to see data.
       </div></Card>);
-      const vols=currentVols;const color=stageColors[selStage];
-      if(vols.length===0)return(<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>No volume data for {stageNames[selStage]}.</div></Card>);
+      if(allVols.length===0)return(<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>No volume data yet.</div></Card>);
       return(<Card style={{padding:0,overflow:"hidden"}}>
         <div style={{padding:"16px 20px",borderBottom:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <Icon name={stageIcons[selStage]} size={18} color={color}/>
-            <h3 style={{fontSize:16,fontWeight:700,color:color,margin:0}}>{stageNames[selStage]}</h3>
+            <Icon name="bar-chart" size={18} color={C.accent}/>
+            <h3 style={{fontSize:16,fontWeight:700,color:C.text,margin:0}}>All Prompts</h3>
           </div>
           <div style={{display:"flex",gap:6}}>
-            <Pill color={color}>{vols.length} prompts</Pill>
-            <Pill color={C.green}>avg {fmt(stageStats[selStage].avgVol)}/mo</Pill>
+            <Pill color={C.accent}>{allVols.length} prompts</Pill>
+            <Pill color={C.green}>avg {fmt(avgAll)}/mo</Pill>
           </div>
         </div>
         {/* Column headers */}
@@ -2099,7 +2061,7 @@ Return JSON only:
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",textAlign:"right"}}>Monthly Volume</span>
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",textAlign:"center"}}>Competition</span>
         </div>
-        {vols.map((v,j)=>(<div key={j} style={{display:"grid",gridTemplateColumns:"40px 1fr 110px 90px",padding:"10px 20px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center",transition:"background .1s"}} onMouseEnter={ev=>ev.currentTarget.style.background=`${color}04`} onMouseLeave={ev=>ev.currentTarget.style.background="transparent"}>
+        {allVols.map((v,j)=>(<div key={j} style={{display:"grid",gridTemplateColumns:"40px 1fr 110px 90px",padding:"10px 20px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center",transition:"background .1s"}} onMouseEnter={ev=>ev.currentTarget.style.background=`${C.accent}04`} onMouseLeave={ev=>ev.currentTarget.style.background="transparent"}>
           <span style={{fontSize:12,color:C.muted,fontWeight:500}}>{j+1}</span>
           <div>
             <span style={{fontSize:12,color:C.text,lineHeight:1.4}}>"{v.query}"</span>
