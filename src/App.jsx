@@ -721,7 +721,36 @@ function generateAll(cd, apiData){
   const painPoints=(hasApi&&apiData.engineData.painPoints&&apiData.engineData.painPoints.length>0)?apiData.engineData.painPoints.map(pp=>({label:pp.label,score:pp.score,severity:pp.score<30?"critical":pp.score<60?"warning":"good"})):painCats.map(label=>({label,score:0,severity:"critical"}));
   const competitors=(hasApi&&apiData.competitorData)?(()=>{const raw=Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors||[];return raw.map(c=>{const cPain=(c.painPoints||painCats.map(l=>({label:l,score:c.score||0}))).map(p=>({label:p.label,score:p.score}));const advantages=cPain.map(pp=>{const brandPP=painPoints.find(bp=>bp.label===pp.label);const diff=pp.score-(brandPP?brandPP.score:0);return{category:pp.label,diff,insight:getInsight(pp.label,c.name,cd.brand,diff>0)};}).filter(a=>a.insight);return{name:c.name,score:c.score||0,painPoints:cPain,advantages,engineScores:c.engineScores||[c.score||0,c.score||0],topStrength:c.topStrength||"N/A"};});})():[];
   const stakeholders=(hasApi&&apiData.archData&&Array.isArray(apiData.archData)&&apiData.archData.length>0)?apiData.archData:[];
-  const funnelStages=(hasApi&&apiData.intentData&&Array.isArray(apiData.intentData)&&apiData.intentData.length>0)?apiData.intentData.map(s=>({stage:s.stage,desc:s.desc||"",color:s.color||"#6366f1",prompts:(s.prompts||[]).map(p=>({query:p.query||"",rank:p.rank||0,status:p.status||"Absent",engines:p.engines||{gpt:"Absent",gemini:"Absent"},weight:p.weight||5,triggerWords:p.triggerWords||[],optimisedPrompt:p.optimisedPrompt||"",contentTip:p.contentTip||""}))})):[{stage:"Awareness",desc:"",color:"#6366f1",prompts:[]},{stage:"Consideration",desc:"",color:"#8b5cf6",prompts:[]},{stage:"Decision",desc:"",color:"#a855f7",prompts:[]},{stage:"Retention",desc:"",color:"#c084fc",prompts:[]}];
+  const funnelStages=(()=>{
+    if(hasApi&&apiData.intentData&&Array.isArray(apiData.intentData)&&apiData.intentData.length>0){
+      return apiData.intentData.map(s=>({stage:s.stage,desc:s.desc||"",color:s.color||"#6366f1",prompts:(s.prompts||[]).map(p=>({query:p.query||"",rank:p.rank||0,status:p.status||"Absent",engines:p.engines||{gpt:"Absent",gemini:"Absent"},weight:p.weight||5,triggerWords:p.triggerWords||[],optimisedPrompt:p.optimisedPrompt||"",contentTip:p.contentTip||""}))}));
+    }
+    // Fallback: generate prompts from audit topics + archetype journeys
+    const topics=cd.topics||[];const b=cd.brand;const ind=cd.industry;const reg=cd.region||"Global";
+    const compList=(cd.competitors||[]).map(c=>typeof c==="string"?c:c.name).filter(Boolean);
+    const stageDefs=[
+      {stage:"Awareness",desc:"User discovers the problem or category",color:"#6366f1",
+        tpl:t=>[`What is ${t}?`,`Best ${t} solutions in ${reg}`,`${t} trends ${new Date().getFullYear()}`]},
+      {stage:"Consideration",desc:"User evaluates and compares options",color:"#8b5cf6",
+        tpl:t=>[`${b} vs ${compList[0]||"competitors"} for ${t}`,`Top ${t} providers compared`,`Is ${b} good for ${t}?`]},
+      {stage:"Decision",desc:"User is ready to purchase or commit",color:"#a855f7",
+        tpl:t=>[`${b} ${t} pricing`,`${b} ${t} reviews`,`Should I choose ${b} for ${t}?`]},
+      {stage:"Retention",desc:"User seeks ongoing value",color:"#c084fc",
+        tpl:t=>[`${b} ${t} support`,`${b} ${t} alternatives`,`How to get more from ${b} ${t}`]}
+    ];
+    // Collect archetype journey prompts per stage
+    const archPrompts={Awareness:[],Consideration:[],Decision:[],Retention:[]};
+    (stakeholders||[]).forEach(sg=>(sg.archetypes||[]).forEach(a=>(a.journey||[]).forEach(j=>{
+      const sName=j.stage||"";const bucket=Object.keys(archPrompts).find(k=>sName.toLowerCase().includes(k.toLowerCase()));
+      if(bucket)(j.prompts||[]).forEach(p=>{if(p.query)archPrompts[bucket].push(p);});
+    })));
+    return stageDefs.map(sd=>{
+      const topicPrompts=topics.slice(0,4).flatMap((t,ti)=>sd.tpl(t).map((q,qi)=>({query:q,rank:ti*3+qi+1,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"},weight:5,triggerWords:[],optimisedPrompt:"",contentTip:""})));
+      const archP=(archPrompts[sd.stage]||[]).map((p,i)=>({query:p.query,rank:topicPrompts.length+i+1,status:p.status||"Absent",engines:p.engines||{gpt:"Absent",gemini:"Absent"},weight:p.weight||5,triggerWords:p.triggerWords||[],optimisedPrompt:p.optimisedPrompt||"",contentTip:p.contentTip||""}));
+      const seen=new Set();const deduped=[...topicPrompts,...archP].filter(p=>{const k=p.query.toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});
+      return{stage:sd.stage,desc:sd.desc,color:sd.color,prompts:deduped};
+    });
+  })();
   const brandGuidelines=[{area:"Entity Disambiguation",rule:"Establish "+cd.brand+" as a distinct entity across knowledge graph sources.",example:"Audit Wikidata, Knowledge Panel, Crunchbase for consistency."},{area:"Semantic Content Architecture",rule:"Structure content using topic clusters with pillar pages.",example:"Pillar: "+cd.brand+"'s Guide to "+(cd.topics[0]||cd.industry)},{area:"JSON-LD Schema",rule:"Deploy Organization, Product, FAQ, Article, Speakable schema.",example:"Every blog: Article schema with author, dates, FAQ markup."},{area:"E-E-A-T Signals",rule:"Every piece must demonstrate Experience, Expertise, Authority, Trust.",example:"Author bios with credentials, Person schema, cited sources."},{area:"Citation Velocity",rule:"Target DA50+ domains. 3 fresh citations beat 10 stale ones.",example:"Monthly: 2 guest articles DA60+, 3 HARO quotes, 1 data study."},{area:"Content Freshness",rule:"Quarterly review cycle. Update dateModified in schema.",example:"Flag pages >100 traffic/month for quarterly refresh."},{area:"Multi-Modal Content",rule:"Every piece in 2+ formats. Manual video transcripts.",example:"Guide → YouTube + infographic + LinkedIn carousel."},{area:"Competitor Response",rule:"Weekly monitoring. 14-day response to competitor citations.",example:"Monitor top-50 prompts weekly. Create displacement briefs."},{area:"Brand Narrative Consistency",rule:"150-word canonical description across all channels.",example:cd.brand+" is a "+(cd.region||"global")+" "+cd.industry+" company specialising in "+cd.topics.slice(0,3).join(", ")+"."},{area:"AI-Specific Formatting",rule:"Clear H2/H3, definitive answers in first 2 sentences.",example:"Direct claims with verifiable data points."}];
   const getChStatus=(chName)=>{if(!hasApi||!apiData.channelData||!apiData.channelData.channels)return null;return apiData.channelData.channels.find(c=>{const cn=c.channel||"";const parts=chName.split("/").map(s=>s.trim().toLowerCase());return parts.some(p=>cn.toLowerCase().includes(p))||cn.toLowerCase().includes(chName.toLowerCase());})||null;};
   const getRecSites=(type)=>{if(apiData&&apiData.deepData&&apiData.deepData.recommendedSites){const s=apiData.deepData.recommendedSites[type];if(Array.isArray(s)&&s.length>3)return s;}return null;};
@@ -1602,6 +1631,17 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
       <p style={{color:C.sub,fontSize:13,marginTop:3}}>How visible is {r.clientData.brand} at each stage of the customer journey? Prompts are weighted by their AEO impact.</p>
     </div>
 
+    <SectionNote text={`Prompts are sourced from your audit topics and user archetypes. Edit topics in Run AEO Audit, or explore who's searching in User Archetypes.`}/>
+
+    <div style={{display:"flex",gap:8,marginBottom:16}}>
+      <button onClick={()=>goTo("input")} style={{padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:600,border:`1px solid ${C.border}`,background:"#fff",color:C.sub,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .15s"}}>
+        <Icon name="zap" size={14} color={C.accent}/>Run AEO Audit
+      </button>
+      <button onClick={()=>goTo("archetypes")} style={{padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:600,border:`1px solid ${C.border}`,background:"#fff",color:C.sub,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .15s"}}>
+        <Icon name="lightbulb" size={14} color={C.accent}/>User Archetypes
+      </button>
+    </div>
+
     {/* Trigger word analysis */}
     <Card style={{marginBottom:16}}>
       <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:4}}>High-Impact Trigger Words</div>
@@ -1744,23 +1784,57 @@ function PromptVolumePage({r,goTo}){
   const[engine,setEngine]=useState("google");
   const[volumeData,setVolumeData]=useState(null);
   const[loading,setLoading]=useState(false);
+  const[selStage,setSelStage]=useState(0);
+  const[newPrompt,setNewPrompt]=useState("");
+  const[checking,setChecking]=useState(false);
+  const[customVolumes,setCustomVolumes]=useState([]);
+  const[dropOpen,setDropOpen]=useState(false);
 
-  const allPrompts=[];
-  const stages=r.funnelStages||[];
   const stageNames=["Awareness","Consideration","Decision","Retention"];
-  stages.forEach((s,si)=>{
-    (s.prompts||[]).forEach(p=>{
-      if(p.query)allPrompts.push({query:p.query,stage:stageNames[si]||s.stage||"Unknown"});
-    });
-  });
+  const stageColors=["#6366f1","#8b5cf6","#a855f7","#c084fc"];
+  const stageIcons=["search","scale","credit-card","refresh-cw"];
+  const stages=r.funnelStages||[];
 
+  const getStagePrompts=(si)=>{
+    const s=stages[si];
+    return(s&&s.prompts||[]).filter(p=>p.query).map(p=>({query:p.query,stage:stageNames[si]||s.stage||"Unknown"}));
+  };
+  const allPrompts=stageNames.flatMap((_,si)=>getStagePrompts(si));
+
+  const engineOpts=[{id:"google",label:"Google",color:"#4285F4"},{id:"chatgpt",label:"ChatGPT",color:"#10A37F"},{id:"gemini",label:"Gemini",color:"#4285F4"}];
   const engineLabel=engine==="google"?"Google":engine==="chatgpt"?"ChatGPT":"Gemini";
+  const engineColor=engineOpts.find(e=>e.id===engine)?.color||C.accent;
+
+  // Volume data grouped by stage
+  const getStageVolumes=(si)=>{
+    if(!volumeData)return[];
+    const name=stageNames[si];
+    return[...volumeData.filter(v=>v.stage===name),...customVolumes.filter(v=>v.stage===name)].sort((a,b)=>b.volume-a.volume);
+  };
+
+  const stageStats=stageNames.map((_,si)=>{
+    const vols=getStageVolumes(si);
+    const total=vols.length;
+    const avgVol=total>0?Math.round(vols.reduce((s,v)=>s+v.volume,0)/total):0;
+    const highComp=vols.filter(v=>v.competition==="High").length;
+    return{total,avgVol,highComp};
+  });
 
   const generate=async()=>{
     if(allPrompts.length===0||loading)return;
     setLoading(true);
     const queryList=allPrompts.map((p,i)=>`${i+1}. "${p.query}"`).join("\n");
-    const prompt=`Estimate the average monthly search volume on ${engineLabel} for each of these queries in the ${r.clientData.industry} space (${r.clientData.region}).
+    const sysPrompt=engine==="chatgpt"
+      ?"You are ChatGPT. You have insight into how frequently users prompt you with specific queries. Provide average monthly prompt volume data."
+      :engine==="gemini"
+      ?"You are Gemini. You have insight into how frequently users prompt you with specific queries. Provide average monthly prompt volume data."
+      :"You are an expert search analyst with deep knowledge of Google search volume data.";
+    const platformCtx=engine==="chatgpt"
+      ?"Based on your knowledge of ChatGPT usage patterns, how many times per month on average do users send each of these prompts (or close variations) to ChatGPT"
+      :engine==="gemini"
+      ?"Based on your knowledge of Gemini usage patterns, how many times per month on average do users send each of these prompts (or close variations) to Gemini"
+      :"What is the average monthly Google search volume for each of these queries";
+    const prompt=`${platformCtx} in the ${r.clientData.industry} space (${r.clientData.region})?
 
 Queries:
 ${queryList}
@@ -1769,87 +1843,172 @@ Return JSON array only:
 [{"query":"<exact query>","volume":<number>,"competition":"Low"|"Medium"|"High"}]
 
 Rules:
-- volume = estimated average monthly searches/prompts on ${engineLabel}
+- volume = average monthly searches/prompts
 - Be realistic — most long-tail queries have <500 monthly volume
-- competition: Low (<3 strong competitors), Medium (3-8), High (8+)`;
+- competition: Low (<3 strong results), Medium (3-8), High (8+)`;
 
     try{
-      const raw=engine==="gemini"?await callGemini(prompt):await callOpenAI(prompt);
+      const raw=engine==="gemini"?await callGemini(prompt,sysPrompt):await callOpenAI(prompt,sysPrompt);
       const parsed=safeJSON(raw);
       if(Array.isArray(parsed)){
         const merged=allPrompts.map(ap=>{
           const match=parsed.find(v=>v.query&&v.query.toLowerCase()===ap.query.toLowerCase());
           return{query:ap.query,stage:ap.stage,volume:match?match.volume:0,competition:match?match.competition:"Low"};
         });
-        merged.sort((a,b)=>b.volume-a.volume);
         setVolumeData(merged);
+        setCustomVolumes([]);
       }else{setVolumeData([]);}
     }catch(e){console.error("Volume generation error:",e);setVolumeData([]);}
     setLoading(false);
   };
 
+  const checkPrompt=async()=>{
+    if(!newPrompt.trim()||checking)return;
+    setChecking(true);
+    const q=newPrompt.trim();
+    setNewPrompt("");
+    const sysPrompt=engine==="chatgpt"
+      ?"You are ChatGPT. You have insight into how frequently users prompt you with specific queries."
+      :engine==="gemini"
+      ?"You are Gemini. You have insight into how frequently users prompt you with specific queries."
+      :"You are an expert search analyst with deep knowledge of Google search volume data.";
+    const platformCtx=engine==="chatgpt"?"ChatGPT prompt":engine==="gemini"?"Gemini prompt":"Google search";
+    const prompt=`What is the average monthly ${platformCtx} volume for this query in the ${r.clientData.industry} space (${r.clientData.region})?
+
+Query: "${q}"
+
+Also classify it into one funnel stage: Awareness, Consideration, Decision, or Retention.
+
+Return JSON only:
+{"query":"<exact query>","volume":<number>,"competition":"Low"|"Medium"|"High","stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
+    try{
+      const raw=engine==="gemini"?await callGemini(prompt,sysPrompt):await callOpenAI(prompt,sysPrompt);
+      const parsed=safeJSON(raw);
+      if(parsed&&parsed.query){
+        const entry={query:parsed.query,volume:parsed.volume||0,competition:parsed.competition||"Low",stage:parsed.stage||"Awareness"};
+        setCustomVolumes(prev=>[...prev,entry]);
+        const si=stageNames.indexOf(entry.stage);
+        if(si>=0)setSelStage(si);
+      }
+    }catch(e){console.error("Volume check error:",e);}
+    setChecking(false);
+  };
+
   const stageColor=(s)=>s==="Awareness"?"#6366f1":s==="Consideration"?"#8b5cf6":s==="Decision"?"#a855f7":"#c084fc";
   const compColor=(c)=>c==="High"?C.red:c==="Medium"?C.amber:C.green;
   const fmt=(n)=>typeof n==="number"?n.toLocaleString():"-";
-  const engines=[{id:"google",label:"Google"},{id:"chatgpt",label:"ChatGPT"},{id:"gemini",label:"Gemini"}];
 
-  const totalPrompts=volumeData?volumeData.length:0;
-  const avgVolume=totalPrompts>0?Math.round(volumeData.reduce((s,v)=>s+v.volume,0)/totalPrompts):0;
+  const currentVols=getStageVolumes(selStage);
+  const totalAll=volumeData?volumeData.length+customVolumes.length:customVolumes.length;
+  const allVols=[...(volumeData||[]),...customVolumes];
+  const avgAll=allVols.length>0?Math.round(allVols.reduce((s,v)=>s+v.volume,0)/allVols.length):0;
 
   return(<div>
     <div style={{marginBottom:24}}>
       <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0}}>Prompt Volume</h2>
-      <p style={{color:C.sub,fontSize:13,marginTop:3}}>Estimate monthly search volume for your audit prompts across search and AI platforms.</p>
+      <p style={{color:C.sub,fontSize:13,marginTop:3}}>Average monthly search and prompt volume for your audit queries across platforms.</p>
     </div>
 
-    <SectionNote text="Volume estimates are AI-generated approximations based on industry patterns. Use them to prioritise which prompts to create content for, not as exact figures."/>
+    <SectionNote text="Select a platform and generate volumes for all audit prompts, or check individual queries using the prompt bar below."/>
 
+    {/* Engine dropdown + Generate */}
     <Card style={{marginBottom:16}}>
-      <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:10}}>Select Platform</div>
-      <div style={{display:"flex",gap:8,marginBottom:16}}>
-        {engines.map(e=>(<button key={e.id} onClick={()=>setEngine(e.id)} style={{padding:"8px 20px",borderRadius:8,fontSize:13,fontWeight:600,border:`1.5px solid ${engine===e.id?C.accent:C.border}`,background:engine===e.id?`${C.accent}10`:"#fff",color:engine===e.id?C.accent:C.sub,cursor:"pointer",transition:"all .15s"}}>{e.label}</button>))}
+      <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+        <div style={{position:"relative"}}>
+          <button onClick={()=>setDropOpen(!dropOpen)} style={{padding:"9px 16px",borderRadius:8,fontSize:13,fontWeight:600,border:`1.5px solid ${C.border}`,background:"#fff",color:C.text,cursor:"pointer",display:"flex",alignItems:"center",gap:8,minWidth:140,transition:"all .15s"}}>
+            <span style={{width:8,height:8,borderRadius:"50%",background:engineColor}}/>
+            {engineLabel}
+            <span style={{marginLeft:"auto",fontSize:10,color:C.muted}}>{dropOpen?"▲":"▼"}</span>
+          </button>
+          {dropOpen&&<div style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,boxShadow:"0 4px 16px rgba(0,0,0,.08)",zIndex:10,minWidth:160,overflow:"hidden"}}>
+            {engineOpts.map(e=>(<div key={e.id} onClick={()=>{setEngine(e.id);setDropOpen(false);}} style={{padding:"10px 16px",fontSize:13,fontWeight:500,color:engine===e.id?C.accent:C.text,background:engine===e.id?`${C.accent}06`:"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"background .1s"}} onMouseEnter={ev=>ev.currentTarget.style.background=engine===e.id?`${C.accent}06`:C.surface} onMouseLeave={ev=>ev.currentTarget.style.background=engine===e.id?`${C.accent}06`:"transparent"}>
+              <span style={{width:8,height:8,borderRadius:"50%",background:e.color}}/>{e.label}
+              {engine===e.id&&<span style={{marginLeft:"auto",fontSize:11,color:C.accent}}>✓</span>}
+            </div>))}
+          </div>}
+        </div>
+        <button onClick={generate} disabled={loading||allPrompts.length===0} style={{padding:"9px 22px",background:loading?C.muted:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:loading?"not-allowed":"pointer",transition:"all .15s",display:"flex",alignItems:"center",gap:8}}>
+          {loading&&<span style={{width:14,height:14,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",display:"inline-block",animation:"spin .6s linear infinite"}}/>}
+          {loading?`Checking ${allPrompts.length} prompts...`:"Generate Volumes"}
+        </button>
+        {allPrompts.length>0&&<span style={{fontSize:11,color:C.muted}}>{allPrompts.length} prompts across {stageNames.length} stages</span>}
       </div>
-      <button onClick={generate} disabled={loading||allPrompts.length===0} style={{padding:"10px 24px",background:loading?C.muted:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:loading?"not-allowed":"pointer",transition:"all .15s",display:"flex",alignItems:"center",gap:8}}>
-        {loading&&<span style={{width:14,height:14,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",display:"inline-block",animation:"spin .6s linear infinite"}}/>}
-        {loading?"Generating...":"Generate Volumes"}
-      </button>
-      {allPrompts.length===0&&<div style={{fontSize:11,color:C.muted,marginTop:8}}>No prompts found — run an audit first.</div>}
+      {allPrompts.length===0&&<div style={{fontSize:11,color:C.muted,marginTop:10}}>No prompts found — run an audit first.</div>}
     </Card>
 
-    {volumeData&&volumeData.length>0&&<Card>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-        <div style={{fontSize:13,fontWeight:600,color:C.text}}>Volume Estimates — {engineLabel}</div>
-        <div style={{display:"flex",gap:12}}>
-          <Pill color={C.accent}>{totalPrompts} prompts</Pill>
-          <Pill color={C.green}>avg {fmt(avgVolume)}/mo</Pill>
+    {/* Check a prompt bar */}
+    <Card style={{marginBottom:16,background:`${C.accent}03`,borderColor:`${C.accent}20`}}>
+      <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:4}}>Check a Prompt</div>
+      <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Enter any query to get its {engineLabel} volume and competition level.</div>
+      <div style={{display:"flex",gap:8}}>
+        <input value={newPrompt} onChange={e=>setNewPrompt(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")checkPrompt();}}
+          placeholder={`e.g. "Best ${r.clientData.industry||"tech"} companies in ${r.clientData.region||"my area"}"`}
+          style={{flex:1,padding:"10px 16px",border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,color:C.text,outline:"none",background:"#fff"}}
+          onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
+        <button onClick={checkPrompt} disabled={!newPrompt.trim()||checking}
+          style={{padding:"10px 20px",background:!newPrompt.trim()||checking?"#d1d5db":C.accent,color:"#fff",border:"none",borderRadius:10,fontSize:13,fontWeight:600,cursor:!newPrompt.trim()||checking?"not-allowed":"pointer",whiteSpace:"nowrap",minWidth:120}}>
+          {checking?"Checking...":"Check Volume"}
+        </button>
+      </div>
+    </Card>
+
+    {/* Stage tabs */}
+    <div style={{display:"flex",gap:6,marginBottom:16}}>
+      {stageNames.map((name,i)=>{
+        const s=stageStats[i];const active=selStage===i;const color=stageColors[i];
+        return(<div key={i} onClick={()=>setSelStage(i)} style={{flex:1,padding:"12px 12px",cursor:"pointer",background:active?"#fff":C.surface,border:`1.5px solid ${active?color:C.border}`,borderRadius:10,textAlign:"center",transition:"all .15s",boxShadow:active?`0 2px 8px ${color}15`:"none"}}>
+          <div style={{marginBottom:4}}><Icon name={stageIcons[i]} size={18} color={color}/></div>
+          <div style={{fontSize:18,fontWeight:700,color:color}}>{s.total>0?fmt(s.avgVol):"-"}</div>
+          <div style={{fontSize:12,fontWeight:600,color:active?C.text:C.sub,marginTop:2}}>{name}</div>
+          <div style={{fontSize:10,color:C.muted,marginTop:2}}>{s.total} prompts</div>
+        </div>);
+      })}
+    </div>
+
+    {/* Summary bar */}
+    {allVols.length>0&&<div style={{display:"flex",gap:12,marginBottom:16}}>
+      <Pill color={C.accent}>{totalAll} prompts</Pill>
+      <Pill color={C.green}>avg {fmt(avgAll)}/mo</Pill>
+      <Pill color={engineColor}>{engineLabel}</Pill>
+    </div>}
+
+    {/* Stage detail table */}
+    {(()=>{
+      if(!volumeData&&customVolumes.length===0)return(<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>
+        <div style={{marginBottom:8}}><Icon name="bar-chart" size={28} color={C.muted}/></div>
+        Select a platform and click Generate Volumes to see data.
+      </div></Card>);
+      const vols=currentVols;const color=stageColors[selStage];
+      if(vols.length===0)return(<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>No volume data for {stageNames[selStage]}.</div></Card>);
+      return(<Card style={{padding:0,overflow:"hidden"}}>
+        <div style={{padding:"16px 20px",borderBottom:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <Icon name={stageIcons[selStage]} size={18} color={color}/>
+            <h3 style={{fontSize:16,fontWeight:700,color:color,margin:0}}>{stageNames[selStage]}</h3>
+          </div>
+          <div style={{display:"flex",gap:6}}>
+            <Pill color={color}>{vols.length} prompts</Pill>
+            <Pill color={C.green}>avg {fmt(stageStats[selStage].avgVol)}/mo</Pill>
+          </div>
         </div>
-      </div>
-
-      <div style={{overflowX:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-          <thead>
-            <tr style={{borderBottom:`2px solid ${C.border}`}}>
-              <th style={{textAlign:"left",padding:"8px 10px",color:C.muted,fontWeight:600,fontSize:10,textTransform:"uppercase"}}>#</th>
-              <th style={{textAlign:"left",padding:"8px 10px",color:C.muted,fontWeight:600,fontSize:10,textTransform:"uppercase"}}>Prompt</th>
-              <th style={{textAlign:"left",padding:"8px 10px",color:C.muted,fontWeight:600,fontSize:10,textTransform:"uppercase"}}>Stage</th>
-              <th style={{textAlign:"right",padding:"8px 10px",color:C.muted,fontWeight:600,fontSize:10,textTransform:"uppercase"}}>Est. Monthly Volume</th>
-              <th style={{textAlign:"center",padding:"8px 10px",color:C.muted,fontWeight:600,fontSize:10,textTransform:"uppercase"}}>Competition</th>
-            </tr>
-          </thead>
-          <tbody>
-            {volumeData.map((v,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
-              <td style={{padding:"10px 10px",color:C.muted,fontWeight:500}}>{i+1}</td>
-              <td style={{padding:"10px 10px",color:C.text,fontWeight:500,maxWidth:340}}>{v.query}</td>
-              <td style={{padding:"10px 10px"}}><Pill color={stageColor(v.stage)}>{v.stage}</Pill></td>
-              <td style={{padding:"10px 10px",textAlign:"right",fontWeight:700,color:C.text,fontVariantNumeric:"tabular-nums"}}>{fmt(v.volume)}</td>
-              <td style={{padding:"10px 10px",textAlign:"center"}}><Pill color={compColor(v.competition)}>{v.competition}</Pill></td>
-            </tr>))}
-          </tbody>
-        </table>
-      </div>
-    </Card>}
-
-    {volumeData&&volumeData.length===0&&<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>No volume data returned. Try again or switch platforms.</div></Card>}
+        {/* Column headers */}
+        <div style={{display:"grid",gridTemplateColumns:"40px 1fr 110px 90px",padding:"8px 20px",borderBottom:`2px solid ${C.borderSoft}`,background:C.bg}}>
+          <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>#</span>
+          <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Prompt</span>
+          <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",textAlign:"right"}}>Monthly Volume</span>
+          <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",textAlign:"center"}}>Competition</span>
+        </div>
+        {vols.map((v,j)=>(<div key={j} style={{display:"grid",gridTemplateColumns:"40px 1fr 110px 90px",padding:"10px 20px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center",transition:"background .1s"}} onMouseEnter={ev=>ev.currentTarget.style.background=`${color}04`} onMouseLeave={ev=>ev.currentTarget.style.background="transparent"}>
+          <span style={{fontSize:12,color:C.muted,fontWeight:500}}>{j+1}</span>
+          <div>
+            <span style={{fontSize:12,color:C.text,lineHeight:1.4}}>"{v.query}"</span>
+            {customVolumes.includes(v)&&<span style={{fontSize:9,fontWeight:600,color:C.accent,padding:"1px 5px",background:`${C.accent}10`,borderRadius:3,marginLeft:6}}>CUSTOM</span>}
+          </div>
+          <span style={{fontSize:13,fontWeight:700,color:C.text,textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{fmt(v.volume)}</span>
+          <div style={{textAlign:"center"}}><Pill color={compColor(v.competition)}>{v.competition}</Pill></div>
+        </div>))}
+      </Card>);
+    })()}
 
     <NavBtn onClick={()=>goTo("channels")} label="Next: AEO Channels →"/>
   </div>);
