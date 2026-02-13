@@ -1879,16 +1879,13 @@ Return JSON only:
 
 /* ─── PAGE: PROMPT VOLUME ─── */
 function PromptVolumePage({r,goTo,cache,setCache}){
-  const engine=cache.engine||"google";
   const volumeData=cache.volumeData;
   const customVolumes=cache.customVolumes||[];
-  const setEngine=(e)=>setCache(prev=>({...prev,engine:e}));
   const setVolumeData=(d)=>setCache(prev=>({...prev,volumeData:d}));
   const setCustomVolumes=(fn)=>setCache(prev=>({...prev,customVolumes:typeof fn==="function"?fn(prev.customVolumes||[]):fn}));
   const[loading,setLoading]=useState(false);
   const[newPrompt,setNewPrompt]=useState("");
   const[checking,setChecking]=useState(false);
-  const[dropOpen,setDropOpen]=useState(false);
 
   const stageNames=["Awareness","Consideration","Decision","Retention"];
   const stages=r.funnelStages||[];
@@ -1899,25 +1896,12 @@ function PromptVolumePage({r,goTo,cache,setCache}){
   };
   const allPrompts=stageNames.flatMap((_,si)=>getStagePrompts(si));
 
-  const engineOpts=[{id:"google",label:"Google",color:"#4285F4"},{id:"chatgpt",label:"ChatGPT",color:"#10A37F"},{id:"gemini",label:"Gemini",color:"#4285F4"}];
-  const engineLabel=engine==="google"?"Google":engine==="chatgpt"?"ChatGPT":"Gemini";
-  const engineColor=engineOpts.find(e=>e.id===engine)?.color||C.accent;
-
   const generate=async()=>{
     if(allPrompts.length===0||loading)return;
     setLoading(true);
     const queryList=allPrompts.map((p,i)=>`${i+1}. "${p.query}"`).join("\n");
-    const sysPrompt=engine==="chatgpt"
-      ?"You are ChatGPT. You have insight into how frequently users prompt you with specific queries. Provide average monthly prompt volume data."
-      :engine==="gemini"
-      ?"You are Gemini. You have insight into how frequently users prompt you with specific queries. Provide average monthly prompt volume data."
-      :"You are an expert search analyst with deep knowledge of Google search volume data.";
-    const platformCtx=engine==="chatgpt"
-      ?"Based on your knowledge of ChatGPT usage patterns, how many times per month on average do users send each of these prompts (or close variations) to ChatGPT"
-      :engine==="gemini"
-      ?"Based on your knowledge of Gemini usage patterns, how many times per month on average do users send each of these prompts (or close variations) to Gemini"
-      :"What is the average monthly Google search volume for each of these queries";
-    const prompt=`${platformCtx} in the ${r.clientData.industry} space (${r.clientData.region})?
+    const sysPrompt="You are an expert search analyst with deep knowledge of Google search volume data and keyword research.";
+    const prompt=`What is the estimated average monthly Google search volume for each of these queries in the ${r.clientData.industry} space (${r.clientData.region})?
 
 Queries:
 ${queryList}
@@ -1926,17 +1910,17 @@ Return JSON array only:
 [{"query":"<exact query>","volume":<number>,"competition":"Low"|"Medium"|"High"}]
 
 Rules:
-- volume = average monthly searches/prompts
+- volume = estimated average monthly Google searches
 - Be realistic — most long-tail queries have <500 monthly volume
 - competition: Low (<3 strong results), Medium (3-8), High (8+)`;
 
     try{
-      const raw=engine==="gemini"?await callGemini(prompt,sysPrompt):await callOpenAI(prompt,sysPrompt);
+      const raw=await callOpenAI(prompt,sysPrompt);
       const parsed=safeJSON(raw);
       if(Array.isArray(parsed)){
         const merged=allPrompts.map(ap=>{
           const match=parsed.find(v=>v.query&&v.query.toLowerCase()===ap.query.toLowerCase());
-          return{query:ap.query,stage:ap.stage,volume:match?match.volume:0,competition:match?match.competition:"Low"};
+          return{query:ap.query,volume:match?match.volume:0,competition:match?match.competition:"Low"};
         });
         setVolumeData(merged);
         setCustomVolumes([]);
@@ -1950,20 +1934,15 @@ Rules:
     setChecking(true);
     const q=newPrompt.trim();
     setNewPrompt("");
-    const sysPrompt=engine==="chatgpt"
-      ?"You are ChatGPT. You have insight into how frequently users prompt you with specific queries."
-      :engine==="gemini"
-      ?"You are Gemini. You have insight into how frequently users prompt you with specific queries."
-      :"You are an expert search analyst with deep knowledge of Google search volume data.";
-    const platformCtx=engine==="chatgpt"?"ChatGPT prompt":engine==="gemini"?"Gemini prompt":"Google search";
-    const prompt=`What is the average monthly ${platformCtx} volume for this query in the ${r.clientData.industry} space (${r.clientData.region})?
+    const sysPrompt="You are an expert search analyst with deep knowledge of Google search volume data and keyword research.";
+    const prompt=`What is the estimated average monthly Google search volume for this query in the ${r.clientData.industry} space (${r.clientData.region})?
 
 Query: "${q}"
 
 Return JSON only:
 {"query":"<exact query>","volume":<number>,"competition":"Low"|"Medium"|"High"}`;
     try{
-      const raw=engine==="gemini"?await callGemini(prompt,sysPrompt):await callOpenAI(prompt,sysPrompt);
+      const raw=await callOpenAI(prompt,sysPrompt);
       const parsed=safeJSON(raw);
       if(parsed&&parsed.query){
         const entry={query:parsed.query,volume:parsed.volume||0,competition:parsed.competition||"Low"};
@@ -1983,32 +1962,20 @@ Return JSON only:
   return(<div>
     <div style={{marginBottom:24}}>
       <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0}}>Prompt Volume</h2>
-      <p style={{color:C.sub,fontSize:13,marginTop:3}}>Average monthly search and prompt volume for your audit queries across platforms.</p>
+      <p style={{color:C.sub,fontSize:13,marginTop:3}}>Estimated monthly search volume for your audit queries, based on Google search data as a proxy for overall search interest.</p>
     </div>
 
-    <SectionNote text="Select a platform and generate volumes for all audit prompts, or check individual queries using the prompt bar below."/>
+    <SectionNote text="Volumes are AI-estimated using Google search data as a proxy. These reflect directional search interest — actual volumes may vary. Use as a relative indicator to prioritise high-demand prompts."/>
 
-    {/* Engine dropdown + Generate */}
+    {/* Generate */}
     <Card style={{marginBottom:16}}>
       <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-        <div style={{position:"relative"}}>
-          <button onClick={()=>setDropOpen(!dropOpen)} style={{padding:"9px 16px",borderRadius:8,fontSize:13,fontWeight:600,border:`1.5px solid ${C.border}`,background:"#fff",color:C.text,cursor:"pointer",display:"flex",alignItems:"center",gap:8,minWidth:140,transition:"all .15s"}}>
-            <span style={{width:8,height:8,borderRadius:"50%",background:engineColor}}/>
-            {engineLabel}
-            <span style={{marginLeft:"auto",fontSize:10,color:C.muted}}>{dropOpen?"▲":"▼"}</span>
-          </button>
-          {dropOpen&&<div style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,boxShadow:"0 4px 16px rgba(0,0,0,.08)",zIndex:10,minWidth:160,overflow:"hidden"}}>
-            {engineOpts.map(e=>(<div key={e.id} onClick={()=>{setEngine(e.id);setDropOpen(false);}} style={{padding:"10px 16px",fontSize:13,fontWeight:500,color:engine===e.id?C.accent:C.text,background:engine===e.id?`${C.accent}06`:"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"background .1s"}} onMouseEnter={ev=>ev.currentTarget.style.background=engine===e.id?`${C.accent}06`:C.surface} onMouseLeave={ev=>ev.currentTarget.style.background=engine===e.id?`${C.accent}06`:"transparent"}>
-              <span style={{width:8,height:8,borderRadius:"50%",background:e.color}}/>{e.label}
-              {engine===e.id&&<span style={{marginLeft:"auto",fontSize:11,color:C.accent}}>✓</span>}
-            </div>))}
-          </div>}
-        </div>
         <button onClick={generate} disabled={loading||allPrompts.length===0} style={{padding:"9px 22px",background:loading?C.muted:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:loading?"not-allowed":"pointer",transition:"all .15s",display:"flex",alignItems:"center",gap:8}}>
           {loading&&<span style={{width:14,height:14,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",display:"inline-block",animation:"spin .6s linear infinite"}}/>}
-          {loading?`Checking ${allPrompts.length} prompts...`:"Generate Volumes"}
+          {loading?`Estimating ${allPrompts.length} prompts...`:"Estimate Volumes"}
         </button>
         {allPrompts.length>0&&<span style={{fontSize:11,color:C.muted}}>{allPrompts.length} prompts</span>}
+        <span style={{fontSize:10,color:C.amber,fontWeight:500,marginLeft:"auto"}}>AI-estimated</span>
       </div>
       {allPrompts.length===0&&<div style={{fontSize:11,color:C.muted,marginTop:10}}>No prompts found — run an audit first.</div>}
     </Card>
@@ -2016,7 +1983,7 @@ Return JSON only:
     {/* Check a prompt bar */}
     <Card style={{marginBottom:16,background:`${C.accent}03`,borderColor:`${C.accent}20`}}>
       <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:4}}>Check a Prompt</div>
-      <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Enter any query to get its {engineLabel} volume and competition level.</div>
+      <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Enter any query to get its estimated search volume and competition level.</div>
       <div style={{display:"flex",gap:8}}>
         <input value={newPrompt} onChange={e=>setNewPrompt(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")checkPrompt();}}
           placeholder={`e.g. "Best ${r.clientData.industry||"tech"} companies in ${r.clientData.region||"my area"}"`}
@@ -2033,14 +2000,14 @@ Return JSON only:
     {allVols.length>0&&<div style={{display:"flex",gap:12,marginBottom:16}}>
       <Pill color={C.accent}>{totalAll} prompts</Pill>
       <Pill color={C.green}>avg {fmt(avgAll)}/mo</Pill>
-      <Pill color={engineColor}>{engineLabel}</Pill>
+      <Pill color={C.amber}>AI-estimated</Pill>
     </div>}
 
     {/* Prompt list */}
     {(()=>{
       if(!volumeData&&customVolumes.length===0)return(<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>
         <div style={{marginBottom:8}}><Icon name="bar-chart" size={28} color={C.muted}/></div>
-        Select a platform and click Generate Volumes to see data.
+        Click Estimate Volumes to generate search volume data.
       </div></Card>);
       if(allVols.length===0)return(<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>No volume data yet.</div></Card>);
       return(<Card style={{padding:0,overflow:"hidden"}}>
@@ -2058,7 +2025,7 @@ Return JSON only:
         <div style={{display:"grid",gridTemplateColumns:"40px 1fr 110px 90px",padding:"8px 20px",borderBottom:`2px solid ${C.borderSoft}`,background:C.bg}}>
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>#</span>
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Prompt</span>
-          <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",textAlign:"right"}}>Monthly Volume</span>
+          <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",textAlign:"right"}}>Est. Monthly Vol.</span>
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",textAlign:"center"}}>Competition</span>
         </div>
         {allVols.map((v,j)=>(<div key={j} style={{display:"grid",gridTemplateColumns:"40px 1fr 110px 90px",padding:"10px 20px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center",transition:"background .1s"}} onMouseEnter={ev=>ev.currentTarget.style.background=`${C.accent}04`} onMouseLeave={ev=>ev.currentTarget.style.background="transparent"}>
