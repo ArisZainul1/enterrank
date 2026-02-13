@@ -1481,10 +1481,6 @@ function IntentPage({r,goTo}){
   });
 
   const allPrompts=stageNames.flatMap((_,si)=>getMergedPrompts(si));
-  const totalCited=allPrompts.filter(p=>p.status==="Cited").length;
-  const totalMentioned=allPrompts.filter(p=>p.status==="Mentioned").length;
-  const totalAll=allPrompts.length||1;
-  const funnelScore=Math.round((totalCited*1+totalMentioned*0.5)/totalAll*100);
 
   // Aggregate trigger word analysis
   const allTriggers={};
@@ -1567,52 +1563,23 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
       <p style={{color:C.sub,fontSize:13,marginTop:3}}>How visible is {r.clientData.brand} at each stage of the customer journey? Prompts are weighted by their AEO impact.</p>
     </div>
 
-    {/* Funnel overview + trigger word analysis side by side */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
-      <Card>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-          <div>
-            <div style={{fontSize:13,fontWeight:600,color:C.text}}>Funnel Visibility</div>
-            <div style={{fontSize:11,color:C.muted}}>{allPrompts.length} prompts · weighted by AEO impact</div>
-          </div>
-          <div style={{fontSize:28,fontWeight:800,color:funnelScore>=40?C.green:funnelScore>=20?C.amber:C.red,fontFamily:"'Outfit'"}}>{funnelScore}%</div>
-        </div>
-        <div style={{display:"flex",gap:4,marginBottom:6}}>
-          <Pill color={C.green}>{totalCited} Cited</Pill>
-          <Pill color={C.amber}>{totalMentioned} Mentioned</Pill>
-          <Pill color={C.red}>{allPrompts.length-totalCited-totalMentioned} Absent</Pill>
-        </div>
-        <div style={{display:"flex",gap:4,height:6,borderRadius:4,overflow:"hidden"}}>
-          {stageNames.map((_,si)=>{const s=stageStats[si];const t=s.total||1;
-            return(<div key={si} style={{flex:1,background:C.bg,borderRadius:3,overflow:"hidden",display:"flex"}}>
-              <div style={{width:`${(s.cited/t)*100}%`,background:C.green}}/>
-              <div style={{width:`${(s.mentioned/t)*100}%`,background:C.amber}}/>
-            </div>);
-          })}
-        </div>
-        <div style={{display:"flex",gap:4,marginTop:4}}>
-          {stageNames.map((n,i)=>(<div key={i} style={{flex:1,textAlign:"center",fontSize:9,color:C.muted}}>{n}</div>))}
-        </div>
-      </Card>
-
-      {/* Trigger word analysis */}
-      <Card>
-        <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:4}}>High-Impact Trigger Words</div>
-        <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Words in prompts that influence AI citation behavior for {r.clientData.industry}.</div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-          {triggerRank.length>0?triggerRank.map((t,i)=>{
-            const eff=t.count>0?Math.round(((t.cited+t.mentioned*0.5)/t.count)*100):0;
-            return(<div key={i} style={{padding:"4px 10px",borderRadius:6,fontSize:11,fontWeight:600,
-              background:eff>=50?`${C.green}10`:eff>=25?`${C.amber}10`:`${C.red}06`,
-              color:eff>=50?C.green:eff>=25?C.amber:C.red,
-              border:`1px solid ${eff>=50?`${C.green}25`:eff>=25?`${C.amber}25`:`${C.red}15`}`}}>
-              {t.word} <span style={{opacity:.6,fontWeight:400}}>×{t.count}</span>
-              <span style={{marginLeft:4,fontSize:9}}>{eff}% effective</span>
-            </div>);
-          }):<span style={{fontSize:11,color:C.muted}}>Run audit to see trigger words</span>}
-        </div>
-      </Card>
-    </div>
+    {/* Trigger word analysis */}
+    <Card style={{marginBottom:16}}>
+      <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:4}}>High-Impact Trigger Words</div>
+      <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Words in prompts that influence AI citation behavior for {r.clientData.industry}.</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+        {triggerRank.length>0?triggerRank.map((t,i)=>{
+          const eff=t.count>0?Math.round(((t.cited+t.mentioned*0.5)/t.count)*100):0;
+          return(<div key={i} style={{padding:"4px 10px",borderRadius:6,fontSize:11,fontWeight:600,
+            background:eff>=50?`${C.green}10`:eff>=25?`${C.amber}10`:`${C.red}06`,
+            color:eff>=50?C.green:eff>=25?C.amber:C.red,
+            border:`1px solid ${eff>=50?`${C.green}25`:eff>=25?`${C.amber}25`:`${C.red}15`}`}}>
+            {t.word} <span style={{opacity:.6,fontWeight:400}}>×{t.count}</span>
+            <span style={{marginLeft:4,fontSize:9}}>{eff}% effective</span>
+          </div>);
+        }):<span style={{fontSize:11,color:C.muted}}>Run audit to see trigger words</span>}
+      </div>
+    </Card>
 
     {/* Add prompt input */}
     <Card style={{marginBottom:16,background:`${C.accent}03`,borderColor:`${C.accent}20`}}>
@@ -1668,12 +1635,11 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
           </div>
         </div>
         {/* Column headers */}
-        <div style={{display:"grid",gridTemplateColumns:"46px 1fr 60px 60px 60px",padding:"8px 20px",borderBottom:`2px solid ${C.borderSoft}`,background:C.bg}}>
+        <div style={{display:"grid",gridTemplateColumns:"46px 1fr 60px 60px",padding:"8px 20px",borderBottom:`2px solid ${C.borderSoft}`,background:C.bg}}>
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Weight</span>
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Prompt</span>
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}>ChatGPT</span>
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}>Gemini</span>
-          <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}>Overall</span>
         </div>
         {sorted.map((p,j)=>{
           const eng=p.engines||{};
@@ -1684,7 +1650,7 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
           const hasTips=p.optimisedPrompt||p.contentTip||(p.triggerWords&&p.triggerWords.length>0);
           return(<div key={j}>
             <div onClick={()=>hasTips&&setExpandedRow(isExpanded?null:`${selStage}-${j}`)}
-              style={{display:"grid",gridTemplateColumns:"46px 1fr 60px 60px 60px",padding:"10px 20px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center",
+              style={{display:"grid",gridTemplateColumns:"46px 1fr 60px 60px",padding:"10px 20px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center",
                 background:p.custom?`${C.accent}04`:isExpanded?`${color}04`:"transparent",cursor:hasTips?"pointer":"default",transition:"background .1s"}}>
               {/* Weight badge */}
               <div style={{display:"flex",alignItems:"center",gap:4}}>
@@ -1704,7 +1670,6 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
                 <span style={{fontSize:12,fontWeight:700,color:statusColor(gemS)}}>{statusIcon(gemS)}</span>
                 <div style={{fontSize:9,color:statusColor(gemS),marginTop:1}}>{gemS}</div>
               </div>
-              <span style={{textAlign:"center"}}><Pill color={statusColor(p.status||"Absent")}>{p.status||"Absent"}</Pill></span>
             </div>
             {/* Expanded detail row */}
             {isExpanded&&<div style={{padding:"12px 20px 14px 66px",borderBottom:`1px solid ${C.borderSoft}`,background:`${color}03`}}>
