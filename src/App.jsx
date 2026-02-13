@@ -460,20 +460,29 @@ Be accurate. "Cited" = you would link to their website. "Mentioned" = you'd name
   // ── Step 6b: Intent Pathway — real data from BOTH engines ──
   onProgress("Testing intent pathway prompts...",58);
   const intentPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}.
+Competitors: ${compNames.join(", ")}.
 
-Create an intent funnel with 4 stages. For each stage, list 5-7 realistic prompts a user would type into an AI engine. For each prompt, assess whether ChatGPT and Gemini would mention/cite ${brand}.
+Create an intent funnel with 4 stages. For each stage, list 6-8 realistic prompts a real user would actually type into ChatGPT or Gemini. For each prompt, honestly assess whether each engine would mention or cite ${brand}.
 
-Return JSON:
+Website data: ${crawlSummary.slice(0,400)}
+
+Return JSON array:
 [
   {"stage":"Awareness","desc":"User discovers the category","color":"#6366f1","prompts":[
     {"query":"<real user prompt>","engines":{"gpt":"Cited"|"Mentioned"|"Absent","gemini":"Cited"|"Mentioned"|"Absent"}}
   ]},
   {"stage":"Consideration","desc":"User evaluates options","color":"#8b5cf6","prompts":[...]},
-  {"stage":"Decision","desc":"User ready to choose","color":"#a855f7","prompts":[...]},
+  {"stage":"Decision","desc":"User ready to commit","color":"#a855f7","prompts":[...]},
   {"stage":"Retention","desc":"User seeks ongoing value","color":"#c084fc","prompts":[...]}
 ]
 
-Be accurate. Most queries will be "Absent" if ${brand} has low visibility. ChatGPT and Gemini may differ.`;
+Rules:
+- "Cited" = the engine would directly link to or quote from ${brand}'s website
+- "Mentioned" = the engine would name ${brand} but not cite the site
+- "Absent" = the engine would NOT mention ${brand} at all
+- Be strict. Most small/medium brands will be "Absent" for generic queries.
+- Include competitor comparison prompts, "best of" queries, pricing queries, review queries etc.
+- Each stage MUST have at least 6 prompts.`;
 
   const[intentGptRaw,intentGemRaw]=await Promise.all([
     callOpenAI(intentPrompt, engineSystemPrompt),
@@ -847,9 +856,17 @@ function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,s
 /* ─── VISIBILITY CHART — Bar chart with hover scores ─── */
 function VisibilityChart({engines,overall,brand}){
   const[hover,setHover]=useState(null);
-  const maxScore=100;
   const getGrade=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
   const gradeColor=(s)=>s>=80?C.green:s>=60?"#10A37F":s>=40?C.amber:s>=20?"#f97316":C.red;
+  // Build 4 bars: GPT Mentions, GPT Citations, Gemini Mentions, Gemini Citations
+  const bars=[
+    {label:"Mentions",engine:engines[0]?.name||"ChatGPT",value:engines[0]?.mentionRate||0,color:engines[0]?.color||"#10A37F",Logo:engines[0]?.Logo,sub:"mention"},
+    {label:"Citations",engine:engines[0]?.name||"ChatGPT",value:engines[0]?.citationRate||0,color:`${engines[0]?.color||"#10A37F"}99`,Logo:engines[0]?.Logo,sub:"cite"},
+    {label:"Mentions",engine:engines[1]?.name||"Gemini",value:engines[1]?.mentionRate||0,color:engines[1]?.color||"#4285F4",Logo:engines[1]?.Logo,sub:"mention"},
+    {label:"Citations",engine:engines[1]?.name||"Gemini",value:engines[1]?.citationRate||0,color:`${engines[1]?.color||"#4285F4"}99`,Logo:engines[1]?.Logo,sub:"cite"},
+  ];
+  const maxVal=100;
+  const barH=140;
   return(<div>
     <div style={{marginBottom:20}}>
       <div style={{fontSize:13,color:C.muted,marginBottom:6,fontWeight:500}}>Visibility Score for {brand}</div>
@@ -858,28 +875,33 @@ function VisibilityChart({engines,overall,brand}){
         <span style={{fontSize:14,fontWeight:600,color:gradeColor(overall),fontFamily:"'Outfit'",padding:"3px 10px",background:`${gradeColor(overall)}12`,borderRadius:20}}>{getGrade(overall)}</span>
       </div>
     </div>
-    {/* Engine bars — horizontal */}
-    <div style={{display:"flex",flexDirection:"column",gap:14}}>
-      {engines.map((e,i)=>{
-        const pct=Math.max(2,e.score);
-        return(<div key={e.id} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)} style={{cursor:"default"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <e.Logo size={16}/>
-              <span style={{fontSize:13,fontWeight:600,color:C.text,fontFamily:"'Outfit'"}}>{e.name}</span>
-            </div>
-            <span style={{fontSize:13,fontWeight:700,color:hover===i?e.color:C.text,fontFamily:"'Outfit'",transition:"color .2s"}}>{e.score}%</span>
+    {/* Vertical bar chart */}
+    <div style={{display:"flex",alignItems:"flex-end",gap:0,paddingTop:8}}>
+      {bars.map((b,i)=>{
+        const h=Math.max(4,(b.value/maxVal)*barH);
+        const isGap=i===2; // gap between engine groups
+        return(<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",marginLeft:isGap?20:0}}
+          onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)}>
+          {/* Value label on top */}
+          <div style={{fontSize:13,fontWeight:700,color:hover===i?b.color:C.text,fontFamily:"'Outfit'",marginBottom:6,transition:"color .2s"}}>{b.value}%</div>
+          {/* Bar */}
+          <div style={{width:"100%",maxWidth:56,height:barH,background:C.bg,borderRadius:"8px 8px 0 0",border:`1px solid ${C.borderSoft}`,borderBottom:"none",position:"relative",overflow:"hidden",display:"flex",alignItems:"flex-end"}}>
+            <div style={{width:"100%",height:h,background:b.sub==="cite"?`repeating-linear-gradient(135deg,${b.color},${b.color} 3px,transparent 3px,transparent 6px)`:b.color,borderRadius:"6px 6px 0 0",transition:"height .6s ease-out",opacity:hover===i?1:.85}}/>
           </div>
-          <div style={{height:10,background:C.bg,borderRadius:6,overflow:"hidden",border:`1px solid ${C.borderSoft}`}}>
-            <div style={{height:"100%",width:`${pct}%`,background:`linear-gradient(90deg, ${e.color}cc, ${e.color})`,borderRadius:5,transition:"width .6s ease-out, opacity .2s",opacity:hover===i?1:.85}}/>
-          </div>
-          {/* Sub-metrics */}
-          <div style={{display:"flex",gap:16,marginTop:5}}>
-            <span style={{fontSize:11,color:C.muted}}>Mentions: <span style={{fontWeight:600,color:C.sub}}>{e.mentionRate}%</span></span>
-            <span style={{fontSize:11,color:C.muted}}>Citations: <span style={{fontWeight:600,color:C.sub}}>{e.citationRate}%</span></span>
+          {/* X-axis label */}
+          <div style={{borderTop:`2px solid ${C.border}`,width:"100%",maxWidth:56,paddingTop:8,textAlign:"center"}}>
+            <div style={{fontSize:10,fontWeight:600,color:C.sub}}>{b.label}</div>
           </div>
         </div>);
       })}
+    </div>
+    {/* Engine legend below */}
+    <div style={{display:"flex",justifyContent:"center",gap:24,marginTop:14}}>
+      {engines.map(e=>(<div key={e.id} style={{display:"flex",alignItems:"center",gap:6}}>
+        <e.Logo size={14}/>
+        <span style={{fontSize:12,fontWeight:600,color:C.sub,fontFamily:"'Outfit'"}}>{e.name}</span>
+        <span style={{fontSize:11,color:C.muted}}>({e.score}%)</span>
+      </div>))}
     </div>
   </div>);
 }
@@ -1414,112 +1436,196 @@ function ArchetypesPage({r,goTo}){
 
 /* ─── PAGE: INTENT PATHWAY ─── */
 function IntentPage({r,goTo}){
-  // Flatten all archetypes from all groups
-  const allArchetypes=r.stakeholders.flatMap(sg=>sg.archetypes.map(a=>({...a,groupName:sg.group,groupIcon:sg.icon})));
-  const[selArch,setSelArch]=useState(0);
   const[selStage,setSelStage]=useState(0);
-  const arch=allArchetypes[selArch]||allArchetypes[0];
-  const journey=arch.journey||[];
+  const[customPrompts,setCustomPrompts]=useState({0:[],1:[],2:[],3:[]});
+  const[newPrompt,setNewPrompt]=useState("");
+  const[testing,setTesting]=useState(false);
   const stageColors=["#6366f1","#8b5cf6","#a855f7","#c084fc"];
-  const stageNames=["Awareness","Consideration","Transaction","Retention"];
-  const stageDescs=["User discovers the problem or category","User evaluates and compares options","User is ready to purchase or commit","Existing user seeks ongoing value"];
+  const stageNames=["Awareness","Consideration","Decision","Retention"];
+  const stageDescs=["User discovers the problem or category","User evaluates and compares options","User is ready to purchase or commit","User seeks ongoing value"];
+  const stageIcons=["🔍","⚖️","💳","🔄"];
 
-  // Compute stats per stage for the selected archetype
-  const stageStats=journey.map(s=>{const prompts=s.prompts||[];return{cited:prompts.filter(p=>p.status==="Cited").length,mentioned:prompts.filter(p=>p.status==="Mentioned").length,absent:prompts.filter(p=>p.status==="Absent").length,total:prompts.length};});
+  // Use funnelStages from audit (not archetype-based)
+  const stages=r.funnelStages||[];
 
-  // Overall archetype visibility across all stages
-  const allPrompts=journey.flatMap(s=>s.prompts||[]);
-  const archCited=allPrompts.filter(p=>p.status==="Cited").length;
-  const archMentioned=allPrompts.filter(p=>p.status==="Mentioned").length;
-  const archTotal=allPrompts.length||1;
-  const archVisibility=Math.round((archCited*1+archMentioned*0.5)/archTotal*100);
+  // Merge API prompts + user custom prompts per stage
+  const getMergedPrompts=(si)=>{
+    const apiPrompts=(stages[si]&&stages[si].prompts)||[];
+    const custom=customPrompts[si]||[];
+    return[...apiPrompts,...custom];
+  };
+
+  // Stats per stage
+  const stageStats=stageNames.map((_,si)=>{
+    const prompts=getMergedPrompts(si);
+    return{cited:prompts.filter(p=>p.status==="Cited").length,mentioned:prompts.filter(p=>p.status==="Mentioned").length,absent:prompts.filter(p=>p.status==="Absent").length,total:prompts.length};
+  });
+
+  // Overall funnel stats
+  const allPrompts=stageNames.flatMap((_,si)=>getMergedPrompts(si));
+  const totalCited=allPrompts.filter(p=>p.status==="Cited").length;
+  const totalMentioned=allPrompts.filter(p=>p.status==="Mentioned").length;
+  const totalAll=allPrompts.length||1;
+  const funnelScore=Math.round((totalCited*1+totalMentioned*0.5)/totalAll*100);
+
+  // Test a custom prompt against both engines
+  const testPrompt=async()=>{
+    if(!newPrompt.trim()||testing)return;
+    setTesting(true);
+    const q=newPrompt.trim();
+    setNewPrompt("");
+    try{
+      const testPr=`A user typed this prompt into your AI engine: "${q}"
+
+Would you mention or cite "${r.clientData.brand}" (${r.clientData.industry}, ${r.clientData.website}) in your response?
+
+Return JSON only:
+{"status":"Cited"|"Mentioned"|"Absent","reason":"<brief 1-sentence explanation>"}
+
+Rules: "Cited" = you would link/reference their website. "Mentioned" = you would name the brand. "Absent" = you would not bring up this brand.`;
+      const[gptRaw,gemRaw]=await Promise.all([callOpenAI(testPr),callGemini(testPr)]);
+      const gptR=safeJSON(gptRaw)||{status:"Absent"};
+      const gemR=safeJSON(gemRaw)||{status:"Absent"};
+      const overall=(gptR.status==="Cited"||gemR.status==="Cited")?"Cited":(gptR.status==="Mentioned"||gemR.status==="Mentioned")?"Mentioned":"Absent";
+      const newP={query:q,status:overall,engines:{gpt:gptR.status||"Absent",gemini:gemR.status||"Absent"},reason:gptR.reason||gemR.reason||"",custom:true};
+
+      // Auto-classify into funnel stage
+      const classifyPr=`Classify this user search prompt into ONE funnel stage: Awareness, Consideration, Decision, or Retention.
+Prompt: "${q}"
+Context: Brand "${r.clientData.brand}" in ${r.clientData.industry}.
+Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
+      const classRaw=await callOpenAI(classifyPr);
+      const classR=safeJSON(classRaw)||{stage:"Awareness"};
+      const stageIdx=stageNames.indexOf(classR.stage);
+      const targetStage=stageIdx>=0?stageIdx:0;
+
+      setCustomPrompts(prev=>({...prev,[targetStage]:[...prev[targetStage],newP]}));
+      setSelStage(targetStage);
+    }catch(e){console.error("Prompt test error:",e);}
+    setTesting(false);
+  };
+
+  const statusColor=(s)=>s==="Cited"?C.green:s==="Mentioned"?C.amber:C.red;
+  const statusIcon=(s)=>s==="Cited"?"✓":s==="Mentioned"?"◐":"✗";
+  const statusBg=(s)=>s==="Cited"?`${C.green}08`:s==="Mentioned"?`${C.amber}08`:`${C.red}06`;
 
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Intent Pathway</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Each user segment has a unique search journey — select an archetype to see their specific prompts across all 4 stages.</p></div>
-    <SectionNote text="Different user segments ask very different questions at each stage. A 'Price-Conscious Switcher' asking about deals is a completely different intent from an 'IT Manager' evaluating SLAs — and AI engines respond differently to each."/>
-
-    {/* Archetype selector */}
-    <div style={{marginBottom:16}}>
-      <div style={{fontSize:11,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:8}}>Select User Segment</div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-        {allArchetypes.map((a,i)=>(<div key={i} onClick={()=>{setSelArch(i);setSelStage(0);}} style={{padding:"7px 14px",background:selArch===i?`${C.accent}10`:C.surface,border:`1px solid ${selArch===i?`${C.accent}40`:C.border}`,borderRadius:100,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .15s"}}>
-          <span style={{fontSize:14}}>{a.icon}</span>
-          <span style={{fontSize:11,fontWeight:selArch===i?600:400,color:selArch===i?C.accent:C.text}}>{a.name}</span>
-        </div>))}
-      </div>
+    <div style={{marginBottom:24}}>
+      <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Intent Pathway</h2>
+      <p style={{color:C.sub,fontSize:13,marginTop:3}}>How visible is {r.clientData.brand} at each stage of the customer journey? Test your own prompts below.</p>
     </div>
 
-    {/* Selected archetype summary */}
-    <Card style={{marginBottom:16,background:`${C.accent}04`,borderColor:`${C.accent}15`}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+    {/* Overall funnel score bar */}
+    <Card style={{marginBottom:16}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div>
+          <div style={{fontSize:13,fontWeight:600,color:C.text}}>Funnel Visibility</div>
+          <div style={{fontSize:11,color:C.muted}}>{allPrompts.length} prompts tested across 4 stages</div>
+        </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{width:44,height:44,borderRadius:10,background:`${C.accent}10`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>{arch.icon}</div>
-          <div>
-            <div style={{fontWeight:600,fontSize:14,color:C.text}}>{arch.name}</div>
-            <div style={{fontSize:11,color:C.muted}}>{arch.groupIcon} {arch.groupName} · {arch.demo} · ~{arch.size}% of searches</div>
+          <div style={{display:"flex",gap:4}}>
+            <Pill color={C.green}>{totalCited} Cited</Pill>
+            <Pill color={C.amber}>{totalMentioned} Mentioned</Pill>
+            <Pill color={C.red}>{allPrompts.length-totalCited-totalMentioned} Absent</Pill>
           </div>
-        </div>
-        <div style={{textAlign:"center"}}>
-          <div style={{fontSize:20,fontWeight:700,color:archVisibility>=40?C.green:archVisibility>=20?C.amber:C.red,fontFamily:"'Outfit'"}}>{archVisibility}%</div>
-          <div style={{fontSize:9,color:C.muted}}>journey visibility</div>
+          <div style={{fontSize:28,fontWeight:800,color:funnelScore>=40?C.green:funnelScore>=20?C.amber:C.red,fontFamily:"'Outfit'"}}>{funnelScore}%</div>
         </div>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:12,paddingTop:12,borderTop:`1px solid ${C.accent}10`}}>
-        <div><span style={{fontSize:10,fontWeight:600,color:C.muted}}>INTENT: </span><span style={{fontSize:11,color:C.sub}}>{arch.intent}</span></div>
-        <div><span style={{fontSize:10,fontWeight:600,color:C.muted}}>BEHAVIOUR: </span><span style={{fontSize:11,color:C.sub}}>{arch.behavior}</span></div>
-      </div>
-    </Card>
-
-    {/* Funnel stage tabs */}
-    <Card style={{marginBottom:16,padding:0,overflow:"hidden"}}>
-      <div style={{display:"flex"}}>
-        {stageNames.map((name,i)=>{
-          const s=stageStats[i]||{cited:0,mentioned:0,absent:0,total:0};
+      {/* Mini funnel bars */}
+      <div style={{display:"flex",gap:4,height:6,borderRadius:4,overflow:"hidden"}}>
+        {stageNames.map((_,si)=>{
+          const s=stageStats[si];
           const total=s.total||1;
-          const visPct=Math.round((s.cited+s.mentioned)/total*100);
-          const color=stageColors[i];
-          return(<div key={i} onClick={()=>setSelStage(i)} style={{flex:1,padding:"14px 10px",cursor:"pointer",background:selStage===i?`${color}08`:"transparent",borderBottom:selStage===i?`3px solid ${color}`:"3px solid transparent",textAlign:"center",transition:"all .15s"}}>
-            <div style={{fontSize:18,fontWeight:700,color:color,fontFamily:"'Outfit'"}}>{visPct}%</div>
-            <div style={{fontSize:11,fontWeight:600,color:selStage===i?C.text:C.sub,marginTop:2}}>{name}</div>
-            <div style={{fontSize:10,color:C.muted}}>{s.cited} cited · {s.mentioned} mentioned</div>
+          return(<div key={si} style={{flex:1,background:C.bg,borderRadius:3,overflow:"hidden",display:"flex"}}>
+            <div style={{width:`${(s.cited/total)*100}%`,background:C.green,transition:"width .4s"}}/>
+            <div style={{width:`${(s.mentioned/total)*100}%`,background:C.amber,transition:"width .4s"}}/>
           </div>);
         })}
       </div>
+      <div style={{display:"flex",gap:4,marginTop:4}}>
+        {stageNames.map((name,i)=>(<div key={i} style={{flex:1,textAlign:"center",fontSize:9,color:C.muted,fontWeight:500}}>{name}</div>))}
+      </div>
     </Card>
 
-    {/* Stage prompt detail */}
+    {/* Add prompt input */}
+    <Card style={{marginBottom:16,background:`${C.accent}03`,borderColor:`${C.accent}20`}}>
+      <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>Test a Prompt</div>
+      <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Type any prompt a user might ask. We'll test it on ChatGPT and Gemini in real-time and slot it into the right funnel stage.</div>
+      <div style={{display:"flex",gap:8}}>
+        <input value={newPrompt} onChange={e=>setNewPrompt(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")testPrompt();}}
+          placeholder={`e.g. "Best ${r.clientData.industry||"tech"} companies in ${r.clientData.region||"my area"}"`}
+          style={{flex:1,padding:"10px 14px",border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit",background:"#fff"}}
+          onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
+        <button onClick={testPrompt} disabled={!newPrompt.trim()||testing}
+          style={{padding:"10px 20px",background:!newPrompt.trim()||testing?"#d1d5db":C.accent,color:"#fff",border:"none",borderRadius:10,fontSize:13,fontWeight:600,cursor:!newPrompt.trim()||testing?"not-allowed":"pointer",fontFamily:"'Outfit'",whiteSpace:"nowrap",minWidth:100}}>
+          {testing?"Testing...":"Test Prompt"}
+        </button>
+      </div>
+    </Card>
+
+    {/* Stage tabs */}
+    <div style={{display:"flex",gap:6,marginBottom:16}}>
+      {stageNames.map((name,i)=>{
+        const s=stageStats[i];
+        const active=selStage===i;
+        const color=stageColors[i];
+        return(<div key={i} onClick={()=>setSelStage(i)} style={{flex:1,padding:"14px 10px",cursor:"pointer",background:active?"#fff":C.surface,border:`1.5px solid ${active?color:C.border}`,borderRadius:12,textAlign:"center",transition:"all .15s",boxShadow:active?`0 2px 8px ${color}15`:"none"}}>
+          <div style={{fontSize:18,marginBottom:4}}>{stageIcons[i]}</div>
+          <div style={{fontSize:18,fontWeight:700,color:color,fontFamily:"'Outfit'"}}>{s.total>0?Math.round((s.cited+s.mentioned)/Math.max(1,s.total)*100):0}%</div>
+          <div style={{fontSize:12,fontWeight:600,color:active?C.text:C.sub,marginTop:2}}>{name}</div>
+          <div style={{fontSize:10,color:C.muted,marginTop:2}}>{s.total} prompts</div>
+        </div>);
+      })}
+    </div>
+
+    {/* Stage detail */}
     {(()=>{
-      const stage=journey[selStage];
-      if(!stage||!stage.prompts||stage.prompts.length===0)return(<Card><div style={{textAlign:"center",padding:20,color:C.muted,fontSize:12}}>No prompts mapped for this stage yet.</div></Card>);
+      const prompts=getMergedPrompts(selStage);
       const color=stageColors[selStage];
-      const prompts=stage.prompts;
-      return(<Card>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+      const s=stageStats[selStage];
+      if(prompts.length===0)return(<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>No prompts mapped for {stageNames[selStage]} yet. Use "Test a Prompt" above to add some.</div></Card>);
+      return(<Card style={{padding:0,overflow:"hidden"}}>
+        {/* Stage header */}
+        <div style={{padding:"16px 20px",borderBottom:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <h3 style={{fontSize:14,fontWeight:600,color:color,margin:0,fontFamily:"'Outfit'"}}>{stageNames[selStage]}</h3>
-            <p style={{fontSize:11,color:C.muted,margin:"2px 0 0"}}>{stageDescs[selStage]} · {prompts.length} prompts for this segment</p>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:18}}>{stageIcons[selStage]}</span>
+              <h3 style={{fontSize:16,fontWeight:700,color:color,margin:0,fontFamily:"'Outfit'"}}>{stageNames[selStage]}</h3>
+            </div>
+            <p style={{fontSize:11,color:C.muted,margin:"3px 0 0"}}>{stageDescs[selStage]}</p>
           </div>
           <div style={{display:"flex",gap:4}}>
-            <Pill color={C.green} filled>{(stageStats[selStage]||{}).cited||0} Cited</Pill>
-            <Pill color={C.amber} filled>{(stageStats[selStage]||{}).mentioned||0} Mentioned</Pill>
-            <Pill color={C.red} filled>{(stageStats[selStage]||{}).absent||0} Absent</Pill>
+            <Pill color={C.green} filled>{s.cited} Cited</Pill>
+            <Pill color={C.amber} filled>{s.mentioned} Mentioned</Pill>
+            <Pill color={C.red} filled>{s.absent} Absent</Pill>
           </div>
         </div>
         {/* Column headers */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 55px 55px 65px",padding:"6px 8px",borderBottom:`2px solid ${C.borderSoft}`,marginBottom:2}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 65px 65px 70px",padding:"8px 20px",borderBottom:`2px solid ${C.borderSoft}`,background:C.bg}}>
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Prompt</span>
-          <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}><ChatGPTLogo size={12}/></span>
-          <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}><GeminiLogo size={12}/></span>
+          <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}>ChatGPT</span>
+          <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}>Gemini</span>
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}>Overall</span>
         </div>
+        {/* Prompt rows */}
         {prompts.map((p,j)=>{
-          const engines=p.engines||{};
-          const statuses=["gpt","gemini"].map(e=>engines[e]||p.status||"Absent");
-          const statusColor=(s)=>s==="Cited"?C.green:s==="Mentioned"?C.amber:C.red;
-          const statusIcon=(s)=>s==="Cited"?"✓":s==="Mentioned"?"◐":"✗";
-          return(<div key={j} style={{display:"grid",gridTemplateColumns:"1fr 55px 55px 65px",padding:"8px 8px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center"}}>
-            <span style={{color:C.sub,fontSize:11,lineHeight:1.4}}>"{p.query}"</span>
-            {statuses.map((s,si)=>(<span key={si} style={{textAlign:"center",fontSize:11,fontWeight:600,color:statusColor(s)}}>{statusIcon(s)}</span>))}
+          const eng=p.engines||{};
+          const gptS=eng.gpt||p.status||"Absent";
+          const gemS=eng.gemini||p.status||"Absent";
+          return(<div key={j} style={{display:"grid",gridTemplateColumns:"1fr 65px 65px 70px",padding:"10px 20px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center",background:p.custom?`${C.accent}04`:"transparent"}}>
+            <div>
+              <span style={{color:C.text,fontSize:12,lineHeight:1.4,fontWeight:p.custom?500:400}}>"{p.query}"</span>
+              {p.custom&&<span style={{fontSize:9,fontWeight:600,color:C.accent,marginLeft:6,padding:"1px 5px",background:`${C.accent}10`,borderRadius:3}}>CUSTOM</span>}
+              {p.reason&&<div style={{fontSize:10,color:C.muted,marginTop:2}}>{p.reason}</div>}
+            </div>
+            <div style={{textAlign:"center"}}>
+              <span style={{fontSize:12,fontWeight:700,color:statusColor(gptS)}}>{statusIcon(gptS)}</span>
+              <div style={{fontSize:9,color:statusColor(gptS),marginTop:1}}>{gptS}</div>
+            </div>
+            <div style={{textAlign:"center"}}>
+              <span style={{fontSize:12,fontWeight:700,color:statusColor(gemS)}}>{statusIcon(gemS)}</span>
+              <div style={{fontSize:9,color:statusColor(gemS),marginTop:1}}>{gemS}</div>
+            </div>
             <span style={{textAlign:"center"}}><Pill color={statusColor(p.status||"Absent")}>{p.status||"Absent"}</Pill></span>
           </div>);
         })}
