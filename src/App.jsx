@@ -470,6 +470,12 @@ Create an intent funnel with 4 stages. For each stage, list 6-8 realistic prompt
 
 Website data: ${crawlSummary.slice(0,400)}
 
+CRITICAL — Prompt mix per stage:
+- Awareness: MOSTLY GENERIC. At least 5 out of 8 prompts must NOT mention ${brand} or any competitor by name. These are broad industry queries like "what is [concept]", "how does [technology] work", "best [category] in ${region}", "[industry] trends". Only 1-2 may include a brand name.
+- Consideration: Mix of generic comparisons ("top [category] providers") and brand-specific ("${brand} vs [competitor]"). About half and half.
+- Decision: More brand-focused is fine — pricing, reviews, "should I choose ${brand}".
+- Retention: Mix of brand support queries and generic how-to queries.
+
 Return JSON array:
 [
   {"stage":"Awareness","desc":"User discovers the category","color":"#6366f1","prompts":[
@@ -490,7 +496,8 @@ WEIGHT SCORING GUIDE:
 Rules:
 - Each stage MUST have at least 6 prompts.
 - Weight must reflect real-world impact — not all prompts are equal.
-- triggerWords should only include words actually present in the query.`;
+- triggerWords should only include words actually present in the query.
+- Do NOT fill every prompt with "${brand}" — real users search generically most of the time.`;
 
   const intentGenRaw=await callOpenAI(intentGenPrompt, engineSystemPrompt);
   const intentStages=safeJSON(intentGenRaw)||[];
@@ -751,13 +758,13 @@ function generateAll(cd, apiData){
     const compList=(cd.competitors||[]).map(c=>typeof c==="string"?c:c.name).filter(Boolean);
     const stageDefs=[
       {stage:"Awareness",desc:"User discovers the problem or category",color:"#6366f1",
-        tpl:t=>[`What is ${t}?`,`Best ${t} solutions in ${reg}`,`${t} trends ${new Date().getFullYear()}`]},
+        tpl:t=>[`What is ${t}?`,`Best ${t} in ${reg}`,`${t} trends ${new Date().getFullYear()}`,`How does ${t} work?`]},
       {stage:"Consideration",desc:"User evaluates and compares options",color:"#8b5cf6",
-        tpl:t=>[`${b} vs ${compList[0]||"competitors"} for ${t}`,`Top ${t} providers compared`,`Is ${b} good for ${t}?`]},
+        tpl:t=>[`Top ${t} providers in ${reg}`,`${b} vs ${compList[0]||"competitors"} for ${t}`,`Best ${t} for small business`]},
       {stage:"Decision",desc:"User is ready to purchase or commit",color:"#a855f7",
         tpl:t=>[`${b} ${t} pricing`,`${b} ${t} reviews`,`Should I choose ${b} for ${t}?`]},
       {stage:"Retention",desc:"User seeks ongoing value",color:"#c084fc",
-        tpl:t=>[`${b} ${t} support`,`${b} ${t} alternatives`,`How to get more from ${b} ${t}`]}
+        tpl:t=>[`How to get more from ${t}`,`${b} ${t} support`,`${t} tips and tricks`]}
     ];
     // Collect archetype journey prompts per stage
     const archPrompts={Awareness:[],Consideration:[],Decision:[],Retention:[]};
@@ -1085,14 +1092,16 @@ function NewAuditPage({data,setData,onRun,history=[]}){
       const compInfo=(data.competitors||[]).filter(c=>c.name).map(c=>`${c.name}${c.website?" ("+c.website+")":""}`).join(", ");
       const prompt=`For the brand "${data.brand}" in the "${data.industry}" industry, based in "${data.region||"Global"}", with website ${data.website||"unknown"}${compInfo?", competitors: "+compInfo:""}.
 
-Generate 8-12 key topics that are most relevant for measuring this brand's AI engine visibility (AEO - Answer Engine Optimisation). These should be specific topics that users would ask AI engines about in this industry and region.
+Generate 12-15 key topics that are most relevant for measuring AI engine visibility in this industry (AEO - Answer Engine Optimisation). Mix brand-specific AND generic industry topics.
 
-Focus on:
-- Core product/service topics
-- Industry-specific comparison topics  
+Include a balance of:
+- Generic industry topics people search without any brand in mind (e.g. "mobile data plans", "5G coverage", "prepaid vs postpaid") — at least 5-6 of these
+- Core product/service topics for this brand
+- Industry trends and educational topics (e.g. "how does [technology] work", "what is [concept]")
 - Regional/local relevance topics
-- Buyer decision topics
-- Technical/feature topics
+- Buyer decision and comparison topics
+
+IMPORTANT: Do NOT make every topic about "${data.brand}" or its competitors. At least half should be generic industry queries that a normal person would search.
 
 Return ONLY a JSON array of strings, no markdown, no explanation:
 ["topic 1", "topic 2", "topic 3", ...]`;
