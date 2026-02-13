@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 
 const ChatGPTLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.998 5.998 0 0 0-3.998 2.9 6.042 6.042 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" fill="#10A37F"/></svg>);
-const ClaudeLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M16.98 11.14L12.58 2.29C12.42 1.97 12.09 1.77 11.73 1.77C11.37 1.77 11.04 1.97 10.88 2.29L3.07 17.84C2.91 18.16 2.94 18.54 3.15 18.83C3.36 19.12 3.71 19.27 4.07 19.22L11.73 18.15L16.57 12.05C16.84 11.71 16.98 11.14 16.98 11.14Z" fill="#D97706"/><path d="M20.93 17.84L17.38 10.77L11.73 18.15L19.93 19.22C20.29 19.27 20.64 19.12 20.85 18.83C21.06 18.54 21.09 18.16 20.93 17.84Z" fill="#B45309"/></svg>);
 const GeminiLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M12 24C12 20.8174 10.7357 17.7652 8.48528 15.5147C6.23484 13.2643 3.18261 12 0 12C3.18261 12 6.23484 10.7357 8.48528 8.48528C10.7357 6.23484 12 3.18261 12 0C12 3.18261 13.2643 6.23484 15.5147 8.48528C17.7652 10.7357 20.8174 12 24 12C20.8174 12 17.7652 13.2643 15.5147 15.5147C13.2643 17.7652 12 20.8174 12 24Z" fill="url(#gG2)"/><defs><linearGradient id="gG2" x1="0" y1="12" x2="24" y2="12"><stop stopColor="#4285F4"/><stop offset=".5" stopColor="#9B72CB"/><stop offset="1" stopColor="#D96570"/></linearGradient></defs></svg>);
 const C={bg:"#f8f9fb",surface:"#ffffff",border:"#e8ecf1",borderSoft:"#f0f2f5",text:"#111827",sub:"#4b5563",muted:"#9ca3af",accent:"#2563eb",green:"#059669",amber:"#d97706",red:"#dc2626",r:12,rs:8};
 function Ring({score,size=100,color,sw=5}){const r2=(size-sw*2)/2,ci=2*Math.PI*r2;const col=color||(score>=70?C.green:score>=40?C.amber:C.red);return(<div style={{position:"relative",width:size,height:size}}><svg width={size} height={size}><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={C.borderSoft} strokeWidth={sw}/><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={col} strokeWidth={sw} strokeDasharray={ci} strokeDashoffset={ci-(score/100)*ci} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`} style={{transition:"stroke-dashoffset 1.2s ease-out"}}/></svg><div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:size*.26,fontWeight:700,color:C.text,lineHeight:1,fontFamily:"'Outfit'"}}>{score}%</span></div></div>);}
@@ -105,26 +104,7 @@ function MiniRadar({data,keys,size=220}){
   </svg>);
 }
 
-/* ─── CLAUDE API INTEGRATION ─── */
 /* ─── MULTI-ENGINE API LAYER ─── */
-async function callClaude(prompt, systemPrompt="You are an expert AEO analyst.", useWebSearch=false){
-  try{
-    const isArtifact=typeof window!=="undefined"&&window.location.hostname.includes("claude");
-    if(isArtifact){
-      const body={model:"claude-sonnet-4-20250514",max_tokens:useWebSearch?4000:2000,system:systemPrompt,messages:[{role:"user",content:prompt}]};
-      if(useWebSearch){body.tools=[{type:"web_search_20250305",name:"web_search"}];}
-      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-      const data=await res.json();
-      return data.content?.map(b=>b.type==="text"?b.text:"").filter(Boolean).join("\n")||"";
-    }else{
-      const res=await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt,useWebSearch})});
-      const data=await res.json();
-      if(data.error)throw new Error(data.error);
-      return data.text||"";
-    }
-  }catch(e){console.error("Claude API error:",e);return null;}
-}
-
 async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst."){
   try{
     const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
@@ -163,8 +143,8 @@ function safeJSON(text){
 async function crawlWebsite(url){
   if(!url||url.length<3)return null;
   try{
-    const isArtifact=typeof window!=="undefined"&&window.location.hostname.includes("claude");
-    if(isArtifact)return null; // crawl only works on Vercel
+    const isLocal=typeof window!=="undefined"&&window.location.hostname==="localhost";
+    if(isLocal)return null; // crawl only works on Vercel
     const res=await fetch("/api/crawl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url})});
     const data=await res.json();
     if(data.error)return null;
@@ -174,8 +154,8 @@ async function crawlWebsite(url){
 
 async function verifyChannels(brand, website, industry, region){
   try{
-    const isArtifact=typeof window!=="undefined"&&window.location.hostname.includes("claude");
-    if(isArtifact)return null;
+    const isLocal=typeof window!=="undefined"&&window.location.hostname==="localhost";
+    if(isLocal)return null;
     const res=await fetch("/api/channels",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({brand,website,industry,region})});
     const data=await res.json();
     if(data.error)return null;
@@ -735,177 +715,6 @@ function LoginForm({onSubmit,error,loading}){
 }
 
 /* ─── CHAT PANEL — Human-in-the-loop AI assistant ─── */
-function buildChatContext(step, results){
-  if(!results)return{section:"No audit data",data:""};
-  const r=results;
-  const brand=r.clientData?.brand||"Brand";
-  const base=`Brand: ${brand}\nIndustry: ${r.clientData?.industry||""}\nWebsite: ${r.clientData?.website||""}\nRegion: ${r.clientData?.region||""}\nOverall AEO Score: ${r.overall}% (${r.scoreLabel})\n`;
-  switch(step){
-    case "audit":return{section:"AEO Audit Results",data:base+
-      `\nEngine Scores:\n${r.engines.map(e=>`- ${e.name}: ${e.score}% (mentions:${e.mentionRate}%, citations:${e.citationRate}%)\n  Strengths: ${e.strengths.join("; ")}\n  Weaknesses: ${e.weaknesses.join("; ")}`).join("\n")}`+
-      `\n\nPain Points:\n${r.painPoints.map(p=>`- ${p.label}: ${p.score}% (${p.severity})`).join("\n")}`+
-      `\n\nCompetitors:\n${r.competitors.map(c=>`- ${c.name}: ${c.score}% (strength: ${c.topStrength})`).join("\n")}`};
-    case "archetypes":return{section:"User Archetypes",data:base+
-      `\nStakeholder Groups:\n${r.stakeholders.map(sg=>`\n${sg.icon} ${sg.group}: ${sg.desc}\n${sg.archetypes.map(a=>`  - ${a.name} (${a.demo}) — ${a.intent}, ~${a.size}% of searches, ${a.brandVisibility}% visibility, ${a.opportunity} opportunity`).join("\n")}`).join("\n")}`};
-    case "intent":return{section:"Intent Pathway",data:base+
-      `\nArchetype Journeys:\n${r.stakeholders.flatMap(sg=>sg.archetypes).filter(a=>a.journey?.length>0).map(a=>`\n${a.icon} ${a.name}:\n${a.journey.map(j=>`  ${j.stage}: ${(j.prompts||[]).map(p=>`"${p.query}" → ${p.status} (GPT:${p.engines?.gpt||"?"}, Gemini:${p.engines?.gemini||"?"})`).join("; ")}`).join("\n")}`).join("\n")}`};
-    case "channels":return{section:"AEO Channels",data:base+
-      `\nChannels:\n${r.aeoChannels.map(ch=>`- ${ch.channel}: Impact ${ch.impact}, Status: ${ch.status}${ch.finding?", Finding: "+ch.finding:""}`).join("\n")}`};
-    case "grid":return{section:"Content Grid",data:base+
-      `\nContent Types:\n${r.contentTypes.map(ct=>`- ${ct.type} [${ct.p}]: ${ct.channels.join(", ")} @ ${ct.freq} — Owner: ${ct.owner}${ct.rationale?"\n  Rationale: "+ct.rationale:""}`).join("\n")}`};
-    case "roadmap":return{section:"90-Day Roadmap",data:base+
-      `\nRoadmap:\n${["day30","day60","day90"].map(k=>{const p=r.roadmap[k];return p?`\n${p.title} (${p.sub}, lift: ${p.lift}):\n${p.departments.map(d=>`  ${d.dept}:\n${d.tasks.map(t=>`    → ${t}`).join("\n")}`).join("\n")}`:""}).join("\n")}`};
-    default:return{section:"Dashboard",data:base};
-  }
-}
-
-function ChatPanel({isOpen,onClose,step,results,onUpdateResults}){
-  const[messages,setMessages]=useState([]);
-  const[input,setInput]=useState("");
-  const[loading,setLoading]=useState(false);
-  const bottomRef=React.useRef(null);
-  const inputRef=React.useRef(null);
-
-  React.useEffect(()=>{if(bottomRef.current)bottomRef.current.scrollIntoView({behavior:"smooth"});},[messages]);
-  React.useEffect(()=>{if(isOpen&&inputRef.current)setTimeout(()=>inputRef.current.focus(),200);},[isOpen]);
-
-  const ctx=buildChatContext(step,results);
-
-  const send=async()=>{
-    if(!input.trim()||loading)return;
-    const userMsg=input.trim();
-    setInput("");
-    setMessages(prev=>[...prev,{role:"user",text:userMsg}]);
-    setLoading(true);
-
-    try{
-      const systemPrompt=`You are an expert AEO (AI Engine Optimisation) consultant embedded in the EnterRank dashboard. You have access to the full audit data for the current section.
-
-CURRENT SECTION: ${ctx.section}
-
-FULL DATA FOR THIS SECTION:
-${ctx.data}
-
-RULES:
-1. You can answer questions about the data — be specific, cite exact numbers, give actionable advice.
-2. If the user asks you to CHANGE, UPDATE, REGENERATE, or MODIFY any data in this section, respond with the updated data in a JSON block wrapped in <json_update> tags.
-3. For mutations, include ONLY the fields that need to change. Use the exact field names from the data structure.
-4. Keep responses concise and professional — this is a premium consultant tool.
-5. When answering, reference the brand name, actual scores, and specific data points. Never be generic.
-
-MUTATION FORMAT (only when user asks for changes):
-<json_update>
-{"field": "updated_value"}
-</json_update>
-
-For channel updates, use: {"aeoChannels": [{...full channel object...}]}
-For content grid updates, use: {"contentTypes": [{...full content type object...}]}
-For roadmap updates, use: {"roadmap": {"day30": {...}, "day60": {...}, "day90": {...}}}
-For archetype updates, use: {"stakeholders": [{...full stakeholder group...}]}
-For engine updates, use: {"engines": [{...full engine object...}]}
-For pain point updates, use: {"painPoints": [{...}]}
-
-If the user's request is ambiguous, ask a clarifying question instead of guessing.`;
-
-      const body={model:"claude-sonnet-4-20250514",max_tokens:3000,system:systemPrompt,messages:[
-        ...messages.map(m=>({role:m.role==="user"?"user":"assistant",content:m.text})),
-        {role:"user",content:userMsg}
-      ]};
-
-      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-      const data=await res.json();
-      const reply=data.content?.map(b=>b.type==="text"?b.text:"").filter(Boolean).join("\n")||"Sorry, I couldn't process that.";
-
-      // Check for JSON mutation
-      const jsonMatch=reply.match(/<json_update>([\s\S]*?)<\/json_update>/);
-      if(jsonMatch){
-        try{
-          const updates=JSON.parse(jsonMatch[1].trim());
-          onUpdateResults(updates);
-          const cleanReply=reply.replace(/<json_update>[\s\S]*?<\/json_update>/,"").trim();
-          setMessages(prev=>[...prev,{role:"assistant",text:cleanReply||"Done — the dashboard has been updated.",mutation:true}]);
-        }catch(e){
-          setMessages(prev=>[...prev,{role:"assistant",text:reply.replace(/<json_update>[\s\S]*?<\/json_update>/,"").trim()+"\n\n(Note: I tried to update the data but the format was invalid. Please try again.)"}]);
-        }
-      }else{
-        setMessages(prev=>[...prev,{role:"assistant",text:reply}]);
-      }
-    }catch(e){
-      console.error("Chat error:",e);
-      setMessages(prev=>[...prev,{role:"assistant",text:"Sorry, there was an error connecting to the AI. Please try again."}]);
-    }
-    setLoading(false);
-  };
-
-  if(!isOpen)return null;
-
-  return(<div style={{position:"fixed",right:0,top:0,bottom:0,width:380,background:C.surface,borderLeft:`1px solid ${C.border}`,display:"flex",flexDirection:"column",zIndex:1000,boxShadow:"-8px 0 30px rgba(0,0,0,.08)",animation:"slideIn .2s ease-out"}}>
-    <style>{`@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
-    {/* Header */}
-    <div style={{padding:"14px 18px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
-      <div>
-        <div style={{fontSize:14,fontWeight:700,color:C.text,fontFamily:"'Outfit'",display:"flex",alignItems:"center",gap:6}}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect width="16" height="16" rx="4" fill={C.accent}/><path d="M4 6h8M4 8h6M4 10h7" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          AEO Copilot
-        </div>
-        <div style={{fontSize:10,color:C.muted,marginTop:1}}>Viewing: {ctx.section}</div>
-      </div>
-      <div style={{display:"flex",gap:6}}>
-        {messages.length>0&&<span onClick={()=>setMessages([])} style={{fontSize:10,color:C.muted,cursor:"pointer",padding:"3px 8px",borderRadius:4,border:`1px solid ${C.border}`}}>Clear</span>}
-        <span onClick={onClose} style={{fontSize:16,color:C.muted,cursor:"pointer",padding:"2px 6px",lineHeight:1}}>✕</span>
-      </div>
-    </div>
-
-    {/* Messages */}
-    <div style={{flex:1,overflowY:"auto",padding:"14px 16px",display:"flex",flexDirection:"column",gap:10}}>
-      {messages.length===0&&<div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,padding:20}}>
-        <div style={{width:48,height:48,borderRadius:12,background:`${C.accent}08`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>💬</div>
-        <div style={{fontSize:13,fontWeight:600,color:C.text,fontFamily:"'Outfit'",textAlign:"center"}}>Ask me anything about this section</div>
-        <div style={{fontSize:11,color:C.muted,textAlign:"center",lineHeight:1.6}}>I can explain the data, give strategic advice, or update the report based on your instructions.</div>
-        <div style={{display:"flex",flexDirection:"column",gap:6,width:"100%",marginTop:8}}>
-          {(step==="audit"?["Why is my citation rate so low?","What should I fix first?","Regenerate the diagnostic summary"]:
-            step==="channels"?["Localise the press section to Malaysia","Which channel should I prioritise?","Add a podcast strategy"]:
-            step==="archetypes"?["Rename the first segment","Which archetype is most valuable?","Add a new B2B segment"]:
-            step==="intent"?["Why am I absent on most prompts?","Which stage needs the most work?","Make prompts more specific to my region"]:
-            step==="grid"?["Reprioritise for a small team","Add social media content types","What should we publish first?"]:
-            step==="roadmap"?["Simplify the Day 1-30 tasks","Make this more aggressive","Add a social media department"]:
-            ["What does this data mean?","What should I focus on?","How can I improve my score?"]).map((q,i)=>(
-            <div key={i} onClick={()=>{setInput(q);}} style={{padding:"8px 12px",background:C.bg,borderRadius:6,fontSize:11,color:C.sub,cursor:"pointer",border:`1px solid ${C.borderSoft}`,transition:"all .1s"}}
-              onMouseEnter={e=>e.target.style.borderColor=C.accent+"40"}
-              onMouseLeave={e=>e.target.style.borderColor=C.borderSoft}>
-              "{q}"
-            </div>
-          ))}
-        </div>
-      </div>}
-      {messages.map((m,i)=>(<div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
-        <div style={{maxWidth:"88%",padding:"10px 14px",borderRadius:m.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px",background:m.role==="user"?C.accent:`${C.bg}`,color:m.role==="user"?"#fff":C.text,fontSize:12,lineHeight:1.6,border:m.role==="user"?"none":`1px solid ${C.borderSoft}`}}>
-          {m.mutation&&<div style={{fontSize:9,fontWeight:600,color:C.green,marginBottom:4,display:"flex",alignItems:"center",gap:4}}>
-            <span style={{width:5,height:5,borderRadius:"50%",background:C.green,display:"inline-block"}}/>DASHBOARD UPDATED
-          </div>}
-          {m.text.split("\n").map((line,li)=><div key={li} style={{marginBottom:line?3:6}}>{line}</div>)}
-        </div>
-      </div>))}
-      {loading&&<div style={{display:"flex",justifyContent:"flex-start"}}><div style={{padding:"10px 14px",borderRadius:"14px 14px 14px 4px",background:C.bg,border:`1px solid ${C.borderSoft}`}}>
-        <div style={{display:"flex",gap:4}}>{[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:C.muted,animation:`pulse 1s ${i*.2}s infinite`}}/>)}</div>
-      </div></div>}
-      <div ref={bottomRef}/>
-    </div>
-
-    {/* Input */}
-    <div style={{padding:"12px 14px",borderTop:`1px solid ${C.border}`,flexShrink:0}}>
-      <div style={{display:"flex",gap:8}}>
-        <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}
-          placeholder={`Ask about ${ctx.section.toLowerCase()}...`}
-          style={{flex:1,padding:"10px 14px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:10,fontSize:12,color:C.text,outline:"none",fontFamily:"inherit"}}/>
-        <button onClick={send} disabled={loading||!input.trim()} style={{padding:"10px 16px",background:loading||!input.trim()?C.borderSoft:C.accent,color:"#fff",border:"none",borderRadius:10,fontSize:12,fontWeight:600,cursor:loading?"wait":"pointer",fontFamily:"'Outfit'",transition:"all .15s"}}>
-          {loading?"···":"Send"}
-        </button>
-      </div>
-      <div style={{fontSize:9,color:C.muted,marginTop:6,textAlign:"center"}}>Powered by Claude · Responses are contextual to the current section</div>
-    </div>
-  </div>);
-}
 
 const NAV_ITEMS=[
   {group:"Analytics",items:[
@@ -937,7 +746,7 @@ const SidebarIcon=({name,size=18,color="#9ca3af"})=>{
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none">{p[name]||null}</svg>;
 };
 
-function Sidebar({step,setStep,results,brand,onBack,isArtifact,onLogout,collapsed,setCollapsed}){
+function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,setCollapsed}){
   const sideW=collapsed?60:220;
   return(<div style={{position:"fixed",left:0,top:0,bottom:0,width:sideW,background:"#fff",borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",transition:"width .2s ease",zIndex:100,overflow:"hidden"}}>
     {/* Logo area */}
@@ -945,7 +754,7 @@ function Sidebar({step,setStep,results,brand,onBack,isArtifact,onLogout,collapse
       <svg width="28" height="28" viewBox="0 0 28 28" style={{flexShrink:0}}><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
       {!collapsed&&<div style={{overflow:"hidden",whiteSpace:"nowrap"}}>
         <div style={{fontSize:11,color:C.muted,display:"flex",alignItems:"center",gap:4}}>
-          {!isArtifact&&<span onClick={onBack} style={{cursor:"pointer",color:C.accent,fontSize:11}}>←</span>}
+          {!isLocal&&<span onClick={onBack} style={{cursor:"pointer",color:C.accent,fontSize:11}}>←</span>}
           <span style={{fontWeight:600,color:C.text,fontSize:13}}>{brand||"EnterRank"}</span>
         </div>
       </div>}
@@ -1190,7 +999,7 @@ Return ONLY a JSON array of strings:
     {at:4,msg:"Configuring multi-engine query pipeline..."},
     {at:6,msg:"Connecting to OpenAI API → gpt-4o..."},
     {at:9,msg:"Sending 8 query probes to ChatGPT..."},
-    {at:12,msg:"Connecting to Anthropic API → claude-sonnet-4-20250514..."},
+    {at:12,msg:"Querying AI engines for visibility data..."},
     {at:15,msg:"Sending 8 query probes to Gemini..."},
     {at:18,msg:"Connecting to Google AI API → gemini-2.0-flash..."},
     {at:21,msg:"Sending 8 query probes to Gemini..."},
@@ -2066,21 +1875,21 @@ function ProjectHub({onSelect,onNew,onLogout}){
 }
 
 export default function App(){
-  const isArtifact=typeof window!=="undefined"&&(window.location.hostname.includes("claude")||window.location.hostname.includes("localhost"));
-  const[authed,setAuthed]=useState(()=>{if(isArtifact)return true;try{return sessionStorage.getItem("enterrank_token")?true:false;}catch(e){return false;}});
-  const[screen,setScreen]=useState(isArtifact?"dashboard":"hub");
+  const isLocal=typeof window!=="undefined"&&window.location.hostname==="localhost";
+  const[authed,setAuthed]=useState(()=>{if(isLocal)return true;try{return sessionStorage.getItem("enterrank_token")?true:false;}catch(e){return false;}});
+  const[screen,setScreen]=useState(isLocal?"dashboard":"hub");
   const[activeProject,setActiveProject]=useState(null);
   const[step,setStep]=useState("input");
   const[data,setData]=useState({brand:"",industry:"",website:"",region:"",topics:[],competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
   const[results,setResults]=useState(null);
   const[history,setHistory]=useState([]);
-  const[chatOpen,setChatOpen]=useState(false);
+
   const[sideCollapsed,setSideCollapsed]=useState(false);
   const[loginError,setLoginError]=useState("");
   const[loggingIn,setLoggingIn]=useState(false);
 
   const handleLogin=async(email,password)=>{
-    if(isArtifact){setAuthed(true);return;}
+    if(isLocal){setAuthed(true);return;}
     setLoggingIn(true);setLoginError("");
     try{
       const res=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
@@ -2091,10 +1900,11 @@ export default function App(){
     setLoggingIn(false);
   };
 
-  const handleLogout=()=>{if(isArtifact){setResults(null);setStep("input");return;}try{sessionStorage.removeItem("enterrank_token");}catch(e){}setAuthed(false);setResults(null);setStep("input");setScreen("hub");setActiveProject(null);};
+  const handleLogout=()=>{if(isLocal){setResults(null);setStep("input");return;}try{sessionStorage.removeItem("enterrank_token");}catch(e){}setAuthed(false);setResults(null);setStep("input");setScreen("hub");setActiveProject(null);};
+
+  const[projectPrompt,setProjectPrompt]=useState(null);
 
   const handleSelectProject=async(projectSummary)=>{
-    // Load full project data — try API first, fallback to localStorage
     try{
       let project=null;
       try{
@@ -2104,14 +1914,39 @@ export default function App(){
       }catch(e){}
       if(!project)project=lsGetProject(projectSummary.id);
       if(!project){alert("Failed to load project");return;}
-      setActiveProject(project);
-      setData({brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors&&project.competitors.length>0?project.competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
-      // Load history from project
-      setHistory((project.history||[]).map(h=>({date:h.date||new Date(h.timestamp).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),...h})));
-      setResults(null);
-      setStep("input");
-      setScreen("dashboard");
+      // Check if project has previous audit data
+      const lastAudit=(project.history||[]).length>0?(project.history||[])[project.history.length-1]:null;
+      if(lastAudit&&lastAudit.apiData){
+        // Has previous results — ask user what they want
+        setProjectPrompt({project,lastAudit});
+      }else{
+        // No previous audit — go straight to audit input
+        openProjectForAudit(project);
+      }
     }catch(e){alert("Failed to load project");}
+  };
+
+  const openProjectForAudit=(project)=>{
+    setProjectPrompt(null);
+    setActiveProject(project);
+    setData({brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors&&project.competitors.length>0?project.competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
+    setHistory((project.history||[]).map(h=>({date:h.date||new Date(h.timestamp).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),...h})));
+    setResults(null);
+    setStep("input");
+    setScreen("dashboard");
+  };
+
+  const openProjectDashboard=(project,lastAudit)=>{
+    setProjectPrompt(null);
+    setActiveProject(project);
+    setData({brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors&&project.competitors.length>0?project.competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
+    setHistory((project.history||[]).map(h=>({date:h.date||new Date(h.timestamp).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),...h})));
+    // Rebuild results from last audit
+    const cd={brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors||[]};
+    const r=generateAll(cd,lastAudit.apiData);
+    setResults(r);
+    setStep("audit");
+    setScreen("dashboard");
   };
 
   const handleNewProject=()=>{
@@ -2145,16 +1980,35 @@ export default function App(){
     </div>
   </div>);
 
-  if(screen==="hub")return <ProjectHub onSelect={handleSelectProject} onNew={handleNewProject} onLogout={handleLogout}/>;
+  if(screen==="hub")return(<>
+    <ProjectHub onSelect={handleSelectProject} onNew={handleNewProject} onLogout={handleLogout}/>
+    {projectPrompt&&(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,animation:"fadeIn .2s ease-out"}} onClick={()=>setProjectPrompt(null)}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,padding:"36px 32px 28px",width:"100%",maxWidth:420,boxShadow:"0 20px 60px rgba(0,0,0,.15)",animation:"fadeIn .25s ease-out"}}>
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <div style={{width:48,height:48,borderRadius:14,background:`${C.accent}10`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
+            <BrandLogo name={projectPrompt.project.brand} website={projectPrompt.project.website} size={28} color={C.accent}/>
+          </div>
+          <div style={{fontSize:20,fontWeight:700,color:C.text,fontFamily:"'Outfit'",marginBottom:6}}>{projectPrompt.project.brand}</div>
+          <div style={{fontSize:13,color:C.muted}}>Last audit: {projectPrompt.lastAudit.date||"Recent"} · Score: {projectPrompt.lastAudit.overall||"—"}%</div>
+        </div>
+        <div style={{fontSize:14,color:C.sub,textAlign:"center",marginBottom:24}}>Would you like to run another audit or view the existing dashboard?</div>
+        <div style={{display:"flex",gap:12}}>
+          <button onClick={()=>openProjectDashboard(projectPrompt.project,projectPrompt.lastAudit)} style={{flex:1,padding:"14px 20px",background:"#fff",border:`2px solid ${C.accent}`,borderRadius:12,fontSize:14,fontWeight:600,color:C.accent,cursor:"pointer",fontFamily:"'Outfit'",transition:"all .15s"}} onMouseEnter={e=>Object.assign(e.target.style,{background:`${C.accent}08`})} onMouseLeave={e=>Object.assign(e.target.style,{background:"#fff"})}>View Dashboard</button>
+          <button onClick={()=>openProjectForAudit(projectPrompt.project)} style={{flex:1,padding:"14px 20px",background:C.accent,border:`2px solid ${C.accent}`,borderRadius:12,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"'Outfit'",transition:"all .15s"}} onMouseEnter={e=>Object.assign(e.target.style,{background:"#1d4ed8"})} onMouseLeave={e=>Object.assign(e.target.style,{background:C.accent})}>Run AEO Audit</button>
+        </div>
+        <div onClick={()=>setProjectPrompt(null)} style={{textAlign:"center",marginTop:16,fontSize:12,color:C.muted,cursor:"pointer"}}>Cancel</div>
+      </div>
+    </div>)}
+  </>);
 
   const run=async(apiData)=>{
     const r=generateAll(data, apiData);setResults(r);
-    const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),categories:r.painPoints.map(p=>({label:p.label,score:p.score}))};
+    const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
     setHistory(prev=>[...prev,entry]);
     setStep("audit");
 
     // Save to project (create if new, update if existing) — skip in artifact mode
-    if(!isArtifact){try{
+    if(!isLocal){try{
       if(activeProject){
         const res=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:activeProject.id,auditEntry:entry})});
         const updated=await res.json();
@@ -2178,38 +2032,17 @@ export default function App(){
     }catch(e){console.error("Failed to save project:",e);}}
   };
 
-  const handleUpdateResults=(updates)=>{
-    setResults(prev=>{
-      if(!prev)return prev;
-      const next={...prev};
-      // Merge top-level fields
-      if(updates.engines) next.engines=updates.engines;
-      if(updates.painPoints) next.painPoints=updates.painPoints;
-      if(updates.competitors) next.competitors=updates.competitors;
-      if(updates.stakeholders) next.stakeholders=updates.stakeholders;
-      if(updates.aeoChannels) next.aeoChannels=updates.aeoChannels;
-      if(updates.contentTypes) next.contentTypes=updates.contentTypes;
-      if(updates.roadmap) next.roadmap={...next.roadmap,...updates.roadmap};
-      if(updates.funnelStages) next.funnelStages=updates.funnelStages;
-      // Recalculate overall if engines changed
-      if(updates.engines){
-        next.overall=Math.round(next.engines.reduce((a,e)=>a+e.score,0)/next.engines.length);
-        next.scoreLabel=next.overall>=80?"Dominant":next.overall>=60?"Strong":next.overall>=40?"Moderate":next.overall>=20?"Weak":"Invisible";
-      }
-      return next;
-    });
-  };
 
   return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",color:C.text,display:"flex"}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}`}</style>
 
     {/* Sidebar */}
-    <Sidebar step={step} setStep={setStep} results={results} brand={results?.clientData?.brand||data.brand} onBack={handleBackToHub} isArtifact={isArtifact} onLogout={handleLogout} collapsed={sideCollapsed} setCollapsed={setSideCollapsed}/>
+    <Sidebar step={step} setStep={setStep} results={results} brand={results?.clientData?.brand||data.brand} onBack={handleBackToHub} isLocal={isLocal} onLogout={handleLogout} collapsed={sideCollapsed} setCollapsed={setSideCollapsed}/>
 
     {/* Main content */}
     <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",marginLeft:sideCollapsed?60:220,transition:"margin-left .2s ease"}}>
-      <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto",transition:"padding-right .2s",paddingRight:chatOpen?420:32}}>
+      <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto"}}>
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={run} history={history}/>}
         {step==="audit"&&results&&<AuditPage r={results} history={history} goTo={setStep}/>}
         {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep}/>}
@@ -2220,17 +2053,5 @@ export default function App(){
         {step==="roadmap"&&results&&<RoadmapPage r={results}/>}
       </div>
     </div>
-
-    {/* Chat toggle button */}
-    {results&&step!=="input"&&!chatOpen&&(
-      <div onClick={()=>setChatOpen(true)} style={{position:"fixed",bottom:24,right:24,width:52,height:52,borderRadius:16,background:C.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:"0 4px 20px rgba(37,99,235,.3)",zIndex:999,transition:"transform .15s"}}
-        onMouseEnter={e=>e.currentTarget.style.transform="scale(1.08)"}
-        onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M4 4h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4l-4 3v-3H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" fill="#fff"/><path d="M6 8h10M6 11h7" stroke={C.accent} strokeWidth="1.5" strokeLinecap="round"/></svg>
-      </div>
-    )}
-
-    {/* Chat Panel */}
-    <ChatPanel isOpen={chatOpen} onClose={()=>setChatOpen(false)} step={step} results={results} onUpdateResults={handleUpdateResults}/>
   </div>);
 }
