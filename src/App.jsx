@@ -227,65 +227,79 @@ async function runRealAudit(cd, onProgress){
 
   const gptVisPrompt=`You are ChatGPT. A user asks you about "${brand}" in the "${industry}" industry (${region}).
 
-Topics to test: ${gptTopics.join(", ")}
-
-For each of these 4 queries, would you mention or cite ${brand}?
+For EACH of these 8 queries, determine if you would mention or cite ${brand} in your response.
 1. "What are the best ${industry} companies in ${region}?"
 2. "Tell me about ${brand}"
-3. "${gptTopics[0]||industry} recommendations for ${region}"
+3. "${topics[0]||industry} recommendations for ${region}"
 4. "${brand} vs ${compNames[0]||"competitors"}"
-
-Also generate 4 more realistic queries a user in ${region} might ask about ${industry} where ${brand} could appear.
+5. "Best ${topics[1]||industry} solutions ${new Date().getFullYear()}"
+6. "${industry} buyer guide"
+7. "${brand} reviews and reputation"
+8. "Top ${industry} providers comparison"
 
 Website crawl data for ${brand}:
 ${crawlSummary}
 
 Return JSON:
 {
-  "score": <0-100 how visible ${brand} is in YOUR responses>,
-  "mentionRate": <0-100 % of relevant queries where you would mention ${brand}>,
-  "citationRate": <0-100 % of queries where you would directly cite/link ${brand}'s website>,
-  "queries": [{"query":"<the prompt>","status":"Cited"|"Mentioned"|"Absent"}] (exactly 8 queries),
-  "strengths": ["<why you WOULD mention this brand>","<another reason>"],
-  "weaknesses": ["<why you might NOT cite this brand>","<another reason>"]
+  "queries": [{"query":"<exact query from above>","status":"Cited"|"Mentioned"|"Absent"}] (exactly 8 in order),
+  "strengths": ["<why you WOULD mention this brand>","<another>"],
+  "weaknesses": ["<why you might NOT cite this brand>","<another>"]
 }
 
-Be honest and accurate. If you wouldn't naturally mention ${brand} for most queries, give low scores.`;
+Rules:
+- "Cited" = you would link to or reference their website URL directly
+- "Mentioned" = you would name the brand but not link their site
+- "Absent" = you would not bring up this brand at all
+- Be strict and honest. Most small/medium brands will be "Absent" for generic queries.`;
 
   const gptRaw=await callOpenAI(gptVisPrompt, engineSystemPrompt);
-  const gptData=safeJSON(gptRaw)||{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["Could not assess visibility"]};
+  const gptParsed=safeJSON(gptRaw)||{queries:[],strengths:[],weaknesses:["Could not assess"]};
+  // Calculate scores deterministically from query statuses
+  const calcScores=(queries)=>{
+    const q=queries||[];
+    const cited=q.filter(p=>p.status==="Cited").length;
+    const mentioned=q.filter(p=>p.status==="Mentioned").length;
+    const total=q.length||8;
+    return{mentionRate:Math.round(((cited+mentioned)/total)*100),citationRate:Math.round((cited/total)*100)};
+  };
+  const gptScores=calcScores(gptParsed.queries);
+  const gptData={score:Math.round(gptScores.mentionRate*0.5+gptScores.citationRate*0.5),mentionRate:gptScores.mentionRate,citationRate:gptScores.citationRate,queries:gptParsed.queries||[],strengths:gptParsed.strengths||[],weaknesses:gptParsed.weaknesses||[]};
 
   // ── Step 3: Gemini visibility — ask Gemini about ITSELF ──
   onProgress("Querying Gemini for brand visibility...",22);
   const gemVisPrompt=`You are Gemini. A user asks you about "${brand}" in the "${industry}" industry (${region}).
 
-Topics to test: ${gemTopics.join(", ")}
-
-For each of these 4 queries, would you mention or cite ${brand}?
+For EACH of these 8 queries, determine if you would mention or cite ${brand} in your response.
 1. "What are the best ${industry} providers in ${region}?"
 2. "What do you know about ${brand}?"
-3. "${gemTopics[0]||industry} options in ${region}"
+3. "${topics[0]||industry} options in ${region}"
 4. "Compare ${brand} with ${compNames[0]||"alternatives"}"
-
-Also generate 4 more realistic queries a user in ${region} might ask about ${industry} where ${brand} could appear.
+5. "Top ${topics[1]||industry} companies ${new Date().getFullYear()}"
+6. "${industry} solutions comparison"
+7. "${brand} reviews"
+8. "Best ${industry} tools for businesses"
 
 Website crawl data for ${brand}:
 ${crawlSummary}
 
 Return JSON:
 {
-  "score": <0-100 how visible ${brand} is in YOUR responses>,
-  "mentionRate": <0-100 % of relevant queries where you would mention ${brand}>,
-  "citationRate": <0-100 % of queries where you would directly cite/link ${brand}'s website>,
-  "queries": [{"query":"<the prompt>","status":"Cited"|"Mentioned"|"Absent"}] (exactly 8 queries),
-  "strengths": ["<why you WOULD mention this brand>","<another reason>"],
-  "weaknesses": ["<why you might NOT cite this brand>","<another reason>"]
+  "queries": [{"query":"<exact query from above>","status":"Cited"|"Mentioned"|"Absent"}] (exactly 8 in order),
+  "strengths": ["<why you WOULD mention this brand>","<another>"],
+  "weaknesses": ["<why you might NOT cite this brand>","<another>"]
 }
 
-Be honest and accurate. If you wouldn't naturally mention ${brand} for most queries, give low scores.`;
+Rules:
+- "Cited" = you would link to or reference their website URL directly
+- "Mentioned" = you would name the brand but not link their site
+- "Absent" = you would not bring up this brand at all
+- Be strict and honest. Most small/medium brands will be "Absent" for generic queries.`;
 
   const gemRaw=await callGemini(gemVisPrompt, engineSystemPrompt);
-  const gemData=safeJSON(gemRaw)||{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["Could not assess visibility"]};
+  const gemParsed=safeJSON(gemRaw)||{queries:[],strengths:[],weaknesses:["Could not assess"]};
+  const gemScores=calcScores(gemParsed.queries);
+  const gemData={score:Math.round(gemScores.mentionRate*0.5+gemScores.citationRate*0.5),mentionRate:gemScores.mentionRate,citationRate:gemScores.citationRate,queries:gemParsed.queries||[],strengths:gemParsed.strengths||[],weaknesses:gemParsed.weaknesses||[]};
 
   // ── Step 4: Competitor analysis — BOTH engines + crawl data ──
   onProgress("Analysing competitors across both engines...",30);
@@ -684,8 +698,35 @@ function generateAll(cd, apiData){
   const defaultPressSites=[{name:"TechCrunch",url:"techcrunch.com",focus:"Tech"},{name:"Forbes",url:"forbes.com",focus:"Business"},{name:"Bloomberg",url:"bloomberg.com",focus:"Finance"},{name:"Reuters",url:"reuters.com",focus:"News"},{name:"The Verge",url:"theverge.com",focus:"Technology"},{name:"VentureBeat",url:"venturebeat.com",focus:"AI"},{name:"Business Insider",url:"businessinsider.com",focus:"Business"},{name:"CNBC",url:"cnbc.com",focus:"Finance"},{name:"PR Newswire",url:"prnewswire.com",focus:"PR"},{name:"Fast Company",url:"fastcompany.com",focus:"Innovation"}];
   const defaultDirSites=[{name:"Crunchbase",url:"crunchbase.com",focus:"Company data"},{name:"AngelList",url:"angel.co",focus:"Startups"},{name:"Owler",url:"owler.com",focus:"Intel"},{name:"LinkedIn",url:"linkedin.com",focus:"Professional"},{name:"ZoomInfo",url:"zoominfo.com",focus:"B2B"},{name:"Dun & Bradstreet",url:"dnb.com",focus:"Business data"},{name:"Kompass",url:"kompass.com",focus:"B2B directory"},{name:"Manta",url:"manta.com",focus:"Small biz"}];
   const defaultSocialSites=[{name:"Reddit",url:"reddit.com",focus:"r/"+(cd.industry?.toLowerCase()||"technology")},{name:"Quora",url:"quora.com",focus:"Q&A"},{name:"X",url:"x.com",focus:"Conversations"},{name:"Hacker News",url:"news.ycombinator.com",focus:"Tech"},{name:"Medium",url:"medium.com",focus:"Long-form"},{name:"LinkedIn",url:"linkedin.com",focus:"Thought leadership"},{name:"Discord",url:"discord.com",focus:"Communities"},{name:"Facebook Groups",url:"facebook.com",focus:"Groups"}];
-  const rawChannels=[{channel:"Company Blog / Knowledge Base",impact:95,desc:"Primary content hub",sites:null},{channel:"Wikipedia / Wikidata",impact:92,desc:"Knowledge graph source",sites:null},{channel:"YouTube / Video",impact:88,desc:"Video transcripts",sites:null},{channel:"Review Platforms",impact:85,desc:"Social proof",sites:getRecSites("reviewPlatforms")||defaultReviewSites},{channel:"Press / News Coverage",impact:82,desc:"Authority signals",sites:getRecSites("pressNews")||defaultPressSites},{channel:"LinkedIn",impact:78,desc:"Professional authority",sites:null},{channel:"Industry Directories",impact:75,desc:"Structured listings",sites:getRecSites("industryDirectories")||defaultDirSites},{channel:"Podcasts",impact:68,desc:"Long-form content",sites:null},{channel:"Social Media (X, Reddit, Quora)",impact:65,desc:"Community discussions",sites:getRecSites("socialMedia")||defaultSocialSites},{channel:"Academic Citations",impact:72,desc:"High-trust signals",sites:null}];
-  const aeoChannels=rawChannels.map(ch=>{const v=getChStatus(ch.channel);return{...ch,status:v?v.status:"Unknown",finding:v?v.finding:"Not verified",statusLabel:v?v.status:"Unknown"};});
+  const rawChannels=[{channel:"Company Blog / Knowledge Base",impact:95,desc:"Primary content hub",sites:null},{channel:"Wikipedia",impact:92,desc:"Knowledge graph source",sites:null},{channel:"YouTube",impact:88,desc:"Video transcripts",sites:null},{channel:"Review Sites (G2/Capterra/Trustpilot)",impact:85,desc:"Social proof",sites:getRecSites("reviewPlatforms")||defaultReviewSites},{channel:"Press/News Coverage",impact:82,desc:"Authority signals",sites:getRecSites("pressNews")||defaultPressSites},{channel:"LinkedIn",impact:78,desc:"Professional authority",sites:null},{channel:"X (Twitter)",impact:76,desc:"Real-time conversations",sites:null},{channel:"Facebook",impact:68,desc:"Community & brand page",sites:null},{channel:"Instagram",impact:65,desc:"Visual brand presence",sites:null},{channel:"TikTok",impact:62,desc:"Short-form video",sites:null},{channel:"Reddit",impact:74,desc:"Community discussions indexed by AI",sites:null},{channel:"Other Social Platforms",impact:58,desc:"Quora, Medium, Pinterest",sites:getRecSites("socialMedia")||defaultSocialSites},{channel:"Industry Directories",impact:75,desc:"Structured listings",sites:getRecSites("industryDirectories")||defaultDirSites},{channel:"Podcasts",impact:68,desc:"Long-form content",sites:null},{channel:"Academic Citations",impact:72,desc:"High-trust signals",sites:null}];
+  const aeoChannels=rawChannels.map(ch=>{
+    // Match against API channel data — try exact match first, then partial
+    if(!hasApi||!apiData.channelData||!apiData.channelData.channels){return{...ch,status:"Unknown",finding:"Channel verification not available"};}
+    const channels=apiData.channelData.channels;
+    const chLow=ch.channel.toLowerCase();
+    const match=channels.find(c=>{
+      const cn=(c.channel||"").toLowerCase();
+      if(cn===chLow)return true;
+      // Partial matching
+      if(chLow.includes("wikipedia")&&cn.includes("wikipedia"))return true;
+      if(chLow.includes("youtube")&&cn.includes("youtube"))return true;
+      if(chLow.includes("linkedin")&&cn.includes("linkedin"))return true;
+      if(chLow.includes("x (twitter)")&&(cn.includes("x (twitter)")||cn.includes("twitter")))return true;
+      if(chLow.includes("facebook")&&cn.includes("facebook"))return true;
+      if(chLow.includes("instagram")&&cn.includes("instagram"))return true;
+      if(chLow.includes("tiktok")&&cn.includes("tiktok"))return true;
+      if(chLow.includes("reddit")&&cn.includes("reddit"))return true;
+      if(chLow.includes("other social")&&cn.includes("other social"))return true;
+      if(chLow.includes("review")&&cn.includes("review"))return true;
+      if(chLow.includes("press")&&(cn.includes("press")||cn.includes("news")))return true;
+      if(chLow.includes("director")&&cn.includes("director"))return true;
+      if(chLow.includes("podcast")&&cn.includes("podcast"))return true;
+      if(chLow.includes("academic")&&cn.includes("academic"))return true;
+      if(chLow.includes("blog")&&cn.includes("blog"))return true;
+      return false;
+    });
+    return{...ch,status:match?match.status:"Not Verified",finding:match?match.finding:"Could not verify this channel",url:match?match.url:null};
+  });
   const contentTypes=(hasApi&&apiData.contentGridData&&Array.isArray(apiData.contentGridData)&&apiData.contentGridData.length>0)?apiData.contentGridData.map(ct=>({type:ct.type||"Content",channels:ct.channels||["Blog"],freq:ct.freq||"Monthly",p:ct.p||"P1",owner:ct.owner||"Content Team",impact:typeof ct.impact==="number"?ct.impact:70,rationale:ct.rationale||ct.description||""})):[];
   const roadmap=(hasApi&&apiData.roadmapData&&apiData.roadmapData.day30)?apiData.roadmapData:null;
   const outputReqs=contentTypes.slice(0,6).map(ct=>({n:ct.freq||"Monthly",u:"",l:ct.type,d:ct.rationale||""}));
@@ -1606,14 +1647,13 @@ function GridPage({r,goTo}){
     <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Content-Channel Grid</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Personalised content strategy based on {r.clientData.brand}'s audit findings.</p></div>
     <SectionNote text={`This content grid is tailored to ${r.clientData.brand}'s specific AEO gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
     <Card style={{marginBottom:20,overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-      <thead><tr style={{borderBottom:`2px solid ${C.border}`}}>{["Content Type","Channels","Frequency","Priority","Owner","Impact"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:600,color:C.muted,fontSize:10,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
+      <thead><tr style={{borderBottom:`2px solid ${C.border}`}}>{["Content Type","Channels","Frequency","Priority","Owner"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:600,color:C.muted,fontSize:10,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
       <tbody>{[...r.contentTypes].sort((a,b)=>{const po={"P0":0,"P1":1,"P2":2,"P3":3};return(po[a.p]??9)-(po[b.p]??9);}).map((ct,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
         <td style={{padding:"10px"}}><div style={{fontWeight:600,color:C.text}}>{ct.type}</div>{ct.rationale&&<div style={{fontSize:10,color:C.muted,marginTop:2}}>{ct.rationale}</div>}</td>
         <td style={{padding:"10px"}}><div style={{display:"flex",flexWrap:"wrap",gap:3}}>{ct.channels.map(ch=><Pill key={ch} color="#64748b">{ch}</Pill>)}</div></td>
         <td style={{padding:"10px",color:C.sub}}>{ct.freq}</td>
         <td style={{padding:"10px"}}><Pill color={ct.p==="P0"?C.red:ct.p==="P1"?C.amber:"#94a3b8"}>{ct.p}</Pill></td>
         <td style={{padding:"10px",color:C.sub,fontSize:11}}>{ct.owner}</td>
-        <td style={{padding:"10px"}}><div style={{display:"flex",alignItems:"center",gap:6}}><Bar value={ct.impact} color={ct.impact>=90?C.accent:C.green} h={4}/><span style={{fontWeight:600,fontSize:11}}>{ct.impact}</span></div></td>
       </tr>))}</tbody></table>
     </Card>
     <Card><h3 style={{fontSize:14,fontWeight:600,color:C.text,margin:"0 0 12px",fontFamily:"'Outfit'"}}>Monthly Output Requirements for {r.clientData.brand}</h3>
