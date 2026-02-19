@@ -1256,6 +1256,7 @@ function NewAuditPage({data,setData,onRun,history=[]}){
   const[editingTopic,setEditingTopic]=useState(null);
   const[editVal,setEditVal]=useState("");
   const[newTopic,setNewTopic]=useState("");
+  const fixYear=t=>t.replace(/\b(202[0-5])\b/g,"2026");
   const inputOk=data.brand&&data.industry&&data.website;
   const topicsOk=data.topics.length>=3;
   const[logLines,setLogLines]=useState([]);
@@ -1337,7 +1338,7 @@ Return ONLY a JSON array of strings, no markdown, no explanation:
       const raw=await callOpenAI(prompt,"You are a GEO (Generative Engine Optimisation) expert. Return ONLY valid JSON arrays, no markdown fences.");
       const topics=safeJSON(raw);
       if(topics&&Array.isArray(topics)&&topics.length>0){
-        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>0).map(t=>t.trim())}));
+        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>0).map(t=>fixYear(t.trim()))}));
         setAuditStep("topics");
       }else{
         setError("Failed to generate topics. Please try again.");
@@ -1365,7 +1366,7 @@ Return ONLY a JSON array of strings:
       const raw=await callOpenAI(prompt,"You are a GEO expert. Return ONLY valid JSON arrays.");
       const newTopics=safeJSON(raw);
       if(newTopics&&Array.isArray(newTopics)&&newTopics.length>0){
-        const cleaned=newTopics.filter(t=>typeof t==="string"&&t.trim().length>0).map(t=>t.trim());
+        const cleaned=newTopics.filter(t=>typeof t==="string"&&t.trim().length>0).map(t=>fixYear(t.trim()));
         setData(d=>({...d,topics:[...d.topics,...cleaned]}));
       }
     }catch(e){console.error("Regenerate error:",e);}
@@ -1374,11 +1375,11 @@ Return ONLY a JSON array of strings:
 
   const startEdit=(i)=>{setEditingTopic(i);setEditVal(data.topics[i]);};
   const saveEdit=(i)=>{
-    if(editVal.trim()){const t=[...data.topics];t[i]=editVal.trim();setData({...data,topics:t});}
+    if(editVal.trim()){const t=[...data.topics];t[i]=fixYear(editVal.trim());setData({...data,topics:t});}
     setEditingTopic(null);setEditVal("");
   };
   const deleteTopic=(i)=>{setData({...data,topics:data.topics.filter((_,j)=>j!==i)});};
-  const addTopic=()=>{if(newTopic.trim()){setData({...data,topics:[...data.topics,newTopic.trim()]});setNewTopic("");}};
+  const addTopic=()=>{if(newTopic.trim()){setData({...data,topics:[...data.topics,fixYear(newTopic.trim())]});setNewTopic("");}};
 
   // Smooth progress: target is set by API callbacks, displayed value interpolates toward it
   const targetRef=React.useRef(0);
