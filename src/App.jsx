@@ -280,8 +280,26 @@ function detectBrandStatus(answer,brandName,website){
   const lower=answer.toLowerCase();
   const brandLower=brandName.toLowerCase();
   const domain=website?website.replace(/^https?:\/\//,"").replace(/\/.*$/,"").replace(/^www\./,"").toLowerCase():null;
+  // 1. Domain/URL in response = Cited
   if(domain&&domain.length>3&&lower.includes(domain))return"Cited";
+  const domainName=domain?domain.replace(/\.[^.]+$/,""):null;
+  if(domainName&&domainName.length>3&&lower.includes(domainName))return"Cited";
+  // 2. Exact full brand name = Mentioned
   try{const re=new RegExp("\\b"+brandLower.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i");if(re.test(answer))return"Mentioned";}catch(e){}
+  // 3. Sub-phrase match for multi-word brands (e.g. "Abu Dhabi Bank" from "First Abu Dhabi Bank")
+  const words=brandLower.split(/\s+/).filter(w=>w.length>2);
+  if(words.length>=3){
+    for(let len=words.length-1;len>=Math.min(3,words.length);len--){
+      for(let s=0;s<=words.length-len;s++){
+        if(lower.includes(words.slice(s,s+len).join(" ")))return"Mentioned";
+      }
+    }
+  }
+  // 4. Uppercase abbreviation (e.g. "FAB" from "First Abu Dhabi Bank") — only if 3+ chars
+  if(words.length>=3){
+    const abbr=words.map(w=>w[0]).join("").toUpperCase();
+    if(abbr.length>=3){try{if(new RegExp("\\b"+abbr+"\\b").test(answer))return"Mentioned";}catch(e){}}
+  }
   return"Absent";
 }
 
@@ -322,9 +340,9 @@ async function runRealAudit(cd, onProgress){
   ];
 
   // Send each query individually to BOTH engines — no batching, no response splitting
-  // Process in batches of 3 queries (= 6 API calls per batch) to avoid rate limits
+  // Process in batches of 2 queries (= 4 API calls per batch) to avoid Vercel concurrency limits
   const gptResults=[];const gemResults=[];
-  const batchSize=3;
+  const batchSize=2;
   for(let i=0;i<probeQueries.length;i+=batchSize){
     const batch=probeQueries.slice(i,i+batchSize);
     const pct=14+Math.round((i/probeQueries.length)*14);
