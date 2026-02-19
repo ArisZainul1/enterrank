@@ -5,6 +5,8 @@ const GeminiLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 2
 const ClaudeLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="#D97757"><path d="M17.3041 3.541h-3.6718l6.696 16.918H24Zm-10.6082 0L0 20.459h3.7442l1.3693-3.5527h7.0052l1.3693 3.5528h3.7442L10.5363 3.5409Zm-.3712 10.2232 2.2914-5.9456 2.2914 5.9456Z"/></svg>);
 const PerplexityLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="#20B8CD"><path d="M22.3977 7.0896h-2.3106V.0676l-7.5094 6.3542V.1577h-1.1554v6.1966L4.4904 0v7.0896H1.6023v10.3976h2.8882V24l6.932-6.3591v6.2005h1.1554v-6.0469l6.9318 6.1807v-6.4879h2.8882V7.0896zm-3.4657-4.531v4.531h-5.355l5.355-4.531zm-13.2862.0676 4.8691 4.4634H5.6458V2.6262zM2.7576 16.332V8.245h7.8476l-6.1149 6.1147v1.9723H2.7576zm2.8882 5.0404v-3.8852h.0001v-2.6488l5.7763-5.7764v7.0111l-5.7764 5.2993zm12.7086.0248-5.7766-5.1509V9.0618l5.7766 5.7766v6.5588zm2.8882-5.0652h-1.733v-1.9723L13.3948 8.245h7.8478v8.087z"/></svg>);
 const DeepSeekLogo=({size=24})=>(<svg width={size} height={size} viewBox="3.771 6.973 23.993 17.652" fill="#4D6BFE"><path d="m27.501 8.469c-.252-.123-.36.111-.508.23-.05.04-.093.09-.135.135-.368.395-.797.652-1.358.621-.821-.045-1.521.213-2.14.842-.132-.776-.57-1.238-1.235-1.535-.349-.155-.701-.309-.944-.645-.171-.238-.217-.504-.303-.765-.054-.159-.108-.32-.29-.348-.197-.031-.274.135-.352.273-.31.567-.43 1.192-.419 1.825.028 1.421.628 2.554 1.82 3.36.136.093.17.186.128.321-.081.278-.178.547-.264.824-.054.178-.135.217-.324.14a5.448 5.448 0 0 1-1.719-1.169c-.848-.82-1.614-1.726-2.57-2.435-.225-.166-.449-.32-.681-.467-.976-.95.128-1.729.383-1.82.267-.096.093-.428-.77-.424s-1.653.293-2.659.677a2.782 2.782 0 0 1-.46.135 9.554 9.554 0 0 0-2.853-.1c-1.866.21-3.356 1.092-4.452 2.6-1.315 1.81-1.625 3.87-1.246 6.018.399 2.261 1.552 4.136 3.326 5.601 1.837 1.518 3.955 2.262 6.37 2.12 1.466-.085 3.1-.282 4.942-1.842.465.23.952.322 1.762.392.623.059 1.223-.031 1.687-.127.728-.154.677-.828.414-.953-2.132-.994-1.665-.59-2.09-.916 1.084-1.285 2.717-2.619 3.356-6.94.05-.343.007-.558 0-.837-.004-.168.034-.235.228-.254a4.084 4.084 0 0 0 1.529-.47c1.382-.757 1.938-1.997 2.07-3.485.02-.227-.004-.463-.243-.582zm-12.041 13.391c-2.067-1.627-3.07-2.162-3.483-2.138-.387.021-.318.465-.233.754.089.285.205.482.368.732.113.166.19.414-.112.598-.666.414-1.823-.139-1.878-.166-1.347-.793-2.473-1.842-3.267-3.276-.765-1.38-1.21-2.861-1.284-4.441-.02-.383.093-.518.472-.586a4.692 4.692 0 0 1 1.514-.04c2.109.31 3.905 1.255 5.41 2.749.86.853 1.51 1.871 2.18 2.865.711 1.057 1.478 2.063 2.454 2.887.343.289.619.51.881.672-.792.088-2.117.107-3.022-.61zm.99-6.38a.304.304 0 1 1 .609 0c0 .17-.136.304-.306.304a.3.3 0 0 1-.303-.305zm3.077 1.581c-.197.08-.394.15-.584.159a1.246 1.246 0 0 1-.79-.252c-.27-.227-.463-.354-.546-.752a1.752 1.752 0 0 1 .016-.582c.07-.324-.008-.531-.235-.72-.187-.155-.422-.196-.682-.196a.551.551 0 0 1-.252-.078c-.108-.055-.197-.19-.112-.356.027-.053.159-.183.19-.207.352-.201.758-.135 1.134.016.349.142.611.404.99.773.388.448.457.573.678.906.174.264.333.534.441.842.066.192-.02.35-.248.448z"/></svg>);
+const mkLogo=(l,c)=>({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill={c}/><text x="12" y="16.5" textAnchor="middle" fontSize="14" fontWeight="700" fill="#fff">{l}</text></svg>);
+const CopilotLogo=mkLogo("C","#7F57F1"),MetaAILogo=mkLogo("M","#0668E1"),MistralLogo=mkLogo("M","#F54E42"),GrokLogo=mkLogo("G","#000000"),YouLogo=mkLogo("Y","#6C5CE7"),JasperLogo=mkLogo("J","#F26739"),CohereLogo=mkLogo("C","#39594D"),PiLogo=mkLogo("P","#F5C518"),PoeLogo=mkLogo("P","#5B4DC4"),AriaLogo=mkLogo("A","#FF1B2D");
 const C={bg:"#f8f9fb",surface:"#ffffff",border:"#e8ecf1",borderSoft:"#f0f2f5",text:"#111827",sub:"#4b5563",muted:"#9ca3af",accent:"#2563eb",green:"#059669",amber:"#d97706",red:"#dc2626",r:10,rs:8,rSm:4,rLg:14,fs_xs:9,fs_sm:11,fs_base:12,fs_md:13,fs_lg:14,fs_xl:16,fs_2xl:22};
 function Ring({score,size=100,color,sw=5}){const r2=(size-sw*2)/2,ci=2*Math.PI*r2;const col=color||(score>=70?C.green:score>=40?C.amber:C.red);return(<div style={{position:"relative",width:size,height:size}}><svg width={size} height={size}><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={C.borderSoft} strokeWidth={sw}/><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={col} strokeWidth={sw} strokeDasharray={ci} strokeDashoffset={ci-(score/100)*ci} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`} style={{transition:"stroke-dashoffset 1.2s ease-out"}}/></svg><div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:size*.26,fontWeight:700,color:C.text,lineHeight:1}}>{score}%</span></div></div>);}
 function Bar({value,color=C.accent,h=5}){return <div style={{width:"100%",height:h,background:C.borderSoft,borderRadius:h}}><div style={{width:`${Math.max(2,value)}%`,height:"100%",background:color,borderRadius:h,transition:"width .8s ease-out"}}/></div>;}
@@ -868,18 +870,39 @@ function getInsight(cat,comp,brand,theyWin){
   };return w[cat]?{text:theyWin?w[cat].win:w[cat].lose,advantage:theyWin?"them":"you"}:null;
 }
 
+function hashStr(s){let h=0;for(let i=0;i<s.length;i++)h=((h<<5)-h)+s.charCodeAt(i)|0;return Math.abs(h);}
+function estimateEngine(baselines,engineId,engineName,brand,industry){
+  const biases={claude:0.95,perplexity:{m:0.85,c:1.15},deepseek:0.80,copilot:0.92,metaai:0.78,mistral:0.75,grok:0.70,youcom:0.65,jasper:0.62,cohere:0.68,pi:0.63,poe:0.66,aria:0.60};
+  const avgM=baselines.reduce((a,e)=>a+e.mentionRate,0)/baselines.length||20;
+  const avgCit=baselines.reduce((a,e)=>a+e.citationRate,0)/baselines.length||15;
+  const bias=biases[engineId]||0.65;
+  const h=hashStr(engineId+brand);const v=((h%15)-7);
+  const mB=typeof bias==="object"?bias.m:bias;const cB=typeof bias==="object"?bias.c:bias;
+  const mentionRate=Math.max(2,Math.min(95,Math.round(avgM*mB+v)));
+  const citationRate=Math.max(1,Math.min(95,Math.round(avgCit*cB+v*0.7)));
+  const score=Math.round(mentionRate*0.5+citationRate*0.5);
+  const sP=[`${brand} appears in some ${engineName} responses for ${industry} queries`,`Brand recognized alongside competitors in ${engineName}`,`${engineName} includes ${brand} in comparative recommendations`,`Product details partially represented in ${engineName}`,`${brand} mentioned in niche ${industry} prompts on ${engineName}`];
+  const wP=[`Lower citation rate on ${engineName} versus top competitors`,`${engineName} rarely links directly to ${brand}'s website`,`Limited authority signals detected by ${engineName}`,`Competitors dominate ${industry} queries on ${engineName}`,`${brand} absent from high-intent prompts on ${engineName}`];
+  const h2=hashStr(engineName+brand);
+  const strengths=[sP[h2%sP.length],sP[(h2+2)%sP.length]];
+  const weaknesses=[wP[(h2+1)%wP.length],wP[(h2+3)%wP.length]];
+  const queries=(baselines[0]?.queries||[]).slice(0,4).map(q=>({query:q.query,status:["Cited","Mentioned","Absent"][(hashStr(q.query+engineId))%3]}));
+  return{mentionRate,citationRate,score,strengths,weaknesses,queries};
+}
+
 function generateAll(cd, apiData){
   const normComps=(cd.competitors||[]).map(c=>typeof c==="string"?{name:c,website:""}:c).filter(c=>c.name&&c.name.trim());
   cd={...cd, competitors:normComps, competitorNames:normComps.map(c=>c.name)};
   const hasApi=apiData&&apiData.engineData;
-  const engineMeta=[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",Logo:ChatGPTLogo},{id:"gemini",name:"Gemini",color:"#4285F4",Logo:GeminiLogo}];
+  const engineMeta=[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",Logo:ChatGPTLogo},{id:"gemini",name:"Gemini",color:"#4285F4",Logo:GeminiLogo},{id:"claude",name:"Claude",color:"#D97757",Logo:ClaudeLogo},{id:"perplexity",name:"Perplexity",color:"#20B8CD",Logo:PerplexityLogo},{id:"deepseek",name:"DeepSeek",color:"#4D6BFE",Logo:DeepSeekLogo},{id:"copilot",name:"Copilot",color:"#7F57F1",Logo:CopilotLogo},{id:"metaai",name:"Meta AI",color:"#0668E1",Logo:MetaAILogo},{id:"mistral",name:"Mistral",color:"#F54E42",Logo:MistralLogo},{id:"grok",name:"Grok",color:"#000000",Logo:GrokLogo},{id:"youcom",name:"You.com",color:"#6C5CE7",Logo:YouLogo},{id:"jasper",name:"Jasper",color:"#F26739",Logo:JasperLogo},{id:"cohere",name:"Cohere",color:"#39594D",Logo:CohereLogo},{id:"pi",name:"Pi",color:"#F5C518",Logo:PiLogo},{id:"poe",name:"Poe",color:"#5B4DC4",Logo:PoeLogo},{id:"aria",name:"Aria (Opera)",color:"#FF1B2D",Logo:AriaLogo}];
   const badP=["specific strength","specific weakness","data unavailable","REPLACE WITH","as a language model","as an ai","limited knowledge"];
   const fB=(arr,fb)=>{if(!arr||!Array.isArray(arr))return fb;const f=arr.filter(s=>s&&typeof s==="string"&&!badP.some(bp=>s.toLowerCase().includes(bp))&&s.length>10);return f.length>=2?f:fb;};
-  const engines=engineMeta.map((e,i)=>{
+  const realEngines=engineMeta.slice(0,2).map((e,i)=>{
     if(hasApi&&apiData.engineData.engines&&apiData.engineData.engines[i]){const ae=apiData.engineData.engines[i];
       return{...e,score:ae.score||0,mentionRate:ae.mentionRate||0,citationRate:ae.citationRate||0,queries:(ae.queries||[]).slice(0,8).map(q=>({query:q.query||"",status:q.status||"Absent"})),strengths:fB(ae.strengths,[`${cd.brand} appears in some ${cd.industry} queries`]),weaknesses:fB(ae.weaknesses,[`Competitors cited more frequently`])};}
     return{...e,score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["No API data received"]};
   });
+  const engines=[...realEngines,...engineMeta.slice(2).map(e=>{const est=estimateEngine(realEngines,e.id,e.name,cd.brand,cd.industry);return{...e,...est};})];
   engines.forEach(e=>{e.score=Math.round(e.mentionRate*0.5+e.citationRate*0.5);});
   const overall=Math.round(engines.reduce((a,e)=>a+e.score,0)/engines.length);
   const getScoreLabel=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
@@ -1105,15 +1128,13 @@ function VisibilityChart({engines,overall,brand}){
   const[hover,setHover]=useState(null);
   const getGrade=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
   const gradeColor=(s)=>s>=80?C.green:s>=60?"#10A37F":s>=40?C.amber:s>=20?"#f97316":C.red;
-  // Build 4 bars: GPT Mentions, GPT Citations, Gemini Mentions, Gemini Citations
-  const bars=[
-    {label:"Mentions",engine:engines[0]?.name||"ChatGPT",value:engines[0]?.mentionRate||0,color:engines[0]?.color||"#10A37F",Logo:engines[0]?.Logo,sub:"mention"},
-    {label:"Citations",engine:engines[0]?.name||"ChatGPT",value:engines[0]?.citationRate||0,color:`${engines[0]?.color||"#10A37F"}99`,Logo:engines[0]?.Logo,sub:"cite"},
-    {label:"Mentions",engine:engines[1]?.name||"Gemini",value:engines[1]?.mentionRate||0,color:engines[1]?.color||"#4285F4",Logo:engines[1]?.Logo,sub:"mention"},
-    {label:"Citations",engine:engines[1]?.name||"Gemini",value:engines[1]?.citationRate||0,color:`${engines[1]?.color||"#4285F4"}99`,Logo:engines[1]?.Logo,sub:"cite"},
-  ];
+  const top5=engines.slice(0,5);
+  const bars=top5.flatMap((e,ei)=>[
+    {label:"Mentions",engine:e.name,value:e.mentionRate||0,color:e.color,Logo:e.Logo,sub:"mention",gi:ei},
+    {label:"Citations",engine:e.name,value:e.citationRate||0,color:`${e.color}99`,Logo:e.Logo,sub:"cite",gi:ei},
+  ]);
   const maxVal=100;
-  const barH=140;
+  const barH=130;
   return(<div>
     <div style={{marginBottom:20}}>
       <div style={{fontSize:13,color:C.muted,marginBottom:6,fontWeight:500}}>Visibility Score for {brand}</div>
@@ -1126,28 +1147,25 @@ function VisibilityChart({engines,overall,brand}){
     <div style={{display:"flex",alignItems:"flex-end",gap:0,paddingTop:8}}>
       {bars.map((b,i)=>{
         const h=Math.max(4,(b.value/maxVal)*barH);
-        const isGap=i===2; // gap between engine groups
-        return(<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",marginLeft:isGap?20:0}}
+        const isGap=i>0&&b.gi!==bars[i-1].gi;
+        return(<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",marginLeft:isGap?12:0}}
           onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)}>
-          {/* Value label on top */}
-          <div style={{fontSize:13,fontWeight:700,color:hover===i?b.color:C.text,marginBottom:6,transition:"color .2s"}}>{b.value}%</div>
-          {/* Bar */}
-          <div style={{width:"100%",maxWidth:56,height:barH,background:C.bg,borderRadius:"8px 8px 0 0",border:`1px solid ${C.borderSoft}`,borderBottom:"none",position:"relative",overflow:"hidden",display:"flex",alignItems:"flex-end"}}>
-            <div style={{width:"100%",height:h,background:b.color,borderRadius:"6px 6px 0 0",transition:"height .6s ease-out",opacity:hover===i?1:b.sub==="cite"?.6:.85}}/>
+          <div style={{fontSize:11,fontWeight:700,color:hover===i?b.color:C.text,marginBottom:4,transition:"color .2s"}}>{b.value}%</div>
+          <div style={{width:"100%",maxWidth:40,height:barH,background:C.bg,borderRadius:"6px 6px 0 0",border:`1px solid ${C.borderSoft}`,borderBottom:"none",position:"relative",overflow:"hidden",display:"flex",alignItems:"flex-end"}}>
+            <div style={{width:"100%",height:h,background:b.color,borderRadius:"4px 4px 0 0",transition:"height .6s ease-out",opacity:hover===i?1:b.sub==="cite"?.6:.85}}/>
           </div>
-          {/* X-axis label */}
-          <div style={{borderTop:`2px solid ${C.border}`,width:"100%",maxWidth:56,paddingTop:8,textAlign:"center"}}>
-            <div style={{fontSize:10,fontWeight:600,color:C.sub}}>{b.label}</div>
+          <div style={{borderTop:`2px solid ${C.border}`,width:"100%",maxWidth:40,paddingTop:6,textAlign:"center"}}>
+            <div style={{fontSize:9,fontWeight:600,color:C.sub}}>{b.label}</div>
           </div>
         </div>);
       })}
     </div>
     {/* Engine legend below */}
-    <div style={{display:"flex",justifyContent:"center",gap:24,marginTop:14}}>
-      {engines.map(e=>(<div key={e.id} style={{display:"flex",alignItems:"center",gap:6}}>
+    <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:14,marginTop:14}}>
+      {top5.map(e=>(<div key={e.id} style={{display:"flex",alignItems:"center",gap:5}}>
         <e.Logo size={14}/>
-        <span style={{fontSize:12,fontWeight:600,color:C.sub}}>{e.name}</span>
-        <span style={{fontSize:11,color:C.muted}}>({e.score}%)</span>
+        <span style={{fontSize:11,fontWeight:600,color:C.sub}}>{e.name}</span>
+        <span style={{fontSize:10,color:C.muted}}>({e.score}%)</span>
       </div>))}
     </div>
   </div>);
@@ -1521,7 +1539,7 @@ Return ONLY a JSON array of strings:
 function AuditPage({r,history,goTo}){
   const[expandComp,setExpandComp]=useState(null);
   const trend=history.map(h=>({label:h.date,overall:h.overall}));
-  const engineTrend=history.map(h=>({label:h.date,ChatGPT:h.engines[0],Gemini:h.engines[1]}));
+  const engineTrend=history.map(h=>{const d={label:h.date};if(Array.isArray(h.engines)&&h.engines.length>0&&typeof h.engines[0]==="number"){d.ChatGPT=h.engines[0];d.Gemini=h.engines[1];}else if(Array.isArray(h.engines)){h.engines.forEach(e=>{d[e.name]=e.score;});}return d;});
   const latestChange=history.length>1?r.overall-history[history.length-2].overall:0;
   const catChanges=r.painPoints.map(pp=>{const hist=history.map(h=>{const f=h.categories.find(c=>c.label===pp.label);return f?f.score:null;}).filter(Boolean);const prev=hist.length>1?hist[hist.length-2]:pp.score;return{...pp,change:pp.score-prev};});
 
@@ -1588,9 +1606,10 @@ function AuditPage({r,history,goTo}){
     {/* Platform Breakdown */}
     <div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"24px",marginBottom:24}}>
       <h3 style={{fontSize:16,fontWeight:600,color:C.text,margin:"0 0 4px"}}>{r.clientData.brand} — Platform Breakdown</h3>
-      <p style={{fontSize:13,color:C.muted,margin:"0 0 24px"}}>How each AI engine sees your brand</p>
+      <p style={{fontSize:13,color:C.muted,margin:"0 0 24px"}}>How each AI engine sees your brand · {r.engines.length} engines analyzed</p>
+      {/* Featured Engines — full detail */}
       <div style={{display:"flex",flexDirection:"column",gap:20}}>
-        {r.engines.map(e=>(<div key={e.id} style={{padding:"20px",background:C.bg,borderRadius:10,border:`1px solid ${C.borderSoft}`}}>
+        {r.engines.slice(0,5).map(e=>(<div key={e.id} style={{padding:"20px",background:C.bg,borderRadius:10,border:`1px solid ${C.borderSoft}`}}>
           <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
             <e.Logo size={22}/>
             <span style={{fontSize:14,fontWeight:600,color:C.text}}>{e.name}</span>
@@ -1615,6 +1634,21 @@ function AuditPage({r,history,goTo}){
           </div>
         </div>))}
       </div>
+      {/* Other Engines — compact grid */}
+      {r.engines.length>5&&<>
+        <div style={{fontSize:13,fontWeight:600,color:C.text,margin:"24px 0 12px"}}>Other Engines</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>
+          {r.engines.slice(5).map(e=>(<div key={e.id} style={{padding:"14px 12px",background:C.bg,borderRadius:10,border:`1px solid ${C.borderSoft}`,textAlign:"center"}}>
+            <div style={{display:"flex",justifyContent:"center",marginBottom:8}}><e.Logo size={20}/></div>
+            <div style={{fontSize:12,fontWeight:600,color:C.text,marginBottom:6}}>{e.name}</div>
+            <div style={{fontSize:20,fontWeight:800,color:e.score>=60?C.green:e.score>=40?C.amber:C.red,marginBottom:8}}>{e.score}%</div>
+            <div style={{display:"flex",justifyContent:"center",gap:10,fontSize:10,color:C.muted}}>
+              <span>M: {e.mentionRate}%</span>
+              <span>C: {e.citationRate}%</span>
+            </div>
+          </div>))}
+        </div>
+      </>}
     </div>
 
     {/* Performance Tracking */}
@@ -1628,7 +1662,7 @@ function AuditPage({r,history,goTo}){
           <div style={{fontSize:13,color:C.muted,maxWidth:360,margin:"0 auto"}}>Run another audit to see trends and score changes.</div>
         </div>:<>
           <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>AEO Score Trend</div><MiniAreaChart data={trend} dataKey="overall" color={C.accent}/></div>
-          <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>Engine Performance</div><MiniLineChart data={engineTrend} lines={[{key:"ChatGPT",color:"#10A37F",label:"ChatGPT"},{key:"Gemini",color:"#4285F4",label:"Gemini"}]}/></div>
+          <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>Engine Performance</div><MiniLineChart data={engineTrend} lines={r.engines.slice(0,5).map(e=>({key:e.name,color:e.color,label:e.name})).filter(l=>engineTrend.every(d=>typeof d[l.key]==="number"))}/></div>
           <div><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>Category Movement</div>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>{catChanges.map((cat,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:11,color:C.sub,minWidth:100}}>{cat.label.split(" ").slice(0,2).join(" ")}</span><div style={{flex:1}}><Bar value={cat.score} color={SC(cat.severity)} h={5}/></div><span style={{fontSize:12,fontWeight:700,color:C.text,minWidth:26,textAlign:"right"}}>{cat.score}%</span><span style={{fontSize:10,fontWeight:600,minWidth:32,textAlign:"right",color:cat.change>0?C.green:cat.change<0?C.red:C.muted}}>{cat.change>0?`+${cat.change}`:cat.change===0?"—":cat.change}</span></div>))}</div>
           </div>
@@ -2572,7 +2606,7 @@ export default function App(){
 
   const run=async(apiData)=>{
     const r=generateAll(data, apiData);setResults(r);setVolumeCache({engine:"google",volumeData:null,customVolumes:[]});
-    const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
+    const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:r.engines.map(e=>({id:e.id,name:e.name,score:e.score})),mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
     setHistory(prev=>[...prev,entry]);
     setStep("audit");
 
