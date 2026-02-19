@@ -110,7 +110,7 @@ function MiniRadar({data,keys,size=220}){
 }
 
 /* ─── MULTI-ENGINE API LAYER ─── */
-async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst."){
+async function callOpenAI(prompt, systemPrompt="You are an expert GEO analyst."){
   try{
     const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
     const data=await res.json();
@@ -119,7 +119,7 @@ async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst.")
   }catch(e){console.error("OpenAI API error:",e);return null;}
 }
 
-async function callGemini(prompt, systemPrompt="You are an expert AEO analyst."){
+async function callGemini(prompt, systemPrompt="You are an expert GEO analyst."){
   try{
     const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
     const data=await res.json();
@@ -290,7 +290,7 @@ async function runRealAudit(cd, onProgress){
   const compNames=(cd.competitors||[]).map(c=>typeof c==="string"?c:c.name).filter(Boolean);
   const compUrls=(cd.competitors||[]).map(c=>typeof c==="object"?c.website:"").filter(Boolean);
   const topicList=topics.join(", ");
-  const engineSystemPrompt=`You are an AEO (Answer Engine Optimization) analyst. Respond ONLY with valid JSON, no markdown fences, no explanations.`;
+  const engineSystemPrompt=`You are a GEO (Generative Engine Optimisation) analyst. Respond ONLY with valid JSON, no markdown fences, no explanations.`;
 
   // ── Step 1: Crawl brand website AND competitor websites ──
   onProgress("Crawling brand website...",3);
@@ -427,7 +427,7 @@ Return JSON: [{"name":"<competitor>","topStrength":"<1 sentence>"}]`;
   const compData={competitors:mergedComps};
 
   // ── Step 5: Pain points — scored from real crawl data ──
-  onProgress("Scoring AEO categories from crawl data...",40);
+  onProgress("Scoring GEO categories from crawl data...",40);
   let mergedPainPoints=[];
   if(brandScored&&brandScored.categories){
     mergedPainPoints=brandScored.categories.map(c=>({label:c.label,score:c.score,severity:c.score<30?"critical":c.score<60?"warning":"good",evidence:c.evidence}));
@@ -455,7 +455,7 @@ Return JSON: [{"label":"Citation Network","adjustment":<-15 to 15>,"reason":"...
     // Fallback: ask AI if no crawl data
     const catPrompt=`Based on this website analysis for "${brand}" (${industry}, ${region}):
 ${crawlSummary}
-Score each AEO category 0-100. Return JSON:
+Score each GEO category 0-100. Return JSON:
 {"painPoints":[{"label":"Structured Data / Schema","score":<0-100>},{"label":"Content Authority","score":<0-100>},{"label":"E-E-A-T Signals","score":<0-100>},{"label":"Technical SEO","score":<0-100>},{"label":"Citation Network","score":<0-100>},{"label":"Content Freshness","score":<0-100>}]}`;
     const catRaw=await callOpenAI(catPrompt, engineSystemPrompt);
     const catData=safeJSON(catRaw)||{painPoints:[]};
@@ -555,7 +555,7 @@ Be accurate. "Cited" = you would link to their website. "Mentioned" = you'd name
 Competitors: ${compNames.join(", ")}.
 
 Create an intent funnel with 4 stages. For each stage, list 6-8 realistic prompts a real user would actually type into ChatGPT or Gemini. For each prompt:
-1. Assign a "weight" score (1-10) indicating how important this prompt is for ${brand}'s AEO visibility.
+1. Assign a "weight" score (1-10) indicating how important this prompt is for ${brand}'s GEO visibility.
 2. Suggest an optimised version of the prompt that ${brand} should create content to target.
 3. Give a content tip for winning this prompt.
 
@@ -644,8 +644,8 @@ Be thorough and accurate. Do NOT skip any question.`;
     })};
   });
 
-  // ── Step 7: AEO Channel verification via REAL web crawling ──
-  onProgress("Verifying AEO channels via web search...",65);
+  // ── Step 7: GEO Channel verification via REAL web crawling ──
+  onProgress("Verifying GEO channels via web search...",65);
   let realChannels=null;
   try{realChannels=await verifyChannels(brand, cd.website, industry, region);}catch(e){console.error("Channel verify failed:",e);}
 
@@ -831,7 +831,7 @@ WEBSITE:
 - Schemas: ${schemaList} | Missing: ${missingSchemas.join(", ")||"none"}
 - Blog: ${brandCrawl&&brandCrawl.subPages&&brandCrawl.subPages.blog?"exists":"missing"} | About: ${brandCrawl&&brandCrawl.subPages&&brandCrawl.subPages.about?"exists":"missing"}
 
-Generate 8-10 personalised AEO guidelines for "${brand}". Each guideline must reference a specific finding from the data above.
+Generate 8-10 personalised GEO guidelines for "${brand}". Each guideline must reference a specific finding from the data above.
 Return JSON: [{"area":"<area>","rule":"<specific guideline>","example":"<concrete example>","finding":"<the specific finding this addresses>"}]`;
   const guideRaw=await callOpenAI(guidePrompt, engineSystemPrompt);
   const guideData=safeJSON(guideRaw)||null;
@@ -1060,7 +1060,7 @@ const NAV_ITEMS=[
     {id:"volume",label:"Prompt Volume",icon:"bar-chart"},
   ]},
   {group:"Action",items:[
-    {id:"channels",label:"AEO Channels",icon:"broadcast"},
+    {id:"channels",label:"GEO Channels",icon:"broadcast"},
     {id:"grid",label:"Content Grid",icon:"edit"},
     {id:"roadmap",label:"90-Day Roadmap",icon:"calendar"},
   ]},
@@ -1312,7 +1312,7 @@ function NewAuditPage({data,setData,onRun,history=[]}){
       const compInfo=(data.competitors||[]).filter(c=>c.name).map(c=>`${c.name}${c.website?" ("+c.website+")":""}`).join(", ");
       const prompt=`For the brand "${data.brand}" in the "${data.industry}" industry, based in "${data.region||"Global"}", with website ${data.website||"unknown"}${compInfo?", competitors: "+compInfo:""}.
 
-Generate 12-15 key topics that are most relevant for measuring AI engine visibility in this industry (AEO - Answer Engine Optimisation). Mix brand-specific AND generic industry topics.
+Generate 12-15 key topics that are most relevant for measuring AI engine visibility in this industry (GEO - Generative Engine Optimisation). Mix brand-specific AND generic industry topics.
 
 Include a balance of:
 - Generic industry topics people search without any brand in mind (e.g. "mobile data plans", "5G coverage", "prepaid vs postpaid") — at least 5-6 of these
@@ -1325,7 +1325,7 @@ IMPORTANT: Do NOT make every topic about "${data.brand}" or its competitors. At 
 
 Return ONLY a JSON array of strings, no markdown, no explanation:
 ["topic 1", "topic 2", "topic 3", ...]`;
-      const raw=await callOpenAI(prompt,"You are an AEO (Answer Engine Optimisation) expert. Return ONLY valid JSON arrays, no markdown fences.");
+      const raw=await callOpenAI(prompt,"You are a GEO (Generative Engine Optimisation) expert. Return ONLY valid JSON arrays, no markdown fences.");
       const topics=safeJSON(raw);
       if(topics&&Array.isArray(topics)&&topics.length>0){
         setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>0).map(t=>t.trim())}));
@@ -1353,7 +1353,7 @@ Generate 5 MORE different topics that are also relevant for measuring AI engine 
 
 Return ONLY a JSON array of strings:
 ["new topic 1", "new topic 2", ...]`;
-      const raw=await callOpenAI(prompt,"You are an AEO expert. Return ONLY valid JSON arrays.");
+      const raw=await callOpenAI(prompt,"You are a GEO expert. Return ONLY valid JSON arrays.");
       const newTopics=safeJSON(raw);
       if(newTopics&&Array.isArray(newTopics)&&newTopics.length>0){
         const cleaned=newTopics.filter(t=>typeof t==="string"&&t.trim().length>0).map(t=>t.trim());
@@ -1380,7 +1380,7 @@ Return ONLY a JSON array of strings:
 
   // All log messages grouped by phase
   const allLogs=React.useRef([
-    {at:0,msg:"Crawling "+data.website+" for AEO signals..."},
+    {at:0,msg:"Crawling "+data.website+" for GEO signals..."},
     {at:1,msg:"Extracting schema markup, meta tags, heading structure..."},
     {at:2,msg:"Checking for blog, FAQ, about, and product pages..."},
     {at:3,msg:"Crawling competitor websites for comparison data..."},
@@ -1420,7 +1420,7 @@ Return ONLY a JSON array of strings:
     {at:80,msg:`All 10 channels verified with real URLs...`},
     {at:82,msg:"Generating industry-specific site recommendations..."},
     {at:84,msg:"Building personalised content strategy from audit data..."},
-    {at:86,msg:"Matching content types to "+data.brand+"'s specific AEO gaps..."},
+    {at:86,msg:"Matching content types to "+data.brand+"'s specific GEO gaps..."},
     {at:88,msg:"Creating personalised 90-day roadmap..."},
     {at:89,msg:"Tailoring tasks to "+data.brand+"'s crawl findings..."},
     {at:90,msg:"Mapping competitor advantages into action items..."},
@@ -1492,7 +1492,7 @@ Return ONLY a JSON array of strings:
       <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:28,fontWeight:700,color:C.accent}}>{progress}%</span></div>
     </div>
     {/* Title */}
-    <div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:C.text}}>Running Full AEO Audit</div></div>
+    <div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:C.text}}>Running Full GEO Audit</div></div>
     {/* Scrolling techy text — single line that changes */}
     <div style={{height:20,overflow:"hidden",textAlign:"center"}}>
       {logLines.length>0&&<div key={logLines[logLines.length-1].t} style={{fontSize:12,color:C.accent,fontWeight:500,animation:"fadeInUp .3s ease-out"}}>{logLines[logLines.length-1].msg.replace(/^\[.*?\]\s*/,"")}</div>}
@@ -1546,7 +1546,7 @@ Return ONLY a JSON array of strings:
         <button onClick={()=>setAuditStep("input")} style={{padding:"8px 16px",background:"none",border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,color:C.sub,cursor:"pointer"}}>← Back to Details</button>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <span style={{fontSize:11,color:C.muted}}>{data.topics.length} topics</span>
-          <button onClick={go} disabled={!topicsOk} style={{padding:"10px 24px",background:topicsOk?C.accent:"#dde1e7",color:topicsOk?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:topicsOk?"pointer":"not-allowed"}}>Run AEO Audit →</button>
+          <button onClick={go} disabled={!topicsOk} style={{padding:"10px 24px",background:topicsOk?C.accent:"#dde1e7",color:topicsOk?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:topicsOk?"pointer":"not-allowed"}}>Run GEO Audit →</button>
         </div>
       </div>
     </Card>
@@ -1555,7 +1555,7 @@ Return ONLY a JSON array of strings:
 
   /* ─── STEP 1: Client Details Input ─── */
   return(<div style={{maxWidth:620,margin:"0 auto"}}>
-    <div style={{marginBottom:24,textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0}}>{data.brand?"Configure AEO Audit":"New AEO Audit"}</h2><p style={{color:C.sub,fontSize:13,marginTop:4}}>{data.brand?`${history.length>0?"Run another":"Set up"} audit for ${data.brand}.`:"Enter client details to begin."}</p></div>
+    <div style={{marginBottom:24,textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0}}>{data.brand?"Configure GEO Audit":"New GEO Audit"}</h2><p style={{color:C.sub,fontSize:13,marginTop:4}}>{data.brand?`${history.length>0?"Run another":"Set up"} audit for ${data.brand}.`:"Enter client details to begin."}</p></div>
     <Card><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       <Field label="Brand Name" value={data.brand} onChange={v=>setData({...data,brand:v})} onBlur={()=>autofillBrandWebsite(data.brand)} placeholder="Acme Corp"/>
       <Field label="Industry" value={data.industry} onChange={v=>setData({...data,industry:v})} placeholder="e.g. Technology"/>
@@ -1579,7 +1579,7 @@ Return ONLY a JSON array of strings:
     </Card></div>);
 }
 
-/* ─── PAGE: AEO AUDIT (Overview) ─── */
+/* ─── PAGE: GEO AUDIT (Overview) ─── */
 function AuditPage({r,history,goTo}){
   const[expandComp,setExpandComp]=useState(null);
   const trend=history.map(h=>({label:h.date,overall:h.overall}));
@@ -1705,7 +1705,7 @@ function AuditPage({r,history,goTo}){
           <div style={{fontSize:14,fontWeight:600,color:C.text,marginBottom:4}}>First Audit Complete</div>
           <div style={{fontSize:13,color:C.muted,maxWidth:360,margin:"0 auto"}}>Run another audit to see trends and score changes.</div>
         </div>:<>
-          <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>AEO Score Trend</div><MiniAreaChart data={trend} dataKey="overall" color={C.accent}/></div>
+          <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>GEO Score Trend</div><MiniAreaChart data={trend} dataKey="overall" color={C.accent}/></div>
           <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>Engine Performance</div><MiniLineChart data={engineTrend} lines={r.engines.slice(0,5).map(e=>({key:e.name,color:e.color,label:e.name})).filter(l=>engineTrend.every(d=>typeof d[l.key]==="number"))}/></div>
           <div><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>Category Movement</div>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>{catChanges.map((cat,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:11,color:C.sub,minWidth:100}}>{cat.label.split(" ").slice(0,2).join(" ")}</span><div style={{flex:1}}><Bar value={cat.score} color={SC(cat.severity)} h={5}/></div><span style={{fontSize:12,fontWeight:700,color:C.text,minWidth:26,textAlign:"right"}}>{cat.score}%</span><span style={{fontSize:10,fontWeight:600,minWidth:32,textAlign:"right",color:cat.change>0?C.green:cat.change<0?C.red:C.muted}}>{cat.change>0?`+${cat.change}`:cat.change===0?"—":cat.change}</span></div>))}</div>
@@ -1817,8 +1817,8 @@ Brand: "${r.clientData.brand}" in ${r.clientData.industry}.
 ChatGPT's actual response ${gptStatus==="Absent"?"did NOT mention the brand":gptStatus==="Cited"?"cited the brand's website":"mentioned the brand by name"}.
 Gemini's actual response ${gemStatus==="Absent"?"did NOT mention the brand":gemStatus==="Cited"?"cited the brand's website":"mentioned the brand by name"}.
 Return JSON only:
-{"weight":<1-10 AEO importance>,"optimisedPrompt":"<content-optimized version to target>","contentTip":"<what content to create to win this prompt>","stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
-      const analysisRaw=await callOpenAI(analysisPr,"You are an AEO analyst. Return only valid JSON.");
+{"weight":<1-10 GEO importance>,"optimisedPrompt":"<content-optimized version to target>","contentTip":"<what content to create to win this prompt>","stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
+      const analysisRaw=await callOpenAI(analysisPr,"You are a GEO analyst. Return only valid JSON.");
       const analysis=safeJSON(analysisRaw)||{};
       const est=estimatePromptEngines(gptStatus,gemStatus,q);
       const newP={query:q,status:overall,engines:{gpt:gptStatus,gemini:gemStatus,claude:est.claude,perplexity:est.perplexity,deepseek:est.deepseek},
@@ -2122,7 +2122,7 @@ Return JSON only:
       </Card>);
     })()}
 
-    <NavBtn onClick={()=>goTo("channels")} label="Next: AEO Channels →"/>
+    <NavBtn onClick={()=>goTo("channels")} label="Next: GEO Channels →"/>
   </div>);
 }
 
@@ -2135,8 +2135,8 @@ function PlaybookPage({r,goTo}){
   const addDoc=(type)=>{setDocs([...docs,{type,name:`${type}_${Date.now()}.pdf`,date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short"}),size:"2.4 MB"}]);};
   const docTypes=[{type:"Brand Logo",icon:"palette",desc:"Primary and secondary logos (SVG, PNG)"},{type:"Brand CI / Style Guide",icon:"ruler",desc:"Colours, typography, spacing rules"},{type:"Messaging Framework",icon:"message-circle",desc:"Taglines, value props, tone of voice"},{type:"Media Kit",icon:"package",desc:"Press photos, exec headshots, boilerplate"},{type:"Product Docs",icon:"file-text",desc:"Feature sheets, technical documentation"},{type:"Case Studies",icon:"bar-chart",desc:"Customer success stories and data"}];
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0}}>Brand Playbook</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Your AEO brand hub — identity, assets, and AI-optimised guidelines</p></div>
-    <SectionNote text="This is your central brand hub for AEO. Upload your brand assets so our system can reference them when generating content strategies. The guidelines below are tailored to how AI engines process and cite brand information."/>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0}}>Brand Playbook</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Your GEO brand hub — identity, assets, and AI-optimised guidelines</p></div>
+    <SectionNote text="This is your central brand hub for GEO. Upload your brand assets so our system can reference them when generating content strategies. The guidelines below are tailored to how AI engines process and cite brand information."/>
 
     {/* Brand Identity Form */}
     <Card style={{marginBottom:16}}>
@@ -2154,7 +2154,7 @@ function PlaybookPage({r,goTo}){
     {/* Document Upload Hub */}
     <Card style={{marginBottom:16}}>
       <h3 style={{fontSize:14,fontWeight:600,color:C.text,margin:"0 0 4px"}}>Brand Asset Library</h3>
-      <p style={{fontSize:12,color:C.muted,margin:"0 0 14px"}}>Upload and store brand documents. These inform your AEO content strategy.</p>
+      <p style={{fontSize:12,color:C.muted,margin:"0 0 14px"}}>Upload and store brand documents. These inform your GEO content strategy.</p>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
         {docTypes.map((dt,i)=>{const uploaded=docs.filter(d=>d.type===dt.type);return(<div key={i} style={{padding:"14px",background:C.bg,borderRadius:C.rs,border:`1px dashed ${uploaded.length>0?C.green:C.border}`,textAlign:"center",cursor:"pointer",transition:"all .15s"}} onClick={()=>addDoc(dt.type)}>
           <div style={{marginBottom:4,display:"flex",justifyContent:"center"}}><Icon name={dt.icon} size={20} color={C.accent}/></div>
@@ -2172,9 +2172,9 @@ function PlaybookPage({r,goTo}){
       </div>}
     </Card>
 
-    {/* AEO Brand Guidelines - expandable */}
+    {/* GEO Brand Guidelines - expandable */}
     <Card style={{marginBottom:16}}>
-      <h3 style={{fontSize:14,fontWeight:600,color:C.text,margin:"0 0 4px"}}>AEO Brand Guidelines</h3>
+      <h3 style={{fontSize:14,fontWeight:600,color:C.text,margin:"0 0 4px"}}>GEO Brand Guidelines</h3>
       <p style={{fontSize:12,color:C.muted,margin:"0 0 14px"}}>{r.brandGuidelines.length} technical guidelines for maximising AI engine citation rate. Click to expand.</p>
       <div style={{display:"flex",flexDirection:"column",gap:6}}>
         {r.brandGuidelines.map((g,i)=>{const isOpen=expandG===i;return(<div key={i} style={{borderRadius:C.rs,border:`1px solid ${isOpen?`${C.accent}25`:C.border}`,overflow:"hidden",transition:"all .15s"}}>
@@ -2195,16 +2195,16 @@ function PlaybookPage({r,goTo}){
         </div>);})}
       </div>
     </Card>
-    <NavBtn onClick={()=>goTo("channels")} label="Next: AEO Channels →"/>
+    <NavBtn onClick={()=>goTo("channels")} label="Next: GEO Channels →"/>
   </div>);
 }
 
-/* ─── PAGE: AEO CHANNELS (Step 06 with drill-down) ─── */
+/* ─── PAGE: GEO CHANNELS (Step 06 with drill-down) ─── */
 function ChannelsPage({r,goTo}){
   const[expandCh,setExpandCh]=useState(null);
   const hasAnyFindings=r.aeoChannels.some(ch=>ch.finding);
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0}}>AEO Channels</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Channels ranked by impact on AI engine visibility {hasAnyFindings&&<span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>✓ Verified via Web Search</span>}</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0}}>GEO Channels</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Channels ranked by impact on AI engine visibility {hasAnyFindings&&<span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>✓ Verified via Web Search</span>}</p></div>
     <SectionNote text="These channels directly influence whether AI engines cite your brand. Each channel has been verified through real web searches — URLs confirmed, not estimated. Channels with ▼ include specific sites to target."/>
     <Card>
       {r.aeoChannels.sort((a,b)=>b.impact-a.impact).map((ch,i)=>{const isOpen=expandCh===i;const hasSites=ch.sites&&ch.sites.length>0;const canExpand=hasSites||ch.finding;return(<div key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
@@ -2241,7 +2241,7 @@ function ChannelsPage({r,goTo}){
 function GridPage({r,goTo}){
   return(<div>
     <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0}}>Content-Channel Grid</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Personalised content strategy based on {r.clientData.brand}'s audit findings.</p></div>
-    <SectionNote text={`This content grid is tailored to ${r.clientData.brand}'s specific AEO gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
+    <SectionNote text={`This content grid is tailored to ${r.clientData.brand}'s specific GEO gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
     <Card style={{marginBottom:20,overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
       <thead><tr style={{borderBottom:`2px solid ${C.border}`}}>{["Content Type","Channels","Frequency","Priority","Owner"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:600,color:C.muted,fontSize:10,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
       <tbody>{[...r.contentTypes].sort((a,b)=>{const po={"P0":0,"P1":1,"P2":2,"P3":3};return(po[a.p]??9)-(po[b.p]??9);}).map((ct,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
@@ -2311,18 +2311,18 @@ function RoadmapPage({r}){
     const chHtml=r.aeoChannels.sort((a,b)=>b.impact-a.impact).map((ch,i)=>`<tr><td>${i+1}</td><td><strong>${ch.channel}</strong><br><span style="color:#8896a6">${ch.desc}</span></td><td>${ch.impact}</td><td style="color:${ch.status==="Active"?"#059669":ch.status==="Needs Work"?"#d97706":"#dc2626"}">${ch.status}</td></tr>`).join("");
     const gridHtml=[...r.contentTypes].sort((a,b)=>{const po={"P0":0,"P1":1,"P2":2,"P3":3};return(po[a.p]??9)-(po[b.p]??9);}).map(ct=>`<tr><td><strong>${ct.type}</strong>${ct.rationale?`<br><span style="color:#8896a6;font-size:9px">${ct.rationale}</span>`:""}</td><td>${ct.channels.join(", ")}</td><td>${ct.freq}</td><td>${ct.p}</td><td>${ct.owner}</td></tr>`).join("");
     const rmHtml=phases.map(p=>`<h3 style="color:${p.accent}">${p.title} (${p.sub}) — Expected lift: ${p.lift}</h3>${p.departments.map(d=>`<div class="dept"><div class="dept-title" style="border-color:${d.color};color:${d.color}">${d.dept}</div>${d.tasks.map(t=>`<div class="task">→ ${t}</div>`).join("")}</div>`).join("")}`).join("");
-    const tocItems=["Executive Summary","AI Engine Scores","Competitive Landscape","User Archetypes","Intent Pathway","AEO Channels","Content-Channel Grid","90-Day Roadmap"];
+    const tocItems=["Executive Summary","AI Engine Scores","Competitive Landscape","User Archetypes","Intent Pathway","GEO Channels","Content-Channel Grid","90-Day Roadmap"];
 
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>EnterRank AEO Report — ${r.clientData.brand}</title><style>${css}</style></head><body>
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>EnterRank GEO Report — ${r.clientData.brand}</title><style>${css}</style></head><body>
     <div class="cover">
       <div class="cover-inner">
         <div style="margin-bottom:28px"><svg width="44" height="44" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#0c4cfc"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg></div>
-        <div class="brand-label">AEO Audit Report</div>
+        <div class="brand-label">GEO Audit Report</div>
         <h1>${r.clientData.brand}</h1>
         <div class="sub">${r.clientData.industry||"N/A"} · ${r.clientData.region||"Global"}</div>
         <div class="cover-line"></div>
         <div class="score-ring"><span class="score-val" style="color:${scCol}">${r.overall}%</span></div>
-        <div class="score-label">Overall AEO Score</div>
+        <div class="score-label">Overall GEO Score</div>
         <div class="cover-dots"><span class="cover-dot"></span><span class="cover-dot"></span><span class="cover-dot"></span></div>
         <div class="meta">${r.clientData.website}<br>Generated ${new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"long",year:"numeric"})}</div>
       </div>
@@ -2332,7 +2332,7 @@ function RoadmapPage({r}){
     <div class="toc"><h2>Table of Contents</h2>${tocItems.map((t,i)=>`<div class="toc-item"><span><span class="toc-num">${i+1}</span>${t}</span><span style="color:#8896a6">${i+2}</span></div>`).join("")}</div>
 
     <div class="page"><h2>1. Executive Summary</h2>
-    <div class="kpi-row"><div class="kpi"><div class="val" style="color:${scCol}">${r.overall}</div><div class="label">Overall AEO Score</div></div><div class="kpi"><div class="val" style="color:#0c4cfc">${Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length)}%</div><div class="label">Avg Mention Rate</div></div><div class="kpi"><div class="val" style="color:#8b5cf6">${Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length)}%</div><div class="label">Avg Citation Rate</div></div><div class="kpi"><div class="val" style="color:${r.engines.reduce((a,e)=>e.score>a.score?e:a,r.engines[0]).color}">${r.engines.reduce((a,e)=>e.score>a.score?e:a,r.engines[0]).name}</div><div class="label">Best Engine</div></div></div>
+    <div class="kpi-row"><div class="kpi"><div class="val" style="color:${scCol}">${r.overall}</div><div class="label">Overall GEO Score</div></div><div class="kpi"><div class="val" style="color:#0c4cfc">${Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length)}%</div><div class="label">Avg Mention Rate</div></div><div class="kpi"><div class="val" style="color:#8b5cf6">${Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length)}%</div><div class="label">Avg Citation Rate</div></div><div class="kpi"><div class="val" style="color:${r.engines.reduce((a,e)=>e.score>a.score?e:a,r.engines[0]).color}">${r.engines.reduce((a,e)=>e.score>a.score?e:a,r.engines[0]).name}</div><div class="label">Best Engine</div></div></div>
 
     <h2>2. AI Engine Scores</h2><table><tr><th>Engine</th><th>Score</th><th>Mentions</th><th>Citations</th></tr>${engRows}</table>
 
@@ -2341,7 +2341,7 @@ function RoadmapPage({r}){
 
     <h2>4. User Archetypes</h2>${archHtml}
     <h2>5. Intent Pathway</h2>${funnelHtml}
-    <h2>6. AEO Channels</h2><table><tr><th>#</th><th>Channel</th><th>Impact</th><th>Status</th></tr>${chHtml}</table>
+    <h2>6. GEO Channels</h2><table><tr><th>#</th><th>Channel</th><th>Impact</th><th>Status</th></tr>${chHtml}</table>
     <h2>7. Content-Channel Grid</h2><table><tr><th>Type</th><th>Channels</th><th>Frequency</th><th>Priority</th><th>Owner</th></tr>${gridHtml}</table>
     <h2>8. 90-Day Transformation Roadmap</h2>${rmHtml}
     <div class="footer"><strong>EnterRank</strong> by Entermind · Confidential · ${new Date().getFullYear()}</div></div></body></html>`);
@@ -2380,7 +2380,7 @@ function RoadmapPage({r}){
 
     <Card style={{marginTop:20,background:`${C.accent}06`,border:`1px solid ${C.accent}20`,textAlign:"center"}}>
       <div style={{fontSize:16,fontWeight:700,color:C.text,marginBottom:4}}>Ready to dominate AI search results?</div>
-      <p style={{fontSize:12,color:C.sub,maxWidth:460,margin:"0 auto 14px"}}>Let Entermind execute this strategy and guarantee measurable AEO improvements within 90 days.</p>
+      <p style={{fontSize:12,color:C.sub,maxWidth:460,margin:"0 auto 14px"}}>Let Entermind execute this strategy and guarantee measurable GEO improvements within 90 days.</p>
       <button onClick={handleExport} style={{padding:"12px 24px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer"}}>Export Full Report as PDF</button>
     </Card>
   </div>);
@@ -2461,7 +2461,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 4v14M4 11h14" stroke={C.muted} strokeWidth="2" strokeLinecap="round"/></svg>
           </div>
           <h3 style={{fontSize:16,fontWeight:600,color:C.text,margin:"0 0 6px"}}>No workspaces yet</h3>
-          <p style={{color:C.muted,fontSize:13,margin:"0 0 20px"}}>Create your first workspace to start tracking AEO visibility.</p>
+          <p style={{color:C.muted,fontSize:13,margin:"0 0 20px"}}>Create your first workspace to start tracking GEO visibility.</p>
           <button onClick={onNew} style={{padding:"10px 20px",background:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"}}>Create workspace</button>
         </div>:
         <div>
@@ -2632,7 +2632,7 @@ export default function App(){
         <div style={{fontSize:14,color:C.sub,textAlign:"center",marginBottom:24}}>Would you like to run another audit or view the existing dashboard?</div>
         <div style={{display:"flex",gap:12}}>
           <button onClick={()=>openProjectDashboard(projectPrompt.project,projectPrompt.lastAudit)} style={{flex:1,padding:"14px 20px",background:"#fff",border:`2px solid ${C.accent}`,borderRadius:10,fontSize:14,fontWeight:600,color:C.accent,cursor:"pointer",transition:"all .15s"}} onMouseEnter={e=>Object.assign(e.target.style,{background:`${C.accent}08`})} onMouseLeave={e=>Object.assign(e.target.style,{background:"#fff"})}>View Dashboard</button>
-          <button onClick={()=>openProjectForAudit(projectPrompt.project)} style={{flex:1,padding:"14px 20px",background:C.accent,border:`2px solid ${C.accent}`,borderRadius:10,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",transition:"all .15s"}} onMouseEnter={e=>Object.assign(e.target.style,{background:"#1d4ed8"})} onMouseLeave={e=>Object.assign(e.target.style,{background:C.accent})}>Run AEO Audit</button>
+          <button onClick={()=>openProjectForAudit(projectPrompt.project)} style={{flex:1,padding:"14px 20px",background:C.accent,border:`2px solid ${C.accent}`,borderRadius:10,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",transition:"all .15s"}} onMouseEnter={e=>Object.assign(e.target.style,{background:"#1d4ed8"})} onMouseLeave={e=>Object.assign(e.target.style,{background:C.accent})}>Run GEO Audit</button>
         </div>
         <div onClick={()=>setProjectPrompt(null)} style={{textAlign:"center",marginTop:16,fontSize:12,color:C.muted,cursor:"pointer"}}>Cancel</div>
       </div>
