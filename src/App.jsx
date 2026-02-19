@@ -1708,23 +1708,19 @@ Return ONLY a JSON array of strings:
   React.useEffect(()=>()=>{stopSmooth();},[]);
 
   const progress=displayProgress;
-  if(running)return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"70vh",gap:20,maxWidth:520,margin:"0 auto"}}>
-    {/* Main progress ring */}
-    <div style={{position:"relative",width:130,height:130}}>
+  if(running)return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"70vh",gap:24,maxWidth:520,margin:"0 auto"}}>
+    {/* Spinning progress ring */}
+    <div style={{position:"relative",width:130,height:130,animation:"spin 2.5s linear infinite"}}>
       <svg width="130" height="130"><circle cx="65" cy="65" r="56" fill="none" stroke={C.borderSoft} strokeWidth="3"/><circle cx="65" cy="65" r="56" fill="none" stroke={C.accent} strokeWidth="4" strokeDasharray={352} strokeDashoffset={352-(progress/100)*352} strokeLinecap="round" transform="rotate(-90 65 65)" style={{transition:"stroke-dashoffset .15s linear"}}/></svg>
-      <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:28,fontWeight:700,color:C.accent}}>{progress}%</span></div>
+      <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",animation:"spinReverse 2.5s linear infinite"}}><span style={{fontSize:28,fontWeight:700,color:C.accent}}>{progress}%</span></div>
     </div>
     {/* Title */}
     <div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:C.text}}>Running Full GEO Audit</div></div>
-    {/* Scrolling techy text — single line that changes */}
-    <div style={{height:20,overflow:"hidden",textAlign:"center"}}>
-      {logLines.length>0&&<div key={logLines[logLines.length-1].t} style={{fontSize:12,color:C.accent,fontWeight:500,animation:"fadeInUp .3s ease-out"}}>{logLines[logLines.length-1].msg.replace(/^\[.*?\]\s*/,"")}</div>}
-    </div>
     {/* Step progress bars */}
-    <div style={{width:"100%",display:"flex",flexDirection:"column",gap:6}}>
-      {[{l:"ChatGPT · Claude · Perplexity",p:Math.min(100,progress*100/12),c:"#10A37F"},{l:"Gemini · DeepSeek · Copilot",p:Math.max(0,Math.min(100,(progress-5)*100/13)),c:"#4285F4"},{l:"Meta AI · Mistral · 7 more",p:Math.max(0,Math.min(100,(progress-12)*100/14)),c:"#7c3aed"},{l:"Competitor Analysis",p:Math.max(0,Math.min(100,(progress-30)*100/15)),c:"#8b5cf6"},{l:"Archetype Generation",p:Math.max(0,Math.min(100,(progress-45)*100/17)),c:"#ec4899"},{l:"Intent Pathway",p:Math.max(0,Math.min(100,(progress-62)*100/10)),c:"#f59e0b"},{l:"Channel Verification",p:Math.max(0,Math.min(100,(progress-72)*100/18)),c:"#059669"},{l:"Report Compilation",p:Math.max(0,Math.min(100,(progress-90)*100/10)),c:C.accent}].map(s=>(<div key={s.l} style={{display:"flex",alignItems:"center",gap:8}}>
-        <span style={{fontSize:10,color:s.p>=100?C.green:s.p>0?C.text:C.muted,minWidth:120,fontWeight:s.p>0&&s.p<100?600:400}}>{s.p>=100?"✓ ":s.p>0?"◉ ":"○ "}{s.l}</span>
-        <div style={{flex:1,height:3,background:C.borderSoft,borderRadius:4}}><div style={{width:`${Math.max(0,s.p)}%`,height:"100%",background:s.p>=100?C.green:s.c,borderRadius:4,transition:"width .15s linear"}}/></div>
+    <div style={{width:"100%",display:"flex",flexDirection:"column",gap:8}}>
+      {[{l:"Engine Probing",p:Math.min(100,progress*100/12),c:"#10A37F"},{l:"Response Analysis",p:Math.max(0,Math.min(100,(progress-12)*100/18)),c:"#4285F4"},{l:"Competitor Analysis",p:Math.max(0,Math.min(100,(progress-30)*100/15)),c:"#8b5cf6"},{l:"Archetype Generation",p:Math.max(0,Math.min(100,(progress-45)*100/17)),c:"#ec4899"},{l:"Intent Pathway",p:Math.max(0,Math.min(100,(progress-62)*100/10)),c:"#f59e0b"},{l:"Channel Verification",p:Math.max(0,Math.min(100,(progress-72)*100/18)),c:"#059669"},{l:"Report Compilation",p:Math.max(0,Math.min(100,(progress-90)*100/10)),c:C.accent}].map(s=>(<div key={s.l} style={{display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:11,color:s.p>=100?C.green:s.p>0?C.text:C.muted,width:145,flexShrink:0,fontWeight:s.p>0&&s.p<100?600:400}}>{s.p>=100?"✓ ":s.p>0?"◉ ":"○ "}{s.l}</span>
+        <div style={{flex:1,height:4,background:C.borderSoft,borderRadius:4}}><div style={{width:`${Math.max(0,s.p)}%`,height:"100%",background:s.p>=100?C.green:s.c,borderRadius:4,transition:"width .15s linear"}}/></div>
       </div>))}
     </div>
     <div style={{padding:"6px 14px",background:`${C.accent}08`,borderRadius:100,fontSize:11,color:C.accent,fontWeight:500,display:"inline-flex",alignItems:"center",gap:4}}><Icon name="zap" size={12} color={C.accent}/> Powered by live AI analysis</div>
@@ -2897,7 +2893,7 @@ export default function App(){
 
   return(<div style={{minHeight:"100vh",background:C.bg,color:C.text,display:"flex"}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}`}</style>
+    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes spinReverse{to{transform:rotate(-360deg)}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}`}</style>
 
     {/* Sidebar */}
     <Sidebar step={step} setStep={setStep} results={results} brand={results?.clientData?.brand||data.brand} onBack={handleBackToHub} isLocal={isLocal} onLogout={handleLogout} collapsed={sideCollapsed} setCollapsed={setSideCollapsed}/>
