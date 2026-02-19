@@ -333,9 +333,8 @@ async function runRealAudit(cd, onProgress){
   }
   const compCrawlSummary=Object.entries(compCrawls).map(([name,data])=>`\n--- ${name} ---\n${data}`).join("\n")||"No competitor crawl data.";
 
-  // ── Step 2 & 3: REAL engine probes — send individual queries, detect brand in actual responses ──
+  // ── Step 2 & 3: REAL engine probes — 1 API call per engine, detect brand in actual answers ──
   onProgress("Probing ChatGPT & Gemini with real queries...",14);
-  const neutralSys=`You are a helpful assistant. Answer the user's question accurately and thoroughly. Include specific company names, products, and URLs where relevant.`;
 
   // Build probe queries: 4 core + up to 6 from user topics
   const probeQueries=[
@@ -346,25 +345,32 @@ async function runRealAudit(cd, onProgress){
     ...topics.slice(0,6).map(t=>`Best ${t} in ${region} ${new Date().getFullYear()}`)
   ];
 
-  // Send each query individually to BOTH engines — no batching, no response splitting
-  // Process in batches of 2 queries (= 4 API calls per batch) to avoid Vercel concurrency limits
-  const gptResults=[];const gemResults=[];
-  const batchSize=2;
-  for(let i=0;i<probeQueries.length;i+=batchSize){
-    const batch=probeQueries.slice(i,i+batchSize);
-    const pct=14+Math.round((i/probeQueries.length)*14);
-    onProgress(`Testing queries ${i+1}-${Math.min(i+batchSize,probeQueries.length)} of ${probeQueries.length} on both engines...`,pct);
-    const calls=batch.flatMap(q=>[
-      callOpenAI(q,neutralSys).then(r=>({q,engine:"gpt",answer:r||""})),
-      callGemini(q,neutralSys).then(r=>({q,engine:"gem",answer:r||""}))
-    ]);
-    const results=await Promise.all(calls);
-    results.forEach(r=>{
-      const status=detectBrandStatus(r.answer,brand,cd.website);
-      if(r.engine==="gpt")gptResults.push({query:r.q,status,answer:r.answer});
-      else gemResults.push({query:r.q,status,answer:r.answer});
+  // Single prompt with all queries — ask for JSON array of answers
+  const queryList=probeQueries.map((q,i)=>`${i+1}. ${q}`).join("\n");
+  const probePrompt=`Answer each question below accurately and thoroughly. Include specific company names, brands, products, and website URLs where relevant. Be detailed.
+
+${queryList}
+
+Return a JSON array with one object per question: [{"q":1,"a":"your answer"},{"q":2,"a":"your answer"},...]
+Return ONLY the JSON array. No markdown fences, no extra text.`;
+  const probeSys=`You are a helpful, knowledgeable assistant. Answer every question with real, factual information. Always mention specific company names and brands you know about. Return ONLY valid JSON.`;
+
+  // Only 2 API calls — one to each engine, in parallel
+  onProgress("Sending queries to ChatGPT & Gemini...",16);
+  const[gptRaw,gemRaw]=await Promise.all([callOpenAI(probePrompt,probeSys),callGemini(probePrompt,probeSys)]);
+
+  // Parse JSON answers and detect brand in each
+  const parseProbeResults=(raw)=>{
+    const parsed=safeJSON(raw);
+    if(!parsed||!Array.isArray(parsed))return probeQueries.map(q=>({query:q,status:"Absent",answer:""}));
+    return probeQueries.map((q,i)=>{
+      const entry=parsed.find(p=>p.q===i+1)||parsed[i];
+      const answer=(entry&&entry.a)?String(entry.a):"";
+      return{query:q,status:detectBrandStatus(answer,brand,cd.website),answer};
     });
-  }
+  };
+  const gptResults=parseProbeResults(gptRaw);
+  const gemResults=parseProbeResults(gemRaw);
 
   // Calculate scores from REAL detection results
   const calcScores=(queries)=>{
@@ -377,7 +383,7 @@ async function runRealAudit(cd, onProgress){
   const gptScores=calcScores(gptResults);const gemScores=calcScores(gemResults);
 
   // Generate strengths/weaknesses grounded in REAL detection results
-  onProgress("Analysing real engine responses...",29);
+  onProgress("Analysing engine responses...",24);
   const gptSummary=gptResults.map(r=>`"${r.query}" → ${r.status}`).join("\n");
   const gemSummary=gemResults.map(r=>`"${r.query}" → ${r.status}`).join("\n");
 
