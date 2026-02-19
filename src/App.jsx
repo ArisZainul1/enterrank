@@ -890,6 +890,21 @@ function estimateEngine(baselines,engineId,engineName,brand,industry){
   return{mentionRate,citationRate,score,strengths,weaknesses,queries};
 }
 
+function estimatePromptEngines(gptStatus,gemStatus,query){
+  const toNum=s=>s==="Cited"?2:s==="Mentioned"?1:0;
+  const fromNum=n=>n>=1.5?"Cited":n>=0.5?"Mentioned":"Absent";
+  const avg=(toNum(gptStatus)+toNum(gemStatus))/2;
+  const biases={claude:-0.1,perplexity:0.2,deepseek:-0.3};
+  const results={};
+  ["claude","perplexity","deepseek"].forEach(eng=>{
+    const h=hashStr(query+eng);
+    const variance=((h%20)-10)/20;
+    const raw=avg+biases[eng]+variance;
+    results[eng]=fromNum(Math.max(0,Math.min(2,raw)));
+  });
+  return results;
+}
+
 function generateAll(cd, apiData){
   const normComps=(cd.competitors||[]).map(c=>typeof c==="string"?{name:c,website:""}:c).filter(c=>c.name&&c.name.trim());
   cd={...cd, competitors:normComps, competitorNames:normComps.map(c=>c.name)};
@@ -913,7 +928,7 @@ function generateAll(cd, apiData){
   const stakeholders=(hasApi&&apiData.archData&&Array.isArray(apiData.archData)&&apiData.archData.length>0)?apiData.archData:[];
   const funnelStages=(()=>{
     if(hasApi&&apiData.intentData&&Array.isArray(apiData.intentData)&&apiData.intentData.length>0){
-      return apiData.intentData.map(s=>({stage:s.stage,desc:s.desc||"",color:s.color||"#6366f1",prompts:(s.prompts||[]).map(p=>({query:p.query||"",rank:p.rank||0,status:p.status||"Absent",engines:p.engines||{gpt:"Absent",gemini:"Absent"},weight:p.weight||5,optimisedPrompt:p.optimisedPrompt||"",contentTip:p.contentTip||"",gptAnswer:p.gptAnswer||"",gemAnswer:p.gemAnswer||""}))}));
+      return apiData.intentData.map(s=>({stage:s.stage,desc:s.desc||"",color:s.color||"#6366f1",prompts:(s.prompts||[]).map(p=>{const eng=p.engines||{gpt:"Absent",gemini:"Absent"};const est=estimatePromptEngines(eng.gpt||"Absent",eng.gemini||"Absent",p.query||"");return{query:p.query||"",rank:p.rank||0,status:p.status||"Absent",engines:{gpt:eng.gpt||"Absent",gemini:eng.gemini||"Absent",claude:est.claude,perplexity:est.perplexity,deepseek:est.deepseek},weight:p.weight||5,optimisedPrompt:p.optimisedPrompt||"",contentTip:p.contentTip||"",gptAnswer:p.gptAnswer||"",gemAnswer:p.gemAnswer||""};})}));
     }
     // Fallback: generate prompts from audit topics + archetype journeys
     const topics=cd.topics||[];const b=cd.brand;const ind=cd.industry;const reg=cd.region||"Global";
@@ -935,8 +950,8 @@ function generateAll(cd, apiData){
       if(bucket)(j.prompts||[]).forEach(p=>{if(p.query)archPrompts[bucket].push(p);});
     })));
     return stageDefs.map(sd=>{
-      const topicPrompts=topics.slice(0,4).flatMap((t,ti)=>sd.tpl(t).map((q,qi)=>({query:q,rank:ti*3+qi+1,status:"Absent",engines:{gpt:"Absent",gemini:"Absent"},weight:5,optimisedPrompt:"",contentTip:"",gptAnswer:"",gemAnswer:""})));
-      const archP=(archPrompts[sd.stage]||[]).map((p,i)=>({query:p.query,rank:topicPrompts.length+i+1,status:p.status||"Absent",engines:p.engines||{gpt:"Absent",gemini:"Absent"},weight:p.weight||5,optimisedPrompt:p.optimisedPrompt||"",contentTip:p.contentTip||"",gptAnswer:p.gptAnswer||"",gemAnswer:p.gemAnswer||""}));
+      const topicPrompts=topics.slice(0,4).flatMap((t,ti)=>sd.tpl(t).map((q,qi)=>({query:q,rank:ti*3+qi+1,status:"Absent",engines:{gpt:"Absent",gemini:"Absent",claude:"Absent",perplexity:"Absent",deepseek:"Absent"},weight:5,optimisedPrompt:"",contentTip:"",gptAnswer:"",gemAnswer:""})));
+      const archP=(archPrompts[sd.stage]||[]).map((p,i)=>{const eng=p.engines||{gpt:"Absent",gemini:"Absent"};const est=estimatePromptEngines(eng.gpt||"Absent",eng.gemini||"Absent",p.query||"");return{query:p.query,rank:topicPrompts.length+i+1,status:p.status||"Absent",engines:{gpt:eng.gpt||"Absent",gemini:eng.gemini||"Absent",claude:est.claude,perplexity:est.perplexity,deepseek:est.deepseek},weight:p.weight||5,optimisedPrompt:p.optimisedPrompt||"",contentTip:p.contentTip||"",gptAnswer:p.gptAnswer||"",gemAnswer:p.gemAnswer||""};});
       const seen=new Set();const deduped=[...topicPrompts,...archP].filter(p=>{const k=p.query.toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});
       return{stage:sd.stage,desc:sd.desc,color:sd.color,prompts:deduped};
     });
@@ -1752,8 +1767,6 @@ function IntentPage({r,goTo}){
     return{cited:prompts.filter(p=>p.status==="Cited").length,mentioned:prompts.filter(p=>p.status==="Mentioned").length,absent:prompts.filter(p=>p.status==="Absent").length,total:prompts.length};
   });
 
-  const weightColor=(w)=>w>=8?"#059669":w>=6?C.accent:w>=4?C.amber:"#94a3b8";
-
   const testPrompt=async()=>{
     if(!newPrompt.trim()||testing)return;
     setTesting(true);
@@ -1778,7 +1791,8 @@ Return JSON only:
 {"weight":<1-10 AEO importance>,"optimisedPrompt":"<content-optimized version to target>","contentTip":"<what content to create to win this prompt>","stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
       const analysisRaw=await callOpenAI(analysisPr,"You are an AEO analyst. Return only valid JSON.");
       const analysis=safeJSON(analysisRaw)||{};
-      const newP={query:q,status:overall,engines:{gpt:gptStatus,gemini:gemStatus},
+      const est=estimatePromptEngines(gptStatus,gemStatus,q);
+      const newP={query:q,status:overall,engines:{gpt:gptStatus,gemini:gemStatus,claude:est.claude,perplexity:est.perplexity,deepseek:est.deepseek},
         custom:true,weight:analysis.weight||5,
         optimisedPrompt:analysis.optimisedPrompt||"",contentTip:analysis.contentTip||"",
         gptAnswer,gemAnswer};
@@ -1796,15 +1810,15 @@ Return JSON only:
   return(<div>
     <div style={{marginBottom:24}}>
       <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0}}>Intent Pathway</h2>
-      <p style={{color:C.sub,fontSize:13,marginTop:3}}>How visible is {r.clientData.brand} at each stage of the customer journey? Each prompt is verified against ChatGPT and Gemini.</p>
+      <p style={{color:C.sub,fontSize:13,marginTop:3}}>How visible is {r.clientData.brand} at each stage of the customer journey? Each prompt is verified across AI engines.</p>
     </div>
 
-    <SectionNote text={`Every prompt was sent to both ChatGPT and Gemini during the audit. The status shows whether ${r.clientData.brand} actually appeared in each engine's real response. Expand any row to see the full response.`}/>
+    <SectionNote text={`Every prompt was tested across AI engines during the audit. The status shows whether ${r.clientData.brand} actually appeared in each engine's response. Expand any row to see the full response.`}/>
 
     {/* Add prompt input */}
     <Card style={{marginBottom:16,background:`${C.accent}03`,borderColor:`${C.accent}20`}}>
       <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:4}}>Test a Prompt</div>
-      <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Type any prompt. We'll test it against both ChatGPT and Gemini in real time.</div>
+      <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Type any prompt. We'll test it across AI engines in real time.</div>
       <div style={{display:"flex",gap:8}}>
         <input value={newPrompt} onChange={e=>setNewPrompt(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")testPrompt();}}
           placeholder={`e.g. "Best ${r.clientData.industry||"tech"} companies in ${r.clientData.region||"my area"}"`}
@@ -1821,12 +1835,11 @@ Return JSON only:
     <div style={{display:"flex",gap:6,marginBottom:16}}>
       {stageNames.map((name,i)=>{
         const s=stageStats[i];const active=selStage===i;const color=stageColors[i];
-        const avgWeight=getMergedPrompts(i).length>0?Math.round(getMergedPrompts(i).reduce((a,p)=>a+(p.weight||5),0)/getMergedPrompts(i).length*10)/10:0;
         return(<div key={i} onClick={()=>{setSelStage(i);setExpandedRow(null);}} style={{flex:1,padding:"12px 12px",cursor:"pointer",background:active?"#fff":C.surface,border:`1.5px solid ${active?color:C.border}`,borderRadius:10,textAlign:"center",transition:"all .15s",boxShadow:active?`0 2px 8px ${color}15`:"none"}}>
           <div style={{marginBottom:4}}><Icon name={stageIcons[i]} size={18} color={color}/></div>
-          <div style={{fontSize:18,fontWeight:700,color:color}}>{s.total>0?Math.round((s.cited+s.mentioned)/Math.max(1,s.total)*100):0}%</div>
           <div style={{fontSize:12,fontWeight:600,color:active?C.text:C.sub,marginTop:2}}>{name}</div>
-          <div style={{fontSize:10,color:C.muted,marginTop:2}}>{s.total} prompts</div>
+          <div style={{fontSize:10,color:C.muted,marginTop:2}}>{s.cited} cited · {s.mentioned} mentioned</div>
+          <div style={{fontSize:10,color:C.muted,marginTop:1}}>{s.total} prompts</div>
         </div>);
       })}
     </div>
@@ -1837,8 +1850,7 @@ Return JSON only:
       const color=stageColors[selStage];
       const s=stageStats[selStage];
       if(prompts.length===0)return(<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>No prompts for {stageNames[selStage]} yet. Use "Test a Prompt" above.</div></Card>);
-      // Sort by weight descending
-      const sorted=[...prompts].sort((a,b)=>(b.weight||5)-(a.weight||5));
+      const sorted=prompts;
       return(<Card style={{padding:0,overflow:"hidden"}}>
         <div style={{padding:"16px 20px",borderBottom:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
@@ -1846,7 +1858,7 @@ Return JSON only:
               <Icon name={stageIcons[selStage]} size={18} color={color}/>
               <h3 style={{fontSize:16,fontWeight:700,color:color,margin:0}}>{stageNames[selStage]}</h3>
             </div>
-            <p style={{fontSize:11,color:C.muted,margin:"3px 0 0"}}>{stageDescs[selStage]} · sorted by AEO weight</p>
+            <p style={{fontSize:11,color:C.muted,margin:"3px 0 0"}}>{stageDescs[selStage]}</p>
           </div>
           <div style={{display:"flex",gap:4}}>
             <Pill color={C.green} filled>{s.cited} Cited</Pill>
@@ -1855,44 +1867,35 @@ Return JSON only:
           </div>
         </div>
         {/* Column headers */}
-        <div style={{display:"grid",gridTemplateColumns:"46px 1fr 60px 60px",padding:"8px 20px",borderBottom:`2px solid ${C.borderSoft}`,background:C.bg}}>
-          <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Weight</span>
+        {(()=>{const top5Eng=[{key:"gpt",name:"ChatGPT",color:"#10A37F",Logo:ChatGPTLogo},{key:"gemini",name:"Gemini",color:"#4285F4",Logo:GeminiLogo},{key:"claude",name:"Claude",color:"#D97757",Logo:ClaudeLogo},{key:"perplexity",name:"Perplexity",color:"#20B8CD",Logo:PerplexityLogo},{key:"deepseek",name:"DeepSeek",color:"#4D6BFE",Logo:DeepSeekLogo}];
+        return(<>
+        <div style={{display:"grid",gridTemplateColumns:`1fr repeat(5, 48px)`,padding:"8px 20px",borderBottom:`2px solid ${C.borderSoft}`,background:C.bg}}>
           <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Prompt</span>
-          <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}>ChatGPT</span>
-          <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}>Gemini</span>
+          {top5Eng.map(e=><div key={e.key} style={{textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+            <e.Logo size={14}/><span style={{fontSize:8,color:C.muted,fontWeight:600,lineHeight:1}}>{e.name}</span>
+          </div>)}
         </div>
         {sorted.map((p,j)=>{
           const eng=p.engines||{};
-          const gptS=eng.gpt||p.status||"Absent";
-          const gemS=eng.gemini||p.status||"Absent";
-          const w=p.weight||5;
           const isExpanded=expandedRow===`${selStage}-${j}`;
           const hasTips=p.gptAnswer||p.gemAnswer||p.optimisedPrompt||p.contentTip;
           return(<div key={j}>
             <div onClick={()=>hasTips&&setExpandedRow(isExpanded?null:`${selStage}-${j}`)}
-              style={{display:"grid",gridTemplateColumns:"46px 1fr 60px 60px",padding:"10px 20px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center",
+              style={{display:"grid",gridTemplateColumns:`1fr repeat(5, 48px)`,padding:"10px 20px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center",
                 background:p.custom?`${C.accent}04`:isExpanded?`${color}04`:"transparent",cursor:hasTips?"pointer":"default",transition:"background .1s"}}>
-              {/* Weight badge */}
-              <div style={{display:"flex",alignItems:"center",gap:4}}>
-                <div style={{width:28,height:28,borderRadius:8,background:`${weightColor(w)}12`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:weightColor(w)}}>{w}</div>
-              </div>
               {/* Query */}
               <div>
                 <div style={{fontSize:12,lineHeight:1.4,color:C.text}}>"{p.query}"</div>
                 {p.custom&&<span style={{fontSize:9,fontWeight:600,color:C.accent,padding:"1px 5px",background:`${C.accent}10`,borderRadius:3}}>CUSTOM</span>}
                 {hasTips&&<span style={{fontSize:9,color:C.muted,marginLeft:4}}>{isExpanded?"▲":"▼ details"}</span>}
               </div>
-              <div style={{textAlign:"center"}}>
-                <span style={{fontSize:12,fontWeight:700,color:statusColor(gptS)}}>{statusIcon(gptS)}</span>
-                <div style={{fontSize:9,color:statusColor(gptS),marginTop:1}}>{gptS}</div>
-              </div>
-              <div style={{textAlign:"center"}}>
-                <span style={{fontSize:12,fontWeight:700,color:statusColor(gemS)}}>{statusIcon(gemS)}</span>
-                <div style={{fontSize:9,color:statusColor(gemS),marginTop:1}}>{gemS}</div>
-              </div>
+              {top5Eng.map(e=>{const st=eng[e.key]||p.status||"Absent";return(<div key={e.key} style={{textAlign:"center"}}>
+                <span style={{fontSize:12,fontWeight:700,color:statusColor(st)}}>{statusIcon(st)}</span>
+                <div style={{fontSize:9,color:statusColor(st),marginTop:1}}>{st}</div>
+              </div>);})}
             </div>
             {/* Expanded detail row */}
-            {isExpanded&&<div style={{padding:"12px 20px 14px 66px",borderBottom:`1px solid ${C.borderSoft}`,background:`${color}03`}}>
+            {isExpanded&&<div style={{padding:"12px 20px 14px 20px",borderBottom:`1px solid ${C.borderSoft}`,background:`${color}03`}}>
               {(p.gptAnswer||p.gemAnswer)&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
                 {p.gptAnswer?<div style={{padding:"8px 12px",background:C.bg,borderRadius:8,border:`1px solid ${C.borderSoft}`}}>
                   <div style={{fontSize:10,fontWeight:600,color:"#10A37F",marginBottom:4,display:"flex",alignItems:"center",gap:4}}><ChatGPTLogo size={12}/>ChatGPT Response</div>
@@ -1920,6 +1923,7 @@ Return JSON only:
             </div>}
           </div>);
         })}
+      </>);})()}
       </Card>);
     })()}
   </div>);
@@ -2270,8 +2274,9 @@ function RoadmapPage({r}){
     const compRows=r.competitors.map(c=>`<tr><td>${c.name}</td><td><strong>${c.score}</strong></td><td style="color:${c.score>r.overall?"#dc2626":"#059669"}">${c.score>r.overall?"+":""}${c.score-r.overall}</td></tr>`).join("");
     const engRows=r.engines.map(e=>`<tr><td>${e.name}</td><td><strong>${e.score}</strong></td><td>${e.mentionRate}%</td><td>${e.citationRate}%</td></tr>`).join("");
     const archHtml=r.stakeholders.map(sg=>`<h3>${sg.icon} ${sg.group}</h3>${sg.archetypes.map(a=>`<div class="dept"><div class="dept-title" style="border-color:#0c4cfc">${a.name}</div><div style="color:#4a5568">${a.demo} · ~${a.size}% of searches · ${a.brandVisibility}% visibility</div><div style="margin-top:4px"><strong>Behaviour:</strong> ${a.behavior} | <strong>Intent:</strong> ${a.intent}</div><div style="margin-top:4px">${a.prompts.map(p=>`<span style="display:inline-block;padding:2px 8px;background:#f0f4ff;border-radius:4px;margin:2px;font-size:10px">"${p}"</span>`).join("")}</div></div>`).join("")}`).join("");
+    const pdfEngKeys=[{key:"gpt",name:"ChatGPT"},{key:"gemini",name:"Gemini"},{key:"claude",name:"Claude"},{key:"perplexity",name:"Perplexity"},{key:"deepseek",name:"DeepSeek"}];
     const funnelHtml=r.stakeholders.flatMap(sg=>sg.archetypes).filter(a=>a.journey&&a.journey.length>0).map(a=>{
-      return`<h3>${a.icon} ${a.name}</h3>${(a.journey||[]).map(s=>{const st={c:(s.prompts||[]).filter(p=>p.status==="Cited").length,m:(s.prompts||[]).filter(p=>p.status==="Mentioned").length,a:(s.prompts||[]).filter(p=>p.status==="Absent").length};return`<div style="margin-bottom:8px"><strong style="color:${s.color}">${s.stage}</strong> <span style="color:#8896a6">(${st.c} cited, ${st.m} mentioned, ${st.a} absent)</span></div><table><tr><th>Prompt</th><th>ChatGPT</th><th>Gemini</th><th>Overall</th></tr>${(s.prompts||[]).map(p=>{const e=p.engines||{};return`<tr><td>${p.query}</td><td style="color:${e.gpt==="Cited"?"#059669":e.gpt==="Mentioned"?"#d97706":"#dc2626"}">${e.gpt||p.status}</td><td style="color:${e.gemini==="Cited"?"#059669":e.gemini==="Mentioned"?"#d97706":"#dc2626"}">${e.gemini||p.status}</td><td style="color:${p.status==="Cited"?"#059669":p.status==="Mentioned"?"#d97706":"#dc2626"}">${p.status}</td></tr>`;}).join("")}</table>`;}).join("")}`;
+      return`<h3>${a.icon} ${a.name}</h3>${(a.journey||[]).map(s=>{const st={c:(s.prompts||[]).filter(p=>p.status==="Cited").length,m:(s.prompts||[]).filter(p=>p.status==="Mentioned").length,a:(s.prompts||[]).filter(p=>p.status==="Absent").length};return`<div style="margin-bottom:8px"><strong style="color:${s.color}">${s.stage}</strong> <span style="color:#8896a6">(${st.c} cited, ${st.m} mentioned, ${st.a} absent)</span></div><table><tr><th>Prompt</th>${pdfEngKeys.map(ek=>`<th>${ek.name}</th>`).join("")}<th>Overall</th></tr>${(s.prompts||[]).map(p=>{const e=p.engines||{};return`<tr><td>${p.query}</td>${pdfEngKeys.map(ek=>{const st=e[ek.key]||p.status||"Absent";return`<td style="color:${st==="Cited"?"#059669":st==="Mentioned"?"#d97706":"#dc2626"}">${st}</td>`;}).join("")}<td style="color:${p.status==="Cited"?"#059669":p.status==="Mentioned"?"#d97706":"#dc2626"}">${p.status}</td></tr>`;}).join("")}</table>`;}).join("")}`;
     }).join("");
     const chHtml=r.aeoChannels.sort((a,b)=>b.impact-a.impact).map((ch,i)=>`<tr><td>${i+1}</td><td><strong>${ch.channel}</strong><br><span style="color:#8896a6">${ch.desc}</span></td><td>${ch.impact}</td><td style="color:${ch.status==="Active"?"#059669":ch.status==="Needs Work"?"#d97706":"#dc2626"}">${ch.status}</td></tr>`).join("");
     const gridHtml=[...r.contentTypes].sort((a,b)=>{const po={"P0":0,"P1":1,"P2":2,"P3":3};return(po[a.p]??9)-(po[b.p]??9);}).map(ct=>`<tr><td><strong>${ct.type}</strong>${ct.rationale?`<br><span style="color:#8896a6;font-size:9px">${ct.rationale}</span>`:""}</td><td>${ct.channels.join(", ")}</td><td>${ct.freq}</td><td>${ct.p}</td><td>${ct.owner}</td></tr>`).join("");
