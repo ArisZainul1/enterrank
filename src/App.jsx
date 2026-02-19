@@ -873,34 +873,59 @@ function getInsight(cat,comp,brand,theyWin){
 function hashStr(s){let h=0;for(let i=0;i<s.length;i++)h=((h<<5)-h)+s.charCodeAt(i)|0;return Math.abs(h);}
 function estimateEngine(baselines,engineId,engineName,brand,industry){
   const biases={claude:0.95,perplexity:{m:0.85,c:1.15},deepseek:0.80,copilot:0.92,metaai:0.78,mistral:0.75,grok:0.70,youcom:0.65,jasper:0.62,cohere:0.68,pi:0.63,poe:0.66,aria:0.60};
-  const avgM=baselines.reduce((a,e)=>a+e.mentionRate,0)/baselines.length||20;
-  const avgCit=baselines.reduce((a,e)=>a+e.citationRate,0)/baselines.length||15;
+  const realAvgM=baselines.reduce((a,e)=>a+e.mentionRate,0)/baselines.length;
+  const realAvgCit=baselines.reduce((a,e)=>a+e.citationRate,0)/baselines.length;
   const bias=biases[engineId]||0.65;
   const h=hashStr(engineId+brand);const v=((h%15)-7);
   const mB=typeof bias==="object"?bias.m:bias;const cB=typeof bias==="object"?bias.c:bias;
-  const mentionRate=Math.max(2,Math.min(95,Math.round(avgM*mB+v)));
-  const citationRate=Math.max(1,Math.min(95,Math.round(avgCit*cB+v*0.7)));
+  // Cap: estimated engines should not exceed the real engine average — they have less data
+  const capM=Math.round(realAvgM*1.1+3);const capCit=Math.round(realAvgCit*1.1+3);
+  const mentionRate=Math.max(0,Math.min(capM,Math.round(realAvgM*mB+v)));
+  const citationRate=Math.max(0,Math.min(capCit,Math.round(realAvgCit*cB+v*0.7)));
   const score=Math.round(mentionRate*0.5+citationRate*0.5);
-  const sP=[`${brand} appears in some ${engineName} responses for ${industry} queries`,`Brand recognized alongside competitors in ${engineName}`,`${engineName} includes ${brand} in comparative recommendations`,`Product details partially represented in ${engineName}`,`${brand} mentioned in niche ${industry} prompts on ${engineName}`];
-  const wP=[`Lower citation rate on ${engineName} versus top competitors`,`${engineName} rarely links directly to ${brand}'s website`,`Limited authority signals detected by ${engineName}`,`Competitors dominate ${industry} queries on ${engineName}`,`${brand} absent from high-intent prompts on ${engineName}`];
+  // Score-aware strengths: only claim positive things if the data backs it up
   const h2=hashStr(engineName+brand);
-  const strengths=[sP[h2%sP.length],sP[(h2+2)%sP.length]];
-  const weaknesses=[wP[(h2+1)%wP.length],wP[(h2+3)%wP.length]];
-  const queries=(baselines[0]?.queries||[]).slice(0,4).map(q=>({query:q.query,status:["Cited","Mentioned","Absent"][(hashStr(q.query+engineId))%3]}));
+  let strengths,weaknesses;
+  if(score<10){
+    strengths=[`${engineName} has limited data on ${brand} — room for first-mover advantage`,`Opportunity to establish presence before competitors on ${engineName}`];
+    weaknesses=[`${brand} is largely invisible on ${engineName}`,`${engineName} does not surface ${brand} in ${industry} queries`];
+  }else if(score<30){
+    strengths=[`${brand} appears in a small number of ${engineName} responses`,`Some brand recognition detected on ${engineName} for niche queries`];
+    weaknesses=[`${engineName} rarely recommends ${brand} for ${industry} queries`,`Citation rate on ${engineName} is well below competitors`];
+  }else if(score<60){
+    const sP=[`${brand} appears in some ${engineName} responses for ${industry} queries`,`Brand recognized alongside competitors in ${engineName}`,`${brand} mentioned in niche ${industry} prompts on ${engineName}`];
+    const wP=[`Lower citation rate on ${engineName} versus top competitors`,`${engineName} rarely links directly to ${brand}'s website`,`Limited authority signals detected by ${engineName}`];
+    strengths=[sP[h2%sP.length],sP[(h2+1)%sP.length]];
+    weaknesses=[wP[h2%wP.length],wP[(h2+1)%wP.length]];
+  }else{
+    const sP=[`${engineName} frequently includes ${brand} in ${industry} recommendations`,`Strong citation rate — ${engineName} links to ${brand}'s website`,`${brand} is a top result for competitive ${industry} queries on ${engineName}`,`Product details well-represented in ${engineName}`];
+    const wP=[`Some high-intent prompts on ${engineName} still favour competitors`,`${engineName} occasionally omits ${brand} from comparative answers`];
+    strengths=[sP[h2%sP.length],sP[(h2+1)%sP.length]];
+    weaknesses=[wP[h2%wP.length],wP[(h2+1)%wP.length]];
+  }
+  // Query statuses should also respect baselines — if real engines mostly show Absent, estimates should too
+  const realAbsentRatio=baselines[0]?.queries?.length>0?baselines[0].queries.filter(q=>q.status==="Absent").length/baselines[0].queries.length:1;
+  const queries=(baselines[0]?.queries||[]).slice(0,4).map(q=>{
+    const hq=hashStr(q.query+engineId);
+    const statuses=realAbsentRatio>0.7?["Absent","Absent","Mentioned"]:realAbsentRatio>0.4?["Absent","Mentioned","Cited"]:["Cited","Mentioned","Absent"];
+    return{query:q.query,status:statuses[hq%3]};
+  });
   return{mentionRate,citationRate,score,strengths,weaknesses,queries};
 }
 
 function estimatePromptEngines(gptStatus,gemStatus,query){
   const toNum=s=>s==="Cited"?2:s==="Mentioned"?1:0;
   const fromNum=n=>n>=1.5?"Cited":n>=0.5?"Mentioned":"Absent";
+  const maxReal=Math.max(toNum(gptStatus),toNum(gemStatus));
   const avg=(toNum(gptStatus)+toNum(gemStatus))/2;
   const biases={claude:-0.1,perplexity:0.2,deepseek:-0.3};
   const results={};
   ["claude","perplexity","deepseek"].forEach(eng=>{
     const h=hashStr(query+eng);
     const variance=((h%20)-10)/20;
-    const raw=avg+biases[eng]+variance;
-    results[eng]=fromNum(Math.max(0,Math.min(2,raw)));
+    // Estimated engines should never exceed the best real engine
+    const raw=Math.min(maxReal,avg+biases[eng]+variance);
+    results[eng]=fromNum(Math.max(0,raw));
   });
   return results;
 }
@@ -914,7 +939,11 @@ function generateAll(cd, apiData){
   const fB=(arr,fb)=>{if(!arr||!Array.isArray(arr))return fb;const f=arr.filter(s=>s&&typeof s==="string"&&!badP.some(bp=>s.toLowerCase().includes(bp))&&s.length>10);return f.length>=2?f:fb;};
   const realEngines=engineMeta.slice(0,2).map((e,i)=>{
     if(hasApi&&apiData.engineData.engines&&apiData.engineData.engines[i]){const ae=apiData.engineData.engines[i];
-      return{...e,score:ae.score||0,mentionRate:ae.mentionRate||0,citationRate:ae.citationRate||0,queries:(ae.queries||[]).slice(0,8).map(q=>({query:q.query||"",status:q.status||"Absent"})),strengths:fB(ae.strengths,[`${cd.brand} appears in some ${cd.industry} queries`]),weaknesses:fB(ae.weaknesses,[`Competitors cited more frequently`])};}
+      const mr=ae.mentionRate||0;const cr=ae.citationRate||0;const sc=ae.score||0;
+      // Score-aware fallbacks — don't claim visibility that doesn't exist
+      const sFb=sc<10?[`${e.name} has limited data on ${cd.brand} — early-mover opportunity`,`Opportunity to build presence on ${e.name} before competitors`]:sc<30?[`${cd.brand} appears in a small number of ${e.name} responses`,`Some brand recognition on ${e.name} for niche queries`]:[`${cd.brand} appears in some ${e.name} responses for ${cd.industry} queries`,`Brand recognized alongside competitors in ${e.name}`];
+      const wFb=sc<10?[`${cd.brand} is largely invisible on ${e.name}`,`${e.name} does not surface ${cd.brand} in ${cd.industry} queries`]:sc<30?[`${e.name} rarely recommends ${cd.brand} for ${cd.industry} queries`,`Citation rate on ${e.name} is well below competitors`]:[`Competitors cited more frequently on ${e.name}`,`Lower citation rate on ${e.name} versus top competitors`];
+      return{...e,score:sc,mentionRate:mr,citationRate:cr,queries:(ae.queries||[]).slice(0,8).map(q=>({query:q.query||"",status:q.status||"Absent"})),strengths:fB(ae.strengths,sFb),weaknesses:fB(ae.weaknesses,wFb)};}
     return{...e,score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["No API data received"]};
   });
   const engines=[...realEngines,...engineMeta.slice(2).map(e=>{const est=estimateEngine(realEngines,e.id,e.name,cd.brand,cd.industry);return{...e,...est};})];
