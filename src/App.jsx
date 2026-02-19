@@ -344,6 +344,7 @@ async function runRealAudit(cd, onProgress){
   let gptData={score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["Visibility probe failed"]};
   let gemData={score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["Visibility probe failed"]};
   let compVisibility={};
+  let gptResults=[];let gemResults=[];let gptScores={mentionRate:0,citationRate:0};let gemScores={mentionRate:0,citationRate:0};
   try{
   onProgress("Probing ChatGPT & Gemini with real queries...",14);
 
@@ -379,8 +380,8 @@ ONLY return the JSON array. No markdown, no explanation.`;
     // Fallback: JSON parse failed — return all Absent (don't inflate from raw text)
     return probeQueries.map(q=>({query:q,status:"Absent",answer:""}));
   };
-  const gptResults=parseProbeResults(gptRaw);
-  const gemResults=parseProbeResults(gemRaw);
+  gptResults=parseProbeResults(gptRaw);
+  gemResults=parseProbeResults(gemRaw);
 
   // Calculate scores from REAL detection results
   const calcScores=(queries)=>{
@@ -390,7 +391,7 @@ ONLY return the JSON array. No markdown, no explanation.`;
     const total=q.length||1;
     return{mentionRate:Math.round(((cited+mentioned)/total)*100),citationRate:Math.round((cited/total)*100)};
   };
-  const gptScores=calcScores(gptResults);const gemScores=calcScores(gemResults);
+  gptScores=calcScores(gptResults);gemScores=calcScores(gemResults);
 
   // Generate strengths/weaknesses grounded in REAL detection results
   onProgress("Analysing engine responses...",24);
