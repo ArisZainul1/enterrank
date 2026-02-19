@@ -286,19 +286,26 @@ function detectBrandStatus(answer,brandName,website){
   if(domainName&&domainName.length>3&&lower.includes(domainName))return"Cited";
   // 2. Exact full brand name = Mentioned
   try{const re=new RegExp("\\b"+brandLower.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i");if(re.test(answer))return"Mentioned";}catch(e){}
-  // 3. Sub-phrase match for multi-word brands (e.g. "Abu Dhabi Bank" from "First Abu Dhabi Bank")
+  // 3. Sub-phrase match (2+ consecutive words from multi-word brands)
   const words=brandLower.split(/\s+/).filter(w=>w.length>2);
-  if(words.length>=3){
-    for(let len=words.length-1;len>=Math.min(3,words.length);len--){
+  if(words.length>=2){
+    for(let len=words.length-1;len>=2;len--){
       for(let s=0;s<=words.length-len;s++){
         if(lower.includes(words.slice(s,s+len).join(" ")))return"Mentioned";
       }
     }
   }
-  // 4. Uppercase abbreviation (e.g. "FAB" from "First Abu Dhabi Bank") — only if 3+ chars
-  if(words.length>=3){
+  // 4. Uppercase abbreviation from initials (e.g. "ADCB" from "Abu Dhabi Commercial Bank")
+  if(words.length>=2){
     const abbr=words.map(w=>w[0]).join("").toUpperCase();
     if(abbr.length>=3){try{if(new RegExp("\\b"+abbr+"\\b").test(answer))return"Mentioned";}catch(e){}}
+  }
+  // 5. Acronym components in the brand name (e.g. "NBD" from "Emirates NBD")
+  const origWords=brandName.split(/\s+/);
+  for(const w of origWords){
+    if(w.length>=3&&w===w.toUpperCase()&&/^[A-Z]+$/.test(w)){
+      try{if(new RegExp("\\b"+w+"\\b").test(answer))return"Mentioned";}catch(e){}
+    }
   }
   return"Absent";
 }
@@ -388,8 +395,26 @@ Be specific to the actual results. If mention rate is 0%, strengths should refle
   const gptData={score:Math.round(gptScores.mentionRate*0.5+gptScores.citationRate*0.5),mentionRate:gptScores.mentionRate,citationRate:gptScores.citationRate,queries:gptResults.map(r=>({query:r.query,status:r.status})),strengths:gptAnalysis.strengths||[],weaknesses:gptAnalysis.weaknesses||[]};
   const gemData={score:Math.round(gemScores.mentionRate*0.5+gemScores.citationRate*0.5),mentionRate:gemScores.mentionRate,citationRate:gemScores.citationRate,queries:gemResults.map(r=>({query:r.query,status:r.status})),strengths:gemAnalysis.strengths||[],weaknesses:gemAnalysis.weaknesses||[]};
 
-  // ── Step 4: Competitor analysis — scored from real crawl data ──
-  onProgress("Scoring competitors from crawl data...",30);
+  // ── Step 4: Competitor visibility — detect competitors in the SAME probe responses (no extra API calls) ──
+  onProgress("Detecting competitor visibility...",30);
+  const compVisibility={};
+  compNames.forEach((cname,ci)=>{
+    const cUrl=compUrls[ci]||"";
+    let mentioned=0,cited=0;
+    [...gptResults,...gemResults].forEach(r=>{
+      const st=detectBrandStatus(r.answer,cname,cUrl);
+      if(st==="Cited")cited++;
+      else if(st==="Mentioned")mentioned++;
+    });
+    const total=(gptResults.length+gemResults.length)||1;
+    compVisibility[cname]={
+      mentionRate:Math.round(((mentioned+cited)/total)*100),
+      citationRate:Math.round((cited/total)*100)
+    };
+  });
+
+  // ── Step 5: Competitor website analysis — crawl-based pain points ──
+  onProgress("Scoring competitors from crawl data...",33);
   const brandScored=scoreCrawl(brandCrawl);
   const brandScoreMap={};
   if(brandScored)(brandScored.categories||[]).forEach(c=>{brandScoreMap[c.label]=c.score;});
@@ -397,12 +422,13 @@ Be specific to the actual results. If mention rate is 0%, strengths should refle
   const mergedComps=compNames.map(cname=>{
     const raw=compCrawlsRaw[cname];
     const scored=scoreCrawl(raw);
-    if(!scored)return{name:cname,score:0,engineScores:[0,0],topStrength:"No crawl data available",painPoints:[
+    const vis=compVisibility[cname]||{mentionRate:0,citationRate:0};
+    const visScore=Math.round(vis.mentionRate*0.5+vis.citationRate*0.5);
+    if(!scored)return{name:cname,score:visScore,mentionRate:vis.mentionRate,citationRate:vis.citationRate,engineScores:[vis.mentionRate,vis.citationRate],topStrength:"No crawl data available",painPoints:[
       {label:"Structured Data / Schema",score:0},{label:"Content Authority",score:0},{label:"E-E-A-T Signals",score:0},
       {label:"Technical SEO",score:0},{label:"Citation Network",score:0},{label:"Content Freshness",score:0}]};
     const pp=scored.categories.map(c=>({label:c.label,score:c.score,evidence:c.evidence}));
-    const avg=Math.round(pp.reduce((a,p)=>a+p.score,0)/pp.length);
-    return{name:cname,score:avg,engineScores:[avg,avg],painPoints:pp,topStrength:""};
+    return{name:cname,score:visScore,mentionRate:vis.mentionRate,citationRate:vis.citationRate,engineScores:[vis.mentionRate,vis.citationRate],painPoints:pp,topStrength:""};
   }).filter(c=>c.name);
 
   // Ask AI only for topStrength summaries — grounded in real score differences
@@ -1624,7 +1650,7 @@ function AuditPage({r,history,goTo}){
   const catChanges=r.painPoints.map(pp=>{const hist=history.map(h=>{const f=h.categories.find(c=>c.label===pp.label);return f?f.score:null;}).filter(Boolean);const prev=hist.length>1?hist[hist.length-2]:pp.score;return{...pp,change:pp.score-prev};});
 
   // Compute share-of-voice data: brand + competitors
-  const allBrands=[{name:r.clientData.brand,website:r.clientData.website,mentionRate:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citationRate:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),color:C.accent},...r.competitors.map((c,i)=>{const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);return{name:c.name,website:compObj?compObj.website:"",mentionRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length):c.score,citationRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length*.6):Math.round(c.score*.6),color:["#10A37F","#D97706","#4285F4","#8b5cf6","#ec4899","#0ea5e9","#f97316"][i%7]};})];
+  const allBrands=[{name:r.clientData.brand,website:r.clientData.website,mentionRate:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citationRate:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),color:C.accent},...r.competitors.map((c,i)=>{const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);return{name:c.name,website:compObj?compObj.website:"",mentionRate:c.mentionRate!=null?c.mentionRate:c.score,citationRate:c.citationRate!=null?c.citationRate:Math.round(c.score*.6),color:["#10A37F","#D97706","#4285F4","#8b5cf6","#ec4899","#0ea5e9","#f97316"][i%7]};})];
 
   // Compute diagnostics
   const avgMention=Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length);
