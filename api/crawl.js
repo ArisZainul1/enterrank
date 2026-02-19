@@ -19,6 +19,8 @@ export default async function handler(req, res) {
 
     // Crawl the main page
     const mainPage = await crawlPage(targetUrl);
+    // Use the final URL (after redirects) as base for sub-page resolution
+    const baseUrl = (mainPage && mainPage.finalUrl) || targetUrl;
 
     // Try to find and crawl key sub-pages
     const subPages = {};
@@ -36,7 +38,7 @@ export default async function handler(req, res) {
         (async () => {
           for (const path of paths) {
             try {
-              const subUrl = new URL(path, targetUrl).toString();
+              const subUrl = new URL(path, baseUrl).toString();
               const result = await crawlPage(subUrl, true); // light crawl
               if (result && !result.error && result.statusCode === 200) {
                 subPages[category] = { url: subUrl, ...result };
@@ -78,6 +80,7 @@ async function crawlPage(url, light = false) {
     });
 
     clearTimeout(timeout);
+    const finalUrl = response.url || url;
 
     if (!response.ok) {
       return { error: `HTTP ${response.status}`, statusCode: response.status };
@@ -143,10 +146,11 @@ async function crawlPage(url, light = false) {
     const hasLists = (html.match(/<ul|<ol/gi) || []).length;
 
     if (light) {
-      return { statusCode, title: title.slice(0, 100), schemas, wordCount, h1s: h1s.slice(0, 2) };
+      return { statusCode, title: title.slice(0, 100), schemas, wordCount, h1s: h1s.slice(0, 2), finalUrl };
     }
 
     return {
+      finalUrl,
       statusCode,
       title: title.slice(0, 200),
       metaDescription: (metaDesc || '').slice(0, 300),

@@ -1422,13 +1422,30 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     if((data.competitors||[]).some(c=>c.name&&c.name.trim()))return;
     setLoadingComps(true);
     try{
-      const prompt=`For the brand "${brand}" in the "${industry}" industry, list their top 4 direct competitors. Return ONLY a JSON array of objects with "name" and "website" fields, no markdown:
+      const prompt=`For the brand "${brand}" in the "${industry}" industry, list their top 4 direct competitors.
+
+IMPORTANT: For each competitor, provide their REAL, verified primary website domain. Double-check the domain is correct — for example Mashreq Bank is "mashreq.com" not "mashreqbank.com", Emirates NBD is "emiratesnbd.com". Do NOT guess domains.
+
+Return ONLY a JSON array of objects with "name" and "website" fields, no markdown:
 [{"name":"Competitor A","website":"competitor-a.com"},...]`;
       const raw=await callOpenAI(prompt,"You are a market research expert. Return ONLY valid JSON, no markdown fences.");
       const comps=safeJSON(raw);
       if(comps&&Array.isArray(comps)&&comps.length>0){
-        const cleaned=comps.filter(c=>c.name&&typeof c.name==="string").slice(0,4).map(c=>({name:c.name.trim(),website:(c.website||"").trim()}));
-        if(cleaned.length>0)setData(d=>{if((d.competitors||[]).some(c=>c.name&&c.name.trim()))return d;return{...d,competitors:cleaned};});
+        const cleaned=comps.filter(c=>c.name&&typeof c.name==="string").slice(0,4).map(c=>({name:c.name.trim(),website:(c.website||"").trim().replace(/^https?:\/\//,"").replace(/\/.*$/,"")}));
+        // Verify/correct domains via Clearbit for each competitor
+        const verified=await Promise.all(cleaned.map(async c=>{
+          if(c.website){
+            const clearbitDomain=await lookupDomain(c.name);
+            if(clearbitDomain&&clearbitDomain!==c.name.trim().toLowerCase().replace(/[^a-z0-9]/g,"")+".com"){
+              return{...c,website:clearbitDomain};
+            }
+          }else{
+            const domain=await lookupDomain(c.name);
+            if(domain)return{...c,website:domain};
+          }
+          return c;
+        }));
+        if(verified.length>0)setData(d=>{if((d.competitors||[]).some(c=>c.name&&c.name.trim()))return d;return{...d,competitors:verified};});
       }
     }catch(e){console.error("Competitor autofill error:",e);}
     setLoadingComps(false);
