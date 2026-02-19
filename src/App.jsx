@@ -310,7 +310,7 @@ async function runRealAudit(cd, onProgress){
 
   // ── Step 2 & 3: REAL engine visibility — send actual queries, detect brand in responses ──
   onProgress("Sending real queries to ChatGPT & Gemini...",14);
-  const neutralSys=`You are a helpful AI assistant. Answer the question directly and accurately based on your knowledge. Include specific company names, products, and websites where relevant.`;
+  const neutralSys=`You are a helpful AI assistant. Answer each question separately and accurately based on your knowledge. Include specific company names, products, and websites where relevant. Number each answer to match the question number.`;
   const probeQueries=[
     `What are the best ${industry} companies in ${region}?`,
     `Tell me about ${brand}`,
@@ -322,23 +322,37 @@ async function runRealAudit(cd, onProgress){
     `Top ${industry} providers comparison`
   ];
 
-  // Send all 8 queries to BOTH engines in parallel — real responses, no self-assessment
-  const gptResponses=[];const gemResponses=[];
-  // Batch in pairs to avoid rate limits but stay fast
-  for(let i=0;i<probeQueries.length;i+=2){
-    const batch=probeQueries.slice(i,i+2);
-    const pct=14+Math.round((i/probeQueries.length)*12);
-    onProgress(`Testing query ${i+1}-${Math.min(i+2,probeQueries.length)} of ${probeQueries.length} on ChatGPT & Gemini...`,pct);
-    const results=await Promise.all(batch.flatMap(q=>[
-      callOpenAI(q,neutralSys).then(r=>({engine:"gpt",query:q,answer:r||""})),
-      callGemini(q,neutralSys).then(r=>({engine:"gem",query:q,answer:r||""}))
-    ]));
-    results.forEach(r=>{if(r.engine==="gpt")gptResponses.push(r);else gemResponses.push(r);});
-  }
+  // Send all 8 queries as a SINGLE batched prompt to each engine (2 API calls, not 16)
+  const batchPrompt=probeQueries.map((q,i)=>`${i+1}. ${q}`).join("\n");
+  const fullPrompt=`Answer each of the following ${probeQueries.length} questions separately. Number your answers 1-${probeQueries.length} to match.\n\n${batchPrompt}`;
 
-  // Detect brand presence in REAL responses
-  const gptQueries=gptResponses.map(r=>({query:r.query,status:detectBrandStatus(r.answer,brand,cd.website),answer:r.answer}));
-  const gemQueries=gemResponses.map(r=>({query:r.query,status:detectBrandStatus(r.answer,brand,cd.website),answer:r.answer}));
+  const[gptBatchRaw,gemBatchRaw]=await Promise.all([
+    callOpenAI(fullPrompt,neutralSys),
+    callGemini(fullPrompt,neutralSys)
+  ]);
+
+  // Split batch responses by numbered sections and detect brand in each
+  const splitResponses=(raw,queries)=>{
+    if(!raw)return queries.map(q=>({query:q,status:"Absent",answer:""}));
+    const sections=[];
+    for(let i=0;i<queries.length;i++){
+      const start=raw.search(new RegExp(`(^|\\n)\\s*${i+1}[.:\\)\\s]`,"m"));
+      const nextStart=i<queries.length-1?raw.search(new RegExp(`(^|\\n)\\s*${i+2}[.:\\)\\s]`,"m")):-1;
+      if(start>=0){
+        const chunk=nextStart>start?raw.slice(start,nextStart):raw.slice(start);
+        sections.push(chunk);
+      }else{
+        sections.push("");
+      }
+    }
+    return queries.map((q,i)=>{
+      const answer=sections[i]||"";
+      return{query:q,status:detectBrandStatus(answer,brand,cd.website),answer};
+    });
+  };
+
+  const gptQueries=splitResponses(gptBatchRaw,probeQueries);
+  const gemQueries=splitResponses(gemBatchRaw,probeQueries);
 
   const calcScores=(queries)=>{
     const q=queries||[];
