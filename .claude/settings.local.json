@@ -6,7 +6,14 @@
       "Bash(export PATH=\"$HOME/nodejs/node-v22.14.0-win-x64:$PATH\")",
       "Bash(node:*)",
       "Bash(npm:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "WebFetch(domain:commons.wikimedia.org)",
+      "WebFetch(domain:lobehub.com)",
+      "WebFetch(domain:cdn.jsdelivr.net)",
+      "WebFetch(domain:www.niftybuttons.com)",
+      "Bash(curl:*)",
+      "Bash(python:*)",
+      "WebFetch(domain:worldvectorlogo.com)"
     ]
   }
 }
