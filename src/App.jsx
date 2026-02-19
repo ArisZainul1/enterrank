@@ -1622,9 +1622,9 @@ function AuditPage({r,history,goTo}){
     <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:"0 0 24px"}}>Overview</h2>
 
     {/* Top row: Visibility Score (left) + System Diagnostics (right) */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:20,marginBottom:24}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24,alignItems:"stretch"}}>
       {/* Visibility Score chart */}
-      <div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"24px"}}>
+      <div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"24px",display:"flex",flexDirection:"column"}}>
         <VisibilityChart engines={r.engines} overall={r.overall} brand={r.clientData.brand}/>
       </div>
 
@@ -1879,7 +1879,8 @@ Return JSON only:
       const color=stageColors[selStage];
       const s=stageStats[selStage];
       if(prompts.length===0)return(<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>No prompts for {stageNames[selStage]} yet. Use "Test a Prompt" above.</div></Card>);
-      const sorted=prompts;
+      const statusOrder={Cited:0,Mentioned:1,Absent:2};
+      const sorted=[...prompts].sort((a,b)=>(statusOrder[a.status]??2)-(statusOrder[b.status]??2));
       return(<Card style={{padding:0,overflow:"hidden"}}>
         <div style={{padding:"16px 20px",borderBottom:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
