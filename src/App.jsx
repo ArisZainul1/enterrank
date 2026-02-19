@@ -428,8 +428,17 @@ Be specific to the actual results. If mention rate is 0%, strengths should refle
   const brandScoreMap={};
   if(brandScored)(brandScored.categories||[]).forEach(c=>{brandScoreMap[c.label]=c.score;});
 
-  // Identify competitors whose crawl failed — we'll ask AI to estimate their scores
-  const failedCrawlNames=compNames.filter(cname=>!compCrawlsRaw[cname]);
+  // Identify competitors whose crawl failed or returned thin data (JS shell / bot block)
+  const isThinCrawl=(raw)=>{
+    if(!raw||!raw.mainPage)return true;
+    const mp=raw.mainPage;
+    if(mp.error||mp.statusCode!==200)return true;
+    const wc=mp.wordCount||0;const schemas=(mp.schemas||[]).length;const h2s=mp.headings?mp.headings.h2s.length:0;
+    // If word count < 100 AND no schemas AND no h2s — it's a JS shell or blocked page
+    if(wc<100&&schemas===0&&h2s===0)return true;
+    return false;
+  };
+  const failedCrawlNames=compNames.filter(cname=>isThinCrawl(compCrawlsRaw[cname]));
   let aiEstimates={};
   if(failedCrawlNames.length>0){
     onProgress("Estimating scores for unreachable competitor sites...",35);
@@ -463,10 +472,11 @@ Return JSON: [{"name":"CompName","scores":{"schema":N,"content":N,"eeat":N,"tech
   const mergedComps=compNames.map(cname=>{
     const raw=compCrawlsRaw[cname];
     const scored=scoreCrawl(raw);
+    const thin=isThinCrawl(raw);
     const vis=compVisibility[cname]||{mentionRate:0,citationRate:0};
     const visScore=Math.round(vis.mentionRate*0.5+vis.citationRate*0.5);
-    if(!scored){
-      // Try AI estimation fallback
+    if(!scored||thin){
+      // Crawl failed or returned thin data — try AI estimation fallback
       const est=aiEstimates[cname.toLowerCase()];
       if(est&&est.scores){
         const s=est.scores,ev=est.evidence||{};
