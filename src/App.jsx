@@ -428,16 +428,64 @@ Be specific to the actual results. If mention rate is 0%, strengths should refle
   const brandScoreMap={};
   if(brandScored)(brandScored.categories||[]).forEach(c=>{brandScoreMap[c.label]=c.score;});
 
+  // Identify competitors whose crawl failed — we'll ask AI to estimate their scores
+  const failedCrawlNames=compNames.filter(cname=>!compCrawlsRaw[cname]);
+  let aiEstimates={};
+  if(failedCrawlNames.length>0){
+    onProgress("Estimating scores for unreachable competitor sites...",35);
+    try{
+      const estPrompt=`You are analysing competitor websites for GEO (Generative Engine Optimisation). Our crawler could not reach these competitors' websites (likely due to bot protection or JavaScript rendering).
+
+Based on your knowledge of these companies, estimate realistic scores (0-100) for each GEO category. Be conservative — do NOT inflate. Consider the typical web presence of each brand.
+
+Industry: ${industry}, Region: ${region}
+Competitors to estimate: ${failedCrawlNames.join(", ")}
+
+Categories to score:
+1. Structured Data / Schema (JSON-LD markup, FAQ schema, Organization schema)
+2. Content Authority (word count, heading structure, blog presence, media)
+3. E-E-A-T Signals (author info, trust signals, testimonials, dates)
+4. Technical SEO (Open Graph, Twitter Cards, internal links, meta tags)
+5. Citation Network (external references, trust signals, organization schema)
+6. Content Freshness (publication dates, blog activity, article schema)
+
+Return JSON: [{"name":"CompName","scores":{"schema":N,"content":N,"eeat":N,"techseo":N,"citation":N,"freshness":N},"evidence":{"schema":"brief reason","content":"brief reason","eeat":"brief reason","techseo":"brief reason","citation":"brief reason","freshness":"brief reason"}}]`;
+      const estRaw=await callOpenAI(estPrompt,engineSystemPrompt);
+      const estData=safeJSON(estRaw);
+      if(Array.isArray(estData)){
+        estData.forEach(e=>{
+          if(e.name&&e.scores)aiEstimates[e.name.toLowerCase()]={scores:e.scores,evidence:e.evidence||{}};
+        });
+      }
+    }catch(e){console.error("AI estimate for failed crawls error:",e);}
+  }
+
   const mergedComps=compNames.map(cname=>{
     const raw=compCrawlsRaw[cname];
     const scored=scoreCrawl(raw);
     const vis=compVisibility[cname]||{mentionRate:0,citationRate:0};
     const visScore=Math.round(vis.mentionRate*0.5+vis.citationRate*0.5);
-    if(!scored)return{name:cname,score:visScore,mentionRate:vis.mentionRate,citationRate:vis.citationRate,engineScores:[vis.mentionRate,vis.citationRate],topStrength:"No crawl data available",painPoints:[
-      {label:"Structured Data / Schema",score:0},{label:"Content Authority",score:0},{label:"E-E-A-T Signals",score:0},
-      {label:"Technical SEO",score:0},{label:"Citation Network",score:0},{label:"Content Freshness",score:0}]};
+    if(!scored){
+      // Try AI estimation fallback
+      const est=aiEstimates[cname.toLowerCase()];
+      if(est&&est.scores){
+        const s=est.scores,ev=est.evidence||{};
+        const pp=[
+          {label:"Structured Data / Schema",score:Math.min(100,Math.max(0,s.schema||0)),evidence:[ev.schema||"AI estimated"].filter(Boolean)},
+          {label:"Content Authority",score:Math.min(100,Math.max(0,s.content||0)),evidence:[ev.content||"AI estimated"].filter(Boolean)},
+          {label:"E-E-A-T Signals",score:Math.min(100,Math.max(0,s.eeat||0)),evidence:[ev.eeat||"AI estimated"].filter(Boolean)},
+          {label:"Technical SEO",score:Math.min(100,Math.max(0,s.techseo||0)),evidence:[ev.techseo||"AI estimated"].filter(Boolean)},
+          {label:"Citation Network",score:Math.min(100,Math.max(0,s.citation||0)),evidence:[ev.citation||"AI estimated"].filter(Boolean)},
+          {label:"Content Freshness",score:Math.min(100,Math.max(0,s.freshness||0)),evidence:[ev.freshness||"AI estimated"].filter(Boolean)}
+        ];
+        return{name:cname,score:visScore,mentionRate:vis.mentionRate,citationRate:vis.citationRate,engineScores:[vis.mentionRate,vis.citationRate],topStrength:"",painPoints:pp,estimated:true};
+      }
+      return{name:cname,score:visScore,mentionRate:vis.mentionRate,citationRate:vis.citationRate,engineScores:[vis.mentionRate,vis.citationRate],topStrength:"No crawl data available",painPoints:[
+        {label:"Structured Data / Schema",score:0},{label:"Content Authority",score:0},{label:"E-E-A-T Signals",score:0},
+        {label:"Technical SEO",score:0},{label:"Citation Network",score:0},{label:"Content Freshness",score:0}],estimated:true};
+    }
     const pp=scored.categories.map(c=>({label:c.label,score:c.score,evidence:c.evidence}));
-    return{name:cname,score:visScore,mentionRate:vis.mentionRate,citationRate:vis.citationRate,engineScores:[vis.mentionRate,vis.citationRate],painPoints:pp,topStrength:""};
+    return{name:cname,score:visScore,mentionRate:vis.mentionRate,citationRate:vis.citationRate,engineScores:[vis.mentionRate,vis.citationRate],painPoints:pp,topStrength:"",estimated:false};
   }).filter(c=>c.name);
 
   // Ask AI only for topStrength summaries — grounded in real score differences
@@ -988,7 +1036,7 @@ function generateAll(cd, apiData){
   const getScoreDesc=(s,b)=>s>=80?b+" is dominant — frequently cited and recommended.":s>=60?b+" has strong visibility — regularly mentioned.":s>=40?b+" has moderate visibility — rarely cited as primary source.":s>=20?b+" has weak visibility — occasionally mentioned.":b+" is invisible to AI engines.";
   const painCats=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
   const painPoints=(hasApi&&apiData.engineData.painPoints&&apiData.engineData.painPoints.length>0)?apiData.engineData.painPoints.map(pp=>({label:pp.label,score:pp.score,severity:pp.score<30?"critical":pp.score<60?"warning":"good",evidence:pp.evidence||[]})):painCats.map(label=>({label,score:0,severity:"critical",evidence:[]}));
-  const competitors=(hasApi&&apiData.competitorData)?(()=>{const raw=Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors||[];return raw.map(c=>{const cPain=(c.painPoints||painCats.map(l=>({label:l,score:c.score||0}))).map(p=>({label:p.label,score:p.score}));const advantages=cPain.map(pp=>{const brandPP=painPoints.find(bp=>bp.label===pp.label);const diff=pp.score-(brandPP?brandPP.score:0);return{category:pp.label,cat:pp.label,diff,yourScore:brandPP?brandPP.score:0,theirScore:pp.score,insight:getInsight(pp.label,c.name,cd.brand,diff>0)};}).filter(a=>a.insight);return{name:c.name,score:c.score||0,painPoints:cPain,advantages,engineScores:c.engineScores||[c.score||0,c.score||0],topStrength:c.topStrength||"N/A"};});})():[];
+  const competitors=(hasApi&&apiData.competitorData)?(()=>{const raw=Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors||[];return raw.map(c=>{const cPain=(c.painPoints||painCats.map(l=>({label:l,score:c.score||0}))).map(p=>({label:p.label,score:p.score}));const advantages=cPain.map(pp=>{const brandPP=painPoints.find(bp=>bp.label===pp.label);const diff=pp.score-(brandPP?brandPP.score:0);return{category:pp.label,cat:pp.label,diff,yourScore:brandPP?brandPP.score:0,theirScore:pp.score,insight:getInsight(pp.label,c.name,cd.brand,diff>0)};}).filter(a=>a.insight);return{name:c.name,score:c.score||0,painPoints:cPain,advantages,engineScores:c.engineScores||[c.score||0,c.score||0],topStrength:c.topStrength||"N/A",estimated:!!c.estimated};});})():[];
   const stakeholders=(hasApi&&apiData.archData&&Array.isArray(apiData.archData)&&apiData.archData.length>0)?apiData.archData:[];
   const funnelStages=(()=>{
     if(hasApi&&apiData.intentData&&Array.isArray(apiData.intentData)&&apiData.intentData.length>0){
@@ -1791,7 +1839,7 @@ function AuditPage({r,history,goTo}){
       <p style={{fontSize:13,color:C.muted,margin:"0 0 16px"}}>Why competitors rank higher or lower</p>
       {r.competitors.map((c,ci)=>{const isOpen=expandComp===ci;const ahead=c.score>r.overall;return(<div key={ci} style={{border:`1px solid ${isOpen?(ahead?`${C.red}25`:`${C.green}25`):C.border}`,borderRadius:10,overflow:"hidden",marginBottom:8}}>
         <div onClick={()=>setExpandComp(isOpen?null:ci)} style={{padding:"14px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",background:isOpen?`${ahead?C.red:C.green}03`:"transparent"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:36,height:36,borderRadius:8,background:ahead?`${C.red}08`:`${C.green}08`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:ahead?C.red:C.green}}>{c.score}%</div><div><div style={{fontWeight:600,fontSize:13,color:C.text}}>{c.name}</div><div style={{fontSize:11,color:C.muted}}>{ahead?`${c.score-r.overall} points ahead`:`${r.overall-c.score} points behind`}</div></div></div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:36,height:36,borderRadius:8,background:ahead?`${C.red}08`:`${C.green}08`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:ahead?C.red:C.green}}>{c.score}%</div><div><div style={{fontWeight:600,fontSize:13,color:C.text,display:"flex",alignItems:"center",gap:6}}>{c.name}{c.estimated&&<span style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:`${C.amber}15`,color:C.amber,fontWeight:500}}>Estimated</span>}</div><div style={{fontSize:11,color:C.muted}}>{ahead?`${c.score-r.overall} points ahead`:`${r.overall-c.score} points behind`}</div></div></div>
           <div style={{display:"flex",alignItems:"center",gap:6}}><Pill color={ahead?C.red:C.green} filled>{ahead?"Outranking":"Behind"}</Pill><span style={{fontSize:10,color:C.muted}}>{isOpen?"▲":"▼"}</span></div>
         </div>
         {isOpen&&<div style={{padding:"0 16px 16px"}}>
