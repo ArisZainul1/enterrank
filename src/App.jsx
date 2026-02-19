@@ -926,6 +926,44 @@ Return JSON: [{"area":"<area>","rule":"<specific guideline>","example":"<concret
   const guideRaw=await callOpenAI(guidePrompt, engineSystemPrompt);
   const guideData=safeJSON(guideRaw)||null;
 
+  // ── Generate unique engine insights + system diagnostics via AI ──
+  onProgress("Generating platform insights...",92);
+  let engineInsights=null;let aiDiagnostics=null;
+  try{
+    const gptQS=gptResults.map(r=>`"${r.query}" → ${r.status}`).join(", ");
+    const gemQS=gemResults.map(r=>`"${r.query}" → ${r.status}`).join(", ");
+    const painSummary=(mergedPainPoints||[]).map(p=>`${p.label}: ${p.score}%`).join(", ");
+    const compSummary=(compData.competitors||[]).map(c=>`${c.name} ${c.score}%`).join(", ");
+    const insightPrompt=`You are a GEO analyst. Here is real audit data for "${brand}" (${industry}, ${region}):
+
+REAL ENGINE DATA:
+- ChatGPT: mention ${gptScores.mentionRate}%, citation ${gptScores.citationRate}%. Queries: ${gptQS}
+- Gemini: mention ${gemScores.mentionRate}%, citation ${gemScores.citationRate}%. Queries: ${gemQS}
+
+WEBSITE: ${painSummary}
+COMPETITORS: ${compSummary}
+
+Based on this REAL data, generate insights for these engines. Each engine has different characteristics:
+- Claude: Anthropic's model, tends to be cautious/balanced, strong on factual queries
+- Perplexity: Search-focused, pulls from web sources, favours well-cited brands
+- DeepSeek: Chinese AI, newer to Western markets, less brand awareness
+- Copilot: Microsoft/Bing-integrated, favours well-indexed sites
+- Meta AI: Social-focused, integrated with Facebook/Instagram ecosystem
+
+For each engine, write 2 UNIQUE strengths and 2 UNIQUE weaknesses specific to how "${brand}" would likely perform on that platform. Reference the real data patterns above. Do NOT use generic templates.
+
+Also generate 5-6 system diagnostics — specific, actionable findings from this audit. Each should reference a real data point. Mix critical issues with opportunities.
+
+Return JSON:
+{"engines":{"claude":{"s":["strength1","strength2"],"w":["weakness1","weakness2"]},"perplexity":{"s":["..."],"w":["..."]},"deepseek":{"s":["..."],"w":["..."]},"copilot":{"s":["..."],"w":["..."]},"metaai":{"s":["..."],"w":["..."]}},"diagnostics":[{"severity":"critical|warning|good","text":"specific finding referencing data"}]}`;
+    const insightRaw=await callOpenAI(insightPrompt,engineSystemPrompt);
+    const parsed=safeJSON(insightRaw);
+    if(parsed){
+      if(parsed.engines)engineInsights=parsed.engines;
+      if(parsed.diagnostics&&Array.isArray(parsed.diagnostics))aiDiagnostics=parsed.diagnostics;
+    }
+  }catch(e){console.error("Engine insights generation error:",e);}
+
   onProgress("Compiling final report...",95);
 
   return {
@@ -943,7 +981,9 @@ Return JSON: [{"area":"<area>","rule":"<specific guideline>","example":"<concret
     contentGridData:(contentData.contentTypes||[]).slice(0,10),
     roadmapData:roadData,
     contentData:(contentData.contentTypes||[]).slice(0,10),
-    guidelineData:Array.isArray(guideData)?guideData:null
+    guidelineData:Array.isArray(guideData)?guideData:null,
+    engineInsights:engineInsights,
+    aiDiagnostics:aiDiagnostics
   };
 }
 
@@ -1036,7 +1076,8 @@ function generateAll(cd, apiData){
       return{...e,score:sc,mentionRate:mr,citationRate:cr,queries:(ae.queries||[]).slice(0,8).map(q=>({query:q.query||"",status:q.status||"Absent"})),strengths:fB(ae.strengths,sFb),weaknesses:fB(ae.weaknesses,wFb)};}
     return{...e,score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["No API data received"]};
   });
-  const engines=[...realEngines,...engineMeta.slice(2).map(e=>{const est=estimateEngine(realEngines,e.id,e.name,cd.brand,cd.industry);return{...e,...est};})];
+  const aiEngIns=(hasApi&&apiData.engineInsights)||{};
+  const engines=[...realEngines,...engineMeta.slice(2).map(e=>{const est=estimateEngine(realEngines,e.id,e.name,cd.brand,cd.industry);const ins=aiEngIns[e.id];if(ins&&ins.s&&ins.s.length>=2&&ins.w&&ins.w.length>=2){est.strengths=ins.s;est.weaknesses=ins.w;}return{...e,...est};})];
   // Market-share weights (Feb 2026 — First Page Sage / SimilarWeb)
   const mktShare={chatgpt:0.607,gemini:0.150,copilot:0.132,perplexity:0.058,claude:0.041,grok:0.006,deepseek:0.002,metaai:0.001,mistral:0.001,youcom:0.001,jasper:0.001,cohere:0.001,pi:0.001,poe:0.001,aria:0.001};
   engines.forEach(e=>{e.score=Math.round(e.mentionRate*0.5+e.citationRate*0.5);e.weight=mktShare[e.id]||0.001;});
@@ -1118,7 +1159,8 @@ function generateAll(cd, apiData){
   const contentTypes=(hasApi&&apiData.contentGridData&&Array.isArray(apiData.contentGridData)&&apiData.contentGridData.length>0)?apiData.contentGridData.map(ct=>({type:ct.type||"Content",channels:ct.channels||["Blog"],freq:ct.freq||"Monthly",p:ct.p||"P1",owner:ct.owner||"Content Team",impact:typeof ct.impact==="number"?ct.impact:70,rationale:ct.rationale||ct.description||""})):[];
   const roadmap=(hasApi&&apiData.roadmapData&&apiData.roadmapData.day30)?apiData.roadmapData:null;
   const outputReqs=contentTypes.slice(0,6).map(ct=>({n:ct.freq||"Monthly",u:"",l:ct.type,d:ct.rationale||""}));
-  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,clientData:cd};
+  const aiDiags=(hasApi&&apiData.aiDiagnostics&&Array.isArray(apiData.aiDiagnostics))?apiData.aiDiagnostics:null;
+  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,clientData:cd,aiDiagnostics:aiDiags};
 }
 
 /* ─── LOGIN FORM ─── */
@@ -1748,17 +1790,22 @@ function AuditPage({r,history,goTo}){
   const channels=r.aeoChannels||[];
   const missingChannels=channels.filter(ch=>ch.status==="Not Present"||ch.statusLabel==="Not Present");
 
-  const diags=[];
-  if(bestEngine.score-worstEngine.score>15) diags.push({icon:"zap",severity:"warning",text:`${bestEngine.score-worstEngine.score}pt gap between ${bestEngine.name} (${bestEngine.score}%) and ${worstEngine.name} (${worstEngine.score}%).`});
-  if(avgCitation<10) diags.push({icon:"link",severity:"critical",text:`${avgCitation}% citation rate. Users get answers about your space but aren't sent to your site.`});
-  else if(avgCitation<25) diags.push({icon:"link",severity:"warning",text:`${avgCitation}% citation rate — ${100-avgCitation}% of mentions don't link back to you.`});
-  if(avgMention<15) diags.push({icon:"message-circle",severity:"critical",text:`${avgMention}% mention rate across engines. ${r.clientData.brand} isn't part of the AI conversation yet.`});
-  else if(avgMention<35) diags.push({icon:"message-circle",severity:"warning",text:`Mentioned in ~1 of ${Math.round(100/avgMention)} relevant responses (${avgMention}%).`});
-  if(criticalCats.length>0) diags.push({icon:"alert-circle",severity:"critical",text:`${criticalCats.map(c=>c.label.split("/")[0].trim()+" "+c.score+"%").join(", ")} — ${criticalCats.length>1?"these need":"needs"} immediate attention.`});
-  if(weakestCat.score<30) diags.push({icon:"trending-down",severity:"critical",text:`${weakestCat.label.split("/")[0].trim()} at ${weakestCat.score}% — lowest category score.`});
-  if(compsAhead.length>0) diags.push({icon:"flag",severity:compsAhead.length>1?"critical":"warning",text:`${compsAhead.map(c=>c.name+" "+c.score+"%").join(", ")} ${compsAhead.length>1?"are":"is"} scoring above you.`});
-  if(missingChannels.length>0) diags.push({icon:"radio",severity:"warning",text:`Not found on ${missingChannels.length} distribution channel${missingChannels.length>1?"s":""}.`});
-  if(strongestCat.score>60) diags.push({icon:"check-circle",severity:"good",text:`${strongestCat.label.split("/")[0].trim()} is your strongest signal at ${strongestCat.score}%.`});
+  // Use AI-generated diagnostics when available, with computed fallback
+  const sevIcons={critical:"alert-circle",warning:"zap",good:"check-circle",info:"info"};
+  const diags=(r.aiDiagnostics&&r.aiDiagnostics.length>=3)?r.aiDiagnostics.map(d=>({icon:sevIcons[d.severity]||"info",severity:d.severity||"info",text:d.text||""})).filter(d=>d.text.length>10):(()=>{
+    const d=[];
+    if(bestEngine.score-worstEngine.score>15) d.push({icon:"zap",severity:"warning",text:`${bestEngine.score-worstEngine.score}pt gap between ${bestEngine.name} (${bestEngine.score}%) and ${worstEngine.name} (${worstEngine.score}%).`});
+    if(avgCitation<10) d.push({icon:"link",severity:"critical",text:`${avgCitation}% citation rate. Users get answers about your space but aren't sent to your site.`});
+    else if(avgCitation<25) d.push({icon:"link",severity:"warning",text:`${avgCitation}% citation rate — ${100-avgCitation}% of mentions don't link back to you.`});
+    if(avgMention<15) d.push({icon:"message-circle",severity:"critical",text:`${avgMention}% mention rate across engines. ${r.clientData.brand} isn't part of the AI conversation yet.`});
+    else if(avgMention<35) d.push({icon:"message-circle",severity:"warning",text:`Mentioned in ~1 of ${Math.round(100/avgMention)} relevant responses (${avgMention}%).`});
+    if(criticalCats.length>0) d.push({icon:"alert-circle",severity:"critical",text:`${criticalCats.map(c=>c.label.split("/")[0].trim()+" "+c.score+"%").join(", ")} — ${criticalCats.length>1?"these need":"needs"} immediate attention.`});
+    if(weakestCat.score<30) d.push({icon:"trending-down",severity:"critical",text:`${weakestCat.label.split("/")[0].trim()} at ${weakestCat.score}% — lowest category score.`});
+    if(compsAhead.length>0) d.push({icon:"flag",severity:compsAhead.length>1?"critical":"warning",text:`${compsAhead.map(c=>c.name+" "+c.score+"%").join(", ")} ${compsAhead.length>1?"are":"is"} scoring above you.`});
+    if(missingChannels.length>0) d.push({icon:"radio",severity:"warning",text:`Not found on ${missingChannels.length} distribution channel${missingChannels.length>1?"s":""}.`});
+    if(strongestCat.score>60) d.push({icon:"check-circle",severity:"good",text:`${strongestCat.label.split("/")[0].trim()} is your strongest signal at ${strongestCat.score}%.`});
+    return d;
+  })();
   const sevOrder={critical:0,warning:1,info:2,good:3};
   diags.sort((a,b)=>(sevOrder[a.severity]??2)-(sevOrder[b.severity]??2));
   const sevColors={critical:C.red,warning:C.amber,info:C.accent,good:C.green};
