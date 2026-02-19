@@ -345,11 +345,9 @@ async function runRealAudit(cd, onProgress){
   let gemData={score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["Visibility probe failed"]};
   let compVisibility={};
   let gptResults=[];let gemResults=[];let gptScores={mentionRate:0,citationRate:0};let gemScores={mentionRate:0,citationRate:0};
+  const probeQueries=topics.slice(0,15);
   try{
   onProgress("Probing ChatGPT & Gemini with real queries...",14);
-
-  // Probe queries = user's curated key topics ONLY (capped at 15)
-  const probeQueries=topics.slice(0,15);
 
   // Single prompt — ask for JSON array of concise answers
   const queryList=probeQueries.map((q,i)=>`${i+1}. ${q}`).join("\n");
