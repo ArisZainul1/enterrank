@@ -926,43 +926,57 @@ Return JSON: [{"area":"<area>","rule":"<specific guideline>","example":"<concret
   const guideRaw=await callOpenAI(guidePrompt, engineSystemPrompt);
   const guideData=safeJSON(guideRaw)||null;
 
-  // ── Generate unique engine insights + system diagnostics via AI ──
-  onProgress("Generating platform insights...",92);
+  // ── Generate unique engine insights + system diagnostics via AI (2 separate calls) ──
+  onProgress("Generating platform insights...",90);
   let engineInsights=null;let aiDiagnostics=null;
+  const gptQS=gptResults.map(r=>`"${r.query}": ${r.status}`).join(", ");
+  const gemQS=gemResults.map(r=>`"${r.query}": ${r.status}`).join(", ");
+  const painSummary=(mergedPainPoints||[]).map(p=>`${p.label}: ${p.score}%`).join(", ");
+  const compSummary=(compData.competitors||[]).map(c=>`${c.name} ${c.score}%`).join(", ");
   try{
-    const gptQS=gptResults.map(r=>`"${r.query}" → ${r.status}`).join(", ");
-    const gemQS=gemResults.map(r=>`"${r.query}" → ${r.status}`).join(", ");
-    const painSummary=(mergedPainPoints||[]).map(p=>`${p.label}: ${p.score}%`).join(", ");
-    const compSummary=(compData.competitors||[]).map(c=>`${c.name} ${c.score}%`).join(", ");
-    const insightPrompt=`You are a GEO analyst. Here is real audit data for "${brand}" (${industry}, ${region}):
+    // Call 1: Engine-specific insights (simple flat array)
+    const engPrompt=`Real GEO audit data for "${brand}" (${industry}, ${region}):
+ChatGPT: mention ${gptScores.mentionRate}%, citation ${gptScores.citationRate}%. ${gptQS}
+Gemini: mention ${gemScores.mentionRate}%, citation ${gemScores.citationRate}%. ${gemQS}
+Website scores: ${painSummary}
 
-REAL ENGINE DATA:
-- ChatGPT: mention ${gptScores.mentionRate}%, citation ${gptScores.citationRate}%. Queries: ${gptQS}
-- Gemini: mention ${gemScores.mentionRate}%, citation ${gemScores.citationRate}%. Queries: ${gemQS}
+For each engine below, write 2 strengths and 2 weaknesses about how "${brand}" specifically performs. Each insight MUST reference data above (mention %, citation %, specific query results, or website scores). No generic statements.
 
-WEBSITE: ${painSummary}
-COMPETITORS: ${compSummary}
+Engines and their traits:
+- claude: Cautious, factual, cites authoritative sources, Anthropic's model
+- perplexity: Web-search-powered, pulls live sources, favours sites with strong backlinks
+- deepseek: Chinese-origin, less Western brand training data, strong on technical queries
+- copilot: Bing-indexed, Microsoft ecosystem, favours well-structured sites with schema
+- metaai: Social-graph-aware, integrated with Facebook/Instagram, conversational style
 
-Based on this REAL data, generate insights for these engines. Each engine has different characteristics:
-- Claude: Anthropic's model, tends to be cautious/balanced, strong on factual queries
-- Perplexity: Search-focused, pulls from web sources, favours well-cited brands
-- DeepSeek: Chinese AI, newer to Western markets, less brand awareness
-- Copilot: Microsoft/Bing-integrated, favours well-indexed sites
-- Meta AI: Social-focused, integrated with Facebook/Instagram ecosystem
-
-For each engine, write 2 UNIQUE strengths and 2 UNIQUE weaknesses specific to how "${brand}" would likely perform on that platform. Reference the real data patterns above. Do NOT use generic templates.
-
-Also generate 5-6 system diagnostics — specific, actionable findings from this audit. Each should reference a real data point. Mix critical issues with opportunities.
-
-Return JSON:
-{"engines":{"claude":{"s":["strength1","strength2"],"w":["weakness1","weakness2"]},"perplexity":{"s":["..."],"w":["..."]},"deepseek":{"s":["..."],"w":["..."]},"copilot":{"s":["..."],"w":["..."]},"metaai":{"s":["..."],"w":["..."]}},"diagnostics":[{"severity":"critical|warning|good","text":"specific finding referencing data"}]}`;
-    const insightRaw=await callOpenAI(insightPrompt,engineSystemPrompt);
-    const parsed=safeJSON(insightRaw);
-    if(parsed){
-      if(parsed.engines)engineInsights=parsed.engines;
-      if(parsed.diagnostics&&Array.isArray(parsed.diagnostics))aiDiagnostics=parsed.diagnostics;
+Return JSON array:
+[{"id":"claude","s":["...","..."],"w":["...","..."]},{"id":"perplexity","s":["...","..."],"w":["...","..."]},{"id":"deepseek","s":["...","..."],"w":["...","..."]},{"id":"copilot","s":["...","..."],"w":["...","..."]},{"id":"metaai","s":["...","..."],"w":["...","..."]}]`;
+    const engRaw=await callOpenAI(engPrompt,engineSystemPrompt);
+    const engParsed=safeJSON(engRaw);
+    if(Array.isArray(engParsed)&&engParsed.length>0){
+      engineInsights={};
+      engParsed.forEach(e=>{if(e.id&&e.s&&e.w)engineInsights[e.id]=e;});
     }
-  }catch(e){console.error("Engine insights generation error:",e);}
+  }catch(e){console.error("Engine insights error:",e);}
+
+  try{
+    // Call 2: System diagnostics (simple array)
+    onProgress("Generating system diagnostics...",93);
+    const diagPrompt=`GEO audit findings for "${brand}" (${industry}, ${region}):
+- ChatGPT: ${gptScores.mentionRate}% mentions, ${gptScores.citationRate}% citations
+- Gemini: ${gemScores.mentionRate}% mentions, ${gemScores.citationRate}% citations
+- Website: ${painSummary}
+- Competitors: ${compSummary}
+- Queries tested: ${probeQueries.length}
+
+Generate exactly 6 system diagnostics. Each MUST cite a specific number from above. Mix severities: at least 2 critical, 2 warning, 1 good. Be specific to "${brand}" — no generic advice.
+
+Return JSON array:
+[{"severity":"critical","text":"Your 12% citation rate on ChatGPT means..."},{"severity":"warning","text":"..."}]`;
+    const diagRaw=await callOpenAI(diagPrompt,engineSystemPrompt);
+    const diagParsed=safeJSON(diagRaw);
+    if(Array.isArray(diagParsed)&&diagParsed.length>=3)aiDiagnostics=diagParsed;
+  }catch(e){console.error("Diagnostics generation error:",e);}
 
   onProgress("Compiling final report...",95);
 
@@ -1013,25 +1027,41 @@ function estimateEngine(baselines,engineId,engineName,brand,industry){
   const mentionRate=Math.max(0,Math.min(capM,Math.round(realAvgM*mB+v)));
   const citationRate=Math.max(0,Math.min(capCit,Math.round(realAvgCit*cB+v*0.7)));
   const score=Math.round(mentionRate*0.5+citationRate*0.5);
-  // Score-aware strengths: only claim positive things if the data backs it up
-  const h2=hashStr(engineName+brand);
+  // Data-grounded strengths/weaknesses using real query results
+  const allQueries=[...(baselines[0]?.queries||[]),...(baselines[1]?.queries||[])];
+  const mentionedQs=allQueries.filter(q=>q.status==="Mentioned"||q.status==="Cited").map(q=>q.query);
+  const absentQs=allQueries.filter(q=>q.status==="Absent").map(q=>q.query);
+  const citedQs=allQueries.filter(q=>q.status==="Cited").map(q=>q.query);
+  const engineTraits={claude:"conservative with recommendations, prioritises factual accuracy",perplexity:"pulls from live web search results, favours sites with strong backlinks",deepseek:"has limited Western brand training data, stronger on technical topics",copilot:"integrated with Bing search index, favours sites with strong schema markup",metaai:"draws from social signals and conversational patterns",mistral:"European model with less commercial brand data",grok:"X/Twitter-integrated, draws from social conversation data",youcom:"search-aggregator that blends multiple sources",jasper:"marketing-focused AI with commercial content bias",cohere:"enterprise-focused model with limited consumer brand data",pi:"conversational AI that avoids direct brand recommendations",poe:"aggregator of multiple models, results vary by underlying engine",aria:"Opera browser AI, draws from browsing and search data"};
+  const trait=engineTraits[engineId]||"smaller AI engine with limited brand coverage";
   let strengths,weaknesses;
-  if(score<10){
-    strengths=[`${engineName} has limited data on ${brand} — room for first-mover advantage`,`Opportunity to establish presence before competitors on ${engineName}`];
-    weaknesses=[`${brand} is largely invisible on ${engineName}`,`${engineName} does not surface ${brand} in ${industry} queries`];
-  }else if(score<30){
-    strengths=[`${brand} appears in a small number of ${engineName} responses`,`Some brand recognition detected on ${engineName} for niche queries`];
-    weaknesses=[`${engineName} rarely recommends ${brand} for ${industry} queries`,`Citation rate on ${engineName} is well below competitors`];
-  }else if(score<60){
-    const sP=[`${brand} appears in some ${engineName} responses for ${industry} queries`,`Brand recognized alongside competitors in ${engineName}`,`${brand} mentioned in niche ${industry} prompts on ${engineName}`];
-    const wP=[`Lower citation rate on ${engineName} versus top competitors`,`${engineName} rarely links directly to ${brand}'s website`,`Limited authority signals detected by ${engineName}`];
-    strengths=[sP[h2%sP.length],sP[(h2+1)%sP.length]];
-    weaknesses=[wP[h2%wP.length],wP[(h2+1)%wP.length]];
+  if(mentionRate<5){
+    strengths=[
+      `${engineName} is an untapped channel — competitors likely have zero presence here too`,
+      mentionedQs.length>0?`Real engine data shows ${brand} appears for "${mentionedQs[0]}" — ${engineName} may pick this up from similar sources`:`First-mover advantage: building ${engineName} presence now means less competition`
+    ];
+    weaknesses=[
+      `${engineName} ${trait} — ${brand} not appearing in ${absentQs.length>0?`queries like "${absentQs[0]}"`:`${industry} queries`}`,
+      `${mentionRate}% estimated mention rate on ${engineName} vs ${realAvgM}% average across ChatGPT/Gemini`
+    ];
+  }else if(mentionRate<30){
+    strengths=[
+      mentionedQs.length>0?`${brand} detected in real responses for "${mentionedQs[0]}" — ${engineName} likely surfaces similar results`:`${mentionRate}% mention rate indicates some brand signal reaching ${engineName}`,
+      citedQs.length>0?`Citation detected for "${citedQs[0]}" — ${engineName}'s ${trait.split(",")[0]} may amplify this`:`${engineName} shows early brand recognition for ${industry} queries`
+    ];
+    weaknesses=[
+      absentQs.length>0?`Absent from "${absentQs[0]}" — ${engineName} ${trait.split(",")[0]}`:`${engineName} mentions ${brand} in only ${mentionRate}% of relevant queries`,
+      `${citationRate}% citation rate on ${engineName} — website not being linked as a source`
+    ];
   }else{
-    const sP=[`${engineName} frequently includes ${brand} in ${industry} recommendations`,`Strong citation rate — ${engineName} links to ${brand}'s website`,`${brand} is a top result for competitive ${industry} queries on ${engineName}`,`Product details well-represented in ${engineName}`];
-    const wP=[`Some high-intent prompts on ${engineName} still favour competitors`,`${engineName} occasionally omits ${brand} from comparative answers`];
-    strengths=[sP[h2%sP.length],sP[(h2+1)%sP.length]];
-    weaknesses=[wP[h2%wP.length],wP[(h2+1)%wP.length]];
+    strengths=[
+      mentionedQs.length>0?`Strong signal: ${brand} appears for "${mentionedQs[0]}" across engines — ${engineName} likely includes it too`:`${mentionRate}% estimated mentions — ${engineName}'s ${trait.split(",")[0]} aligns with ${brand}'s presence`,
+      citedQs.length>0?`Cited for "${citedQs[0]}" — ${engineName} ${trait.split(",")[0]} reinforces this`:`${brand} has solid visibility across engines, translating to ${engineName} at ${mentionRate}%`
+    ];
+    weaknesses=[
+      absentQs.length>0?`Still absent from "${absentQs[0]}" on ${engineName} — ${trait.split(",")[0]} limits coverage`:`${engineName} ${trait} — some ${industry} queries still miss ${brand}`,
+      `${citationRate<realAvgCit?`Citation rate (${citationRate}%) below ChatGPT/Gemini average (${Math.round(realAvgCit)}%)`:`${engineName} has ${100-mentionRate}% gap in mention coverage to close`}`
+    ];
   }
   // Query statuses should also respect baselines — if real engines mostly show Absent, estimates should too
   const realAbsentRatio=baselines[0]?.queries?.length>0?baselines[0].queries.filter(q=>q.status==="Absent").length/baselines[0].queries.length:1;
