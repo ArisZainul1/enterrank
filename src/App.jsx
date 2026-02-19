@@ -1844,7 +1844,7 @@ function AuditPage({r,history,goTo}){
     <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:"0 0 24px"}}>Overview</h2>
 
     {/* Top row: Visibility Score (left) + System Diagnostics (right) */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24,alignItems:"stretch"}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}}>
       {/* Visibility Score chart */}
       <div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"24px",display:"flex",flexDirection:"column"}}>
         <VisibilityChart engines={r.engines} overall={r.overall} brand={r.clientData.brand}/>
@@ -1853,7 +1853,7 @@ function AuditPage({r,history,goTo}){
       {/* System Diagnostics */}
       <div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"20px",display:"flex",flexDirection:"column"}}>
         <div style={{fontSize:14,fontWeight:600,color:C.text,marginBottom:14}}>System Diagnostics</div>
-        <div style={{flex:1,display:"flex",flexDirection:"column",gap:6,overflowY:"auto"}}>
+        <div style={{flex:1,display:"flex",flexDirection:"column",gap:8,justifyContent:"space-between"}}>
           {diags.slice(0,6).map((d,i)=>(<div key={i} style={{display:"flex",gap:8,padding:"10px 12px",background:`${sevColors[d.severity]||C.accent}05`,borderRadius:8,border:`1px solid ${sevColors[d.severity]||C.accent}12`,alignItems:"flex-start"}}>
             <Icon name={d.icon} size={16} color={sevColors[d.severity]||C.accent}/>
             <span style={{fontSize:12,color:C.sub,lineHeight:1.5}}>{d.text}</span>
