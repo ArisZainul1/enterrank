@@ -1,8 +1,6 @@
 // /api/gemini.js — Vercel Serverless Function
 // Proxies requests to the Google Gemini API
 
-export const config = { maxDuration: 30 };
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -17,6 +15,9 @@ export default async function handler(req, res) {
   try {
     const { prompt, systemPrompt } = req.body;
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 55000);
+
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_AI_KEY}`,
       {
@@ -26,13 +27,16 @@ export default async function handler(req, res) {
           systemInstruction: { parts: [{ text: systemPrompt || 'You are a helpful assistant.' }] },
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 4096,
+            temperature: 0.2,
+            maxOutputTokens: 4000,
+            responseMimeType: 'text/plain',
           },
         }),
+        signal: controller.signal,
       }
     );
 
+    clearTimeout(timeout);
     const data = await response.json();
 
     if (!response.ok) {
@@ -44,6 +48,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ text });
   } catch (error) {
     console.error('Gemini proxy error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: error.name === 'AbortError' ? 'Request timed out' : 'Internal server error' });
   }
 }

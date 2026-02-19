@@ -1,8 +1,6 @@
 // /api/openai.js — Vercel Serverless Function
 // Proxies requests to the OpenAI API
 
-export const config = { maxDuration: 30 };
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -15,9 +13,10 @@ export default async function handler(req, res) {
   if (!OPENAI_API_KEY) return res.status(500).json({ error: 'OPENAI_API_KEY not configured' });
 
   try {
-    const { prompt, systemPrompt, model } = req.body;
-    const allowedModels = ['gpt-4o', 'gpt-4o-mini'];
-    const useModel = allowedModels.includes(model) ? model : 'gpt-4o';
+    const { prompt, systemPrompt } = req.body;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 55000); // 55s safety
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -26,16 +25,18 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: useModel,
-        max_tokens: 4096,
-        temperature: 0.3,
+        model: 'gpt-4o-mini',
+        max_tokens: 4000,
+        temperature: 0.2,
         messages: [
           { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
           { role: 'user', content: prompt },
         ],
       }),
+      signal: controller.signal,
     });
 
+    clearTimeout(timeout);
     const data = await response.json();
 
     if (!response.ok) {
@@ -47,6 +48,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ text });
   } catch (error) {
     console.error('OpenAI proxy error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: error.name === 'AbortError' ? 'Request timed out' : 'Internal server error' });
   }
 }

@@ -1,8 +1,6 @@
 // /api/crawl.js — Vercel Serverless Function
 // Crawls a website and extracts AEO-relevant signals
 
-export const config = { maxDuration: 30 };
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -15,74 +13,39 @@ export default async function handler(req, res) {
     const { url } = req.body;
     if (!url) return res.status(400).json({ error: 'url is required' });
 
-    // Normalize URL
     let targetUrl = url.trim();
     if (!targetUrl.startsWith('http')) targetUrl = 'https://' + targetUrl;
 
-    // Crawl the main page
+    // Crawl main page only (keep within Vercel 10s limit)
     const mainPage = await crawlPage(targetUrl);
-    // Use the final URL (after redirects) as base for sub-page resolution
-    const baseUrl = (mainPage && mainPage.finalUrl) || targetUrl;
-
-    // Try to find and crawl key sub-pages
-    const subPages = {};
-    const possiblePaths = {
-      blog: ['/blog', '/insights', '/resources', '/news', '/articles', '/knowledge'],
-      about: ['/about', '/about-us', '/company', '/who-we-are'],
-      products: ['/products', '/services', '/solutions', '/offerings', '/what-we-do'],
-      faq: ['/faq', '/faqs', '/help', '/support', '/knowledge-base'],
-    };
-
-    // Check sub-pages in parallel (2 per category, pick first that works)
-    const subChecks = [];
-    for (const [category, paths] of Object.entries(possiblePaths)) {
-      subChecks.push(
-        (async () => {
-          for (const path of paths) {
-            try {
-              const subUrl = new URL(path, baseUrl).toString();
-              const result = await crawlPage(subUrl, true); // light crawl
-              if (result && !result.error && result.statusCode === 200) {
-                subPages[category] = { url: subUrl, ...result };
-                return;
-              }
-            } catch (e) { /* skip */ }
-          }
-          subPages[category] = null;
-        })()
-      );
-    }
-    await Promise.all(subChecks);
 
     return res.status(200).json({
       url: targetUrl,
       mainPage,
-      subPages,
+      subPages: {},
       crawledAt: new Date().toISOString(),
     });
   } catch (error) {
     console.error('Crawl error:', error);
-    return res.status(500).json({ error: 'Crawl failed: ' + error.message });
+    return res.status(200).json({ url: req.body?.url, mainPage: { error: error.message, statusCode: 0 }, subPages: {}, crawledAt: new Date().toISOString() });
   }
 }
 
 async function crawlPage(url, light = false) {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
+    const timeout = setTimeout(() => controller.abort(), 8000);
 
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
+        'User-Agent': 'Mozilla/5.0 (compatible; EnterRank AEO Crawler/1.0)',
+        'Accept': 'text/html,application/xhtml+xml',
       },
       signal: controller.signal,
       redirect: 'follow',
     });
 
     clearTimeout(timeout);
-    const finalUrl = response.url || url;
 
     if (!response.ok) {
       return { error: `HTTP ${response.status}`, statusCode: response.status };
@@ -148,11 +111,10 @@ async function crawlPage(url, light = false) {
     const hasLists = (html.match(/<ul|<ol/gi) || []).length;
 
     if (light) {
-      return { statusCode, title: title.slice(0, 100), schemas, wordCount, h1s: h1s.slice(0, 2), finalUrl };
+      return { statusCode, title: title.slice(0, 100), schemas, wordCount, h1s: h1s.slice(0, 2) };
     }
 
     return {
-      finalUrl,
       statusCode,
       title: title.slice(0, 200),
       metaDescription: (metaDesc || '').slice(0, 300),
