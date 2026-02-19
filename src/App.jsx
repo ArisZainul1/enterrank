@@ -308,80 +308,67 @@ async function runRealAudit(cd, onProgress){
   }
   const compCrawlSummary=Object.entries(compCrawls).map(([name,data])=>`\n--- ${name} ---\n${data}`).join("\n")||"No competitor crawl data.";
 
-  // ── Step 2: ChatGPT visibility — ask ChatGPT about ITSELF ──
-  onProgress("Querying ChatGPT for brand visibility...",14);
-  // Build queries from user topics + core queries
-  const baseQueries=[
+  // ── Step 2 & 3: REAL engine probes — send individual queries, detect brand in actual responses ──
+  onProgress("Probing ChatGPT & Gemini with real queries...",14);
+  const neutralSys=`You are a helpful assistant. Answer the user's question accurately and thoroughly. Include specific company names, products, and URLs where relevant.`;
+
+  // Build probe queries: 4 core + up to 6 from user topics
+  const probeQueries=[
     `What are the best ${industry} companies in ${region}?`,
     `Tell me about ${brand}`,
     `${brand} vs ${compNames[0]||"competitors"}`,
-    `${brand} reviews and reputation`
+    `${brand} reviews and reputation`,
+    ...topics.slice(0,6).map(t=>`Best ${t} in ${region} ${new Date().getFullYear()}`)
   ];
-  const topicQs=topics.slice(0,8).map(t=>`${t} in ${region} ${new Date().getFullYear()}`);
-  const allQueries=[...baseQueries,...topicQs];
-  const queryListStr=allQueries.map((q,i)=>`${i+1}. "${q}"`).join("\n");
-  const numQ=allQueries.length;
 
-  const gptVisPrompt=`You are ChatGPT. A user asks you about "${brand}" in the "${industry}" industry (${region}).
+  // Send each query individually to BOTH engines — no batching, no response splitting
+  // Process in batches of 3 queries (= 6 API calls per batch) to avoid rate limits
+  const gptResults=[];const gemResults=[];
+  const batchSize=3;
+  for(let i=0;i<probeQueries.length;i+=batchSize){
+    const batch=probeQueries.slice(i,i+batchSize);
+    const pct=14+Math.round((i/probeQueries.length)*14);
+    onProgress(`Testing queries ${i+1}-${Math.min(i+batchSize,probeQueries.length)} of ${probeQueries.length} on both engines...`,pct);
+    const calls=batch.flatMap(q=>[
+      callOpenAI(q,neutralSys).then(r=>({q,engine:"gpt",answer:r||""})),
+      callGemini(q,neutralSys).then(r=>({q,engine:"gem",answer:r||""}))
+    ]);
+    const results=await Promise.all(calls);
+    results.forEach(r=>{
+      const status=detectBrandStatus(r.answer,brand,cd.website);
+      if(r.engine==="gpt")gptResults.push({query:r.q,status,answer:r.answer});
+      else gemResults.push({query:r.q,status,answer:r.answer});
+    });
+  }
 
-For EACH of these ${numQ} queries, determine if you would mention or cite ${brand} in your response.
-${queryListStr}
-
-Website crawl data for ${brand}:
-${crawlSummary}
-
-Return JSON:
-{
-  "queries": [{"query":"<exact query from above>","status":"Cited"|"Mentioned"|"Absent"}] (exactly ${numQ} in order),
-  "strengths": ["<why you WOULD mention this brand>","<another>"],
-  "weaknesses": ["<why you might NOT cite this brand>","<another>"]
-}
-
-Rules:
-- "Cited" = you would link to or reference their website URL directly
-- "Mentioned" = you would name the brand but not link their site
-- "Absent" = you would not bring up this brand at all
-- Be strict and honest. Most small/medium brands will be "Absent" for generic queries.`;
-
-  const gptRaw=await callOpenAI(gptVisPrompt, engineSystemPrompt);
-  const gptParsed=safeJSON(gptRaw)||{queries:[],strengths:[],weaknesses:["Could not assess"]};
+  // Calculate scores from REAL detection results
   const calcScores=(queries)=>{
     const q=queries||[];
     const cited=q.filter(p=>p.status==="Cited").length;
     const mentioned=q.filter(p=>p.status==="Mentioned").length;
-    const total=q.length||numQ;
+    const total=q.length||1;
     return{mentionRate:Math.round(((cited+mentioned)/total)*100),citationRate:Math.round((cited/total)*100)};
   };
-  const gptScores=calcScores(gptParsed.queries);
-  const gptData={score:Math.round(gptScores.mentionRate*0.5+gptScores.citationRate*0.5),mentionRate:gptScores.mentionRate,citationRate:gptScores.citationRate,queries:gptParsed.queries||[],strengths:gptParsed.strengths||[],weaknesses:gptParsed.weaknesses||[]};
+  const gptScores=calcScores(gptResults);const gemScores=calcScores(gemResults);
 
-  // ── Step 3: Gemini visibility — ask Gemini about ITSELF ──
-  onProgress("Querying Gemini for brand visibility...",22);
-  const gemVisPrompt=`You are Gemini. A user asks you about "${brand}" in the "${industry}" industry (${region}).
+  // Generate strengths/weaknesses grounded in REAL detection results
+  onProgress("Analysing real engine responses...",29);
+  const gptSummary=gptResults.map(r=>`"${r.query}" → ${r.status}`).join("\n");
+  const gemSummary=gemResults.map(r=>`"${r.query}" → ${r.status}`).join("\n");
 
-For EACH of these ${numQ} queries, determine if you would mention or cite ${brand} in your response.
-${queryListStr}
+  const makeAnalysisPrompt=(engineName,summary,scores)=>`We sent ${probeQueries.length} real queries to ${engineName}. For each query we checked if "${brand}" appeared in the actual response.
+Results:\n${summary}\nMention rate: ${scores.mentionRate}%, Citation rate: ${scores.citationRate}%.
+Based on these REAL results, return JSON:
+{"strengths":["<2 specific observations about where/why brand appeared>"],"weaknesses":["<2 specific observations about where/why brand was absent>"]}
+Be specific to the actual results. If mention rate is 0%, strengths should reflect early-mover opportunity, not existing presence.`;
 
-Website crawl data for ${brand}:
-${crawlSummary}
+  const[gptAnalysis,gemAnalysis]=await Promise.all([
+    callOpenAI(makeAnalysisPrompt("ChatGPT",gptSummary,gptScores),engineSystemPrompt).then(r=>safeJSON(r)||{strengths:[],weaknesses:[]}),
+    callGemini(makeAnalysisPrompt("Gemini",gemSummary,gemScores),engineSystemPrompt).then(r=>safeJSON(r)||{strengths:[],weaknesses:[]})
+  ]);
 
-Return JSON:
-{
-  "queries": [{"query":"<exact query from above>","status":"Cited"|"Mentioned"|"Absent"}] (exactly ${numQ} in order),
-  "strengths": ["<why you WOULD mention this brand>","<another>"],
-  "weaknesses": ["<why you might NOT cite this brand>","<another>"]
-}
-
-Rules:
-- "Cited" = you would link to or reference their website URL directly
-- "Mentioned" = you would name the brand but not link their site
-- "Absent" = you would not bring up this brand at all
-- Be strict and honest. Most small/medium brands will be "Absent" for generic queries.`;
-
-  const gemRaw=await callGemini(gemVisPrompt, engineSystemPrompt);
-  const gemParsed=safeJSON(gemRaw)||{queries:[],strengths:[],weaknesses:["Could not assess"]};
-  const gemScores=calcScores(gemParsed.queries);
-  const gemData={score:Math.round(gemScores.mentionRate*0.5+gemScores.citationRate*0.5),mentionRate:gemScores.mentionRate,citationRate:gemScores.citationRate,queries:gemParsed.queries||[],strengths:gemParsed.strengths||[],weaknesses:gemParsed.weaknesses||[]};
+  const gptData={score:Math.round(gptScores.mentionRate*0.5+gptScores.citationRate*0.5),mentionRate:gptScores.mentionRate,citationRate:gptScores.citationRate,queries:gptResults.map(r=>({query:r.query,status:r.status})),strengths:gptAnalysis.strengths||[],weaknesses:gptAnalysis.weaknesses||[]};
+  const gemData={score:Math.round(gemScores.mentionRate*0.5+gemScores.citationRate*0.5),mentionRate:gemScores.mentionRate,citationRate:gemScores.citationRate,queries:gemResults.map(r=>({query:r.query,status:r.status})),strengths:gemAnalysis.strengths||[],weaknesses:gemAnalysis.weaknesses||[]};
 
   // ── Step 4: Competitor analysis — scored from real crawl data ──
   onProgress("Scoring competitors from crawl data...",30);
@@ -833,8 +820,8 @@ Return JSON: [{"area":"<area>","rule":"<specific guideline>","example":"<concret
   return {
     engineData:{
       engines:[
-        {id:"chatgpt",...gptData,queries:(gptData.queries||[]).slice(0,8)},
-        {id:"gemini",...gemData,queries:(gemData.queries||[]).slice(0,8)}
+        {id:"chatgpt",...gptData,queries:(gptData.queries||[]).slice(0,12)},
+        {id:"gemini",...gemData,queries:(gemData.queries||[]).slice(0,12)}
       ],
       painPoints:mergedPainPoints.length>0?mergedPainPoints.slice(0,6):null
     },
