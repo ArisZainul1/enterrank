@@ -308,79 +308,80 @@ async function runRealAudit(cd, onProgress){
   }
   const compCrawlSummary=Object.entries(compCrawls).map(([name,data])=>`\n--- ${name} ---\n${data}`).join("\n")||"No competitor crawl data.";
 
-  // ── Step 2 & 3: REAL engine visibility — send actual queries, detect brand in responses ──
-  onProgress("Sending real queries to ChatGPT & Gemini...",14);
-  const neutralSys=`You are a helpful AI assistant. Answer each question separately and accurately based on your knowledge. Include specific company names, products, and websites where relevant. Number each answer to match the question number.`;
-
-  // Build probe queries from ALL user topics + core brand queries
-  const coreQueries=[
+  // ── Step 2: ChatGPT visibility — ask ChatGPT about ITSELF ──
+  onProgress("Querying ChatGPT for brand visibility...",14);
+  // Build queries from user topics + core queries
+  const baseQueries=[
     `What are the best ${industry} companies in ${region}?`,
     `Tell me about ${brand}`,
     `${brand} vs ${compNames[0]||"competitors"}`,
     `${brand} reviews and reputation`
   ];
-  const topicQueries=topics.map(t=>`Best ${t} in ${region} ${new Date().getFullYear()}`);
-  const probeQueries=[...coreQueries,...topicQueries];
+  const topicQs=topics.slice(0,8).map(t=>`${t} in ${region} ${new Date().getFullYear()}`);
+  const allQueries=[...baseQueries,...topicQs];
+  const queryListStr=allQueries.map((q,i)=>`${i+1}. "${q}"`).join("\n");
+  const numQ=allQueries.length;
 
-  // Batch into chunks of 10 to avoid overly long responses, send to both engines in parallel
-  const chunkSize=10;
-  const chunks=[];
-  for(let i=0;i<probeQueries.length;i+=chunkSize)chunks.push(probeQueries.slice(i,i+chunkSize));
+  const gptVisPrompt=`You are ChatGPT. A user asks you about "${brand}" in the "${industry}" industry (${region}).
 
-  // Split batch responses by numbered sections and detect brand in each
-  const splitResponses=(raw,queries)=>{
-    if(!raw)return queries.map(q=>({query:q,status:"Absent",answer:""}));
-    const sections=[];
-    for(let i=0;i<queries.length;i++){
-      const start=raw.search(new RegExp(`(^|\\n)\\s*${i+1}[.:\\)\\s]`,"m"));
-      const nextStart=i<queries.length-1?raw.search(new RegExp(`(^|\\n)\\s*${i+2}[.:\\)\\s]`,"m")):-1;
-      if(start>=0){
-        const sec=nextStart>start?raw.slice(start,nextStart):raw.slice(start);
-        sections.push(sec);
-      }else{
-        sections.push("");
-      }
-    }
-    return queries.map((q,i)=>{
-      const answer=sections[i]||"";
-      return{query:q,status:detectBrandStatus(answer,brand,cd.website),answer};
-    });
-  };
+For EACH of these ${numQ} queries, determine if you would mention or cite ${brand} in your response.
+${queryListStr}
 
-  let gptQueries=[];let gemQueries=[];
-  for(let ci=0;ci<chunks.length;ci++){
-    const chunk=chunks[ci];
-    const pct=14+Math.round((ci/chunks.length)*12);
-    onProgress(`Testing queries ${ci*chunkSize+1}-${Math.min((ci+1)*chunkSize,probeQueries.length)} of ${probeQueries.length} on ChatGPT & Gemini...`,pct);
-    const batchPrompt=chunk.map((q,i)=>`${i+1}. ${q}`).join("\n");
-    const fullPrompt=`Answer each of the following ${chunk.length} questions separately. Number your answers 1-${chunk.length} to match. Keep each answer concise (2-3 sentences).\n\n${batchPrompt}`;
-    const[gptRaw,gemRaw]=await Promise.all([callOpenAI(fullPrompt,neutralSys),callGemini(fullPrompt,neutralSys)]);
-    gptQueries=gptQueries.concat(splitResponses(gptRaw,chunk));
-    gemQueries=gemQueries.concat(splitResponses(gemRaw,chunk));
-  }
+Website crawl data for ${brand}:
+${crawlSummary}
 
+Return JSON:
+{
+  "queries": [{"query":"<exact query from above>","status":"Cited"|"Mentioned"|"Absent"}] (exactly ${numQ} in order),
+  "strengths": ["<why you WOULD mention this brand>","<another>"],
+  "weaknesses": ["<why you might NOT cite this brand>","<another>"]
+}
+
+Rules:
+- "Cited" = you would link to or reference their website URL directly
+- "Mentioned" = you would name the brand but not link their site
+- "Absent" = you would not bring up this brand at all
+- Be strict and honest. Most small/medium brands will be "Absent" for generic queries.`;
+
+  const gptRaw=await callOpenAI(gptVisPrompt, engineSystemPrompt);
+  const gptParsed=safeJSON(gptRaw)||{queries:[],strengths:[],weaknesses:["Could not assess"]};
   const calcScores=(queries)=>{
     const q=queries||[];
     const cited=q.filter(p=>p.status==="Cited").length;
     const mentioned=q.filter(p=>p.status==="Mentioned").length;
-    const total=q.length||1;
+    const total=q.length||numQ;
     return{mentionRate:Math.round(((cited+mentioned)/total)*100),citationRate:Math.round((cited/total)*100)};
   };
+  const gptScores=calcScores(gptParsed.queries);
+  const gptData={score:Math.round(gptScores.mentionRate*0.5+gptScores.citationRate*0.5),mentionRate:gptScores.mentionRate,citationRate:gptScores.citationRate,queries:gptParsed.queries||[],strengths:gptParsed.strengths||[],weaknesses:gptParsed.weaknesses||[]};
 
-  // Generate strengths/weaknesses from real results
-  onProgress("Analysing real engine responses...",27);
-  const gptScores=calcScores(gptQueries);const gemScores=calcScores(gemQueries);
-  const gptResultSummary=gptQueries.map(q=>`"${q.query}" → ${q.status}`).join("\n");
-  const gemResultSummary=gemQueries.map(q=>`"${q.query}" → ${q.status}`).join("\n");
-  const totalProbes=probeQueries.length;
+  // ── Step 3: Gemini visibility — ask Gemini about ITSELF ──
+  onProgress("Querying Gemini for brand visibility...",22);
+  const gemVisPrompt=`You are Gemini. A user asks you about "${brand}" in the "${industry}" industry (${region}).
 
-  const[gptAnalysis,gemAnalysis]=await Promise.all([
-    callOpenAI(`We sent ${totalProbes} real queries to ChatGPT about "${brand}" (${industry}, ${region}). Here are the REAL results — whether the brand appeared in each response:\n${gptResultSummary}\nMention rate: ${gptScores.mentionRate}%, Citation rate: ${gptScores.citationRate}%.\nBased on these REAL results, return JSON:\n{"strengths":["<2 specific observations about where/why brand appeared>"],"weaknesses":["<2 specific observations about where/why brand was absent>"]}\nBe specific to the actual query results above. Do NOT invent data.`,engineSystemPrompt).then(r=>safeJSON(r)||{strengths:[],weaknesses:[]}),
-    callGemini(`We sent ${totalProbes} real queries to Gemini about "${brand}" (${industry}, ${region}). Here are the REAL results — whether the brand appeared in each response:\n${gemResultSummary}\nMention rate: ${gemScores.mentionRate}%, Citation rate: ${gemScores.citationRate}%.\nBased on these REAL results, return JSON:\n{"strengths":["<2 specific observations about where/why brand appeared>"],"weaknesses":["<2 specific observations about where/why brand was absent>"]}\nBe specific to the actual query results above. Do NOT invent data.`,engineSystemPrompt).then(r=>safeJSON(r)||{strengths:[],weaknesses:[]})
-  ]);
+For EACH of these ${numQ} queries, determine if you would mention or cite ${brand} in your response.
+${queryListStr}
 
-  const gptData={score:Math.round(gptScores.mentionRate*0.5+gptScores.citationRate*0.5),mentionRate:gptScores.mentionRate,citationRate:gptScores.citationRate,queries:gptQueries.map(q=>({query:q.query,status:q.status})),strengths:gptAnalysis.strengths||[],weaknesses:gptAnalysis.weaknesses||[]};
-  const gemData={score:Math.round(gemScores.mentionRate*0.5+gemScores.citationRate*0.5),mentionRate:gemScores.mentionRate,citationRate:gemScores.citationRate,queries:gemQueries.map(q=>({query:q.query,status:q.status})),strengths:gemAnalysis.strengths||[],weaknesses:gemAnalysis.weaknesses||[]};
+Website crawl data for ${brand}:
+${crawlSummary}
+
+Return JSON:
+{
+  "queries": [{"query":"<exact query from above>","status":"Cited"|"Mentioned"|"Absent"}] (exactly ${numQ} in order),
+  "strengths": ["<why you WOULD mention this brand>","<another>"],
+  "weaknesses": ["<why you might NOT cite this brand>","<another>"]
+}
+
+Rules:
+- "Cited" = you would link to or reference their website URL directly
+- "Mentioned" = you would name the brand but not link their site
+- "Absent" = you would not bring up this brand at all
+- Be strict and honest. Most small/medium brands will be "Absent" for generic queries.`;
+
+  const gemRaw=await callGemini(gemVisPrompt, engineSystemPrompt);
+  const gemParsed=safeJSON(gemRaw)||{queries:[],strengths:[],weaknesses:["Could not assess"]};
+  const gemScores=calcScores(gemParsed.queries);
+  const gemData={score:Math.round(gemScores.mentionRate*0.5+gemScores.citationRate*0.5),mentionRate:gemScores.mentionRate,citationRate:gemScores.citationRate,queries:gemParsed.queries||[],strengths:gemParsed.strengths||[],weaknesses:gemParsed.weaknesses||[]};
 
   // ── Step 4: Competitor analysis — scored from real crawl data ──
   onProgress("Scoring competitors from crawl data...",30);
