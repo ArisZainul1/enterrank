@@ -340,31 +340,32 @@ async function runRealAudit(cd, onProgress){
   try{
   onProgress("Probing ChatGPT & Gemini with real queries...",14);
 
-  // Build probe queries: 4 core + up to 6 from user topics
+  // Build probe queries — ALL generic, NONE mention the brand name
+  // We're testing: does the AI naturally bring up this brand for industry queries?
   const probeQueries=[
     `What are the best ${industry} companies in ${region}?`,
-    `Tell me about ${brand}`,
-    `${brand} vs ${compNames[0]||"competitors"}`,
-    `${brand} reviews and reputation`,
+    `Top ${industry} providers in ${region} ${new Date().getFullYear()}`,
+    `${industry} recommendations for businesses in ${region}`,
+    `Who are the market leaders in ${industry} in ${region}?`,
     ...topics.slice(0,6).map(t=>`Best ${t} in ${region} ${new Date().getFullYear()}`)
   ];
 
-  // Single prompt with all queries — ask for JSON array of concise answers
+  // Single prompt — ask for JSON array of concise answers
   const queryList=probeQueries.map((q,i)=>`${i+1}. ${q}`).join("\n");
-  const probePrompt=`Answer each question below. For each answer, name specific companies, brands, and include website URLs. Keep each answer to 2-3 sentences.
+  const probePrompt=`Answer each question below. Name specific companies and brands in each answer. Keep each answer to 2-3 sentences.
 
 ${queryList}
 
 Return a JSON array: [{"q":1,"a":"your answer"},{"q":2,"a":"your answer"},...]
 ONLY return the JSON array. No markdown, no explanation.`;
-  const probeSys=`You are a knowledgeable assistant. Name specific companies and brands in every answer. Return ONLY valid JSON arrays.`;
+  const probeSys=`You are a knowledgeable assistant. Always name specific companies and brands. Return ONLY valid JSON arrays.`;
 
   // Only 2 API calls — one to each engine, in parallel
   onProgress("Sending queries to ChatGPT & Gemini...",16);
   let gptRaw=null,gemRaw=null;
   try{[gptRaw,gemRaw]=await Promise.all([callOpenAI(probePrompt,probeSys),callGemini(probePrompt,probeSys)]);}catch(e){console.error("Probe calls failed:",e);}
 
-  // Parse JSON answers and detect brand in each
+  // Parse JSON answers and detect brand in each individual answer
   const parseProbeResults=(raw)=>{
     if(!raw)return probeQueries.map(q=>({query:q,status:"Absent",answer:""}));
     const parsed=safeJSON(raw);
@@ -375,9 +376,8 @@ ONLY return the JSON array. No markdown, no explanation.`;
         return{query:q,status:detectBrandStatus(answer,brand,cd.website),answer};
       });
     }
-    // Fallback: if JSON parse failed, search the entire raw response for brand
-    const wholeBrandStatus=detectBrandStatus(raw,brand,cd.website);
-    return probeQueries.map(q=>({query:q,status:wholeBrandStatus,answer:raw}));
+    // Fallback: JSON parse failed — return all Absent (don't inflate from raw text)
+    return probeQueries.map(q=>({query:q,status:"Absent",answer:""}));
   };
   const gptResults=parseProbeResults(gptRaw);
   const gemResults=parseProbeResults(gemRaw);
