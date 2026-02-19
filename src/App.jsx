@@ -1308,6 +1308,26 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     if(domain)setData(d=>{const c=[...(d.competitors||[])];if(c[idx]&&!c[idx].website){c[idx]={...c[idx],website:domain};return{...d,competitors:c};}return d;});
   };
 
+  // Auto-suggest competitors from brand + industry
+  const[loadingComps,setLoadingComps]=useState(false);
+  const autofillCompetitors=async(brand,industry)=>{
+    if(!brand||!industry)return;
+    // Don't overwrite if user already added competitors
+    if((data.competitors||[]).some(c=>c.name&&c.name.trim()))return;
+    setLoadingComps(true);
+    try{
+      const prompt=`For the brand "${brand}" in the "${industry}" industry, list their top 4 direct competitors. Return ONLY a JSON array of objects with "name" and "website" fields, no markdown:
+[{"name":"Competitor A","website":"competitor-a.com"},...]`;
+      const raw=await callOpenAI(prompt,"You are a market research expert. Return ONLY valid JSON, no markdown fences.");
+      const comps=safeJSON(raw);
+      if(comps&&Array.isArray(comps)&&comps.length>0){
+        const cleaned=comps.filter(c=>c.name&&typeof c.name==="string").slice(0,4).map(c=>({name:c.name.trim(),website:(c.website||"").trim()}));
+        if(cleaned.length>0)setData(d=>{if((d.competitors||[]).some(c=>c.name&&c.name.trim()))return d;return{...d,competitors:cleaned};});
+      }
+    }catch(e){console.error("Competitor autofill error:",e);}
+    setLoadingComps(false);
+  };
+
   // Generate topics via OpenAI
   const generateTopics=async()=>{
     setGenTopics(true);setError(null);
@@ -1561,11 +1581,11 @@ Return ONLY a JSON array of strings:
     <div style={{marginBottom:24,textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0}}>{data.brand?"Configure GEO Audit":"New GEO Audit"}</h2><p style={{color:C.sub,fontSize:13,marginTop:4}}>{data.brand?`${history.length>0?"Run another":"Set up"} audit for ${data.brand}.`:"Enter client details to begin."}</p></div>
     <Card><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       <Field label="Brand Name" value={data.brand} onChange={v=>setData({...data,brand:v})} onBlur={()=>autofillBrandWebsite(data.brand)} placeholder="Acme Corp"/>
-      <Field label="Industry" value={data.industry} onChange={v=>setData({...data,industry:v})} placeholder="e.g. Technology"/>
+      <Field label="Industry" value={data.industry} onChange={v=>setData({...data,industry:v})} onBlur={()=>autofillCompetitors(data.brand,data.industry)} placeholder="e.g. Technology"/>
       <Field label="Website" value={data.website} onChange={v=>setData({...data,website:v})} placeholder="acme.com"/>
       <Field label="Region" value={data.region} onChange={v=>setData({...data,region:v})} placeholder="e.g. Malaysia"/>
       <div style={{gridColumn:"1/-1"}}>
-        <label style={{fontSize:12,fontWeight:500,color:C.sub,display:"block",marginBottom:8}}>Competitors</label>
+        <label style={{fontSize:12,fontWeight:500,color:C.sub,display:"block",marginBottom:8}}>Competitors {loadingComps&&<span style={{fontSize:11,color:C.accent,fontWeight:400,marginLeft:6}}>Suggesting...</span>}</label>
         {(data.competitors||[]).map((comp,i)=>(<div key={i} style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
           <input value={comp.name} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],name:e.target.value};setData({...data,competitors:c});}} onBlur={()=>autofillCompWebsite(comp.name,i)} placeholder={`Competitor ${i+1}`} style={{flex:1,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,color:C.text,outline:"none"}}/>
           <input value={comp.website} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],website:e.target.value};setData({...data,competitors:c});}} placeholder="website.com" style={{flex:1,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,color:C.text,outline:"none"}}/>
