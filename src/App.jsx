@@ -333,7 +333,11 @@ async function runRealAudit(cd, onProgress){
   }
   const compCrawlSummary=Object.entries(compCrawls).map(([name,data])=>`\n--- ${name} ---\n${data}`).join("\n")||"No competitor crawl data.";
 
-  // ── Step 2 & 3: REAL engine probes — 1 API call per engine, detect brand in actual answers ──
+  // ── Step 2-4: Engine visibility (wrapped in safety try/catch — never crashes the audit) ──
+  let gptData={score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["Visibility probe failed"]};
+  let gemData={score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["Visibility probe failed"]};
+  let compVisibility={};
+  try{
   onProgress("Probing ChatGPT & Gemini with real queries...",14);
 
   // Build probe queries: 4 core + up to 6 from user topics
@@ -345,29 +349,35 @@ async function runRealAudit(cd, onProgress){
     ...topics.slice(0,6).map(t=>`Best ${t} in ${region} ${new Date().getFullYear()}`)
   ];
 
-  // Single prompt with all queries — ask for JSON array of answers
+  // Single prompt with all queries — ask for JSON array of concise answers
   const queryList=probeQueries.map((q,i)=>`${i+1}. ${q}`).join("\n");
-  const probePrompt=`Answer each question below accurately and thoroughly. Include specific company names, brands, products, and website URLs where relevant. Be detailed.
+  const probePrompt=`Answer each question below. For each answer, name specific companies, brands, and include website URLs. Keep each answer to 2-3 sentences.
 
 ${queryList}
 
-Return a JSON array with one object per question: [{"q":1,"a":"your answer"},{"q":2,"a":"your answer"},...]
-Return ONLY the JSON array. No markdown fences, no extra text.`;
-  const probeSys=`You are a helpful, knowledgeable assistant. Answer every question with real, factual information. Always mention specific company names and brands you know about. Return ONLY valid JSON.`;
+Return a JSON array: [{"q":1,"a":"your answer"},{"q":2,"a":"your answer"},...]
+ONLY return the JSON array. No markdown, no explanation.`;
+  const probeSys=`You are a knowledgeable assistant. Name specific companies and brands in every answer. Return ONLY valid JSON arrays.`;
 
   // Only 2 API calls — one to each engine, in parallel
   onProgress("Sending queries to ChatGPT & Gemini...",16);
-  const[gptRaw,gemRaw]=await Promise.all([callOpenAI(probePrompt,probeSys),callGemini(probePrompt,probeSys)]);
+  let gptRaw=null,gemRaw=null;
+  try{[gptRaw,gemRaw]=await Promise.all([callOpenAI(probePrompt,probeSys),callGemini(probePrompt,probeSys)]);}catch(e){console.error("Probe calls failed:",e);}
 
   // Parse JSON answers and detect brand in each
   const parseProbeResults=(raw)=>{
+    if(!raw)return probeQueries.map(q=>({query:q,status:"Absent",answer:""}));
     const parsed=safeJSON(raw);
-    if(!parsed||!Array.isArray(parsed))return probeQueries.map(q=>({query:q,status:"Absent",answer:""}));
-    return probeQueries.map((q,i)=>{
-      const entry=parsed.find(p=>p.q===i+1)||parsed[i];
-      const answer=(entry&&entry.a)?String(entry.a):"";
-      return{query:q,status:detectBrandStatus(answer,brand,cd.website),answer};
-    });
+    if(parsed&&Array.isArray(parsed)){
+      return probeQueries.map((q,i)=>{
+        const entry=parsed.find(p=>p.q===i+1)||parsed[i];
+        const answer=(entry&&entry.a)?String(entry.a):"";
+        return{query:q,status:detectBrandStatus(answer,brand,cd.website),answer};
+      });
+    }
+    // Fallback: if JSON parse failed, search the entire raw response for brand
+    const wholeBrandStatus=detectBrandStatus(raw,brand,cd.website);
+    return probeQueries.map(q=>({query:q,status:wholeBrandStatus,answer:raw}));
   };
   const gptResults=parseProbeResults(gptRaw);
   const gemResults=parseProbeResults(gemRaw);
@@ -398,12 +408,11 @@ Be specific to the actual results. If mention rate is 0%, strengths should refle
     callGemini(makeAnalysisPrompt("Gemini",gemSummary,gemScores),engineSystemPrompt).then(r=>safeJSON(r)||{strengths:[],weaknesses:[]})
   ]);
 
-  const gptData={score:Math.round(gptScores.mentionRate*0.5+gptScores.citationRate*0.5),mentionRate:gptScores.mentionRate,citationRate:gptScores.citationRate,queries:gptResults.map(r=>({query:r.query,status:r.status})),strengths:gptAnalysis.strengths||[],weaknesses:gptAnalysis.weaknesses||[]};
-  const gemData={score:Math.round(gemScores.mentionRate*0.5+gemScores.citationRate*0.5),mentionRate:gemScores.mentionRate,citationRate:gemScores.citationRate,queries:gemResults.map(r=>({query:r.query,status:r.status})),strengths:gemAnalysis.strengths||[],weaknesses:gemAnalysis.weaknesses||[]};
+  gptData={score:Math.round(gptScores.mentionRate*0.5+gptScores.citationRate*0.5),mentionRate:gptScores.mentionRate,citationRate:gptScores.citationRate,queries:gptResults.map(r=>({query:r.query,status:r.status})),strengths:gptAnalysis.strengths||[],weaknesses:gptAnalysis.weaknesses||[]};
+  gemData={score:Math.round(gemScores.mentionRate*0.5+gemScores.citationRate*0.5),mentionRate:gemScores.mentionRate,citationRate:gemScores.citationRate,queries:gemResults.map(r=>({query:r.query,status:r.status})),strengths:gemAnalysis.strengths||[],weaknesses:gemAnalysis.weaknesses||[]};
 
-  // ── Step 4: Competitor visibility — detect competitors in the SAME probe responses (no extra API calls) ──
+  // Detect competitors in the SAME probe responses (no extra API calls)
   onProgress("Detecting competitor visibility...",30);
-  const compVisibility={};
   compNames.forEach((cname,ci)=>{
     const cUrl=compUrls[ci]||"";
     let mentioned=0,cited=0;
@@ -418,6 +427,7 @@ Be specific to the actual results. If mention rate is 0%, strengths should refle
       citationRate:Math.round((cited/total)*100)
     };
   });
+  }catch(visErr){console.error("Visibility probe error (audit continues):",visErr);}
 
   // ── Step 5: Competitor website analysis — crawl-based pain points ──
   onProgress("Scoring competitors from crawl data...",33);

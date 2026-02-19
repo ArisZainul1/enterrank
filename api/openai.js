@@ -23,7 +23,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'gpt-4o',
-        max_tokens: 2000,
+        max_tokens: 4096,
         temperature: 0.3,
         messages: [
           { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
