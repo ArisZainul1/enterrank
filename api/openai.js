@@ -15,7 +15,9 @@ export default async function handler(req, res) {
   if (!OPENAI_API_KEY) return res.status(500).json({ error: 'OPENAI_API_KEY not configured' });
 
   try {
-    const { prompt, systemPrompt } = req.body;
+    const { prompt, systemPrompt, model } = req.body;
+    const allowedModels = ['gpt-4o', 'gpt-4o-mini'];
+    const useModel = allowedModels.includes(model) ? model : 'gpt-4o';
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -24,7 +26,7 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: useModel,
         max_tokens: 4096,
         temperature: 0.3,
         messages: [

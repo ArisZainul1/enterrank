@@ -110,51 +110,29 @@ function MiniRadar({data,keys,size=220}){
 }
 
 /* ─── MULTI-ENGINE API LAYER ─── */
-async function fetchWithTimeout(url,options,timeoutMs=25000){
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),timeoutMs);
-  try{const res=await fetch(url,{...options,signal:controller.signal});clearTimeout(timer);return res;}
-  catch(e){clearTimeout(timer);throw e;}
+async function callOpenAI(prompt, systemPrompt="You are an expert GEO analyst.", model="gpt-4o"){
+  try{
+    const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt,model})});
+    if(!res.ok){console.error("OpenAI HTTP",res.status);return null;}
+    const data=await res.json();
+    if(data.error){console.error("OpenAI error:",data.error);return null;}
+    return data.text||"";
+  }catch(e){console.error("OpenAI API error:",e);return null;}
 }
 
-async function callOpenAI(prompt, systemPrompt="You are an expert GEO analyst."){
-  for(let attempt=0;attempt<2;attempt++){
-    try{
-      const res=await fetchWithTimeout("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
-      const data=await res.json();
-      if(data.error){
-        if(attempt===0&&(data.error.includes("rate")||data.error.includes("429")||data.error.includes("timeout"))){
-          await new Promise(r=>setTimeout(r,2000));continue;
-        }
-        throw new Error(data.error);
-      }
-      return data.text||"";
-    }catch(e){
-      if(attempt===0){console.warn("OpenAI attempt 1 failed, retrying:",e.message);await new Promise(r=>setTimeout(r,2000));continue;}
-      console.error("OpenAI API error:",e);return null;
-    }
-  }
-  return null;
+// Fast version using gpt-4o-mini — 3x faster responses, avoids Vercel timeout
+async function callOpenAIFast(prompt, systemPrompt="You are an expert GEO analyst."){
+  return callOpenAI(prompt, systemPrompt, "gpt-4o-mini");
 }
 
 async function callGemini(prompt, systemPrompt="You are an expert GEO analyst."){
-  for(let attempt=0;attempt<2;attempt++){
-    try{
-      const res=await fetchWithTimeout("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
-      const data=await res.json();
-      if(data.error){
-        if(attempt===0&&(data.error.includes("rate")||data.error.includes("429")||data.error.includes("timeout"))){
-          await new Promise(r=>setTimeout(r,2000));continue;
-        }
-        throw new Error(data.error);
-      }
-      return data.text||"";
-    }catch(e){
-      if(attempt===0){console.warn("Gemini attempt 1 failed, retrying:",e.message);await new Promise(r=>setTimeout(r,2000));continue;}
-      console.error("Gemini API error:",e);return null;
-    }
-  }
-  return null;
+  try{
+    const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
+    if(!res.ok){console.error("Gemini HTTP",res.status);return null;}
+    const data=await res.json();
+    if(data.error){console.error("Gemini error:",data.error);return null;}
+    return data.text||"";
+  }catch(e){console.error("Gemini API error:",e);return null;}
 }
 
 // Call a specific engine by name, with fallback to OpenAI
@@ -385,7 +363,7 @@ ONLY return the JSON array. No markdown, no explanation.`;
   // Only 2 API calls — one to each engine, in parallel
   onProgress("Sending queries to ChatGPT & Gemini...",16);
   let gptRaw=null,gemRaw=null;
-  try{[gptRaw,gemRaw]=await Promise.all([callOpenAI(probePrompt,probeSys),callGemini(probePrompt,probeSys)]);}catch(e){console.error("Probe calls failed:",e);}
+  try{[gptRaw,gemRaw]=await Promise.all([callOpenAIFast(probePrompt,probeSys),callGemini(probePrompt,probeSys)]);}catch(e){console.error("Probe calls failed:",e);}
 
   // Parse JSON answers and detect brand in each individual answer
   const parseProbeResults=(raw)=>{
@@ -488,7 +466,7 @@ Categories to score:
 6. Content Freshness (publication dates, blog activity, article schema)
 
 Return JSON: [{"name":"CompName","scores":{"schema":N,"content":N,"eeat":N,"techseo":N,"citation":N,"freshness":N},"evidence":{"schema":"brief reason","content":"brief reason","eeat":"brief reason","techseo":"brief reason","citation":"brief reason","freshness":"brief reason"}}]`;
-      const estRaw=await callOpenAI(estPrompt,engineSystemPrompt);
+      const estRaw=await callOpenAIFast(estPrompt,engineSystemPrompt);
       const estData=safeJSON(estRaw);
       if(Array.isArray(estData)){
         estData.forEach(e=>{
@@ -537,7 +515,7 @@ ${compScoreStr}
 
 For each competitor, write a 1-sentence topStrength based on where they actually score higher than ${brand}.
 Return JSON: [{"name":"<competitor>","topStrength":"<1 sentence>"}]`;
-    const strengthRaw=await callOpenAI(strengthPrompt, engineSystemPrompt);
+    const strengthRaw=await callOpenAIFast(strengthPrompt, engineSystemPrompt);
     const strengthData=safeJSON(strengthRaw);
     if(Array.isArray(strengthData)){
       strengthData.forEach(sd=>{const m=mergedComps.find(c=>c.name.toLowerCase()===sd.name?.toLowerCase());if(m)m.topStrength=sd.topStrength||"";});
@@ -557,7 +535,7 @@ ${allEvidence.join("\n")}
 
 Refine scores for Citation Network and Content Freshness. You may adjust by ±15 points based on the evidence above.
 Return JSON: [{"label":"Citation Network","adjustment":<-15 to 15>,"reason":"..."},{"label":"Content Freshness","adjustment":<-15 to 15>,"reason":"..."}]`;
-    const refineRaw=await callOpenAI(refinePrompt, engineSystemPrompt);
+    const refineRaw=await callOpenAIFast(refinePrompt, engineSystemPrompt);
     const refineData=safeJSON(refineRaw);
     if(Array.isArray(refineData)){
       refineData.forEach(r=>{
@@ -576,7 +554,7 @@ Return JSON: [{"label":"Citation Network","adjustment":<-15 to 15>,"reason":"...
 ${crawlSummary}
 Score each GEO category 0-100. Return JSON:
 {"painPoints":[{"label":"Structured Data / Schema","score":<0-100>},{"label":"Content Authority","score":<0-100>},{"label":"E-E-A-T Signals","score":<0-100>},{"label":"Technical SEO","score":<0-100>},{"label":"Citation Network","score":<0-100>},{"label":"Content Freshness","score":<0-100>}]}`;
-    const catRaw=await callOpenAI(catPrompt, engineSystemPrompt);
+    const catRaw=await callOpenAIFast(catPrompt, engineSystemPrompt);
     const catData=safeJSON(catRaw)||{painPoints:[]};
     mergedPainPoints=(catData.painPoints||[]).map(pp=>({label:pp.label,score:pp.score||0,severity:(pp.score||0)<30?"critical":(pp.score||0)<60?"warning":"good",evidence:[]}));
   }
@@ -994,7 +972,7 @@ Return JSON array:
 
   const[engRaw,diagRaw]=await Promise.all([
     callGemini(engPrompt,engineSystemPrompt).catch(e=>{console.error("Engine insights error:",e);return null;}),
-    callOpenAI(diagPrompt,engineSystemPrompt).catch(e=>{console.error("Diagnostics error:",e);return null;})
+    callOpenAIFast(diagPrompt,engineSystemPrompt).catch(e=>{console.error("Diagnostics error:",e);return null;})
   ]);
   const engParsed=safeJSON(engRaw);
   if(Array.isArray(engParsed)&&engParsed.length>0){
@@ -1494,7 +1472,7 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     // Lookup industry via OpenAI (only if empty)
     const industryP=(async()=>{
       try{
-        const raw=await callOpenAI(`What industry is "${name.trim()}" in? Reply with ONLY the industry name in 2-4 words, nothing else. Examples: "Banking & Finance", "Cloud Computing", "Fast Food", "Luxury Fashion".`,"Reply with ONLY the industry name, no explanation.");
+        const raw=await callOpenAIFast(`What industry is "${name.trim()}" in? Reply with ONLY the industry name in 2-4 words, nothing else. Examples: "Banking & Finance", "Cloud Computing", "Fast Food", "Luxury Fashion".`,"Reply with ONLY the industry name, no explanation.");
         if(raw&&raw.trim().length>1&&raw.trim().length<50)return raw.trim().replace(/^["']|["']$/g,"");
       }catch(e){}
       return null;
@@ -1526,7 +1504,7 @@ IMPORTANT: For each competitor, provide their REAL, verified primary website dom
 
 Return ONLY a JSON array of objects with "name" and "website" fields, no markdown:
 [{"name":"Competitor A","website":"competitor-a.com"},...]`;
-      const raw=await callOpenAI(prompt,"You are a market research expert. Return ONLY valid JSON, no markdown fences.");
+      const raw=await callOpenAIFast(prompt,"You are a market research expert. Return ONLY valid JSON, no markdown fences.");
       const comps=safeJSON(raw);
       if(comps&&Array.isArray(comps)&&comps.length>0){
         const cleaned=comps.filter(c=>c.name&&typeof c.name==="string").slice(0,4).map(c=>({name:c.name.trim(),website:(c.website||"").trim().replace(/^https?:\/\//,"").replace(/\/.*$/,"")}));
@@ -1569,7 +1547,7 @@ IMPORTANT: Do NOT make every topic about "${data.brand}" or its competitors. At 
 
 Return ONLY a JSON array of strings, no markdown, no explanation:
 ["topic 1", "topic 2", "topic 3", ...]`;
-      const raw=await callOpenAI(prompt,"You are a GEO (Generative Engine Optimisation) expert. Return ONLY valid JSON arrays, no markdown fences.");
+      const raw=await callOpenAIFast(prompt,"You are a GEO (Generative Engine Optimisation) expert. Return ONLY valid JSON arrays, no markdown fences.");
       const topics=safeJSON(raw);
       if(topics&&Array.isArray(topics)&&topics.length>0){
         setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>0).map(t=>fixYear(t.trim())).slice(0,15)}));
@@ -1597,7 +1575,7 @@ Generate 5 MORE different topics that are also relevant for measuring AI engine 
 
 Return ONLY a JSON array of strings:
 ["new topic 1", "new topic 2", ...]`;
-      const raw=await callOpenAI(prompt,"You are a GEO expert. Return ONLY valid JSON arrays.");
+      const raw=await callOpenAIFast(prompt,"You are a GEO expert. Return ONLY valid JSON arrays.");
       const newTopics=safeJSON(raw);
       if(newTopics&&Array.isArray(newTopics)&&newTopics.length>0){
         const cleaned=newTopics.filter(t=>typeof t==="string"&&t.trim().length>0).map(t=>fixYear(t.trim()));
