@@ -340,15 +340,8 @@ async function runRealAudit(cd, onProgress){
   try{
   onProgress("Probing ChatGPT & Gemini with real queries...",14);
 
-  // Build probe queries — ALL generic, NONE mention the brand name
-  // We're testing: does the AI naturally bring up this brand for industry queries?
-  const probeQueries=[
-    `What are the best ${industry} companies in ${region}?`,
-    `Top ${industry} providers in ${region} ${new Date().getFullYear()}`,
-    `${industry} recommendations for businesses in ${region}`,
-    `Who are the market leaders in ${industry} in ${region}?`,
-    ...topics.slice(0,6).map(t=>`Best ${t} in ${region} ${new Date().getFullYear()}`)
-  ];
+  // Probe queries = user's curated key topics ONLY (capped at 15)
+  const probeQueries=topics.slice(0,15);
 
   // Single prompt — ask for JSON array of concise answers
   const queryList=probeQueries.map((q,i)=>`${i+1}. ${q}`).join("\n");
@@ -1406,7 +1399,7 @@ Return ONLY a JSON array of strings, no markdown, no explanation:
       const raw=await callOpenAI(prompt,"You are a GEO (Generative Engine Optimisation) expert. Return ONLY valid JSON arrays, no markdown fences.");
       const topics=safeJSON(raw);
       if(topics&&Array.isArray(topics)&&topics.length>0){
-        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>0).map(t=>fixYear(t.trim()))}));
+        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>0).map(t=>fixYear(t.trim())).slice(0,15)}));
         setAuditStep("topics");
       }else{
         setError("Failed to generate topics. Please try again.");
@@ -1435,7 +1428,7 @@ Return ONLY a JSON array of strings:
       const newTopics=safeJSON(raw);
       if(newTopics&&Array.isArray(newTopics)&&newTopics.length>0){
         const cleaned=newTopics.filter(t=>typeof t==="string"&&t.trim().length>0).map(t=>fixYear(t.trim()));
-        setData(d=>({...d,topics:[...d.topics,...cleaned]}));
+        setData(d=>{const combined=[...d.topics,...cleaned].slice(0,15);return{...d,topics:combined};});
       }
     }catch(e){console.error("Regenerate error:",e);}
     setGenTopics(false);
@@ -1447,7 +1440,7 @@ Return ONLY a JSON array of strings:
     setEditingTopic(null);setEditVal("");
   };
   const deleteTopic=(i)=>{setData({...data,topics:data.topics.filter((_,j)=>j!==i)});};
-  const addTopic=()=>{if(newTopic.trim()){setData({...data,topics:[...data.topics,fixYear(newTopic.trim())]});setNewTopic("");}};
+  const addTopic=()=>{if(newTopic.trim()&&data.topics.length<15){setData({...data,topics:[...data.topics,fixYear(newTopic.trim())]});setNewTopic("");}};
 
   // Smooth progress: target is set by API callbacks, displayed value interpolates toward it
   const targetRef=React.useRef(0);
@@ -1590,7 +1583,7 @@ Return ONLY a JSON array of strings:
   if(auditStep==="topics")return(<div style={{maxWidth:620,margin:"0 auto"}}>
     <div style={{marginBottom:24,textAlign:"center"}}>
       <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0}}>Review Topics for {data.brand}</h2>
-      <p style={{color:C.sub,fontSize:13,marginTop:4}}>These topics will be used to measure AI engine visibility. Edit, remove, or add more.</p>
+      <p style={{color:C.sub,fontSize:13,marginTop:4}}>These topics will be sent as real queries to AI engines. Edit, remove, or add more (max 15).</p>
     </div>
     <Card>
       {/* Topic list */}
@@ -1610,20 +1603,20 @@ Return ONLY a JSON array of strings:
       </div>
 
       {/* Add new topic */}
-      <div style={{display:"flex",gap:8,marginBottom:16}}>
+      {data.topics.length<15?(<div style={{display:"flex",gap:8,marginBottom:16}}>
         <input value={newTopic} onChange={e=>setNewTopic(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTopic();}} placeholder="Add a custom topic..." style={{flex:1,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,color:C.text,outline:"none"}}/>
         <button onClick={addTopic} disabled={!newTopic.trim()} style={{padding:"8px 16px",background:newTopic.trim()?C.accent:"#dde1e7",color:newTopic.trim()?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:newTopic.trim()?"pointer":"not-allowed"}}>Add</button>
-      </div>
+      </div>):(<div style={{marginBottom:16,padding:"8px 12px",background:`${C.accent}08`,borderRadius:8,fontSize:12,color:C.accent,textAlign:"center"}}>Maximum 15 topics reached</div>)}
 
       {/* Generate more button */}
-      <button onClick={regenerateTopics} disabled={genTopics} style={{width:"100%",padding:"10px 16px",background:"none",border:`1px dashed ${C.accent}40`,borderRadius:8,fontSize:12,fontWeight:600,color:C.accent,cursor:genTopics?"wait":"pointer",marginBottom:16,opacity:genTopics?.6:1}}>
+      {data.topics.length<15&&<button onClick={regenerateTopics} disabled={genTopics} style={{width:"100%",padding:"10px 16px",background:"none",border:`1px dashed ${C.accent}40`,borderRadius:8,fontSize:12,fontWeight:600,color:C.accent,cursor:genTopics?"wait":"pointer",marginBottom:16,opacity:genTopics?.6:1}}>
         {genTopics?"Generating more topics...":"+ Generate More Topics"}
-      </button>
+      </button>}
 
       <div style={{paddingTop:16,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <button onClick={()=>setAuditStep("input")} style={{padding:"8px 16px",background:"none",border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,color:C.sub,cursor:"pointer"}}>← Back to Details</button>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <span style={{fontSize:11,color:C.muted}}>{data.topics.length} topics</span>
+          <span style={{fontSize:11,color:data.topics.length>=15?C.accent:C.muted}}>{data.topics.length} / 15 topics</span>
           <button onClick={go} disabled={!topicsOk} style={{padding:"10px 24px",background:topicsOk?C.accent:"#dde1e7",color:topicsOk?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:topicsOk?"pointer":"not-allowed"}}>Run GEO Audit →</button>
         </div>
       </div>
