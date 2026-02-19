@@ -110,22 +110,51 @@ function MiniRadar({data,keys,size=220}){
 }
 
 /* ─── MULTI-ENGINE API LAYER ─── */
+async function fetchWithTimeout(url,options,timeoutMs=25000){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{const res=await fetch(url,{...options,signal:controller.signal});clearTimeout(timer);return res;}
+  catch(e){clearTimeout(timer);throw e;}
+}
+
 async function callOpenAI(prompt, systemPrompt="You are an expert GEO analyst."){
-  try{
-    const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
-    const data=await res.json();
-    if(data.error)throw new Error(data.error);
-    return data.text||"";
-  }catch(e){console.error("OpenAI API error:",e);return null;}
+  for(let attempt=0;attempt<2;attempt++){
+    try{
+      const res=await fetchWithTimeout("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
+      const data=await res.json();
+      if(data.error){
+        if(attempt===0&&(data.error.includes("rate")||data.error.includes("429")||data.error.includes("timeout"))){
+          await new Promise(r=>setTimeout(r,2000));continue;
+        }
+        throw new Error(data.error);
+      }
+      return data.text||"";
+    }catch(e){
+      if(attempt===0){console.warn("OpenAI attempt 1 failed, retrying:",e.message);await new Promise(r=>setTimeout(r,2000));continue;}
+      console.error("OpenAI API error:",e);return null;
+    }
+  }
+  return null;
 }
 
 async function callGemini(prompt, systemPrompt="You are an expert GEO analyst."){
-  try{
-    const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
-    const data=await res.json();
-    if(data.error)throw new Error(data.error);
-    return data.text||"";
-  }catch(e){console.error("Gemini API error:",e);return null;}
+  for(let attempt=0;attempt<2;attempt++){
+    try{
+      const res=await fetchWithTimeout("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
+      const data=await res.json();
+      if(data.error){
+        if(attempt===0&&(data.error.includes("rate")||data.error.includes("429")||data.error.includes("timeout"))){
+          await new Promise(r=>setTimeout(r,2000));continue;
+        }
+        throw new Error(data.error);
+      }
+      return data.text||"";
+    }catch(e){
+      if(attempt===0){console.warn("Gemini attempt 1 failed, retrying:",e.message);await new Promise(r=>setTimeout(r,2000));continue;}
+      console.error("Gemini API error:",e);return null;
+    }
+  }
+  return null;
 }
 
 // Call a specific engine by name, with fallback to OpenAI
@@ -933,9 +962,8 @@ Return JSON: [{"area":"<area>","rule":"<specific guideline>","example":"<concret
   const gemQS=gemResults.map(r=>`"${r.query}": ${r.status}`).join(", ");
   const painSummary=(mergedPainPoints||[]).map(p=>`${p.label}: ${p.score}%`).join(", ");
   const compSummary=(compData.competitors||[]).map(c=>`${c.name} ${c.score}%`).join(", ");
-  try{
-    // Call 1: Engine-specific insights (simple flat array)
-    const engPrompt=`Real GEO audit data for "${brand}" (${industry}, ${region}):
+  // Run both calls in PARALLEL, spread across engines (Gemini + OpenAI) to avoid rate limits
+  const engPrompt=`Real GEO audit data for "${brand}" (${industry}, ${region}):
 ChatGPT: mention ${gptScores.mentionRate}%, citation ${gptScores.citationRate}%. ${gptQS}
 Gemini: mention ${gemScores.mentionRate}%, citation ${gemScores.citationRate}%. ${gemQS}
 Website scores: ${painSummary}
@@ -951,18 +979,8 @@ Engines and their traits:
 
 Return JSON array:
 [{"id":"claude","s":["...","..."],"w":["...","..."]},{"id":"perplexity","s":["...","..."],"w":["...","..."]},{"id":"deepseek","s":["...","..."],"w":["...","..."]},{"id":"copilot","s":["...","..."],"w":["...","..."]},{"id":"metaai","s":["...","..."],"w":["...","..."]}]`;
-    const engRaw=await callOpenAI(engPrompt,engineSystemPrompt);
-    const engParsed=safeJSON(engRaw);
-    if(Array.isArray(engParsed)&&engParsed.length>0){
-      engineInsights={};
-      engParsed.forEach(e=>{if(e.id&&e.s&&e.w)engineInsights[e.id]=e;});
-    }
-  }catch(e){console.error("Engine insights error:",e);}
 
-  try{
-    // Call 2: System diagnostics (simple array)
-    onProgress("Generating system diagnostics...",93);
-    const diagPrompt=`GEO audit findings for "${brand}" (${industry}, ${region}):
+  const diagPrompt=`GEO audit findings for "${brand}" (${industry}, ${region}):
 - ChatGPT: ${gptScores.mentionRate}% mentions, ${gptScores.citationRate}% citations
 - Gemini: ${gemScores.mentionRate}% mentions, ${gemScores.citationRate}% citations
 - Website: ${painSummary}
@@ -973,10 +991,18 @@ Generate exactly 6 system diagnostics. Each MUST cite a specific number from abo
 
 Return JSON array:
 [{"severity":"critical","text":"Your 12% citation rate on ChatGPT means..."},{"severity":"warning","text":"..."}]`;
-    const diagRaw=await callOpenAI(diagPrompt,engineSystemPrompt);
-    const diagParsed=safeJSON(diagRaw);
-    if(Array.isArray(diagParsed)&&diagParsed.length>=3)aiDiagnostics=diagParsed;
-  }catch(e){console.error("Diagnostics generation error:",e);}
+
+  const[engRaw,diagRaw]=await Promise.all([
+    callGemini(engPrompt,engineSystemPrompt).catch(e=>{console.error("Engine insights error:",e);return null;}),
+    callOpenAI(diagPrompt,engineSystemPrompt).catch(e=>{console.error("Diagnostics error:",e);return null;})
+  ]);
+  const engParsed=safeJSON(engRaw);
+  if(Array.isArray(engParsed)&&engParsed.length>0){
+    engineInsights={};
+    engParsed.forEach(e=>{if(e.id&&e.s&&e.w)engineInsights[e.id]=e;});
+  }
+  const diagParsed=safeJSON(diagRaw);
+  if(Array.isArray(diagParsed)&&diagParsed.length>=3)aiDiagnostics=diagParsed;
 
   onProgress("Compiling final report...",95);
 
