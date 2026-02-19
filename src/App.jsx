@@ -508,8 +508,8 @@ Score each GEO category 0-100. Return JSON:
   const crawlMeta=brandCrawl&&brandCrawl.mainPage?brandCrawl.mainPage.metaDescription||"":"";
   const crawlSP=brandCrawl?brandCrawl.subPages||{}:{};
   const subPagesList=[crawlSP.blog?"blog":null,crawlSP.about?"about":null,crawlSP.products?"products/services":null,crawlSP.faq?"FAQ":null].filter(Boolean);
-  const gptQueryResults=(gptParsed.queries||[]).map(q=>`"${q.query}": ${q.status}`).join(", ");
-  const gemQueryResults=(gemParsed.queries||[]).map(q=>`"${q.query}": ${q.status}`).join(", ");
+  const gptQueryResults=(gptData.queries||[]).map(q=>`"${q.query}": ${q.status}`).join(", ");
+  const gemQueryResults=(gemData.queries||[]).map(q=>`"${q.query}": ${q.status}`).join(", ");
   const compStrengths=mergedComps.map(c=>`${c.name} (score: ${c.score}, strength: ${c.topStrength||"N/A"})`).join("; ");
   const archPrompt=`Based on REAL website data for "${brand}" in ${industry} (${region}):
 - Main content themes: ${[...crawlH1s,...crawlH2s.slice(0,5)].join(" | ")||"No headings detected"}
