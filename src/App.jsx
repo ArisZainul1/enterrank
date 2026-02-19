@@ -947,8 +947,11 @@ function generateAll(cd, apiData){
     return{...e,score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["No API data received"]};
   });
   const engines=[...realEngines,...engineMeta.slice(2).map(e=>{const est=estimateEngine(realEngines,e.id,e.name,cd.brand,cd.industry);return{...e,...est};})];
-  engines.forEach(e=>{e.score=Math.round(e.mentionRate*0.5+e.citationRate*0.5);});
-  const overall=Math.round(engines.reduce((a,e)=>a+e.score,0)/engines.length);
+  // Market-share weights (Feb 2026 — First Page Sage / SimilarWeb)
+  const mktShare={chatgpt:0.607,gemini:0.150,copilot:0.132,perplexity:0.058,claude:0.041,grok:0.006,deepseek:0.002,metaai:0.001,mistral:0.001,youcom:0.001,jasper:0.001,cohere:0.001,pi:0.001,poe:0.001,aria:0.001};
+  engines.forEach(e=>{e.score=Math.round(e.mentionRate*0.5+e.citationRate*0.5);e.weight=mktShare[e.id]||0.001;});
+  const totalWeight=engines.reduce((a,e)=>a+e.weight,0);
+  const overall=Math.round(engines.reduce((a,e)=>a+e.score*e.weight,0)/totalWeight);
   const getScoreLabel=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
   const getScoreDesc=(s,b)=>s>=80?b+" is dominant — frequently cited and recommended.":s>=60?b+" has strong visibility — regularly mentioned.":s>=40?b+" has moderate visibility — rarely cited as primary source.":s>=20?b+" has weak visibility — occasionally mentioned.":b+" is invisible to AI engines.";
   const painCats=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
