@@ -1768,7 +1768,6 @@ function ArchetypesPage({r,goTo}){
         </div>}
       </Card>))}
     </div>
-    <NavBtn onClick={()=>goTo("intent")} label="Next: Intent Pathway →"/>
   </div>);
 }
 
@@ -2122,7 +2121,6 @@ Return JSON only:
       </Card>);
     })()}
 
-    <NavBtn onClick={()=>goTo("channels")} label="Next: GEO Channels →"/>
   </div>);
 }
 
@@ -2233,7 +2231,6 @@ function ChannelsPage({r,goTo}){
         </div>}
       </div>);})}
     </Card>
-    <NavBtn onClick={()=>goTo("grid")} label="Next: Content Grid →"/>
   </div>);
 }
 
@@ -2257,7 +2254,6 @@ function GridPage({r,goTo}){
         {(r.outputReqs||[]).map((item,i)=>(<div key={i} style={{padding:"14px",background:C.bg,borderRadius:C.rs,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:C.accent}}>{item.n}</div><div style={{fontSize:10,color:C.muted,marginBottom:4}}>{item.u}</div><div style={{fontSize:12,fontWeight:600,color:C.text}}>{item.l}</div><div style={{fontSize:10,color:C.muted,marginTop:2}}>{item.d}</div></div>))}
       </div>
     </Card>
-    <NavBtn onClick={()=>goTo("roadmap")} label="Next: 90-Day Roadmap →"/>
   </div>);
 }
 
