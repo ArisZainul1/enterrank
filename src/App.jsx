@@ -711,15 +711,22 @@ Return JSON array in the same order:
 [{"query":"<exact question>","answer":"<your actual response>"}]
 
 Be thorough and accurate. Do NOT skip any question.`;
-      const[gptRaw,gemRaw]=await Promise.all([callOpenAI(bp,neutralSystem),callGemini(bp,neutralSystem)]);
+      const[gptRaw,gemRaw]=await Promise.all([callOpenAIFast(bp,neutralSystem),callGemini(bp,neutralSystem)]);
       return{gptRaw,gemRaw,queries:batch};
     }));
     batchResults.forEach(({gptRaw,gemRaw,queries})=>{
       const gptAnswers=safeJSON(gptRaw)||[];
       const gemAnswers=safeJSON(gemRaw)||[];
+      // Match answers to queries by query text first, fall back to index
+      const findAnswer=(answers,q,i)=>{
+        if(!Array.isArray(answers)||answers.length===0)return{};
+        const byText=answers.find(a=>a.query&&a.query.toLowerCase().includes(q.toLowerCase().slice(0,30)));
+        if(byText)return byText;
+        return answers[i]||{};
+      };
       queries.forEach((q,i)=>{
-        const gptA=Array.isArray(gptAnswers)&&gptAnswers[i]?gptAnswers[i]:{};
-        const gemA=Array.isArray(gemAnswers)&&gemAnswers[i]?gemAnswers[i]:{};
+        const gptA=findAnswer(gptAnswers,q,i);
+        const gemA=findAnswer(gemAnswers,q,i);
         const gptStatus=detectBrandStatus(gptA.answer,brand,cd.website);
         const gemStatus=detectBrandStatus(gemA.answer,brand,cd.website);
         verifyMap[q.toLowerCase()]={gpt:gptStatus,gemini:gemStatus,gptAnswer:gptA.answer||"",gemAnswer:gemA.answer||""};
