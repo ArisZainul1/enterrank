@@ -1300,8 +1300,23 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     return name.trim().toLowerCase().replace(/[^a-z0-9]/g,"")+".com";
   };
   const autofillBrandWebsite=async(name)=>{
-    const domain=await lookupDomain(name);
-    if(domain)setData(d=>d.website?d:{...d,website:domain});
+    if(!name||name.trim().length<2)return;
+    const domainP=lookupDomain(name);
+    // Lookup industry via OpenAI (only if empty)
+    const industryP=(async()=>{
+      try{
+        const raw=await callOpenAI(`What industry is "${name.trim()}" in? Reply with ONLY the industry name in 2-4 words, nothing else. Examples: "Banking & Finance", "Cloud Computing", "Fast Food", "Luxury Fashion".`,"Reply with ONLY the industry name, no explanation.");
+        if(raw&&raw.trim().length>1&&raw.trim().length<50)return raw.trim().replace(/^["']|["']$/g,"");
+      }catch(e){}
+      return null;
+    })();
+    const[domain,industry]=await Promise.all([domainP,industryP]);
+    setData(d=>{
+      const updates={};
+      if(domain&&!d.website)updates.website=domain;
+      if(industry&&!d.industry)updates.industry=industry;
+      return Object.keys(updates).length>0?{...d,...updates}:d;
+    });
   };
   const autofillCompWebsite=async(name,idx)=>{
     const domain=await lookupDomain(name);
