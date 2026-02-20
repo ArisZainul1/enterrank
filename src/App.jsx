@@ -908,7 +908,7 @@ function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,s
       {NAV_ITEMS.map(g=>(<div key={g.group} style={{marginBottom:16}}>
         {!collapsed&&<div style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:".08em",padding:"8px 8px 6px",userSelect:"none"}}>{g.group}</div>}
         {g.items.map(item=>{
-          const active=step===item.id;
+          const active=step===item.id||(item.id==="dashboard"&&step==="audit");
           const dis=!results||item.comingSoon;
           return(<div key={item.id} onClick={()=>{if(!dis)setStep(item.id);}}
             style={{display:"flex",alignItems:"center",gap:10,padding:collapsed?"10px 12px":"8px 10px",borderRadius:8,cursor:dis?"default":"pointer",background:active?"#111827":"transparent",color:active?"#fff":dis?"#d1d5db":C.sub,fontSize:13,fontWeight:active?600:500,marginBottom:2,transition:"all .12s",opacity:item.comingSoon?.5:1,justifyContent:collapsed?"center":"flex-start"}}
@@ -1369,7 +1369,7 @@ function DashboardPage({r,history,goTo}){
   // Chart data
   const chartData=history.map(h=>{
     if(chartMetric==="mentions")return{label:h.date,gpt:h.mentionsPerEngine?.gpt??h.mentions??0,gemini:h.mentionsPerEngine?.gemini??h.mentions??0};
-    if(chartMetric==="citations")return{label:h.date,gpt:h.citationsPerEngine?.gpt??h.citations??0,gemini:h.citationsPerEngine?.gemini??h.mentions??0};
+    if(chartMetric==="citations")return{label:h.date,gpt:h.citationsPerEngine?.gpt??h.citations??0,gemini:h.citationsPerEngine?.gemini??h.citations??0};
     return{label:h.date,gpt:h.sentimentPerEngine?.gpt??50,gemini:h.sentimentPerEngine?.gemini??50};
   });
 
@@ -2466,7 +2466,7 @@ export default function App(){
     const cd={brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors||[]};
     const r=generateAll(cd,lastAudit.apiData);
     setResults(r);
-    setStep("audit");
+    setStep("dashboard");
     setScreen("dashboard");
   };
 
@@ -2526,7 +2526,7 @@ export default function App(){
     const r=generateAll(data, apiData);setResults(r);
     const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
     setHistory(prev=>[...prev,entry]);
-    setStep("audit");
+    setStep("dashboard");
 
     // Save to project (create if new, update if existing) — skip in artifact mode
     if(!isLocal){try{
