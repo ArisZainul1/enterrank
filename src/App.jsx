@@ -1344,6 +1344,157 @@ Return ONLY a JSON array of strings:
     </Card></div>);
 }
 
+/* ─── PAGE: DASHBOARD ─── */
+function DashboardPage({r,history,goTo}){
+  const[chartMetric,setChartMetric]=useState("mentions");
+
+  // Metric calculations
+  const avgMentions=Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length);
+  const avgCitations=Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length);
+  const avgSentiment=r.sentiment?.brand?.avg||50;
+
+  // Deltas vs previous audit
+  const prev=history.length>1?history[history.length-2]:null;
+  const prevMentions=prev?prev.mentions:null;
+  const prevCitations=prev?prev.citations:null;
+  const prevSentiment=prev?.sentimentPerEngine?Math.round((prev.sentimentPerEngine.gpt+prev.sentimentPerEngine.gemini)/2):null;
+
+  const DeltaBadge=({current,previous})=>{
+    if(previous===null||previous===undefined)return <span style={{fontSize:11,fontWeight:600,color:C.muted,background:C.bg,padding:"2px 8px",borderRadius:20}}>First audit</span>;
+    const d=current-previous;
+    const pos=d>=0;
+    return <span style={{fontSize:11,fontWeight:600,color:pos?"#059669":"#dc2626",background:pos?"#d1fae520":"#fee2e220",padding:"2px 8px",borderRadius:20}}>{pos?"+":""}{d}%</span>;
+  };
+
+  // Chart data
+  const chartData=history.map(h=>{
+    if(chartMetric==="mentions")return{label:h.date,gpt:h.mentionsPerEngine?.gpt??h.mentions??0,gemini:h.mentionsPerEngine?.gemini??h.mentions??0};
+    if(chartMetric==="citations")return{label:h.date,gpt:h.citationsPerEngine?.gpt??h.citations??0,gemini:h.citationsPerEngine?.gemini??h.mentions??0};
+    return{label:h.date,gpt:h.sentimentPerEngine?.gpt??50,gemini:h.sentimentPerEngine?.gemini??50};
+  });
+
+  const renderChart=()=>{
+    if(chartData.length<2)return(
+      <div style={{height:220,display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontSize:13}}>
+        Run more audits to track performance over time
+      </div>
+    );
+    const W=600,H=200,pad={l:36,r:16,t:12,b:28};
+    const cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
+    const n=chartData.length;
+    const xStep=n>1?cW/(n-1):cW;
+    const pts=(key)=>chartData.map((d,i)=>{const x=pad.l+(n>1?i*xStep:cW/2);const y=pad.t+cH-(d[key]/100)*cH;return{x,y,v:d[key],label:d.label};});
+    const gptPts=pts("gpt"),gemPts=pts("gemini");
+    const polyStr=(arr)=>arr.map(p=>`${p.x},${p.y}`).join(" ");
+    const areaStr=(arr)=>`${pad.l},${pad.t+cH} ${polyStr(arr)} ${arr[arr.length-1].x},${pad.t+cH}`;
+    const gridYs=[0,25,50,75,100];
+    return(
+      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:220}}>
+        <defs>
+          <linearGradient id="gptFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10A37F" stopOpacity="0.12"/><stop offset="100%" stopColor="#10A37F" stopOpacity="0"/></linearGradient>
+          <linearGradient id="gemFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4285F4" stopOpacity="0.12"/><stop offset="100%" stopColor="#4285F4" stopOpacity="0"/></linearGradient>
+        </defs>
+        {gridYs.map(v=>{const y=pad.t+cH-(v/100)*cH;return <g key={v}><line x1={pad.l} y1={y} x2={W-pad.r} y2={y} stroke={C.border} strokeWidth="0.7" strokeDasharray="4,3"/><text x={pad.l-6} y={y+3.5} textAnchor="end" fontSize="9" fill={C.muted}>{v}</text></g>;})}
+        <polygon points={areaStr(gptPts)} fill="url(#gptFill)"/>
+        <polygon points={areaStr(gemPts)} fill="url(#gemFill)"/>
+        <polyline points={polyStr(gptPts)} fill="none" stroke="#10A37F" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
+        <polyline points={polyStr(gemPts)} fill="none" stroke="#4285F4" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
+        {gptPts.map((p,i)=><circle key={"g"+i} cx={p.x} cy={p.y} r="4" fill="#fff" stroke="#10A37F" strokeWidth="2"><title>ChatGPT: {p.v}% — {p.label}</title></circle>)}
+        {gemPts.map((p,i)=><circle key={"m"+i} cx={p.x} cy={p.y} r="4" fill="#fff" stroke="#4285F4" strokeWidth="2"><title>Gemini: {p.v}% — {p.label}</title></circle>)}
+        {chartData.map((d,i)=>{const x=pad.l+(n>1?i*xStep:cW/2);return <text key={"x"+i} x={x} y={H-4} textAnchor="middle" fontSize="9" fill={C.muted}>{d.label}</text>;})}
+      </svg>
+    );
+  };
+
+  // Share of voice data
+  const allBrands=[{name:r.clientData.brand,website:r.clientData.website,mentionRate:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citationRate:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),color:C.accent},...r.competitors.map((c,i)=>{const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);return{name:c.name,website:compObj?compObj.website:"",mentionRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length):c.score,citationRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length*.6):Math.round(c.score*.6),color:["#10A37F","#D97706","#4285F4","#8b5cf6","#ec4899","#0ea5e9","#f97316"][i%7]};})];
+
+  const sentimentBrands=[
+    {name:r.clientData.brand,sentimentScore:r.sentiment?.brand?.avg||50,color:C.accent},
+    ...(r.sentiment?.competitors||[]).map((c,i)=>({name:c.name,sentimentScore:c.avg||50,color:["#f97316","#8b5cf6","#06b6d4","#ec4899"][i%4]}))
+  ];
+
+  const today=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+
+  const metricCards=[
+    {label:"Mentions",value:avgMentions,prev:prevMentions,iconBg:"#dbeafe",iconColor:"#2563eb",icon:<><path d="M11 5L6 9H2v6h4l5 4V5z" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/></>},
+    {label:"Citations",value:avgCitations,prev:prevCitations,iconBg:"#d1fae5",iconColor:"#059669",icon:<><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/></>},
+    {label:"Sentiments",value:avgSentiment,prev:prevSentiment,iconBg:"#fef3c7",iconColor:"#d97706",icon:<><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8" fill="none"/><path d="M8 14s1.5 2 4 2 4-2 4-2" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/><line x1="9" y1="9" x2="9.01" y2="9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><line x1="15" y1="9" x2="15.01" y2="9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></>}
+  ];
+
+  const toggleBtns=["mentions","citations","sentiments"];
+
+  return(<div>
+    {/* Section A: Greeting Header */}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:28}}>
+      <div>
+        <div style={{fontSize:28,fontWeight:800,fontFamily:"'Outfit'",color:C.text}}>Hello, Aris</div>
+        <div style={{fontSize:14,color:C.muted,marginTop:2}}>GEO Dashboard for {r.clientData.brand}</div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:C.muted,fontWeight:500,marginTop:6}}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        {today}
+      </div>
+    </div>
+
+    {/* Section B: Three Metric Cards */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16,marginBottom:24}}>
+      {metricCards.map(m=>(
+        <Card key={m.label}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+            <div style={{width:40,height:40,borderRadius:10,background:m.iconBg,display:"flex",alignItems:"center",justifyContent:"center",color:m.iconColor}}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">{m.icon}</svg>
+            </div>
+            <span style={{fontSize:13,fontWeight:500,color:C.muted}}>{m.label}</span>
+          </div>
+          <div style={{display:"flex",alignItems:"baseline",gap:10}}>
+            <span style={{fontSize:32,fontWeight:800,fontFamily:"'Outfit'",color:C.text}}>{m.value}<span style={{fontSize:18,fontWeight:600,color:C.muted}}>%</span></span>
+            <DeltaBadge current={m.value} previous={m.prev}/>
+          </div>
+        </Card>
+      ))}
+    </div>
+
+    {/* Section C: Performance Graph */}
+    <Card style={{marginBottom:24}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+        <span style={{fontSize:16,fontWeight:700,fontFamily:"'Outfit'",color:C.text}}>Performance</span>
+        <div style={{display:"flex",gap:4}}>
+          {toggleBtns.map(t=>(
+            <button key={t} onClick={()=>setChartMetric(t)} style={{padding:"5px 14px",borderRadius:20,border:"none",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",background:chartMetric===t?C.accent:C.bg,color:chartMetric===t?"#fff":C.sub,transition:"all .15s"}}>
+              {t.charAt(0).toUpperCase()+t.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+      {renderChart()}
+      <div style={{display:"flex",justifyContent:"center",gap:20,marginTop:12}}>
+        <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}><div style={{width:8,height:8,borderRadius:"50%",background:"#10A37F"}}/>ChatGPT</div>
+        <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}><div style={{width:8,height:8,borderRadius:"50%",background:"#4285F4"}}/>Gemini</div>
+      </div>
+    </Card>
+
+    {/* Section D: Share of Voice */}
+    <div style={{marginBottom:24}}>
+      <div style={{fontSize:16,fontWeight:700,fontFamily:"'Outfit'",color:C.text,marginBottom:16}}>Share of Voice</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
+        <ShareOfVoiceSection title="Share of Mentions" rankTitle="Mentions Rank" brands={allBrands} metricKey="mentionRate"/>
+        <ShareOfVoiceSection title="Share of Citations" rankTitle="Citation Rank" brands={allBrands} metricKey="citationRate"/>
+        <ShareOfVoiceSection title="Share of Sentiments" rankTitle="Sentiment Rank" brands={sentimentBrands} metricKey="sentimentScore"/>
+      </div>
+    </div>
+
+    {/* Section E: Quick Actions */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
+      {[{label:"View Engine Details",to:"engines"},{label:"View Diagnostics",to:"diagnostics"},{label:"View 90-Day Roadmap",to:"roadmap"}].map(a=>(
+        <Card key={a.to} onClick={()=>goTo(a.to)} style={{cursor:"pointer",transition:"box-shadow .15s, border-color .15s"}}>
+          <span style={{fontSize:13,fontWeight:600,color:C.accent}}>{a.label} →</span>
+        </Card>
+      ))}
+    </div>
+  </div>);
+}
+
 /* ─── PAGE: AEO AUDIT (Overview) ─── */
 function AuditPage({r,history,goTo}){
   const[expandComp,setExpandComp]=useState(null);
@@ -2354,6 +2505,7 @@ export default function App(){
     <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",marginLeft:sideCollapsed?60:220,transition:"margin-left .2s ease"}}>
       <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto"}}>
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={run} history={history}/>}
+        {step==="dashboard"&&results&&<DashboardPage r={results} history={history} goTo={setStep}/>}
         {step==="audit"&&results&&<AuditPage r={results} history={history} goTo={setStep}/>}
         {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep}/>}
         {step==="intent"&&results&&<IntentPage r={results} goTo={setStep}/>}
