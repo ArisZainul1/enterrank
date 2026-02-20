@@ -860,19 +860,18 @@ function LoginForm({onSubmit,error,loading}){
 /* ─── CHAT PANEL — Human-in-the-loop AI assistant ─── */
 
 const NAV_ITEMS=[
-  {group:"Analytics",items:[
+  {group:"Overview",items:[
     {id:"dashboard",label:"Dashboard",icon:"grid"},
+  ]},
+  {group:"Analysis",items:[
     {id:"archetypes",label:"User Archetypes",icon:"users"},
     {id:"intent",label:"Intent Pathway",icon:"route"},
   ]},
-  {group:"Action",items:[
+  {group:"Strategy",items:[
+    {id:"playbook",label:"Brand Playbook",icon:"book"},
     {id:"channels",label:"AEO Channels",icon:"broadcast"},
-    {id:"grid",label:"Content Grid",icon:"edit"},
+    {id:"grid",label:"Content-Channel Grid",icon:"edit"},
     {id:"roadmap",label:"90-Day Roadmap",icon:"calendar"},
-  ]},
-  {group:"Context",items:[
-    {id:"brandhub",label:"Brand Hub",icon:"book",comingSoon:true},
-    {id:"contenthub",label:"Content Hub",icon:"edit",comingSoon:true},
   ]},
 ];
 const STEPS=NAV_ITEMS.flatMap(g=>g.items).map((s,i)=>({...s,n:String(i+1).padStart(2,"0")}));
@@ -1410,6 +1409,12 @@ function DashboardPage({r,history,goTo}){
   ];
 
   return(<div>
+    {/* Greeting header */}
+    <div style={{marginBottom:32}}>
+      <div style={{fontSize:22,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Hello, Aris</div>
+      <div style={{fontSize:13,color:C.muted,marginTop:2}}>GEO Dashboard for {r.clientData.brand}</div>
+    </div>
+
     {/* ═══ SECTION 1: SYSTEM DIAGNOSTICS ═══ */}
 
     {/* 1a. Section header */}
@@ -1617,6 +1622,129 @@ function DashboardPage({r,history,goTo}){
 
     {/* Section divider */}
     <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"40px 0"}}/>
+
+    {/* ═══ SECTION 5: COMPETITOR DEEP-DIVE ═══ */}
+
+    {/* 5a. Section header */}
+    <div style={{marginBottom:20}}>
+      <div style={{fontSize:18,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Competitor Deep-Dive</div>
+      <div style={{fontSize:13,color:C.muted,marginTop:3}}>Website signal comparison — what's helping or hurting AI engine visibility</div>
+    </div>
+
+    {/* 5b-f. Crawl comparison */}
+    {(()=>{
+      const crawlSignals=[
+        {key:"schemas",label:"Schema Markup",desc:"JSON-LD structured data types",check:(d)=>d?.schemas?.length>0,detail:(d)=>d?.schemas?.length?d.schemas.join(", "):"None"},
+        {key:"hasFAQMarkup",label:"FAQ Schema",desc:"Helps AI engines extract Q&A pairs",check:(d)=>!!d?.hasFAQMarkup},
+        {key:"hasArticleMarkup",label:"Article Schema",desc:"Signals authoritative content to AI",check:(d)=>!!d?.hasArticleMarkup},
+        {key:"hasOpenGraph",label:"Open Graph Tags",desc:"Social sharing & content preview metadata",check:(d)=>!!d?.hasOpenGraph},
+        {key:"hasTwitterCard",label:"Twitter Card",desc:"X/Twitter rich preview metadata",check:(d)=>!!d?.hasTwitterCard},
+        {key:"hasAuthorInfo",label:"Author Information",desc:"E-E-A-T signal — establishes expertise",check:(d)=>!!d?.hasAuthorInfo},
+        {key:"hasTrustSignals",label:"Trust Signals",desc:"Awards, certifications, partnerships",check:(d)=>!!d?.hasTrustSignals},
+        {key:"hasTestimonials",label:"Testimonials / Reviews",desc:"Social proof on website",check:(d)=>!!d?.hasTestimonials},
+        {key:"hasVideo",label:"Video Content",desc:"Rich media increases AI citation likelihood",check:(d)=>!!d?.hasVideo},
+        {key:"wordCount",label:"Content Depth",desc:"Word count — more content = more citation surface",check:(d)=>(d?.wordCount||0)>1000,detail:(d)=>`${(d?.wordCount||0).toLocaleString()} words`},
+        {key:"internalLinks",label:"Internal Linking",desc:"Helps AI understand site structure",check:(d)=>(d?.internalLinks||0)>20,detail:(d)=>`${d?.internalLinks||0} links`},
+      ];
+      const compNames=Object.keys(r.compCrawlData||{});
+      const hasCrawlData=r.brandCrawl||compNames.length>0;
+
+      if(!hasCrawlData)return(
+        <Card style={{textAlign:"center",padding:"40px 20px"}}>
+          <div style={{fontSize:14,fontWeight:500,color:C.muted,marginBottom:8}}>No crawl data available</div>
+          <div style={{fontSize:12,color:C.muted}}>Crawl data is collected during the audit. Run a new audit to see the competitor website comparison.</div>
+        </Card>
+      );
+
+      const gridCols=`minmax(180px, 1.5fr) repeat(${1+compNames.length}, minmax(70px, 1fr))`;
+      const signalIcon=(data,sig)=>{
+        if(!data)return <span style={{fontSize:14,color:C.muted}}>—</span>;
+        return sig.check(data)
+          ?<span style={{fontSize:14,fontWeight:600,color:C.green}}>✓</span>
+          :<span style={{fontSize:14,color:C.red}}>✗</span>;
+      };
+
+      const brandGaps=crawlSignals.filter(s=>{
+        const brandHas=r.brandCrawl?s.check(r.brandCrawl):false;
+        const anyCompHas=compNames.some(cn=>r.compCrawlData[cn]?s.check(r.compCrawlData[cn]):false);
+        return !brandHas&&anyCompHas;
+      });
+      const brandWins=crawlSignals.filter(s=>{
+        const brandHas=r.brandCrawl?s.check(r.brandCrawl):false;
+        const anyCompMissing=compNames.some(cn=>r.compCrawlData[cn]?!s.check(r.compCrawlData[cn]):true);
+        return brandHas&&anyCompMissing;
+      });
+
+      const brandSignalCount=r.brandCrawl?crawlSignals.filter(s=>s.check(r.brandCrawl)).length:0;
+      const signalCounts=[
+        {name:r.clientData.brand,count:brandSignalCount},
+        ...compNames.map(cn=>({name:cn,count:r.compCrawlData[cn]?crawlSignals.filter(s=>s.check(r.compCrawlData[cn])).length:0}))
+      ].sort((a,b)=>b.count-a.count);
+      const brandRank=signalCounts.findIndex(s=>s.name===r.clientData.brand)+1;
+
+      return(<>
+        {/* 5c. Signal comparison table */}
+        <Card style={{padding:0,overflow:"hidden"}}>
+          <div style={{display:"grid",gridTemplateColumns:gridCols,padding:"10px 16px",background:C.bg,borderBottom:`2px solid ${C.border}`,alignItems:"center"}}>
+            <span style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em"}}>Signal</span>
+            <span style={{fontSize:11,fontWeight:500,color:C.text,textAlign:"center",padding:"4px 6px",borderRadius:4,background:`${C.accent}08`,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.clientData.brand}</span>
+            {compNames.map(cn=><span key={cn} style={{fontSize:11,fontWeight:500,color:C.text,textAlign:"center",maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cn}</span>)}
+          </div>
+          {crawlSignals.map((sig,si)=>(
+            <div key={sig.key} style={{display:"grid",gridTemplateColumns:gridCols,padding:"10px 16px",borderBottom:si<crawlSignals.length-1?`1px solid ${C.borderSoft}`:"none",alignItems:"center",background:si%2===1?`${C.bg}80`:"transparent"}}>
+              <div>
+                <div style={{fontSize:12,fontWeight:500,color:C.text}}>{sig.label}</div>
+                <div style={{fontSize:10,color:C.muted,marginTop:1}}>{sig.desc}</div>
+                {sig.detail&&r.brandCrawl&&<div style={{fontSize:10,color:C.sub,marginTop:2}}>{sig.detail(r.brandCrawl)}</div>}
+              </div>
+              <div style={{textAlign:"center",background:`${C.accent}04`,borderRadius:4,padding:"4px 0"}}>
+                {signalIcon(r.brandCrawl,sig)}
+                {sig.detail&&r.brandCrawl&&<div style={{fontSize:9,color:C.muted}}>{sig.detail(r.brandCrawl)}</div>}
+              </div>
+              {compNames.map(cn=><div key={cn} style={{textAlign:"center",padding:"4px 0"}}>
+                {signalIcon(r.compCrawlData[cn],sig)}
+                {sig.detail&&r.compCrawlData[cn]&&<div style={{fontSize:9,color:C.muted}}>{sig.detail(r.compCrawlData[cn])}</div>}
+              </div>)}
+            </div>
+          ))}
+        </Card>
+
+        {/* 5d. Content gap analysis */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:20}}>
+          <Card>
+            <div style={{fontSize:14,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:"#dc2626",marginBottom:2}}>Gaps to Close</div>
+            <div style={{fontSize:11,color:C.muted,marginBottom:12}}>Signals competitors have that you're missing</div>
+            {brandGaps.length>0?brandGaps.map((g,i)=>(
+              <div key={g.key} style={{display:"flex",gap:8,alignItems:"flex-start",padding:"8px 0",borderBottom:i<brandGaps.length-1?`1px solid ${C.borderSoft}`:"none"}}>
+                <div style={{width:6,height:6,borderRadius:"50%",background:"#dc2626",marginTop:4,flexShrink:0}}/>
+                <div>
+                  <div style={{fontSize:12,fontWeight:500,color:C.text}}>{g.label}</div>
+                  <div style={{fontSize:11,color:C.muted}}>{g.desc}</div>
+                </div>
+              </div>
+            )):<div style={{fontSize:12,color:C.green}}>No gaps found — you match or exceed competitors</div>}
+          </Card>
+          <Card>
+            <div style={{fontSize:14,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:"#059669",marginBottom:2}}>Your Advantages</div>
+            <div style={{fontSize:11,color:C.muted,marginBottom:12}}>Signals you have that competitors are missing</div>
+            {brandWins.length>0?brandWins.map((w,i)=>(
+              <div key={w.key} style={{display:"flex",gap:8,alignItems:"flex-start",padding:"8px 0",borderBottom:i<brandWins.length-1?`1px solid ${C.borderSoft}`:"none"}}>
+                <div style={{width:6,height:6,borderRadius:"50%",background:"#059669",marginTop:4,flexShrink:0}}/>
+                <div>
+                  <div style={{fontSize:12,fontWeight:500,color:C.text}}>{w.label}</div>
+                  <div style={{fontSize:11,color:C.muted}}>{w.desc}</div>
+                </div>
+              </div>
+            )):<div style={{fontSize:12,color:C.muted}}>Competitors match your signals — differentiate with content depth</div>}
+          </Card>
+        </div>
+
+        {/* 5f. Summary ranking bar */}
+        <div style={{background:C.bg,borderRadius:10,padding:"14px 20px",marginTop:20}}>
+          <span style={{fontSize:12,fontWeight:500,color:C.sub}}>{brandRank===1?"🏆 ":""}{r.clientData.brand} has {brandSignalCount}/{crawlSignals.length} website signals — ranked #{brandRank} out of {signalCounts.length} brands</span>
+        </div>
+      </>);
+    })()}
 
   </div>);
 }
