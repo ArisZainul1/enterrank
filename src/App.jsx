@@ -1355,9 +1355,6 @@ Return ONLY a JSON array of strings:
 
 /* ─── PAGE: DASHBOARD ─── */
 function DashboardPage({r,history,goTo}){
-  const[perfMetric,setPerfMetric]=useState("mentions");
-  const[expandedComp,setExpandedComp]=useState(null);
-
   // ── Metric calculations ──
   const avgMentions=Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length);
   const avgCitations=Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length);
@@ -1366,14 +1363,12 @@ function DashboardPage({r,history,goTo}){
   const prevSentiment=prev?.sentimentPerEngine?Math.round((prev.sentimentPerEngine.gpt+prev.sentimentPerEngine.gemini)/2):null;
 
   const delta=(cur,pre)=>{
-    if(pre===null||pre===undefined)return <span style={{fontSize:11,fontWeight:500,color:C.muted,background:C.bg,padding:"2px 8px",borderRadius:100}}>First audit</span>;
+    if(pre===null||pre===undefined)return <span style={{fontSize:10,fontWeight:500,color:C.muted,background:C.bg,padding:"2px 8px",borderRadius:100}}>First audit</span>;
     const d=cur-pre;
-    return <span style={{fontSize:11,fontWeight:500,padding:"2px 8px",borderRadius:100,color:d>=0?"#15803d":"#dc2626",background:d>=0?"#dcfce7":"#fee2e2"}}>{d>=0?"+":""}{d}%</span>;
+    return <span style={{fontSize:10,fontWeight:500,padding:"2px 8px",borderRadius:100,color:d>=0?"#15803d":"#dc2626",background:d>=0?"#dcfce7":"#fee2e2"}}>{d>=0?"+":""}{d}%</span>;
   };
 
   // ── System Diagnostics logic ──
-  const avgMention=Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length);
-  const avgCitation=Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length);
   const worstEngine=r.engines.reduce((a,e)=>e.score<a.score?e:a,r.engines[0]);
   const bestEngine=r.engines.reduce((a,e)=>e.score>a.score?e:a,r.engines[0]);
   const criticalCats=r.painPoints.filter(p=>p.severity==="critical");
@@ -1385,10 +1380,10 @@ function DashboardPage({r,history,goTo}){
 
   const diags=[];
   if(bestEngine.score-worstEngine.score>15)diags.push({icon:"\u26A1",severity:"warning",text:`${bestEngine.score-worstEngine.score}pt gap between ${bestEngine.name} (${bestEngine.score}%) and ${worstEngine.name} (${worstEngine.score}%).`});
-  if(avgCitation<10)diags.push({icon:"\uD83D\uDD17",severity:"critical",text:`${avgCitation}% citation rate. Users get answers about your space but aren't sent to your site.`});
-  else if(avgCitation<25)diags.push({icon:"\uD83D\uDD17",severity:"warning",text:`${avgCitation}% citation rate \u2014 ${100-avgCitation}% of mentions don't link back to you.`});
-  if(avgMention<15)diags.push({icon:"\uD83D\uDCAC",severity:"critical",text:`${avgMention}% mention rate across engines. ${r.clientData.brand} isn't part of the AI conversation yet.`});
-  else if(avgMention<35)diags.push({icon:"\uD83D\uDCAC",severity:"warning",text:`Mentioned in ~1 of ${Math.round(100/avgMention)} relevant responses (${avgMention}%).`});
+  if(avgCitations<10)diags.push({icon:"\uD83D\uDD17",severity:"critical",text:`${avgCitations}% citation rate. Users get answers about your space but aren't sent to your site.`});
+  else if(avgCitations<25)diags.push({icon:"\uD83D\uDD17",severity:"warning",text:`${avgCitations}% citation rate \u2014 ${100-avgCitations}% of mentions don't link back to you.`});
+  if(avgMentions<15)diags.push({icon:"\uD83D\uDCAC",severity:"critical",text:`${avgMentions}% mention rate across engines. ${r.clientData.brand} isn't part of the AI conversation yet.`});
+  else if(avgMentions<35)diags.push({icon:"\uD83D\uDCAC",severity:"warning",text:`Mentioned in ~1 of ${Math.round(100/avgMentions)} relevant responses (${avgMentions}%).`});
   if(criticalCats.length>0)diags.push({icon:"\uD83D\uDEA8",severity:"critical",text:`${criticalCats.map(c=>c.label.split("/")[0].trim()+" "+c.score+"%").join(", ")} \u2014 ${criticalCats.length>1?"these need":"needs"} immediate attention.`});
   if(weakestCat.score<30)diags.push({icon:"\uD83D\uDCC9",severity:"critical",text:`${weakestCat.label.split("/")[0].trim()} at ${weakestCat.score}% \u2014 lowest category score.`});
   if(compsAhead.length>0)diags.push({icon:"\uD83C\uDFC1",severity:compsAhead.length>1?"critical":"warning",text:`${compsAhead.map(c=>c.name+" "+c.score+"%").join(", ")} ${compsAhead.length>1?"are":"is"} scoring above you.`});
@@ -1396,86 +1391,43 @@ function DashboardPage({r,history,goTo}){
   if(strongestCat.score>60)diags.push({icon:"\u2705",severity:"good",text:`${strongestCat.label.split("/")[0].trim()} is your strongest signal at ${strongestCat.score}%.`});
   const sevOrder={critical:0,warning:1,info:2,good:3};
   diags.sort((a,b)=>(sevOrder[a.severity]??2)-(sevOrder[b.severity]??2));
-  const sevColors={critical:C.red,warning:C.amber,info:C.accent,good:C.green};
+  const sevColors={critical:"#ef4444",warning:"#f59e0b",good:"#22c55e"};
+  const diagCounts={critical:diags.filter(d=>d.severity==="critical").length,warning:diags.filter(d=>d.severity==="warning").length,good:diags.filter(d=>d.severity==="good").length};
 
-  // ── Performance chart data ──
-  const chartData=history.map(h=>{
-    let gpt=0,gemini=0;
-    if(perfMetric==="mentions"){gpt=h.mentionsPerEngine?.gpt??h.mentions??0;gemini=h.mentionsPerEngine?.gemini??h.mentions??0;}
-    else if(perfMetric==="citations"){gpt=h.citationsPerEngine?.gpt??h.citations??0;gemini=h.citationsPerEngine?.gemini??h.citations??0;}
-    else{gpt=h.sentimentPerEngine?.gpt??50;gemini=h.sentimentPerEngine?.gemini??50;}
-    return{date:h.date,gpt,gemini};
-  });
-
-  const renderPerfChart=()=>{
-    if(chartData.length<2)return(
-      <svg viewBox="0 0 600 240" style={{width:"100%",height:240}}>
-        <text x="300" y="125" textAnchor="middle" fontSize="12" fill={C.muted}>Run more audits to track performance over time</text>
-      </svg>
-    );
-    const W=600,H=240,pL=40,pR=20,pT=10,pB=30;
-    const cW=W-pL-pR,cH=H-pT-pB;
-    const n=chartData.length;
-    const xStep=cW/(n-1);
-    const toXY=(val,i)=>({x:pL+i*xStep,y:pT+cH-(val/100)*cH});
-    const gptPts=chartData.map((d,i)=>toXY(d.gpt,i));
-    const gemPts=chartData.map((d,i)=>toXY(d.gemini,i));
-    const polyStr=arr=>arr.map(p=>`${p.x},${p.y}`).join(" ");
-    const areaStr=arr=>`${pL},${pT+cH} ${polyStr(arr)} ${arr[arr.length-1].x},${pT+cH}`;
-    const gridYs=[0,25,50,75,100];
-    return(
-      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:240}}>
-        <defs>
-          <linearGradient id="dgF" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10A37F" stopOpacity="0.15"/><stop offset="100%" stopColor="#10A37F" stopOpacity="0"/></linearGradient>
-          <linearGradient id="dmF" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4285F4" stopOpacity="0.15"/><stop offset="100%" stopColor="#4285F4" stopOpacity="0"/></linearGradient>
-        </defs>
-        {gridYs.map(v=>{const y=pT+cH-(v/100)*cH;return <g key={v}><line x1={pL} y1={y} x2={W-pR} y2={y} stroke={C.borderSoft} strokeDasharray="4,4"/><text x="35" y={y+4} textAnchor="end" fontSize="10" fill={C.muted}>{v}</text></g>;})}
-        <polygon points={areaStr(gptPts)} fill="url(#dgF)"/>
-        <polygon points={areaStr(gemPts)} fill="url(#dmF)"/>
-        <polyline points={polyStr(gptPts)} fill="none" stroke="#10A37F" strokeWidth="2"/>
-        <polyline points={polyStr(gemPts)} fill="none" stroke="#4285F4" strokeWidth="2"/>
-        {gptPts.map((p,i)=><circle key={"g"+i} cx={p.x} cy={p.y} r="3.5" fill="#fff" stroke="#10A37F" strokeWidth="2"><title>ChatGPT: {chartData[i].gpt}% — {chartData[i].date}</title></circle>)}
-        {gemPts.map((p,i)=><circle key={"m"+i} cx={p.x} cy={p.y} r="3.5" fill="#fff" stroke="#4285F4" strokeWidth="2"><title>Gemini: {chartData[i].gemini}% — {chartData[i].date}</title></circle>)}
-        {chartData.map((d,i)=><text key={"x"+i} x={pL+i*xStep} y={H-6} textAnchor="middle" fontSize="9" fill={C.muted}>{d.date}</text>)}
-      </svg>
-    );
-  };
-
-  const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+  // ── Grade helper ──
+  const getGrade=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
+  const gradeColor=(s)=>s>=80?C.green:s>=60?"#10A37F":s>=40?C.amber:s>=20?"#f97316":C.red;
 
   const metricCards=[
-    {label:"Mentions",value:avgMentions,prev:prev?.mentions??null,iconBg:"#dbeafe",
+    {label:"Mentions",value:avgMentions,prev:prev?.mentions??null,iconBg:"#dbeafe",iconStroke:"#2563eb",
       icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>},
-    {label:"Citations",value:avgCitations,prev:prev?.citations??null,iconBg:"#d1fae5",
+    {label:"Citations",value:avgCitations,prev:prev?.citations??null,iconBg:"#d1fae5",iconStroke:"#059669",
       icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>},
-    {label:"Sentiments",value:avgSentiment,prev:prevSentiment,iconBg:"#fef3c7",
+    {label:"Sentiments",value:avgSentiment,prev:prevSentiment,iconBg:"#fef3c7",iconStroke:"#d97706",
       icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>}
   ];
 
   return(<div>
-    {/* ═══ SECTION 1: OVERVIEW ═══ */}
+    {/* ═══ SECTION 1: SYSTEM DIAGNOSTICS ═══ */}
 
-    {/* 1a. Greeting header */}
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
-      <div>
-        <div style={{fontSize:24,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Hello, Aris</div>
-        <div style={{fontSize:13,fontWeight:400,color:C.muted,marginTop:2}}>GEO Dashboard for {r.clientData.brand}</div>
-      </div>
-      <div style={{fontSize:13,color:C.muted,marginTop:6}}>{today}</div>
+    {/* 1a. Section header */}
+    <div style={{marginBottom:20}}>
+      <div style={{fontSize:18,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>System Diagnostics</div>
+      <div style={{fontSize:13,color:C.muted,marginTop:3}}>At-a-glance health check for {r.clientData.brand}'s AI engine visibility</div>
     </div>
 
     {/* 1b. Three metric cards */}
-    <div style={{display:"flex",gap:14,marginBottom:48}}>
+    <div style={{display:"flex",gap:14,marginBottom:20}}>
       {metricCards.map(m=>(
         <Card key={m.label} style={{flex:1,padding:20}}>
-          <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
+          <div style={{display:"flex",gap:14,alignItems:"center"}}>
             <div style={{width:44,height:44,borderRadius:12,background:m.iconBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
               {m.icon}
             </div>
             <div style={{minWidth:0}}>
-              <div style={{fontSize:12,fontWeight:500,color:C.muted,letterSpacing:".02em",textTransform:"uppercase",marginBottom:6}}>{m.label}</div>
+              <div style={{fontSize:11,fontWeight:500,color:C.muted,letterSpacing:".03em",textTransform:"uppercase",marginBottom:4}}>{m.label}</div>
               <div style={{display:"flex",alignItems:"baseline",gap:8}}>
-                <span style={{fontSize:30,fontWeight:700,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>{m.value}<span style={{fontSize:16,fontWeight:500,color:C.muted}}>%</span></span>
+                <span style={{fontSize:28,fontWeight:700,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>{m.value}<span style={{fontSize:16,color:C.muted}}>%</span></span>
                 {delta(m.value,m.prev)}
               </div>
             </div>
@@ -1484,165 +1436,80 @@ function DashboardPage({r,history,goTo}){
       ))}
     </div>
 
-    {/* ═══ SECTION 2: SYSTEM DIAGNOSTICS ═══ */}
-    <div style={{marginBottom:48}}>
-      <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text,marginBottom:14}}>System Diagnostics</div>
-      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {diags.map((d,i)=>(
-          <div key={i} style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 16px",display:"flex",gap:10,alignItems:"flex-start"}}>
-            <span style={{fontSize:14,lineHeight:1,flexShrink:0}}>{d.icon}</span>
-            <span style={{fontSize:12,color:C.sub,lineHeight:1.6}}>{d.text}</span>
-          </div>
-        ))}
-      </div>
-      <div style={{fontSize:11,color:C.muted,marginTop:10}}>{diags.filter(d=>d.severity==="critical").length} critical · {diags.filter(d=>d.severity==="warning").length} warnings · {diags.filter(d=>d.severity==="good").length} healthy</div>
+    {/* 1c. Diagnostic insight cards */}
+    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+      {diags.map((d,i)=>(
+        <div key={i} style={{background:"#fff",border:`1px solid ${C.borderSoft}`,borderRadius:10,padding:"12px 16px",display:"flex",gap:10,alignItems:"flex-start",borderLeft:`3px solid ${sevColors[d.severity]||C.accent}`}}>
+          <span style={{fontSize:16,lineHeight:1,flexShrink:0}}>{d.icon}</span>
+          <span style={{fontSize:12,color:C.sub,lineHeight:1.5}}>{d.text}</span>
+        </div>
+      ))}
+    </div>
+    <div style={{fontSize:11,color:C.muted,marginTop:8}}>{diagCounts.critical} critical · {diagCounts.warning} warnings · {diagCounts.good} healthy</div>
+
+    {/* Section divider */}
+    <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"40px 0"}}/>
+
+    {/* ═══ SECTION 2: BRAND PERFORMANCE ═══ */}
+
+    {/* 2a. Section header */}
+    <div style={{marginBottom:20}}>
+      <div style={{fontSize:18,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>{r.clientData.brand} Performance</div>
+      <div style={{fontSize:13,color:C.muted,marginTop:3}}>Visibility breakdown by AI engine</div>
     </div>
 
-    {/* ═══ SECTION 3: PERFORMANCE TRACKER ═══ */}
-    <Card style={{marginBottom:48}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-        <span style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Performance</span>
-        <select value={perfMetric} onChange={e=>setPerfMetric(e.target.value)} style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${C.border}`,fontSize:12,color:C.text,background:"#fff",fontFamily:"inherit",cursor:"pointer",outline:"none"}}>
-          <option value="mentions">Mentions</option>
-          <option value="citations">Citations</option>
-          <option value="sentiments">Sentiments</option>
-        </select>
-      </div>
-      {renderPerfChart()}
-      <div style={{display:"flex",justifyContent:"center",gap:20,marginTop:10}}>
-        <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}><div style={{width:8,height:8,borderRadius:"50%",background:"#10A37F"}}/>ChatGPT</div>
-        <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}><div style={{width:8,height:8,borderRadius:"50%",background:"#4285F4"}}/>Gemini</div>
+    {/* 2b. Two engine score cards */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+      {r.engines.map((e,ei)=>{
+        const color=ei===0?"#10A37F":"#4285F4";
+        const Logo=ei===0?ChatGPTLogo:GeminiLogo;
+        const label=ei===0?"ChatGPT":"Gemini";
+        const sentVal=ei===0?(r.sentiment?.brand?.gpt):(r.sentiment?.brand?.gemini);
+        return(
+          <Card key={ei} style={{padding:20}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <Logo size={20}/>
+                <span style={{fontSize:14,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>{label}</span>
+              </div>
+              <span style={{fontSize:24,fontWeight:700,fontFamily:"'Outfit'",color}}>{e.score}%</span>
+            </div>
+            <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"14px 0"}}/>
+            {[
+              {l:"Mention Rate",v:e.mentionRate},
+              {l:"Citation Rate",v:e.citationRate},
+              {l:"Sentiment",v:sentVal}
+            ].map(row=>(
+              <div key={row.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0"}}>
+                <span style={{fontSize:12,color:C.muted}}>{row.l}</span>
+                <span style={{fontSize:14,fontWeight:600,color:C.text}}>{row.v!=null?row.v+"%":"\u2014"}</span>
+              </div>
+            ))}
+            <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"14px 0"}}/>
+            <div style={{width:"100%",height:4,borderRadius:2,background:C.bg}}>
+              <div style={{width:`${Math.max(2,e.score)}%`,height:4,borderRadius:2,background:color,transition:"width .8s ease-out"}}/>
+            </div>
+          </Card>
+        );
+      })}
+    </div>
+
+    {/* 2c. Overall visibility score */}
+    <Card style={{marginTop:16,padding:"16px 20px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <span style={{fontSize:13,fontWeight:500,color:C.muted}}>Overall Visibility Score</span>
+        <div style={{flex:1,margin:"0 24px",height:6,borderRadius:3,background:C.bg}}>
+          <div style={{width:`${Math.max(2,r.overall)}%`,height:6,borderRadius:3,background:C.accent,transition:"width .8s ease-out"}}/>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:20,fontWeight:700,fontFamily:"'Outfit'",color:C.text}}>{r.overall}%</span>
+          <span style={{fontSize:11,fontWeight:600,padding:"3px 10px",borderRadius:100,background:`${gradeColor(r.overall)}10`,color:gradeColor(r.overall)}}>{getGrade(r.overall)}</span>
+        </div>
       </div>
     </Card>
 
-    {/* ═══ SECTION 4: PLATFORM BREAKDOWN ═══ */}
-    <div style={{marginBottom:48}}>
-      <div style={{marginBottom:16}}>
-        <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Platform Breakdown</div>
-        <div style={{fontSize:12,color:C.muted,marginTop:2}}>How {r.clientData.brand} performs on each AI engine</div>
-      </div>
-
-      {/* 4b. Visibility bar chart */}
-      <Card style={{marginBottom:16}}>
-        <VisibilityChart engines={r.engines} overall={r.overall} brand={r.clientData.brand}/>
-      </Card>
-
-      {/* 4c. Query results table */}
-      <Card>
-        <div style={{fontSize:14,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text,marginBottom:14}}>Query Results</div>
-        {(()=>{
-          const allQueries=(r.engines[0]?.queries||[]).map((q,i)=>({query:q.query,gpt:q.status||"Absent",gemini:r.engines[1]?.queries?.[i]?.status||"Absent"}));
-          const statusLabel=(s)=>s==="Cited"?"\u2713 Cited":s==="Mentioned"?"\u25D0 Mentioned":"\u2717 Absent";
-          const statusColor=(s)=>s==="Cited"?C.green:s==="Mentioned"?C.amber:C.red;
-          return allQueries.length>0?(<div style={{borderRadius:8,overflow:"hidden",border:`1px solid ${C.border}`}}>
-            <div style={{display:"flex",padding:"8px 12px",background:C.bg,borderBottom:`2px solid ${C.border}`}}>
-              <div style={{flex:1,fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Query</div>
-              <div style={{width:90,textAlign:"center",fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>ChatGPT</div>
-              <div style={{width:90,textAlign:"center",fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Gemini</div>
-            </div>
-            {allQueries.map((q,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",padding:"10px 12px",borderBottom:i<allQueries.length-1?`1px solid ${C.borderSoft}`:"none"}}>
-                <div style={{flex:1,fontSize:12,color:C.text}}>"{q.query}"</div>
-                <div style={{width:90,textAlign:"center"}}><span style={{fontSize:11,fontWeight:500,color:statusColor(q.gpt)}}>{statusLabel(q.gpt)}</span></div>
-                <div style={{width:90,textAlign:"center"}}><span style={{fontSize:11,fontWeight:500,color:statusColor(q.gemini)}}>{statusLabel(q.gemini)}</span></div>
-              </div>
-            ))}
-          </div>):(<div style={{textAlign:"center",padding:24,color:C.muted,fontSize:12}}>No query data available</div>);
-        })()}
-      </Card>
-    </div>
-
-    {/* ═══ SECTION 5: SHARE OF VOICE ═══ */}
-    <div style={{marginBottom:48}}>
-      <div style={{marginBottom:16}}>
-        <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Share of Voice</div>
-        <div style={{fontSize:12,color:C.muted,marginTop:2}}>{r.clientData.brand} vs competitors across key metrics</div>
-      </div>
-      {(()=>{
-        const allBrands=[{name:r.clientData.brand,website:r.clientData.website,mentionRate:avgMentions,citationRate:avgCitations,color:C.accent},...(r.competitors||[]).map((c,i)=>{const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);return{name:c.name,website:compObj?compObj.website:"",mentionRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length):c.score,citationRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length*.6):Math.round(c.score*.6),color:["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]};})];
-        const sentimentBrands=[{name:r.clientData.brand,sentimentScore:r.sentiment?.brand?.avg||50,color:C.accent},...(r.sentiment?.competitors||[]).map((c,i)=>({name:c.name,sentimentScore:c.avg||50,color:["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]}))];
-        return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
-          <ShareOfVoiceSection title="Share of Mentions" rankTitle="Mention Rate" brands={allBrands} metricKey="mentionRate"/>
-          <ShareOfVoiceSection title="Share of Citations" rankTitle="Citation Rate" brands={allBrands} metricKey="citationRate"/>
-          <ShareOfVoiceSection title="Share of Sentiments" rankTitle="Sentiment Score" brands={sentimentBrands} metricKey="sentimentScore"/>
-        </div>);
-      })()}
-    </div>
-
-    {/* ═══ SECTION 6: COMPETITOR DEEP DIVE ═══ */}
-    {r.competitors.length>0&&(()=>{
-      const compBrands=[{name:r.clientData.brand,score:avgMentions},...r.competitors.map(c=>({name:c.name,score:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length):c.score}))].sort((a,b)=>b.score-a.score);
-      const brandRank=compBrands.findIndex(b=>b.name===r.clientData.brand)+1;
-      return(<div style={{marginBottom:48}}>
-        <div style={{marginBottom:16}}>
-          <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Competitor Deep Dive</div>
-          <div style={{fontSize:12,color:C.muted,marginTop:2}}>Looking under the hood — how competitors stack up on AI engines</div>
-        </div>
-        {r.competitors.map((c,ci)=>{
-          const isOpen=expandedComp===ci;
-          const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);
-          const compWebsite=compObj?compObj.website:"";
-          const cMention=c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length):c.score;
-          const cCitation=c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length*.6):Math.round(c.score*.6);
-          const sentComp=(r.sentiment?.competitors||[]).find(sc=>sc.name?.toLowerCase()===c.name?.toLowerCase());
-          const cSentiment=sentComp?.avg||null;
-          const colorVal=(val,ref)=>!val&&val!==0?C.muted:val>ref+5?C.green:val<ref-5?C.red:C.text;
-          const compColor=["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][ci%5];
-          return(
-            <Card key={ci} style={{marginBottom:10,padding:0,overflow:"hidden"}}>
-              <div onClick={()=>setExpandedComp(isOpen?null:ci)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px",cursor:"pointer"}}>
-                <div style={{display:"flex",alignItems:"center",gap:12}}>
-                  <BrandLogo name={c.name} website={compWebsite} size={36} color={compColor}/>
-                  <div>
-                    <div style={{fontSize:14,fontWeight:500,color:C.text}}>{c.name}</div>
-                    {compWebsite&&<div style={{fontSize:11,color:C.muted}}>{compWebsite.replace(/^https?:\/\//,"").replace(/\/$/,"")}</div>}
-                  </div>
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:20}}>
-                  <div style={{textAlign:"center"}}><div style={{fontSize:9,color:C.muted,textTransform:"uppercase",marginBottom:2}}>Mentions</div><div style={{fontSize:16,fontWeight:600,fontFamily:"'Outfit'",color:colorVal(cMention,avgMentions)}}>{cMention}%</div></div>
-                  <div style={{textAlign:"center"}}><div style={{fontSize:9,color:C.muted,textTransform:"uppercase",marginBottom:2}}>Citations</div><div style={{fontSize:16,fontWeight:600,fontFamily:"'Outfit'",color:colorVal(cCitation,avgCitations)}}>{cCitation}%</div></div>
-                  <div style={{textAlign:"center"}}><div style={{fontSize:9,color:C.muted,textTransform:"uppercase",marginBottom:2}}>Sentiment</div><div style={{fontSize:16,fontWeight:600,fontFamily:"'Outfit'",color:cSentiment!==null?colorVal(cSentiment,avgSentiment):C.muted}}>{cSentiment!==null?cSentiment+"%":"\u2014"}</div></div>
-                  <span style={{fontSize:10,color:C.muted,marginLeft:4}}>{isOpen?"\u25B2":"\u25BC"}</span>
-                </div>
-              </div>
-              {isOpen&&<>
-                <div style={{borderTop:`1px solid ${C.borderSoft}`,padding:"16px 20px"}}>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-                    <div>
-                      <div style={{fontSize:12,fontWeight:500,color:C.text,marginBottom:12}}>Performance vs {r.clientData.brand}</div>
-                      {[{label:"Mentions",brand:avgMentions,comp:cMention},{label:"Citations",brand:avgCitations,comp:cCitation},{label:"Sentiment",brand:avgSentiment,comp:cSentiment||50}].map(m=>(
-                        <div key={m.label} style={{marginBottom:12}}>
-                          <div style={{fontSize:11,fontWeight:500,color:C.muted,marginBottom:4}}>{m.label}</div>
-                          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
-                            <span style={{fontSize:10,color:C.accent,minWidth:50}}>{r.clientData.brand.split(" ")[0]}</span>
-                            <div style={{flex:1,height:6,background:C.borderSoft,borderRadius:3}}><div style={{width:`${Math.max(2,m.brand)}%`,height:6,background:C.accent,borderRadius:3}}/></div>
-                            <span style={{fontSize:10,fontWeight:600,color:C.text,minWidth:28,textAlign:"right"}}>{m.brand}%</span>
-                          </div>
-                          <div style={{display:"flex",alignItems:"center",gap:8}}>
-                            <span style={{fontSize:10,color:compColor,minWidth:50}}>{c.name.split(" ")[0]}</span>
-                            <div style={{flex:1,height:6,background:C.borderSoft,borderRadius:3}}><div style={{width:`${Math.max(2,m.comp)}%`,height:6,background:compColor,borderRadius:3}}/></div>
-                            <span style={{fontSize:10,fontWeight:600,color:C.text,minWidth:28,textAlign:"right"}}>{m.comp}%</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div>
-                      <div style={{fontSize:12,fontWeight:500,color:C.text,marginBottom:12}}>Insights</div>
-                      {sentComp?.summary?<div style={{fontSize:11,color:C.sub,lineHeight:1.6,padding:"10px 12px",background:C.bg,borderRadius:8}}>{sentComp.summary}</div>
-                      :c.topStrength&&c.topStrength!=="N/A"?<div style={{fontSize:11,color:C.sub,lineHeight:1.6,padding:"10px 12px",background:C.bg,borderRadius:8}}>Top strength: {c.topStrength}</div>
-                      :<div style={{fontSize:11,color:C.muted,lineHeight:1.6,padding:"10px 12px",background:C.bg,borderRadius:8}}>Run a deeper audit to unlock competitor insights</div>}
-                    </div>
-                  </div>
-                </div>
-              </>}
-            </Card>
-          );
-        })}
-        <div style={{background:C.bg,borderRadius:10,padding:"12px 16px",marginTop:8}}>
-          <span style={{fontSize:12,color:C.sub}}>{r.clientData.brand} ranks <strong>#{brandRank}</strong> out of {compBrands.length} brands for overall AI visibility</span>
-        </div>
-      </div>);
-    })()}
+    {/* Section divider */}
+    <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"40px 0"}}/>
 
   </div>);
 }
