@@ -252,6 +252,7 @@ Rules:
 - If a topic contains a brand name, rephrase it as a generic category query
 - Vary the angle: if the topic is about "best X", make one a comparison and another a recommendation request
 - Make them specific to ${region} where relevant
+- All queries must be in English — do not translate to local languages
 - Total must be exactly ${topicsToUse.length * 2}`;
 
   const queryGenRaw = await callOpenAI(queryGenPrompt, "You generate search queries for testing AI engine visibility. Queries must be generic and must never include any brand or company names. Return ONLY valid JSON, no markdown fences.");
@@ -471,7 +472,8 @@ Brand: "${brand}" in ${industry} (${region}).
 Website signals: ${crawlSummary.slice(0, 400)}
 This brand's visibility on YOUR engine: ${mentionRate}% mentioned, ${citationRate}% cited out of ${searchQueries.length} real queries tested.
 
-Give 3 strengths and 3 weaknesses for why this brand performs this way specifically on ${engineName} for ${region}-based users. Consider whether the brand has strong regional presence, local-language content, and relevance to ${region} audiences. Be specific and actionable.
+Give 3 strengths and 3 weaknesses for why this brand performs this way specifically on ${engineName} for ${region}-based users. Consider whether the brand has strong regional presence, region-specific content, and relevance to ${region} audiences. Be specific and actionable.
+Respond in English only. The region context is for market relevance only, not for language.
 Return JSON only:
 {"strengths":["...","...","..."],"weaknesses":["...","...","..."]}`;
 
@@ -522,6 +524,7 @@ Return JSON only:
   "competitors": [{"name": "<competitor>", "score": <0-100>, "summary": "<1 sentence about their ${region} reputation>"}]
 }
 
+Respond in English only. The region context is for market relevance only, not for language.
 Be accurate. Base this on real market perception in ${region}, not global speculation. A brand nobody in ${region} has heard of should score 40-50 (neutral), not high.`;
 
   const [sentGptRaw, sentGemRaw]=await Promise.all([
@@ -561,7 +564,7 @@ Competitors: ${compNames.map((n,i)=>`${n}${compUrls[i]?" ("+compUrls[i]+")":""}`
 
 CRITICAL: Score ALL competitors based ONLY on their presence, reputation, and market share in ${region}. A globally known brand that is not available or not popular in ${region} should score VERY LOW. If a competitor does not operate in ${region}, score them near 0. Regional availability and local market dominance matter more than global brand recognition.
 
-Evaluate each competitor's online presence targeting ${region}. Check if their website has ${region}-specific content, local language support, regional pricing, and local testimonials. Score based on their ${region} presence, not their global presence.
+Evaluate each competitor's online presence targeting ${region}. Check if their website has ${region}-specific content, regional pricing, and local testimonials. Score based on their ${region} presence, not their global presence. Respond in English only.
 
 Based on the actual crawl data, score each competitor. Return JSON:
 {
@@ -609,7 +612,7 @@ Use the crawl data to give accurate scores. If a competitor has better schema ma
 
 ${crawlSummary}
 
-Evaluate each category based on how well "${brand}" targets the ${region} market. Consider whether the website has ${region}-specific content, local language support, regional pricing, and local testimonials. A website with no ${region}-specific presence should score lower on Content Authority and E-E-A-T even if it has strong global content.
+Evaluate each category based on how well "${brand}" targets the ${region} market. Consider whether the website has ${region}-specific content, regional pricing, and local testimonials. A website with no ${region}-specific presence should score lower on Content Authority and E-E-A-T even if it has strong global content. Respond in English only.
 
 Score each AEO category 0-100. Return JSON:
 {
@@ -642,9 +645,9 @@ Use severity: "critical" if <30, "warning" if 30-60, "good" if >60. Base scores 
   onProgress("Generating user archetypes...",48);
   const archPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}, competitors: ${compNames.join(", ")||"none"}.
 
-Generate archetypes for ${industry} customers specifically in ${region}. Use local demographics, local behaviors, and regional context. The archetypes should reflect real user personas in ${region} — their local needs, purchasing habits, and how they search for ${industry} solutions in their region.
+Generate archetypes for ${industry} customers specifically in ${region}. Use regional demographics, local behaviors, and regional context. The archetypes should reflect real user personas in ${region} — their local needs, purchasing habits, and how they search for ${industry} solutions in their region.
 
-Create 2-3 stakeholder groups with 2-3 archetypes each. Each archetype needs a 4-stage customer journey with 2-3 prompts per stage. Prompts should be what a user in ${region} would actually type, using local language patterns and regional context.
+Create 2-3 stakeholder groups with 2-3 archetypes each. Each archetype needs a 4-stage customer journey with 2-3 prompts per stage. Prompts should be what a user in ${region} would actually type — use regional context (local competitors, local pricing, local market dynamics) but always write in English.
 
 For each prompt, assess: would ChatGPT mention/cite ${brand}? Would Gemini?
 
@@ -680,7 +683,8 @@ Return JSON:
   ]
 }
 
-Be accurate for ${region}. All demographics, behaviors, and prompts must reflect ${region}-specific context — use local currency, local regulations, local language patterns. ${brand} likely has low visibility on most prompts — use "Absent" where appropriate. ChatGPT and Gemini may differ.`;
+IMPORTANT: All output must be in English. Do not translate or localize the language. Use regional context (local competitors, local pricing, local regulations, local currency) but always respond in English.
+Be accurate for ${region}. All demographics, behaviors, and prompts must reflect ${region}-specific context. ${brand} likely has low visibility on most prompts — use "Absent" where appropriate. ChatGPT and Gemini may differ.`;
   const archRaw=await callOpenAI(archPrompt, engineSystemPrompt);
   const archData=safeJSON(archRaw)||{stakeholders:[]};
 
@@ -716,7 +720,7 @@ Be accurate. "Cited" = you would link to their website. "Mentioned" = you'd name
   const intentPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}.
 Competitors: ${compNames.join(", ")}.
 
-IMPORTANT: Generate prompts that users in ${region} would actually type. Use local language patterns, local currency, local regulations where relevant. A user in ${region} searching for ${industry} solutions will phrase queries differently than a user in the US or UK — reflect that regional context in every prompt.
+IMPORTANT: Generate prompts that users in ${region} would actually type. Use regional context (local competitors, local currency, local regulations) but always write prompts in English. A user in ${region} searching for ${industry} solutions will reference regional specifics — reflect that in every prompt. All output must be in English.
 
 Create an intent funnel with 4 stages. For each stage, list 6-8 realistic prompts a real user in ${region} would actually type into ChatGPT or Gemini. For each prompt:
 1. Assess whether each engine would mention or cite ${brand}
@@ -797,14 +801,14 @@ Return JSON:
   {"channel":"Academic/Research Citations","status":"Active"|"Needs Work"|"Not Present","finding":"<detail>","priority":"High"|"Medium"|"Low","action":"<recommendation>"}
 ]}
 
-Be accurate for the ${region} market. Only "Active" if ${brand} has verifiable presence on these channels in ${region}. Recommendations should be specific to ${region}.`;
+Be accurate for the ${region} market. Only "Active" if ${brand} has verifiable presence on these channels in ${region}. Recommendations should be specific to ${region}. Respond in English only.`;
     const gapRaw=await callGemini(gapPrompt, engineSystemPrompt);
     const gapData=safeJSON(gapRaw);
     if(gapData&&gapData.channels)chData.channels=[...chData.channels,...gapData.channels];
   }else{
     const channelPrompt=`For "${brand}" (website: ${cd.website||"unknown"}) in ${industry} (${region}):
 Website crawl: ${crawlSummary}
-Evaluate channel presence specifically in ${region}. Consider regional platforms, local review sites, and ${region}-specific directories. A channel that exists globally but has no ${region} presence should be "Needs Work".
+Evaluate channel presence specifically in ${region}. Consider regional platforms, local review sites, and ${region}-specific directories. A channel that exists globally but has no ${region} presence should be "Needs Work". Respond in English only.
 Determine channel presence. Return JSON:
 {"channels":[
   {"channel":"Wikipedia","status":"Active"|"Needs Work"|"Not Present","finding":"<detail>","priority":"High"|"Medium"|"Low","action":"<rec>"},
@@ -852,7 +856,7 @@ Return JSON:
   ]
 }
 
-Suggest content strategies relevant to the ${region} market. Content should target ${region}-based audiences, use local language and cultural context, and address regional ${industry} trends. Prioritize channels and formats that are popular in ${region}.
+Suggest content strategies relevant to the ${region} market. Content should target ${region}-based audiences, address regional ${industry} trends, and reference local market dynamics. Prioritize channels and formats that are popular in ${region}. All output must be in English — do not translate or localize the language.
 
 IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, markup), video, social, PR, research, partnerships. Vary the owners — dev team for technical, PR for outreach, analytics for research. Each content type must tie back to a specific finding from the audit.`;
 
@@ -923,7 +927,7 @@ Return JSON:
   }
 }
 
-Each department: 3-5 specific tasks that directly address the audit findings above. Reference actual issues found. All tasks must be tailored to the ${region} market — include regional content creation, local partnerships, ${region}-specific PR outreach, and local language optimisation where applicable.`;
+Each department: 3-5 specific tasks that directly address the audit findings above. Reference actual issues found. All tasks must be tailored to the ${region} market — include regional content creation, local partnerships, and ${region}-specific PR outreach. Respond in English only.`;
   const roadRaw=await callOpenAI(roadmapPrompt, engineSystemPrompt);
   const roadData=safeJSON(roadRaw)||null;
 
@@ -1225,7 +1229,7 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     if(!brandName||brandName.trim().length<2||autoFilling)return;
     setAutoFilling(true);
     try{
-      const prompt=`I need information about the company or brand called "${brandName.trim()}".\n\nReturn JSON only:\n{\n  "website": "https://example.com",\n  "industry": "the primary industry (1-3 words, e.g. Telecommunications, SaaS, E-commerce)",\n  "region": "primary operating region (e.g. Malaysia, United States, Global, Southeast Asia)",\n  "competitors": [\n    {"name": "Competitor 1", "website": "https://competitor1.com"},\n    {"name": "Competitor 2", "website": "https://competitor2.com"},\n    {"name": "Competitor 3", "website": "https://competitor3.com"}\n  ],\n  "topics": ["search query 1", "search query 2", "search query 3", "search query 4", "search query 5"]\n}\n\nRules:\n- Website must be the MAIN company website, not Wikipedia or social\n- Return the top 3 direct competitors that actively compete with this brand in their primary operating region. Competitors must actually operate and be available in that region — do not list globally known brands that have no presence in the brand's market\n- Topics must be 5 realistic search queries a potential customer in the brand's region would type into ChatGPT or Gemini when looking for this type of product or service\n- Topics must NOT contain the brand name "${brandName.trim()}" or any competitor names\n- Topics should sound like natural searches e.g. "best credit cards with travel rewards in UAE", "low interest personal loan providers in Abu Dhabi", "which cloud hosting is best for startups"\n- Mix of: "best/top" queries, comparison queries, problem-solving queries, pricing queries\n- Make topics specific to the company's operating region — use local context, local currency, local regulations\n- If unsure about the brand, make your best guess based on the name`;
+      const prompt=`I need information about the company or brand called "${brandName.trim()}".\n\nReturn JSON only:\n{\n  "website": "https://example.com",\n  "industry": "the primary industry (1-3 words, e.g. Telecommunications, SaaS, E-commerce)",\n  "region": "primary operating region (e.g. Malaysia, United States, Global, Southeast Asia)",\n  "competitors": [\n    {"name": "Competitor 1", "website": "https://competitor1.com"},\n    {"name": "Competitor 2", "website": "https://competitor2.com"},\n    {"name": "Competitor 3", "website": "https://competitor3.com"}\n  ],\n  "topics": ["search query 1", "search query 2", "search query 3", "search query 4", "search query 5"]\n}\n\nRules:\n- Website must be the MAIN company website, not Wikipedia or social\n- Return the top 3 direct competitors that actively compete with this brand in their primary operating region. Competitors must actually operate and be available in that region — do not list globally known brands that have no presence in the brand's market\n- Topics must be 5 realistic search queries a potential customer in the brand's region would type into ChatGPT or Gemini when looking for this type of product or service\n- Topics must NOT contain the brand name "${brandName.trim()}" or any competitor names\n- Topics should sound like natural searches e.g. "best credit cards with travel rewards in UAE", "low interest personal loan providers in Abu Dhabi", "which cloud hosting is best for startups"\n- Mix of: "best/top" queries, comparison queries, problem-solving queries, pricing queries\n- Make topics specific to the company's operating region — reference local competitors, local currency, local regulations\n- All output must be in English. Do not translate to local languages\n- If unsure about the brand, make your best guess based on the name`;
       const raw=await callGemini(prompt,"You are a business intelligence assistant. Return ONLY valid JSON, no markdown fences.");
       const result=safeJSON(raw);
       if(result){
@@ -1264,7 +1268,7 @@ function NewAuditPage({data,setData,onRun,history=[]}){
 
 Generate 8-12 key topics that are most relevant for measuring this brand's AI engine visibility (AEO - Answer Engine Optimisation). These should be specific topics that real users in ${data.region||"Global"} would ask AI engines about in ${data.industry}.
 
-Topics must reflect ${data.region||"Global"} context — use local language patterns, local currency, local regulations, and regional market conditions where relevant. A topic about pricing should reference local currency. A topic about regulations should reference local laws.
+Topics must reflect ${data.region||"Global"} context — reference local currency, local regulations, and regional market conditions where relevant. A topic about pricing should reference local currency. A topic about regulations should reference local laws. All topics must be written in English — do not translate to local languages.
 
 Focus on:
 - Core product/service topics relevant in ${data.region||"Global"}
@@ -1299,7 +1303,7 @@ Return ONLY a JSON array of strings, no markdown, no explanation:
 
 I already have these topics: ${existing}
 
-Generate 5 MORE different topics that are also relevant for measuring AI engine visibility in ${data.region||"Global"}. These should NOT duplicate existing topics. Focus on gaps or angles not yet covered. Topics must reflect ${data.region||"Global"} context — use local language patterns, local currency, and regional market conditions.
+Generate 5 MORE different topics that are also relevant for measuring AI engine visibility in ${data.region||"Global"}. These should NOT duplicate existing topics. Focus on gaps or angles not yet covered. Topics must reflect ${data.region||"Global"} context — reference local currency and regional market conditions. All topics must be in English.
 
 Return ONLY a JSON array of strings:
 ["new topic 1", "new topic 2", ...]`;
@@ -2096,6 +2100,7 @@ Brand: "${r.clientData.brand}" in ${r.clientData.industry} (${r.clientData.websi
 4. Suggest an optimised version of this prompt that ${r.clientData.brand} should create content to target for ${r.clientData.region||"Global"} audiences.
 5. Give a content tip for winning this prompt in ${r.clientData.region||"Global"}.
 
+Respond in English only.
 Return JSON only:
 {"status":"Cited"|"Mentioned"|"Absent","reason":"<1-sentence>","weight":<1-10>,"triggerWords":["word1","word2"],"optimisedPrompt":"<version to target>","contentTip":"<what content to create>"}`;
       const[gptRaw,gemRaw]=await Promise.all([callOpenAI(testPr),callGemini(testPr)]);
