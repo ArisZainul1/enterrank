@@ -851,8 +851,6 @@ function LoginForm({onSubmit,error,loading}){
 const NAV_ITEMS=[
   {group:"Analytics",items:[
     {id:"dashboard",label:"Dashboard",icon:"grid"},
-    {id:"engines",label:"Engine Details",icon:"grid"},
-    {id:"diagnostics",label:"Diagnostics",icon:"activity"},
     {id:"archetypes",label:"User Archetypes",icon:"users"},
     {id:"intent",label:"Intent Pathway",icon:"route"},
   ]},
@@ -1347,6 +1345,7 @@ Return ONLY a JSON array of strings:
 /* ─── PAGE: DASHBOARD ─── */
 function DashboardPage({r,history,goTo}){
   const[perfMetric,setPerfMetric]=useState("mentions");
+  const[expandedComp,setExpandedComp]=useState(null);
 
   // ── Metric calculations ──
   const avgMentions=Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length);
@@ -1558,6 +1557,81 @@ function DashboardPage({r,history,goTo}){
         </div>);
       })()}
     </div>
+
+    {/* ═══ SECTION 6: COMPETITOR DEEP DIVE ═══ */}
+    {r.competitors.length>0&&(()=>{
+      const compBrands=[{name:r.clientData.brand,score:avgMentions},...r.competitors.map(c=>({name:c.name,score:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length):c.score}))].sort((a,b)=>b.score-a.score);
+      const brandRank=compBrands.findIndex(b=>b.name===r.clientData.brand)+1;
+      return(<div style={{marginBottom:48}}>
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Competitor Deep Dive</div>
+          <div style={{fontSize:12,color:C.muted,marginTop:2}}>Looking under the hood — how competitors stack up on AI engines</div>
+        </div>
+        {r.competitors.map((c,ci)=>{
+          const isOpen=expandedComp===ci;
+          const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);
+          const compWebsite=compObj?compObj.website:"";
+          const cMention=c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length):c.score;
+          const cCitation=c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length*.6):Math.round(c.score*.6);
+          const sentComp=(r.sentiment?.competitors||[]).find(sc=>sc.name?.toLowerCase()===c.name?.toLowerCase());
+          const cSentiment=sentComp?.avg||null;
+          const colorVal=(val,ref)=>!val&&val!==0?C.muted:val>ref+5?C.green:val<ref-5?C.red:C.text;
+          const compColor=["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][ci%5];
+          return(
+            <Card key={ci} style={{marginBottom:10,padding:0,overflow:"hidden"}}>
+              <div onClick={()=>setExpandedComp(isOpen?null:ci)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px",cursor:"pointer"}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <BrandLogo name={c.name} website={compWebsite} size={36} color={compColor}/>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:500,color:C.text}}>{c.name}</div>
+                    {compWebsite&&<div style={{fontSize:11,color:C.muted}}>{compWebsite.replace(/^https?:\/\//,"").replace(/\/$/,"")}</div>}
+                  </div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:20}}>
+                  <div style={{textAlign:"center"}}><div style={{fontSize:9,color:C.muted,textTransform:"uppercase",marginBottom:2}}>Mentions</div><div style={{fontSize:16,fontWeight:600,fontFamily:"'Outfit'",color:colorVal(cMention,avgMentions)}}>{cMention}%</div></div>
+                  <div style={{textAlign:"center"}}><div style={{fontSize:9,color:C.muted,textTransform:"uppercase",marginBottom:2}}>Citations</div><div style={{fontSize:16,fontWeight:600,fontFamily:"'Outfit'",color:colorVal(cCitation,avgCitations)}}>{cCitation}%</div></div>
+                  <div style={{textAlign:"center"}}><div style={{fontSize:9,color:C.muted,textTransform:"uppercase",marginBottom:2}}>Sentiment</div><div style={{fontSize:16,fontWeight:600,fontFamily:"'Outfit'",color:cSentiment!==null?colorVal(cSentiment,avgSentiment):C.muted}}>{cSentiment!==null?cSentiment+"%":"\u2014"}</div></div>
+                  <span style={{fontSize:10,color:C.muted,marginLeft:4}}>{isOpen?"\u25B2":"\u25BC"}</span>
+                </div>
+              </div>
+              {isOpen&&<>
+                <div style={{borderTop:`1px solid ${C.borderSoft}`,padding:"16px 20px"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+                    <div>
+                      <div style={{fontSize:12,fontWeight:500,color:C.text,marginBottom:12}}>Performance vs {r.clientData.brand}</div>
+                      {[{label:"Mentions",brand:avgMentions,comp:cMention},{label:"Citations",brand:avgCitations,comp:cCitation},{label:"Sentiment",brand:avgSentiment,comp:cSentiment||50}].map(m=>(
+                        <div key={m.label} style={{marginBottom:12}}>
+                          <div style={{fontSize:11,fontWeight:500,color:C.muted,marginBottom:4}}>{m.label}</div>
+                          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                            <span style={{fontSize:10,color:C.accent,minWidth:50}}>{r.clientData.brand.split(" ")[0]}</span>
+                            <div style={{flex:1,height:6,background:C.borderSoft,borderRadius:3}}><div style={{width:`${Math.max(2,m.brand)}%`,height:6,background:C.accent,borderRadius:3}}/></div>
+                            <span style={{fontSize:10,fontWeight:600,color:C.text,minWidth:28,textAlign:"right"}}>{m.brand}%</span>
+                          </div>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <span style={{fontSize:10,color:compColor,minWidth:50}}>{c.name.split(" ")[0]}</span>
+                            <div style={{flex:1,height:6,background:C.borderSoft,borderRadius:3}}><div style={{width:`${Math.max(2,m.comp)}%`,height:6,background:compColor,borderRadius:3}}/></div>
+                            <span style={{fontSize:10,fontWeight:600,color:C.text,minWidth:28,textAlign:"right"}}>{m.comp}%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <div style={{fontSize:12,fontWeight:500,color:C.text,marginBottom:12}}>Insights</div>
+                      {sentComp?.summary?<div style={{fontSize:11,color:C.sub,lineHeight:1.6,padding:"10px 12px",background:C.bg,borderRadius:8}}>{sentComp.summary}</div>
+                      :c.topStrength&&c.topStrength!=="N/A"?<div style={{fontSize:11,color:C.sub,lineHeight:1.6,padding:"10px 12px",background:C.bg,borderRadius:8}}>Top strength: {c.topStrength}</div>
+                      :<div style={{fontSize:11,color:C.muted,lineHeight:1.6,padding:"10px 12px",background:C.bg,borderRadius:8}}>Run a deeper audit to unlock competitor insights</div>}
+                    </div>
+                  </div>
+                </div>
+              </>}
+            </Card>
+          );
+        })}
+        <div style={{background:C.bg,borderRadius:10,padding:"12px 16px",marginTop:8}}>
+          <span style={{fontSize:12,color:C.sub}}>{r.clientData.brand} ranks <strong>#{brandRank}</strong> out of {compBrands.length} brands for overall AI visibility</span>
+        </div>
+      </div>);
+    })()}
 
   </div>);
 }
@@ -2633,8 +2707,6 @@ export default function App(){
       <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto"}}>
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={run} history={history}/>}
         {(step==="dashboard"||step==="audit")&&results&&<DashboardPage r={results} history={history} goTo={setStep}/>}
-        {step==="diagnostics"&&results&&<DiagnosticsPage r={results} goTo={setStep}/>}
-        {step==="engines"&&results&&<EnginesPage r={results} goTo={setStep}/>}
         {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep}/>}
         {step==="intent"&&results&&<IntentPage r={results} goTo={setStep}/>}
         {step==="playbook"&&results&&<PlaybookPage r={results} goTo={setStep}/>}
