@@ -177,8 +177,8 @@ async function crawlWebsite(url){
     if(isLocal)return null; // crawl only works on Vercel
     const res=await fetch("/api/crawl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url})});
     const data=await res.json();
-    if(data.error)return null;
-    return data;
+    if(data.error&&!data.domain)return null;
+    return{mainPage:data};
   }catch(e){console.error("Crawl error for "+url+":",e);return null;}
 }
 
@@ -193,37 +193,34 @@ async function verifyChannels(brand, website, industry, region){
   }catch(e){console.error("Channel verification error:",e);return null;}
 }
 
-function summariseCrawl(crawl){
-  if(!crawl||!crawl.mainPage)return"No crawl data available.";
-  const mp=crawl.mainPage;
-  const parts=[];
-  parts.push(`Title: "${mp.title}"`);
-  if(mp.metaDescription)parts.push(`Meta description: "${mp.metaDescription}"`);
-  if(mp.schemas&&mp.schemas.length>0)parts.push(`Schema markup: ${mp.schemas.join(", ")}`);
-  else parts.push("No JSON-LD schema markup detected.");
-  if(mp.headings){
-    if(mp.headings.h1s.length>0)parts.push(`H1: ${mp.headings.h1s.slice(0,3).join(" | ")}`);
-    parts.push(`H2 count: ${mp.headings.h2s.length}, H3 count: ${mp.headings.h3Count}`);
+function summariseCrawl(crawlResult){
+  const d=crawlResult?.mainPage;
+  if(!d)return"No crawl data available.";
+  const signals=[];
+  signals.push(`Website: ${d.domain} | Title: ${d.title}`);
+  signals.push(`Content: ${d.totalWordCount?.toLocaleString()||d.homepageWordCount?.toLocaleString()||"unknown"} total words across ${d.totalPagesAnalyzed||1} pages`);
+  if(d.schemas?.length>0)signals.push(`Schema markup: ${d.schemas.join(", ")}`);
+  else signals.push("No schema markup detected");
+  if(d.aeoSignals){
+    const aeo=d.aeoSignals;
+    const has=[],missing=[];
+    if(aeo.faqSchema)has.push("FAQ schema");else missing.push("FAQ schema");
+    if(aeo.articleSchema)has.push("Article schema");else missing.push("Article schema");
+    if(aeo.orgSchema)has.push("Organization schema");else missing.push("Organization schema");
+    if(aeo.authorInfo)has.push("Author attribution");else missing.push("Author attribution");
+    if(aeo.trustSignals)has.push("Trust signals");else missing.push("Trust signals");
+    if(aeo.video)has.push("Video content");else missing.push("Video content");
+    if(aeo.breadcrumbs)has.push("Breadcrumbs");else missing.push("Breadcrumbs");
+    if(aeo.hasBlog)has.push("Blog/content hub");else missing.push("Blog/content hub");
+    if(aeo.hasFaqPage)has.push("FAQ page");else missing.push("FAQ page");
+    if(has.length>0)signals.push(`AEO signals present: ${has.join(", ")}`);
+    if(missing.length>0)signals.push(`AEO signals missing: ${missing.join(", ")}`);
   }
-  parts.push(`Word count: ${mp.wordCount||0}`);
-  parts.push(`Internal links: ${mp.internalLinks||0}`);
-  if(mp.hasOpenGraph)parts.push("Has Open Graph tags ✓"); else parts.push("Missing Open Graph tags ✗");
-  if(mp.hasTwitterCard)parts.push("Has Twitter Card ✓"); else parts.push("Missing Twitter Card ✗");
-  if(mp.hasFAQMarkup)parts.push("Has FAQ schema ✓"); else parts.push("No FAQ schema ✗");
-  if(mp.hasArticleMarkup)parts.push("Has Article/Blog schema ✓"); else parts.push("No Article schema ✗");
-  if(mp.hasAuthorInfo)parts.push("Author info detected ✓"); else parts.push("No author info ✗");
-  if(mp.hasTrustSignals)parts.push("Trust signals detected (awards/certs) ✓"); else parts.push("No trust signals ✗");
-  if(mp.hasTestimonials)parts.push("Testimonials/reviews detected ✓"); else parts.push("No testimonials ✗");
-  if(mp.hasVideo)parts.push("Video content detected ✓"); else parts.push("No video content ✗");
-  parts.push(`Images: ${mp.imageCount||0}, Tables: ${mp.tableCount||0}, Lists: ${mp.listCount||0}`);
-  // Sub-pages
-  const sp=crawl.subPages||{};
-  if(sp.blog)parts.push(`Blog/resources page found at ${sp.blog.url} (${sp.blog.wordCount||0} words)`);
-  else parts.push("No blog/resources section found.");
-  if(sp.about)parts.push(`About page found at ${sp.about.url}`);
-  if(sp.faq)parts.push(`FAQ page found at ${sp.faq.url}`);
-  if(sp.products)parts.push(`Products/services page found at ${sp.products.url}`);
-  return parts.join("\n");
+  signals.push(`Structure: ${d.contentStructure?.h1Count||0} H1s, ${d.contentStructure?.h2Count||0} H2s, ${d.contentStructure?.h3Count||0} H3s`);
+  signals.push(`Links: ${d.internalLinks||0} internal, ${d.externalLinks||0} external`);
+  signals.push(`Media: ${d.contentStructure?.imageCount||0} images, ${d.contentStructure?.tableCount||0} tables`);
+  if(d.subPages?.length>0)signals.push(`Sub-pages found: ${d.subPages.map(sp=>sp.title||sp.url.split("/").pop()).join(", ")}`);
+  return signals.join("\n");
 }
 
 async function runRealAudit(cd, onProgress){
@@ -1974,6 +1971,28 @@ function DashboardPage({r,history,goTo}){
         return diff>0?C.red:C.green;
       };
 
+      const crawlSignals=[
+        {key:"schemaMarkup",label:"Schema Markup (JSON-LD)",weight:"Critical",desc:"Structured data that AI engines parse directly",check:d=>d?.aeoSignals?.schemaMarkup||(d?.schemas?.length||0)>0,detail:d=>(d?.aeoSignals?.schemaTypes||d?.schemas||[]).join(", ")||"None"},
+        {key:"faqSchema",label:"FAQ Schema",weight:"Critical",desc:"Q&A pairs that AI engines extract as direct answers",check:d=>d?.aeoSignals?.faqSchema||!!d?.hasFAQSchema},
+        {key:"articleSchema",label:"Article / Blog Schema",weight:"High",desc:"Signals authoritative long-form content to AI",check:d=>d?.aeoSignals?.articleSchema||!!d?.hasArticleSchema},
+        {key:"orgSchema",label:"Organization Schema",weight:"High",desc:"Establishes brand entity in knowledge graphs",check:d=>d?.aeoSignals?.orgSchema||!!d?.hasOrgSchema},
+        {key:"howToSchema",label:"HowTo Schema",weight:"Medium",desc:"Step-by-step content AI engines can cite directly",check:d=>d?.aeoSignals?.howToSchema||!!d?.hasHowToSchema},
+        {key:"breadcrumbs",label:"Breadcrumb Navigation",weight:"Medium",desc:"Helps AI understand site hierarchy and topic structure",check:d=>d?.aeoSignals?.breadcrumbs||!!d?.hasBreadcrumb},
+        {key:"speakable",label:"Speakable Schema",weight:"High",desc:"Marks content suitable for voice assistant responses",check:d=>d?.aeoSignals?.speakable||!!d?.hasSpeakable},
+        {key:"authorInfo",label:"Author Attribution (E-E-A-T)",weight:"Critical",desc:"Named expertise — critical trust signal for AI engines",check:d=>d?.aeoSignals?.authorInfo||!!d?.hasAuthorInfo},
+        {key:"trustSignals",label:"Trust Signals",weight:"High",desc:"Awards, certifications, partnerships on website",check:d=>d?.aeoSignals?.trustSignals||!!d?.hasTrustSignals},
+        {key:"testimonials",label:"Social Proof / Reviews",weight:"High",desc:"Testimonials, ratings, client logos on website",check:d=>d?.aeoSignals?.testimonials||!!d?.hasTestimonials},
+        {key:"video",label:"Video Content",weight:"Medium",desc:"Rich media increases AI citation likelihood",check:d=>d?.aeoSignals?.video||!!d?.hasVideo},
+        {key:"openGraph",label:"Open Graph Tags",weight:"Low",desc:"Content preview metadata for sharing and indexing",check:d=>d?.aeoSignals?.openGraph||!!d?.hasOpenGraph},
+        {key:"twitterCard",label:"Twitter / X Card",weight:"Low",desc:"Social sharing metadata",check:d=>d?.aeoSignals?.twitterCard||!!d?.hasTwitterCard},
+        {key:"canonical",label:"Canonical URL",weight:"Medium",desc:"Prevents duplicate content confusion for AI crawlers",check:d=>d?.aeoSignals?.canonical||!!d?.hasCanonical},
+        {key:"contentDepth",label:"Content Depth (1000+ words)",weight:"High",desc:"Substantive content gives AI more to reference and cite",check:d=>d?.aeoSignals?.contentDepth||(d?.wordCount||d?.homepageWordCount||0)>=1000,detail:d=>(d?.totalWordCount||d?.wordCount||d?.homepageWordCount||0).toLocaleString()+" words"},
+        {key:"internalLinking",label:"Internal Link Structure (20+)",weight:"Medium",desc:"Helps AI understand topic relationships across site",check:d=>d?.aeoSignals?.internalLinking||(d?.internalLinks||0)>=20,detail:d=>(d?.internalLinks||0)+" links"},
+        {key:"properHierarchy",label:"Proper Heading Hierarchy",weight:"High",desc:"H1->H2->H3 structure helps AI parse content sections",check:d=>d?.contentStructure?.hasProperHierarchy||(d?.h1Count>0&&d?.h2Count>0),detail:d=>`${d?.contentStructure?.h1Count||d?.h1Count||0} H1, ${d?.contentStructure?.h2Count||d?.h2Count||0} H2, ${d?.contentStructure?.h3Count||d?.h3Count||0} H3`},
+        {key:"hasBlog",label:"Blog / Content Hub",weight:"Critical",desc:"Regular content publishing is the #1 driver of AI visibility",check:d=>d?.aeoSignals?.hasBlog||(d?.subPages||[]).some(sp=>sp.url?.toLowerCase().includes("blog"))},
+        {key:"hasFaqPage",label:"Dedicated FAQ Page",weight:"High",desc:"FAQ pages are directly extracted by AI for answers",check:d=>d?.aeoSignals?.hasFaqPage||(d?.subPages||[]).some(sp=>sp.url?.toLowerCase().includes("faq")||sp.url?.toLowerCase().includes("help"))},
+      ];
+
       const allForRank=[
         {name:r.clientData.brand,mentionRate:avgMentions},
         ...compData.map(c=>({name:c.name,mentionRate:c.mentionRate||0}))
@@ -2072,6 +2091,46 @@ function DashboardPage({r,history,goTo}){
                       )}
                     </div>
                   </div>
+
+                  {/* Technical AEO Signals comparison */}
+                  {(()=>{
+                    const brandD=r.brandCrawl;
+                    const compD=r.compCrawlData?.[comp.name]||null;
+                    if(!brandD&&!compD)return null;
+                    const weightColor={Critical:C.red,High:C.amber,Medium:C.accent,Low:C.muted};
+                    return(
+                      <div style={{marginTop:16,paddingTop:16,borderTop:`1px solid ${C.borderSoft}`}}>
+                        <div style={{fontSize:12,fontWeight:500,color:C.text,marginBottom:10}}>Technical AEO Signals</div>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 60px 60px",gap:"0",fontSize:11}}>
+                          <div style={{fontWeight:500,color:C.muted,paddingBottom:6,borderBottom:`1px solid ${C.borderSoft}`}}>Signal</div>
+                          <div style={{fontWeight:500,color:C.accent,textAlign:"center",paddingBottom:6,borderBottom:`1px solid ${C.borderSoft}`,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.clientData.brand}</div>
+                          <div style={{fontWeight:500,color:compColor,textAlign:"center",paddingBottom:6,borderBottom:`1px solid ${C.borderSoft}`,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{comp.name}</div>
+                          {crawlSignals.map((sig,si)=>{
+                            const brandHas=brandD?sig.check(brandD):false;
+                            const compHas=compD?sig.check(compD):false;
+                            return(<React.Fragment key={si}>
+                              <div style={{padding:"5px 0",borderBottom:si<crawlSignals.length-1?`1px solid ${C.borderSoft}`:"none",color:C.sub}} title={sig.desc}>
+                                <span>{sig.label}</span>
+                                <span style={{marginLeft:6,fontSize:9,color:weightColor[sig.weight]||C.muted}}>{sig.weight}</span>
+                              </div>
+                              <div style={{padding:"5px 0",textAlign:"center",borderBottom:si<crawlSignals.length-1?`1px solid ${C.borderSoft}`:"none",color:brandHas?C.green:C.red}}>{brandHas?"Yes":"No"}</div>
+                              <div style={{padding:"5px 0",textAlign:"center",borderBottom:si<crawlSignals.length-1?`1px solid ${C.borderSoft}`:"none",color:compHas?C.green:C.red}}>{compHas?"Yes":"No"}</div>
+                            </React.Fragment>);
+                          })}
+                        </div>
+                        {(()=>{
+                          const brandCount=brandD?crawlSignals.filter(s=>s.check(brandD)).length:0;
+                          const compCount=compD?crawlSignals.filter(s=>s.check(compD)).length:0;
+                          return(
+                            <div style={{display:"flex",justifyContent:"space-between",marginTop:10,padding:"8px 12px",background:C.bg,borderRadius:8,fontSize:11}}>
+                              <span style={{color:C.sub}}><span style={{fontWeight:600,color:C.accent}}>{r.clientData.brand}</span>: {brandCount}/{crawlSignals.length} signals</span>
+                              <span style={{color:C.sub}}><span style={{fontWeight:600,color:compColor}}>{comp.name}</span>: {compCount}/{crawlSignals.length} signals</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </Card>
