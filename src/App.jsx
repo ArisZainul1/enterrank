@@ -911,7 +911,7 @@ function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,s
           const active=step===item.id||(item.id==="dashboard"&&step==="audit");
           const dis=!results||item.comingSoon;
           return(<div key={item.id} onClick={()=>{if(!dis)setStep(item.id);}}
-            style={{display:"flex",alignItems:"center",gap:10,padding:collapsed?"10px 12px":"8px 10px",borderRadius:8,cursor:dis?"default":"pointer",background:active?"#111827":"transparent",color:active?"#fff":dis?"#d1d5db":C.sub,fontSize:13,fontWeight:active?600:500,marginBottom:2,transition:"all .12s",opacity:item.comingSoon?.5:1,justifyContent:collapsed?"center":"flex-start"}}
+            style={{display:"flex",alignItems:"center",gap:10,padding:collapsed?"10px 12px":"8px 10px",borderRadius:8,cursor:dis?"default":"pointer",background:active?"#111827":"transparent",color:active?"#fff":dis?"#d1d5db":C.sub,fontSize:13,fontWeight:500,marginBottom:2,transition:"all .12s",opacity:item.comingSoon?.5:1,justifyContent:collapsed?"center":"flex-start"}}
             onMouseEnter={e=>{if(!dis&&!active)e.currentTarget.style.background=C.bg;}}
             onMouseLeave={e=>{if(!active)e.currentTarget.style.background="transparent";}}>
             <SidebarIcon name={item.icon} size={18} color={active?"#fff":dis?"#d1d5db":"#6b7280"}/>
@@ -958,7 +958,7 @@ function VisibilityChart({engines,overall,brand}){
     <div style={{marginBottom:20}}>
       <div style={{fontSize:13,color:C.muted,marginBottom:6,fontWeight:500}}>Visibility Score for {brand}</div>
       <div style={{display:"flex",alignItems:"baseline",gap:10}}>
-        <span style={{fontSize:42,fontWeight:800,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.03em",lineHeight:1}}>{overall}%</span>
+        <span style={{fontSize:42,fontWeight:800,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em",lineHeight:1}}>{overall}%</span>
         <span style={{fontSize:14,fontWeight:600,color:gradeColor(overall),fontFamily:"'Outfit'",padding:"3px 10px",background:`${gradeColor(overall)}12`,borderRadius:20}}>{getGrade(overall)}</span>
       </div>
     </div>
@@ -1250,7 +1250,7 @@ Return ONLY a JSON array of strings:
       <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:30,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{progress}%</span></div>
     </div>
     {/* Title */}
-    <div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:C.text,fontFamily:"'Outfit'"}}>Running Full AEO Audit</div></div>
+    <div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Running Full AEO Audit</div></div>
     {/* Scrolling techy text — single line that changes */}
     <div style={{height:20,overflow:"hidden",textAlign:"center"}}>
       {logLines.length>0&&<div key={logLines[logLines.length-1].t} style={{fontSize:12,color:C.accent,fontWeight:500,fontFamily:"'Outfit'",animation:"fadeInUp .3s ease-out"}}>{logLines[logLines.length-1].msg.replace(/^\[.*?\]\s*/,"")}</div>}
@@ -1276,7 +1276,7 @@ Return ONLY a JSON array of strings:
   /* ─── STEP 2: Topics Review ─── */
   if(auditStep==="topics")return(<div style={{maxWidth:620,margin:"0 auto"}}>
     <div style={{marginBottom:24,textAlign:"center"}}>
-      <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Review Topics for {data.brand}</h2>
+      <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Review Topics for {data.brand}</h2>
       <p style={{color:C.sub,fontSize:13,marginTop:4}}>These topics will be used to measure AI engine visibility. Edit, remove, or add more.</p>
     </div>
     <Card>
@@ -1320,7 +1320,7 @@ Return ONLY a JSON array of strings:
 
   /* ─── STEP 1: Client Details Input ─── */
   return(<div style={{maxWidth:620,margin:"0 auto"}}>
-    <div style={{marginBottom:24,textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>{data.brand?"Configure AEO Audit":"New AEO Audit"}</h2><p style={{color:C.sub,fontSize:13,marginTop:4}}>{data.brand?`${history.length>0?"Run another":"Set up"} audit for ${data.brand}.`:"Enter client details to begin."}</p></div>
+    <div style={{marginBottom:24,textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>{data.brand?"Configure AEO Audit":"New AEO Audit"}</h2><p style={{color:C.sub,fontSize:13,marginTop:4}}>{data.brand?`${history.length>0?"Run another":"Set up"} audit for ${data.brand}.`:"Enter client details to begin."}</p></div>
     <Card><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       <Field label="Brand Name" value={data.brand} onChange={v=>setData({...data,brand:v})} placeholder="Acme Corp"/>
       <Field label="Industry" value={data.industry} onChange={v=>setData({...data,industry:v})} placeholder="e.g. Technology"/>
@@ -1428,7 +1428,7 @@ function DashboardPage({r,history,goTo}){
     {/* Section A: Greeting Header */}
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:28}}>
       <div>
-        <div style={{fontSize:28,fontWeight:800,fontFamily:"'Outfit'",color:C.text}}>Hello, Aris</div>
+        <div style={{fontSize:28,fontWeight:600,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Hello, Aris</div>
         <div style={{fontSize:14,color:C.muted,marginTop:2}}>GEO Dashboard for {r.clientData.brand}</div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:C.muted,fontWeight:500,marginTop:6}}>
@@ -1458,7 +1458,7 @@ function DashboardPage({r,history,goTo}){
     {/* Section C: Performance Graph */}
     <Card style={{marginBottom:24}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-        <span style={{fontSize:16,fontWeight:700,fontFamily:"'Outfit'",color:C.text}}>Performance</span>
+        <span style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Performance</span>
         <div style={{display:"flex",gap:4}}>
           {toggleBtns.map(t=>(
             <button key={t} onClick={()=>setChartMetric(t)} style={{padding:"5px 14px",borderRadius:20,border:"none",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",background:chartMetric===t?C.accent:C.bg,color:chartMetric===t?"#fff":C.sub,transition:"all .15s"}}>
@@ -1476,7 +1476,7 @@ function DashboardPage({r,history,goTo}){
 
     {/* Section D: Share of Voice */}
     <div style={{marginBottom:24}}>
-      <div style={{fontSize:16,fontWeight:700,fontFamily:"'Outfit'",color:C.text,marginBottom:16}}>Share of Voice</div>
+      <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text,marginBottom:16}}>Share of Voice</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
         <ShareOfVoiceSection title="Share of Mentions" rankTitle="Mentions Rank" brands={allBrands} metricKey="mentionRate"/>
         <ShareOfVoiceSection title="Share of Citations" rankTitle="Citation Rank" brands={allBrands} metricKey="citationRate"/>
@@ -1529,12 +1529,12 @@ function DiagnosticsPage({r,goTo}){
   const radarKeys=[{key:"brand",color:C.accent,label:r.clientData.brand}];
 
   return(<div>
-    <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Diagnostics</h2>
+    <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Diagnostics</h2>
     <p style={{fontSize:13,color:C.muted,margin:"4px 0 24px"}}>System health and category performance for {r.clientData.brand}</p>
 
     {/* System Diagnostics cards */}
     <Card style={{marginBottom:24}}>
-      <div style={{fontSize:14,fontWeight:600,color:C.text,fontFamily:"'Outfit'",marginBottom:14}}>System Diagnostics</div>
+      <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em",marginBottom:14}}>System Diagnostics</div>
       <div style={{display:"flex",flexDirection:"column",gap:6}}>
         {diags.map((d,i)=>(<div key={i} style={{display:"flex",gap:8,padding:"10px 12px",background:`${sevColors[d.severity]||C.accent}05`,borderRadius:8,border:`1px solid ${sevColors[d.severity]||C.accent}12`}}>
           <span style={{fontSize:14,lineHeight:1,flexShrink:0}}>{d.icon}</span>
@@ -1546,13 +1546,13 @@ function DiagnosticsPage({r,goTo}){
 
     {/* Category Performance Radar */}
     {radarData.length>=3&&<Card style={{marginBottom:24}}>
-      <div style={{fontSize:14,fontWeight:600,color:C.text,fontFamily:"'Outfit'",marginBottom:14}}>Category Performance Radar</div>
+      <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em",marginBottom:14}}>Category Performance Radar</div>
       <MiniRadar data={radarData} keys={radarKeys}/>
     </Card>}
 
     {/* Category Breakdown */}
     <Card style={{marginBottom:24}}>
-      <div style={{fontSize:14,fontWeight:600,color:C.text,fontFamily:"'Outfit'",marginBottom:14}}>Category Breakdown</div>
+      <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em",marginBottom:14}}>Category Breakdown</div>
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {r.painPoints.map((pp,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0"}}>
           <span style={{fontSize:12,color:C.sub,minWidth:120,flexShrink:0}}>{pp.label.split("/")[0].trim()}</span>
@@ -1570,7 +1570,7 @@ function DiagnosticsPage({r,goTo}){
 /* ─── PAGE: ENGINE DETAILS ─── */
 function EnginesPage({r,goTo}){
   return(<div>
-    <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:"0 0 24px",fontFamily:"'Outfit'"}}>Engine Details</h2>
+    <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:"0 0 24px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Engine Details</h2>
 
     {/* Visibility Chart */}
     <Card style={{marginBottom:24}}>
@@ -1579,7 +1579,7 @@ function EnginesPage({r,goTo}){
 
     {/* Platform Breakdown */}
     <div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"24px 28px",marginBottom:24}}>
-      <h3 style={{fontSize:16,fontWeight:600,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'"}}>{r.clientData.brand} — Platform Breakdown</h3>
+      <h3 style={{fontSize:16,fontWeight:500,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>{r.clientData.brand} — Platform Breakdown</h3>
       <p style={{fontSize:13,color:C.muted,margin:"0 0 24px"}}>How each AI engine sees your brand</p>
       <div style={{display:"flex",flexDirection:"column",gap:20}}>
         {r.engines.map(e=>(<div key={e.id} style={{padding:"20px 24px",background:C.bg,borderRadius:12,border:`1px solid ${C.borderSoft}`}}>
@@ -1611,7 +1611,7 @@ function EnginesPage({r,goTo}){
 
     {/* Query Results Table */}
     <Card style={{marginBottom:24}}>
-      <h3 style={{fontSize:16,fontWeight:600,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'"}}>Query Results</h3>
+      <h3 style={{fontSize:16,fontWeight:500,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Query Results</h3>
       <p style={{fontSize:13,color:C.muted,margin:"0 0 16px"}}>How {r.clientData.brand} appears in individual queries</p>
       <div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
@@ -1657,12 +1657,12 @@ function AuditPage({r,history,goTo}){
   return(<div>
     {/* Performance Tracking */}
     <div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"24px 28px",marginBottom:24}}>
-      <h3 style={{fontSize:16,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Performance Tracking</h3>
+      <h3 style={{fontSize:16,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Performance Tracking</h3>
       <p style={{fontSize:13,color:C.muted,margin:"2px 0 0 0"}}>Score history and category trends</p>
       <div style={{marginTop:18}}>
         {history.length<2?<div style={{textAlign:"center",padding:"32px 20px",background:C.bg,borderRadius:10}}>
           <div style={{fontSize:28,marginBottom:8}}>📊</div>
-          <div style={{fontSize:15,fontWeight:600,color:C.text,marginBottom:4,fontFamily:"'Outfit'"}}>First Audit Complete</div>
+          <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:4,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>First Audit Complete</div>
           <div style={{fontSize:13,color:C.muted,maxWidth:360,margin:"0 auto"}}>Run another audit to see trends and score changes.</div>
         </div>:<>
           <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>AEO Score Trend</div><MiniAreaChart data={trend} dataKey="overall" color={C.accent}/></div>
@@ -1676,7 +1676,7 @@ function AuditPage({r,history,goTo}){
 
     {/* Competitor Deep-Dive */}
     {r.competitors.length>0&&<div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"24px 28px",marginBottom:24}}>
-      <h3 style={{fontSize:16,fontWeight:600,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'"}}>Looking Under The Hood</h3>
+      <h3 style={{fontSize:16,fontWeight:500,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Looking Under The Hood</h3>
       <p style={{fontSize:13,color:C.muted,margin:"0 0 16px"}}>Why competitors rank higher or lower</p>
       {r.competitors.map((c,ci)=>{const isOpen=expandComp===ci;const ahead=c.score>r.overall;return(<div key={ci} style={{border:`1px solid ${isOpen?(ahead?`${C.red}25`:`${C.green}25`):C.border}`,borderRadius:10,overflow:"hidden",marginBottom:8}}>
         <div onClick={()=>setExpandComp(isOpen?null:ci)} style={{padding:"14px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",background:isOpen?`${ahead?C.red:C.green}03`:"transparent"}}>
@@ -1699,7 +1699,7 @@ function ArchetypesPage({r,goTo}){
   const[selGroup,setSelGroup]=useState(0);
   const[selArch,setSelArch]=useState(null);
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>User Archetypes</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Who is searching — grouped by stakeholder type</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>User Archetypes</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Who is searching — grouped by stakeholder type</p></div>
     <SectionNote text="Select a stakeholder group to see customer segments within it. 'Visibility' shows how often AI engines mention your brand for this segment's queries."/>
     <div style={{display:"flex",gap:8,marginBottom:20}}>
       {r.stakeholders.map((sg,i)=>(<div key={i} onClick={()=>{setSelGroup(i);setSelArch(null);}} style={{flex:1,padding:"14px 16px",background:selGroup===i?`${C.accent}06`:C.surface,border:`1px solid ${selGroup===i?`${C.accent}30`:C.border}`,borderRadius:C.rs,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
@@ -1839,7 +1839,7 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
 
   return(<div>
     <div style={{marginBottom:24}}>
-      <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Intent Pathway</h2>
+      <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Intent Pathway</h2>
       <p style={{color:C.sub,fontSize:13,marginTop:3}}>How visible is {r.clientData.brand} at each stage of the customer journey? Prompts are weighted by their AEO impact.</p>
     </div>
 
@@ -1933,7 +1933,7 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
           <div>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:18}}>{stageIcons[selStage]}</span>
-              <h3 style={{fontSize:16,fontWeight:700,color:color,margin:0,fontFamily:"'Outfit'"}}>{stageNames[selStage]}</h3>
+              <h3 style={{fontSize:16,fontWeight:500,color:color,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>{stageNames[selStage]}</h3>
             </div>
             <p style={{fontSize:11,color:C.muted,margin:"3px 0 0"}}>{stageDescs[selStage]} · sorted by AEO weight</p>
           </div>
@@ -2020,12 +2020,12 @@ function PlaybookPage({r,goTo}){
   const addDoc=(type)=>{setDocs([...docs,{type,name:`${type}_${Date.now()}.pdf`,date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short"}),size:"2.4 MB"}]);};
   const docTypes=[{type:"Brand Logo",icon:"🎨",desc:"Primary and secondary logos (SVG, PNG)"},{type:"Brand CI / Style Guide",icon:"📐",desc:"Colours, typography, spacing rules"},{type:"Messaging Framework",icon:"💬",desc:"Taglines, value props, tone of voice"},{type:"Media Kit",icon:"📦",desc:"Press photos, exec headshots, boilerplate"},{type:"Product Docs",icon:"📄",desc:"Feature sheets, technical documentation"},{type:"Case Studies",icon:"📊",desc:"Customer success stories and data"}];
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Brand Playbook</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Your AEO brand hub — identity, assets, and AI-optimised guidelines</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Playbook</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Your AEO brand hub — identity, assets, and AI-optimised guidelines</p></div>
     <SectionNote text="This is your central brand hub for AEO. Upload your brand assets so our system can reference them when generating content strategies. The guidelines below are tailored to how AI engines process and cite brand information."/>
 
     {/* Brand Identity Form */}
     <Card style={{marginBottom:16}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={{fontSize:14,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Brand Identity</h3>{saved&&<Pill color={C.green} filled>✓ Saved</Pill>}</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Identity</h3>{saved&&<Pill color={C.green} filled>✓ Saved</Pill>}</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
         <div><label style={{fontSize:11,fontWeight:500,color:C.muted,display:"block",marginBottom:4}}>Brand Tagline</label><input value={brandAssets.tagline} onChange={e=>setBrandAssets({...brandAssets,tagline:e.target.value})} placeholder={`e.g. "${r.clientData.brand} — The future of ${r.clientData.industry}"`} style={{width:"100%",padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,fontSize:12,color:C.text,outline:"none",fontFamily:"inherit"}}/></div>
         <div><label style={{fontSize:11,fontWeight:500,color:C.muted,display:"block",marginBottom:4}}>Brand Colours (hex codes)</label><input value={brandAssets.colors} onChange={e=>setBrandAssets({...brandAssets,colors:e.target.value})} placeholder="e.g. #0c4cfc, #10b981, #0c1222" style={{width:"100%",padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,fontSize:12,color:C.text,outline:"none",fontFamily:"inherit"}}/></div>
@@ -2038,7 +2038,7 @@ function PlaybookPage({r,goTo}){
 
     {/* Document Upload Hub */}
     <Card style={{marginBottom:16}}>
-      <h3 style={{fontSize:14,fontWeight:600,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'"}}>Brand Asset Library</h3>
+      <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Asset Library</h3>
       <p style={{fontSize:12,color:C.muted,margin:"0 0 14px"}}>Upload and store brand documents. These inform your AEO content strategy.</p>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
         {docTypes.map((dt,i)=>{const uploaded=docs.filter(d=>d.type===dt.type);return(<div key={i} style={{padding:"14px",background:C.bg,borderRadius:C.rs,border:`1px dashed ${uploaded.length>0?C.green:C.border}`,textAlign:"center",cursor:"pointer",transition:"all .15s"}} onClick={()=>addDoc(dt.type)}>
@@ -2059,7 +2059,7 @@ function PlaybookPage({r,goTo}){
 
     {/* AEO Brand Guidelines - expandable */}
     <Card style={{marginBottom:16}}>
-      <h3 style={{fontSize:14,fontWeight:600,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'"}}>AEO Brand Guidelines</h3>
+      <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>AEO Brand Guidelines</h3>
       <p style={{fontSize:12,color:C.muted,margin:"0 0 14px"}}>{r.brandGuidelines.length} technical guidelines for maximising AI engine citation rate. Click to expand.</p>
       <div style={{display:"flex",flexDirection:"column",gap:6}}>
         {r.brandGuidelines.map((g,i)=>{const isOpen=expandG===i;return(<div key={i} style={{borderRadius:C.rs,border:`1px solid ${isOpen?`${C.accent}25`:C.border}`,overflow:"hidden",transition:"all .15s"}}>
@@ -2089,7 +2089,7 @@ function ChannelsPage({r,goTo}){
   const[expandCh,setExpandCh]=useState(null);
   const hasAnyFindings=r.aeoChannels.some(ch=>ch.finding);
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>AEO Channels</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Channels ranked by impact on AI engine visibility {hasAnyFindings&&<span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>✓ Verified via Web Search</span>}</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>AEO Channels</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Channels ranked by impact on AI engine visibility {hasAnyFindings&&<span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>✓ Verified via Web Search</span>}</p></div>
     <SectionNote text="These channels directly influence whether AI engines cite your brand. Each channel has been verified through real web searches — URLs confirmed, not estimated. Channels with ▼ include specific sites to target."/>
     <Card>
       {r.aeoChannels.sort((a,b)=>b.impact-a.impact).map((ch,i)=>{const isOpen=expandCh===i;const hasSites=ch.sites&&ch.sites.length>0;const canExpand=hasSites||ch.finding;return(<div key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
@@ -2125,7 +2125,7 @@ function ChannelsPage({r,goTo}){
 /* ─── PAGE: CONTENT GRID (Step 07) ─── */
 function GridPage({r,goTo}){
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Content-Channel Grid</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Personalised content strategy based on {r.clientData.brand}'s audit findings.</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content-Channel Grid</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Personalised content strategy based on {r.clientData.brand}'s audit findings.</p></div>
     <SectionNote text={`This content grid is tailored to ${r.clientData.brand}'s specific AEO gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
     <Card style={{marginBottom:20,overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
       <thead><tr style={{borderBottom:`2px solid ${C.border}`}}>{["Content Type","Channels","Frequency","Priority","Owner"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:600,color:C.muted,fontSize:10,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
@@ -2137,7 +2137,7 @@ function GridPage({r,goTo}){
         <td style={{padding:"10px",color:C.sub,fontSize:11}}>{ct.owner}</td>
       </tr>))}</tbody></table>
     </Card>
-    <Card><h3 style={{fontSize:14,fontWeight:600,color:C.text,margin:"0 0 12px",fontFamily:"'Outfit'"}}>Monthly Output Requirements for {r.clientData.brand}</h3>
+    <Card><h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 12px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Monthly Output Requirements for {r.clientData.brand}</h3>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
         {(r.outputReqs||[]).map((item,i)=>(<div key={i} style={{padding:"14px",background:C.bg,borderRadius:C.rs,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{item.n}</div><div style={{fontSize:10,color:C.muted,marginBottom:4}}>{item.u}</div><div style={{fontSize:12,fontWeight:600,color:C.text}}>{item.l}</div><div style={{fontSize:10,color:C.muted,marginTop:2}}>{item.d}</div></div>))}
       </div>
@@ -2234,7 +2234,7 @@ function RoadmapPage({r}){
 
   return(<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
-      <div><h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>90-Day Transformation Roadmap</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Department-by-department plan for <strong>{r.clientData.brand}</strong></p></div>
+      <div><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>90-Day Transformation Roadmap</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Department-by-department plan for <strong>{r.clientData.brand}</strong></p></div>
       <button onClick={handleExport} style={{padding:"10px 20px",background:C.text,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",display:"flex",alignItems:"center",gap:6}}>📄 Export Full Report</button>
     </div>
     <SectionNote text="This roadmap assigns tasks to every department involved. The PDF export includes all 8 stages of your audit in a professional format with cover page and table of contents."/>
@@ -2251,7 +2251,7 @@ function RoadmapPage({r}){
         <div style={{position:"absolute",left:-19,top:10,width:12,height:12,borderRadius:"50%",background:p.accent,border:"3px solid #f5f6f8",boxShadow:`0 0 0 2px ${p.accent}33`}}/>
         <Card>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-            <div><div style={{fontSize:16,fontWeight:700,color:C.text,fontFamily:"'Outfit'"}}>{p.title}</div><div style={{color:p.accent,fontSize:11,fontWeight:600,marginTop:1}}>{p.sub}</div></div>
+            <div><div style={{fontSize:16,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>{p.title}</div><div style={{color:p.accent,fontSize:11,fontWeight:600,marginTop:1}}>{p.sub}</div></div>
             <div style={{padding:"5px 12px",background:`${p.accent}08`,borderRadius:8,border:`1px solid ${p.accent}20`}}><span style={{fontSize:10,color:C.muted}}>Lift: </span><span style={{fontSize:14,fontWeight:700,color:p.accent,fontFamily:"'Outfit'"}}>{p.lift}</span></div>
           </div>
           {p.departments.map((d,di)=>(<div key={di} style={{marginBottom:di<p.departments.length-1?10:0}}>
@@ -2263,7 +2263,7 @@ function RoadmapPage({r}){
     </div>
 
     <Card style={{marginTop:20,background:`linear-gradient(135deg,${C.accent}08,${C.accent}03)`,border:`1px solid ${C.accent}20`,textAlign:"center"}}>
-      <div style={{fontSize:17,fontWeight:700,color:C.text,fontFamily:"'Outfit'",marginBottom:4}}>Ready to dominate AI search results?</div>
+      <div style={{fontSize:17,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em",marginBottom:4}}>Ready to dominate AI search results?</div>
       <p style={{fontSize:12,color:C.sub,maxWidth:460,margin:"0 auto 14px"}}>Let Entermind execute this strategy and guarantee measurable AEO improvements within 90 days.</p>
       <button onClick={handleExport} style={{padding:"11px 26px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>Export Full Report as PDF</button>
     </Card>
@@ -2321,7 +2321,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
       {/* Page header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:36}}>
         <div>
-          <h1 style={{fontSize:28,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Client Management</h1>
+          <h1 style={{fontSize:28,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Client Management</h1>
         </div>
       </div>
 
@@ -2330,7 +2330,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
         <div style={{padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.border}`}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/></svg>
-            <span style={{fontSize:15,fontWeight:600,color:C.text,fontFamily:"'Outfit'"}}>Workspaces</span>
+            <span style={{fontSize:15,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Workspaces</span>
           </div>
           <button onClick={onNew} style={{padding:"8px 18px",background:C.text,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",display:"flex",alignItems:"center",gap:5,transition:"opacity .15s"}}
             onMouseEnter={e=>e.currentTarget.style.opacity=".85"}
@@ -2344,7 +2344,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
           <div style={{width:48,height:48,borderRadius:12,background:C.bg,display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}>
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 4v14M4 11h14" stroke={C.muted} strokeWidth="2" strokeLinecap="round"/></svg>
           </div>
-          <h3 style={{fontSize:16,fontWeight:600,color:C.text,margin:"0 0 6px",fontFamily:"'Outfit'"}}>No workspaces yet</h3>
+          <h3 style={{fontSize:16,fontWeight:500,color:C.text,margin:"0 0 6px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>No workspaces yet</h3>
           <p style={{color:C.muted,fontSize:13,margin:"0 0 20px"}}>Create your first workspace to start tracking AEO visibility.</p>
           <button onClick={onNew} style={{padding:"10px 22px",background:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>Create workspace</button>
         </div>:
@@ -2493,7 +2493,7 @@ export default function App(){
         <div style={{fontSize:14,color:C.muted,fontWeight:400}}>AI Engine Optimisation Platform</div>
       </div>
       <div style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:16,padding:"36px 32px",boxShadow:"0 1px 3px rgba(0,0,0,.04),0 8px 32px rgba(0,0,0,.04)"}}>
-        <h2 style={{fontSize:20,fontWeight:700,color:C.text,margin:"0 0 2px",fontFamily:"'Outfit'",textAlign:"center"}}>Welcome back</h2>
+        <h2 style={{fontSize:20,fontWeight:500,color:C.text,margin:"0 0 2px",fontFamily:"'Outfit'",letterSpacing:"-.02em",textAlign:"center"}}>Welcome back</h2>
         <p style={{fontSize:13,color:C.muted,margin:"0 0 28px",textAlign:"center"}}>Sign in to your account</p>
         <LoginForm onSubmit={handleLogin} error={loginError} loading={loggingIn}/>
       </div>
@@ -2509,7 +2509,7 @@ export default function App(){
           <div style={{width:48,height:48,borderRadius:14,background:`${C.accent}10`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
             <BrandLogo name={projectPrompt.project.brand} website={projectPrompt.project.website} size={28} color={C.accent}/>
           </div>
-          <div style={{fontSize:20,fontWeight:700,color:C.text,fontFamily:"'Outfit'",marginBottom:6}}>{projectPrompt.project.brand}</div>
+          <div style={{fontSize:20,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em",marginBottom:6}}>{projectPrompt.project.brand}</div>
           <div style={{fontSize:13,color:C.muted}}>Last audit: {projectPrompt.lastAudit.date||"Recent"} · Score: {projectPrompt.lastAudit.overall||"—"}%</div>
         </div>
         <div style={{fontSize:14,color:C.sub,textAlign:"center",marginBottom:24}}>Would you like to run another audit or view the existing dashboard?</div>
