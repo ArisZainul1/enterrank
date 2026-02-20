@@ -23,6 +23,7 @@ export default async function handler(req, res) {
         const r = await fetch("https://r.jina.ai/" + targetUrl, {
           headers: {
             "Accept": "application/json",
+            "Authorization": `Bearer ${process.env.JINA_API_KEY}`,
             "X-Timeout": "10",
             "X-With-Links-Summary": "true",
             "X-With-Images-Summary": "true"
