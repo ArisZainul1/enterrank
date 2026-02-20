@@ -139,6 +139,20 @@ async function callGemini(prompt, systemPrompt="You are an expert AEO analyst.")
   });
 }
 
+async function callOpenAISearch(query, region){
+  return callWithRetry(async()=>{
+    try{
+      const controller=new AbortController();
+      const timeout=setTimeout(()=>controller.abort(),55000);
+      const r=await fetch("/api/openai-search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,region}),signal:controller.signal});
+      clearTimeout(timeout);
+      const d=await r.json();
+      if(d.error&&!d.result){console.error("OpenAI Search error:",d.error);return null;}
+      return{text:d.result||"",citations:d.citations||[]};
+    }catch(e){console.error("OpenAI Search API error:",e);return null;}
+  })||{text:"",citations:[]};
+}
+
 // Call a specific engine by name, with fallback to OpenAI
 async function callEngine(engine, prompt, systemPrompt){
   if(engine==="openai") return await callOpenAI(prompt, systemPrompt);
@@ -352,13 +366,27 @@ Return JSON only:
     return buildDetectors(name, (typeof compObj === "object" ? compObj.website : "") || "");
   });
 
-  function classifyResponse(responseText, detector) {
+  function classifyResponse(responseText, detector, citationUrls) {
     if (!responseText || responseText.length < 20) return { status: "Absent", confidence: "high" };
     const text = responseText;
     const nameFound = detector.nameRegex.test(text);
-    const urlFound = detector.domain && text.toLowerCase().includes(detector.domain.toLowerCase());
-    if (!nameFound && !urlFound) return { status: "Absent", confidence: "high" };
-    if (urlFound) return { status: "Cited", confidence: "high" };
+
+    // Check citation URLs from Responses API — if any URL contains the brand's domain, it's Cited
+    const urlCited = detector.domain && citationUrls && citationUrls.length > 0 && citationUrls.some(c => {
+      const url = (c.url || "").toLowerCase();
+      return url.includes(detector.domain.toLowerCase());
+    });
+
+    // Also check for domain in the response text itself
+    const textUrlFound = detector.domain && text.toLowerCase().includes(detector.domain.toLowerCase());
+
+    if (!nameFound && !urlCited && !textUrlFound) return { status: "Absent", confidence: "high" };
+
+    // If brand's domain appears in actual citation URLs — definitive Cited
+    if (urlCited) return { status: "Cited", confidence: "high" };
+
+    // If brand's domain in text — Cited
+    if (textUrlFound) return { status: "Cited", confidence: "high" };
 
     const bn = detector.brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -393,7 +421,7 @@ Return JSON only:
     return { status: "Mentioned", confidence: "low" };
   }
 
-  // Send queries in parallel batches
+  // Send queries in parallel batches (used for Gemini)
   async function runQueryBatches(callFn, queries, batchSize, delayMs, engineLabel) {
     const results = [];
     for (let i = 0; i < queries.length; i += batchSize) {
@@ -402,7 +430,27 @@ Return JSON only:
       const batchResults = await Promise.all(
         batch.map(async (query) => {
           const response = await callFn(query, "You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.");
-          return { query, response: response || "" };
+          return { query, response: response || "", citations: [] };
+        })
+      );
+      results.push(...batchResults);
+      if (i + batchSize < queries.length && delayMs > 0) {
+        await new Promise(r => setTimeout(r, delayMs));
+      }
+    }
+    return results;
+  }
+
+  // ChatGPT batch runner using Responses API with web search
+  async function runGptSearchBatches(queries, searchRegion, batchSize, delayMs) {
+    const results = [];
+    for (let i = 0; i < queries.length; i += batchSize) {
+      const batch = queries.slice(i, i + batchSize);
+      onProgress(`Testing on ChatGPT with web search... (${Math.min(i + batchSize, queries.length)}/${queries.length})`, 14 + Math.round((i / queries.length) * 12));
+      const batchResults = await Promise.all(
+        batch.map(async (query) => {
+          const result = await callOpenAISearch(query, searchRegion);
+          return { query, response: result.text || "", citations: result.citations || [] };
         })
       );
       results.push(...batchResults);
@@ -415,7 +463,7 @@ Return JSON only:
 
   // Run both engines simultaneously
   const [gptResponses, gemResponses] = await Promise.all([
-    runQueryBatches(callOpenAI, searchQueries, 5, 500, "ChatGPT"),
+    runGptSearchBatches(searchQueries, region, 5, 500),
     runQueryBatches(callGemini, searchQueries, 3, 4000, "Gemini")
   ]);
 
@@ -427,7 +475,7 @@ Return JSON only:
     const ambiguousCases = [];
     detectors.forEach(det => {
       const queries = responses.map((r, qi) => {
-        const classification = classifyResponse(r.response, det);
+        const classification = classifyResponse(r.response, det, r.citations || []);
         if (classification.confidence === "low") {
           const sentences = (r.response || "").split(/[.!?\n]+/).filter(s => det.nameRegex.test(s));
           const excerpt = sentences.slice(0, 3).join(". ").slice(0, 300);
