@@ -224,9 +224,16 @@ async function runRealAudit(cd, onProgress){
 
   onProgress("Crawling competitor websites...",8);
   const compCrawls={};
+  const compCrawlsRaw={};
   for(let i=0;i<compUrls.length&&i<5;i++){
     if(compUrls[i]){
-      try{const cc=await crawlWebsite(compUrls[i]);if(cc)compCrawls[compNames[i]||`Competitor ${i+1}`]=summariseCrawl(cc);}catch(e){}
+      try{
+        const cc=await crawlWebsite(compUrls[i]);
+        if(cc){
+          compCrawls[compNames[i]||`Competitor ${i+1}`]=summariseCrawl(cc);
+          compCrawlsRaw[compNames[i]||`Competitor ${i+1}`]={url:compUrls[i], ...cc.mainPage};
+        }
+      }catch(e){}
     }
   }
   const compCrawlSummary=Object.entries(compCrawls).map(([name,data])=>`\n--- ${name} ---\n${data}`).join("\n")||"No competitor crawl data.";
@@ -743,7 +750,9 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
     contentGridData:(contentData.contentTypes||[]).slice(0,10),
     roadmapData:roadData,
     contentData:(contentData.contentTypes||[]).slice(0,10),
-    sentimentData:sentimentData
+    sentimentData:sentimentData,
+    brandCrawlData: brandCrawl?.mainPage || null,
+    compCrawlData: compCrawlsRaw
   };
 }
 
@@ -821,7 +830,9 @@ function generateAll(cd, apiData){
   const roadmap=(hasApi&&apiData.roadmapData&&apiData.roadmapData.day30)?apiData.roadmapData:null;
   const outputReqs=contentTypes.slice(0,6).map(ct=>({n:ct.freq||"Monthly",u:"",l:ct.type,d:ct.rationale||""}));
   const sentiment=(hasApi&&apiData.sentimentData)?apiData.sentimentData:{brand:{gpt:50,gemini:50,avg:50,summary:"Not assessed"},competitors:[]};
-  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,clientData:cd};
+  const brandCrawl=(hasApi&&apiData.brandCrawlData)?apiData.brandCrawlData:null;
+  const compCrawlData=(hasApi&&apiData.compCrawlData)?apiData.compCrawlData:{};
+  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,brandCrawl,compCrawlData,clientData:cd};
 }
 
 /* ─── LOGIN FORM ─── */
