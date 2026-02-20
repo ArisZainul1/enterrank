@@ -13,7 +13,9 @@
       "WebFetch(domain:www.niftybuttons.com)",
       "Bash(curl:*)",
       "Bash(python:*)",
-      "WebFetch(domain:worldvectorlogo.com)"
+      "WebFetch(domain:worldvectorlogo.com)",
+      "Bash(python3:*)",
+      "Bash(perl -ne:*)"
     ]
   }
 }
