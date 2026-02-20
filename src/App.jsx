@@ -1505,6 +1505,60 @@ function DashboardPage({r,history,goTo}){
       </div>
     </Card>
 
+    {/* ═══ SECTION 4: PLATFORM BREAKDOWN ═══ */}
+    <div style={{marginBottom:48}}>
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Platform Breakdown</div>
+        <div style={{fontSize:12,color:C.muted,marginTop:2}}>How {r.clientData.brand} performs on each AI engine</div>
+      </div>
+
+      {/* 4b. Visibility bar chart */}
+      <Card style={{marginBottom:16}}>
+        <VisibilityChart engines={r.engines} overall={r.overall} brand={r.clientData.brand}/>
+      </Card>
+
+      {/* 4c. Query results table */}
+      <Card>
+        <div style={{fontSize:14,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text,marginBottom:14}}>Query Results</div>
+        {(()=>{
+          const allQueries=(r.engines[0]?.queries||[]).map((q,i)=>({query:q.query,gpt:q.status||"Absent",gemini:r.engines[1]?.queries?.[i]?.status||"Absent"}));
+          const statusLabel=(s)=>s==="Cited"?"\u2713 Cited":s==="Mentioned"?"\u25D0 Mentioned":"\u2717 Absent";
+          const statusColor=(s)=>s==="Cited"?C.green:s==="Mentioned"?C.amber:C.red;
+          return allQueries.length>0?(<div style={{borderRadius:8,overflow:"hidden",border:`1px solid ${C.border}`}}>
+            <div style={{display:"flex",padding:"8px 12px",background:C.bg,borderBottom:`2px solid ${C.border}`}}>
+              <div style={{flex:1,fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Query</div>
+              <div style={{width:90,textAlign:"center",fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>ChatGPT</div>
+              <div style={{width:90,textAlign:"center",fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Gemini</div>
+            </div>
+            {allQueries.map((q,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",padding:"10px 12px",borderBottom:i<allQueries.length-1?`1px solid ${C.borderSoft}`:"none"}}>
+                <div style={{flex:1,fontSize:12,color:C.text}}>"{q.query}"</div>
+                <div style={{width:90,textAlign:"center"}}><span style={{fontSize:11,fontWeight:500,color:statusColor(q.gpt)}}>{statusLabel(q.gpt)}</span></div>
+                <div style={{width:90,textAlign:"center"}}><span style={{fontSize:11,fontWeight:500,color:statusColor(q.gemini)}}>{statusLabel(q.gemini)}</span></div>
+              </div>
+            ))}
+          </div>):(<div style={{textAlign:"center",padding:24,color:C.muted,fontSize:12}}>No query data available</div>);
+        })()}
+      </Card>
+    </div>
+
+    {/* ═══ SECTION 5: SHARE OF VOICE ═══ */}
+    <div style={{marginBottom:48}}>
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Share of Voice</div>
+        <div style={{fontSize:12,color:C.muted,marginTop:2}}>{r.clientData.brand} vs competitors across key metrics</div>
+      </div>
+      {(()=>{
+        const allBrands=[{name:r.clientData.brand,website:r.clientData.website,mentionRate:avgMentions,citationRate:avgCitations,color:C.accent},...(r.competitors||[]).map((c,i)=>{const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);return{name:c.name,website:compObj?compObj.website:"",mentionRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length):c.score,citationRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length*.6):Math.round(c.score*.6),color:["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]};})];
+        const sentimentBrands=[{name:r.clientData.brand,sentimentScore:r.sentiment?.brand?.avg||50,color:C.accent},...(r.sentiment?.competitors||[]).map((c,i)=>({name:c.name,sentimentScore:c.avg||50,color:["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]}))];
+        return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
+          <ShareOfVoiceSection title="Share of Mentions" rankTitle="Mention Rate" brands={allBrands} metricKey="mentionRate"/>
+          <ShareOfVoiceSection title="Share of Citations" rankTitle="Citation Rate" brands={allBrands} metricKey="citationRate"/>
+          <ShareOfVoiceSection title="Share of Sentiments" rankTitle="Sentiment Score" brands={sentimentBrands} metricKey="sentimentScore"/>
+        </div>);
+      })()}
+    </div>
+
   </div>);
 }
 
