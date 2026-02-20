@@ -1323,16 +1323,62 @@ function NewAuditPage({data,setData,onRun,history=[]}){
   const addLog=(msg)=>setLogLines(prev=>[...prev.slice(-14),{msg,t:Date.now()}]);
   const[autoFilling,setAutoFilling]=useState(false);
   const[autoFilled,setAutoFilled]=useState(false);
+  const[generatingTopics,setGeneratingTopics]=useState(false);
+  const[topicsAutoFilled,setTopicsAutoFilled]=useState(false);
+
+  const generateTopicsFromIndustry=async(industry,region,competitorNames)=>{
+    if(!industry||industry.trim().length<2)return;
+    setGeneratingTopics(true);
+    try{
+      const compNamesStr=(competitorNames||[]).filter(n=>n&&n.trim().length>1).map(n=>n.trim()).join(", ");
+      const prompt=`You are helping generate search queries for testing AI engine visibility in the ${industry} industry in ${region||"Global"}.
+
+Generate exactly 5 search queries that a real person would type into ChatGPT or Gemini when looking for ${industry} products or services in ${region||"Global"}.
+
+These must be queries someone types BEFORE they know which company to choose. They are exploring options, comparing alternatives, or researching the category.
+
+Rules:
+- Do NOT include any company, brand, or product names in the queries
+${compNamesStr?`- Specifically do NOT mention: ${compNamesStr}`:""}
+- Each query must be 15-30 words, specific and detailed
+- Mix these angles:
+  1. A "best/top recommended" query with specific criteria
+  2. A comparison query mentioning specific features (price, quality, features)
+  3. A "where to buy" or availability query for ${region||"Global"}
+  4. A beginner/newcomer guide query
+  5. A specific feature or use-case query
+- Make queries specific to ${region||"Global"} where relevant
+- Write in English only
+
+Return JSON only:
+{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5"]}`;
+      const raw=await callGemini(prompt,"You generate generic industry search queries. Never include any brand or company names. Return ONLY valid JSON.");
+      const result=safeJSON(raw);
+      if(result&&result.topics&&Array.isArray(result.topics)){
+        const validTopics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,5);
+        if(validTopics.length>0){
+          setData(prev=>{
+            const hasExisting=(prev.topics||[]).some(t=>(typeof t==="string"?t:"").trim().length>3);
+            if(!hasExisting)return{...prev,topics:validTopics};
+            return prev;
+          });
+          setTopicsAutoFilled(true);
+        }
+      }
+    }catch(e){console.error("Topic generation failed:",e);}
+    setGeneratingTopics(false);
+  };
 
   const autoFillFromBrand=async(brandName)=>{
     if(!brandName||brandName.trim().length<2||autoFilling)return;
     setAutoFilling(true);
     try{
-      const prompt=`I need information about the company or brand called "${brandName.trim()}".\n\nReturn JSON only:\n{\n  "website": "https://example.com",\n  "industry": "the primary industry (1-3 words, e.g. Telecommunications, SaaS, E-commerce)",\n  "region": "primary operating region (e.g. Malaysia, United States, Global, Southeast Asia)",\n  "competitors": [\n    {"name": "Competitor 1", "website": "https://competitor1.com"},\n    {"name": "Competitor 2", "website": "https://competitor2.com"},\n    {"name": "Competitor 3", "website": "https://competitor3.com"}\n  ],\n  "topics": ["search query 1", "search query 2", "search query 3", "search query 4", "search query 5"]\n}\n\nRules:\n- Website must be the MAIN company website, not Wikipedia or social\n- Return the top 3 direct competitors that actively compete with this brand in their primary operating region. Competitors must actually operate and be available in that region — do not list globally known brands that have no presence in the brand's market\n\n"topics": Generate 5 search queries that a potential CUSTOMER would type into ChatGPT or Gemini when looking for products or services in this company's industry. These queries must represent what someone searches for BEFORE they know which brand to choose.\n\nCRITICAL RULES FOR TOPICS:\n- Topics must NEVER contain "${brandName.trim()}" or any brand/company name\n- Topics must NEVER contain any competitor names\n- Topics must be GENERIC CATEGORY queries like:\n  GOOD: "best heated tobacco devices for beginners in Malaysia"\n  GOOD: "compare heat-not-burn devices by battery life and price"\n  GOOD: "where to buy authentic heated tobacco consumables online in Malaysia"\n  BAD: "what are IQOS health risks" (contains brand name)\n  BAD: "how does IQOS compare to glo" (contains brand AND competitor name)\n  BAD: "IQOS pricing in Malaysia" (contains brand name)\n- Think about what a customer searches BEFORE they know any brand exists\n- Mix of: best/top recommendations, comparisons, where-to-buy, beginner guides, feature comparisons\n- Make them specific to the region\n- All output must be in English. Do not translate to local languages\n- If unsure about the brand, make your best guess based on the name`;
+      const prompt=`I need information about the company or brand called "${brandName.trim()}".\n\nReturn JSON only:\n{\n  "website": "https://example.com",\n  "industry": "the primary industry (1-3 words, e.g. Telecommunications, SaaS, E-commerce)",\n  "region": "primary operating region (e.g. Malaysia, United States, Global, Southeast Asia)",\n  "competitors": [\n    {"name": "Competitor 1", "website": "https://competitor1.com"},\n    {"name": "Competitor 2", "website": "https://competitor2.com"},\n    {"name": "Competitor 3", "website": "https://competitor3.com"}\n  ]\n}\n\nRules:\n- Website must be the MAIN company website, not Wikipedia or social\n- Return the top 3 direct competitors that actively compete with this brand in their primary operating region. Competitors must actually operate and be available in that region — do not list globally known brands that have no presence in the brand's market\n- All output must be in English. Do not translate to local languages\n- If unsure about the brand, make your best guess based on the name`;
       const raw=await callGemini(prompt,"You are a business intelligence assistant. Return ONLY valid JSON, no markdown fences.");
       const result=safeJSON(raw);
       if(result){
         let didFill=false;
+        let filledIndustry="";let filledRegion="";let filledCompNames=[];
         setData(prev=>{
           const updates={};
           if(!prev.website||!prev.website.trim())updates.website=normalizeUrl(result.website||"");
@@ -1342,27 +1388,17 @@ function NewAuditPage({data,setData,onRun,history=[]}){
           if(!hasComps&&result.competitors&&Array.isArray(result.competitors)){
             updates.competitors=result.competitors.filter(c=>c.name&&c.name.toLowerCase()!==brandName.trim().toLowerCase()).slice(0,3).map(c=>({name:c.name||"",website:normalizeUrl(c.website||"")}));
           }
-          const hasTopics=(prev.topics||[]).length>0;
-          if(!hasTopics&&result.topics&&Array.isArray(result.topics)){
-            const brandLower=brandName.trim().toLowerCase();
-            const brandRegex=new RegExp('\\b'+brandName.trim().replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','gi');
-            const compRegexes=(result.competitors||[]).map(c=>{
-              if(!c.name||c.name.length<2)return null;
-              return new RegExp('\\b'+c.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','gi');
-            }).filter(Boolean);
-            const cleanedTopics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>3).map(t=>{
-              let cleaned=t.trim();
-              cleaned=cleaned.replace(brandRegex,'').trim();
-              compRegexes.forEach(rx=>{cleaned=cleaned.replace(rx,'').trim();});
-              cleaned=cleaned.replace(/\s{2,}/g,' ').replace(/^[,\s.\u2014-]+|[,\s.\u2014-]+$/g,'').trim();
-              return cleaned;
-            }).filter(t=>t.length>15);
-            if(cleanedTopics.length>0)updates.topics=cleanedTopics.slice(0,5);
-          }
-          if(Object.keys(updates).length>0){didFill=true;return{...prev,...updates};}
+          if(Object.keys(updates).length>0){didFill=true;filledIndustry=updates.industry||prev.industry||"";filledRegion=updates.region||prev.region||"";filledCompNames=(updates.competitors||prev.competitors||[]).map(c=>c.name).filter(Boolean);return{...prev,...updates};}
           return prev;
         });
-        if(didFill)setAutoFilled(true);
+        if(didFill){
+          setAutoFilled(true);
+          // Generate topics separately — brand name is NOT passed to the AI
+          const topicIndustry=filledIndustry||result.industry||"";
+          const topicRegion=filledRegion||result.region||"";
+          const topicCompNames=(result.competitors||[]).map(c=>c.name).filter(Boolean);
+          if(topicIndustry)setTimeout(()=>generateTopicsFromIndustry(topicIndustry,topicRegion,topicCompNames),100);
+        }
       }
     }catch(e){console.error("Auto-fill failed:",e);}
     setAutoFilling(false);
@@ -1598,6 +1634,11 @@ Return ONLY a JSON array of strings:
           <span style={{fontWeight:500}}>Tip:</span> Enter topics as real search queries — the way someone would actually ask ChatGPT or Gemini. For example, "best credit cards with rewards in UAE" instead of just "credit cards". We test whether AI engines mention your brand in response to these queries <em>without</em> naming any brand.
         </div>
       </div>
+      {/* Topic loading indicator */}
+      {generatingTopics&&(<div style={{display:"flex",alignItems:"center",gap:6,padding:"12px 14px",background:C.accent+"06",borderRadius:10,marginBottom:8,fontSize:11,color:C.accent}}>
+        <div style={{width:12,height:12,border:"2px solid "+C.accent,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+        Generating relevant search queries for {data.industry||"your industry"}...
+      </div>)}
       {/* Topic list */}
       <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
         {data.topics.map((topic,i)=>{const topicLower=topic.toLowerCase();const topicContainsBrand=data.brand&&data.brand.trim().length>1&&topicLower.includes(data.brand.trim().toLowerCase());const topicContainsComp=(data.competitors||[]).some(c=>c.name&&c.name.trim().length>1&&topicLower.includes(c.name.trim().toLowerCase()));const hasWarning=topicContainsBrand||topicContainsComp;return(<div key={i}><div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:hasWarning?"#fef2f2":C.bg,borderRadius:8,border:`1px solid ${hasWarning?"#fecaca":C.borderSoft}`}}>
@@ -1626,9 +1667,14 @@ Return ONLY a JSON array of strings:
       </div>
 
       {/* Generate more button */}
-      <button onClick={regenerateTopics} disabled={genTopics||data.topics.length>=10} style={{width:"100%",padding:"10px 16px",background:"none",border:`1px dashed ${C.accent}40`,borderRadius:8,fontSize:12,fontWeight:600,color:data.topics.length>=10?C.muted:C.accent,cursor:genTopics||data.topics.length>=10?"not-allowed":"pointer",fontFamily:"'Outfit'",marginBottom:16,opacity:genTopics||data.topics.length>=10?.5:1}}>
+      <button onClick={regenerateTopics} disabled={genTopics||generatingTopics||data.topics.length>=10} style={{width:"100%",padding:"10px 16px",background:"none",border:`1px dashed ${C.accent}40`,borderRadius:8,fontSize:12,fontWeight:600,color:data.topics.length>=10?C.muted:C.accent,cursor:genTopics||generatingTopics||data.topics.length>=10?"not-allowed":"pointer",fontFamily:"'Outfit'",marginBottom:8,opacity:genTopics||generatingTopics||data.topics.length>=10?.5:1}}>
         {genTopics?"Generating more topics...":data.topics.length>=10?"Maximum 10 topics":"+ Generate More Topics"}
       </button>
+      {data.topics.length>0&&!genTopics&&!generatingTopics&&(
+        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:16}}>
+          <span onClick={()=>{setData(d=>({...d,topics:[]}));setTopicsAutoFilled(false);const compNamesArr=(data.competitors||[]).map(c=>typeof c==="string"?c:c?.name||"").filter(Boolean);generateTopicsFromIndustry(data.industry,data.region,compNamesArr);}} style={{fontSize:11,color:C.accent,cursor:"pointer",textDecoration:"underline"}}>{"\u21BB"} Regenerate all topics</span>
+        </div>
+      )}
 
       <div style={{paddingTop:16,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <button onClick={()=>setAuditStep("input")} style={{padding:"8px 16px",background:"none",border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,color:C.sub,cursor:"pointer",fontFamily:"'Outfit'"}}>← Back to Details</button>
@@ -1653,11 +1699,17 @@ Return ONLY a JSON array of strings:
     )}
     <Card><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       <div style={{display:"flex",flexDirection:"column",gap:6}}>
-        <Field label="Brand Name" value={data.brand} onChange={v=>{setData({...data,brand:v});if(autoFilled)setAutoFilled(false);}} placeholder="Acme Corp" onBlur={e=>{const val=e.target.value.trim();if(val.length>=2&&!autoFilled)autoFillFromBrand(val);}}/>
+        <Field label="Brand Name" value={data.brand} onChange={v=>{setData({...data,brand:v});if(autoFilled)setAutoFilled(false);if(topicsAutoFilled){setTopicsAutoFilled(false);setData(d=>({...d,topics:[]}));}}} placeholder="Acme Corp" onBlur={e=>{const val=e.target.value.trim();if(val.length>=2&&!autoFilled)autoFillFromBrand(val);}}/>
         {autoFilling&&(
           <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.accent}}>
             <div style={{width:12,height:12,border:`2px solid ${C.accent}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
             Scanning brand details...
+          </div>
+        )}
+        {generatingTopics&&!autoFilling&&(
+          <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.accent}}>
+            <div style={{width:12,height:12,border:`2px solid ${C.accent}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+            Generating search topics...
           </div>
         )}
       </div>
