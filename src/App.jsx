@@ -1495,17 +1495,8 @@ function DashboardPage({r,history,goTo}){
   </div>);
 }
 
-/* ─── PAGE: AEO AUDIT (Overview) ─── */
-function AuditPage({r,history,goTo}){
-  const[expandComp,setExpandComp]=useState(null);
-  const trend=history.map(h=>({label:h.date,overall:h.overall}));
-  const engineTrend=history.map(h=>({label:h.date,ChatGPT:h.engines[0],Gemini:h.engines[1]}));
-  const latestChange=history.length>1?r.overall-history[history.length-2].overall:0;
-  const catChanges=r.painPoints.map(pp=>{const hist=history.map(h=>{const f=h.categories.find(c=>c.label===pp.label);return f?f.score:null;}).filter(Boolean);const prev=hist.length>1?hist[hist.length-2]:pp.score;return{...pp,change:pp.score-prev};});
-
-  // Compute share-of-voice data: brand + competitors
-  const allBrands=[{name:r.clientData.brand,website:r.clientData.website,mentionRate:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citationRate:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),color:C.accent},...r.competitors.map((c,i)=>{const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);return{name:c.name,website:compObj?compObj.website:"",mentionRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length):c.score,citationRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length*.6):Math.round(c.score*.6),color:["#10A37F","#D97706","#4285F4","#8b5cf6","#ec4899","#0ea5e9","#f97316"][i%7]};})];
-
+/* ─── PAGE: DIAGNOSTICS ─── */
+function DiagnosticsPage({r,goTo}){
   // Compute diagnostics
   const avgMention=Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length);
   const avgCitation=Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length);
@@ -1533,35 +1524,58 @@ function AuditPage({r,history,goTo}){
   diags.sort((a,b)=>(sevOrder[a.severity]??2)-(sevOrder[b.severity]??2));
   const sevColors={critical:C.red,warning:C.amber,info:C.accent,good:C.green};
 
+  // Radar chart data
+  const radarData=r.painPoints.map(pp=>({label:pp.label.split("/")[0].trim(),brand:pp.score}));
+  const radarKeys=[{key:"brand",color:C.accent,label:r.clientData.brand}];
+
   return(<div>
-    {/* Page title */}
-    <h2 style={{fontSize:24,fontWeight:700,color:C.text,margin:"0 0 24px",fontFamily:"'Outfit'"}}>Overview</h2>
+    <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Diagnostics</h2>
+    <p style={{fontSize:13,color:C.muted,margin:"4px 0 24px"}}>System health and category performance for {r.clientData.brand}</p>
 
-    {/* Top row: Visibility Score (left) + System Diagnostics (right) */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:20,marginBottom:24}}>
-      {/* Visibility Score chart */}
-      <div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"24px 28px"}}>
-        <VisibilityChart engines={r.engines} overall={r.overall} brand={r.clientData.brand}/>
+    {/* System Diagnostics cards */}
+    <Card style={{marginBottom:24}}>
+      <div style={{fontSize:14,fontWeight:600,color:C.text,fontFamily:"'Outfit'",marginBottom:14}}>System Diagnostics</div>
+      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+        {diags.map((d,i)=>(<div key={i} style={{display:"flex",gap:8,padding:"10px 12px",background:`${sevColors[d.severity]||C.accent}05`,borderRadius:8,border:`1px solid ${sevColors[d.severity]||C.accent}12`}}>
+          <span style={{fontSize:14,lineHeight:1,flexShrink:0}}>{d.icon}</span>
+          <span style={{fontSize:12,color:C.sub,lineHeight:1.5}}>{d.text}</span>
+        </div>))}
       </div>
+      <div style={{fontSize:11,color:C.muted,marginTop:10,paddingTop:8,borderTop:`1px solid ${C.borderSoft}`}}>{diags.filter(d=>d.severity==="critical").length} critical · {diags.filter(d=>d.severity==="warning").length} warnings · {diags.filter(d=>d.severity==="good").length} healthy</div>
+    </Card>
 
-      {/* System Diagnostics */}
-      <div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"20px 22px",display:"flex",flexDirection:"column"}}>
-        <div style={{fontSize:14,fontWeight:600,color:C.text,fontFamily:"'Outfit'",marginBottom:14}}>System Diagnostics</div>
-        <div style={{flex:1,display:"flex",flexDirection:"column",gap:6,overflowY:"auto"}}>
-          {diags.slice(0,6).map((d,i)=>(<div key={i} style={{display:"flex",gap:8,padding:"10px 12px",background:`${sevColors[d.severity]||C.accent}05`,borderRadius:8,border:`1px solid ${sevColors[d.severity]||C.accent}12`}}>
-            <span style={{fontSize:14,lineHeight:1,flexShrink:0}}>{d.icon}</span>
-            <span style={{fontSize:12,color:C.sub,lineHeight:1.5}}>{d.text}</span>
-          </div>))}
-        </div>
-        <div style={{fontSize:11,color:C.muted,marginTop:10,paddingTop:8,borderTop:`1px solid ${C.borderSoft}`}}>{diags.filter(d=>d.severity==="critical").length} critical · {diags.filter(d=>d.severity==="warning").length} warnings · {diags.filter(d=>d.severity==="good").length} healthy</div>
+    {/* Category Performance Radar */}
+    {radarData.length>=3&&<Card style={{marginBottom:24}}>
+      <div style={{fontSize:14,fontWeight:600,color:C.text,fontFamily:"'Outfit'",marginBottom:14}}>Category Performance Radar</div>
+      <MiniRadar data={radarData} keys={radarKeys}/>
+    </Card>}
+
+    {/* Category Breakdown */}
+    <Card style={{marginBottom:24}}>
+      <div style={{fontSize:14,fontWeight:600,color:C.text,fontFamily:"'Outfit'",marginBottom:14}}>Category Breakdown</div>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {r.painPoints.map((pp,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0"}}>
+          <span style={{fontSize:12,color:C.sub,minWidth:120,flexShrink:0}}>{pp.label.split("/")[0].trim()}</span>
+          <div style={{flex:1}}><Bar value={pp.score} color={SC(pp.severity)} h={6}/></div>
+          <span style={{fontSize:12,fontWeight:700,color:C.text,minWidth:32,textAlign:"right"}}>{pp.score}%</span>
+          <Pill color={SC(pp.severity)} filled>{pp.severity}</Pill>
+        </div>))}
       </div>
-    </div>
+    </Card>
 
-    {/* Share of Voice sections — row by row, each full width with donut + ranked list */}
-    {r.competitors.length>0&&<div style={{display:"flex",flexDirection:"column",gap:20,marginBottom:24}}>
-      <ShareOfVoiceSection title="Share of Mentions" rankTitle="Mentions Rank" brands={allBrands} metricKey="mentionRate"/>
-      <ShareOfVoiceSection title="Share of Citations" rankTitle="Citation Rank" brands={allBrands} metricKey="citationRate"/>
-    </div>}
+    <NavBtn onClick={()=>goTo("engines")} label="Next: Engine Details →"/>
+  </div>);
+}
+
+/* ─── PAGE: ENGINE DETAILS ─── */
+function EnginesPage({r,goTo}){
+  return(<div>
+    <h2 style={{fontSize:22,fontWeight:700,color:C.text,margin:"0 0 24px",fontFamily:"'Outfit'"}}>Engine Details</h2>
+
+    {/* Visibility Chart */}
+    <Card style={{marginBottom:24}}>
+      <VisibilityChart engines={r.engines} overall={r.overall} brand={r.clientData.brand}/>
+    </Card>
 
     {/* Platform Breakdown */}
     <div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"24px 28px",marginBottom:24}}>
@@ -1595,6 +1609,52 @@ function AuditPage({r,history,goTo}){
       </div>
     </div>
 
+    {/* Query Results Table */}
+    <Card style={{marginBottom:24}}>
+      <h3 style={{fontSize:16,fontWeight:600,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'"}}>Query Results</h3>
+      <p style={{fontSize:13,color:C.muted,margin:"0 0 16px"}}>How {r.clientData.brand} appears in individual queries</p>
+      <div style={{overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+          <thead>
+            <tr style={{borderBottom:`2px solid ${C.border}`}}>
+              <th style={{textAlign:"left",padding:"8px 10px",color:C.muted,fontWeight:600,fontSize:11,textTransform:"uppercase",letterSpacing:".04em"}}>Query</th>
+              {r.engines.map(e=><th key={e.id} style={{textAlign:"center",padding:"8px 10px",color:C.muted,fontWeight:600,fontSize:11,textTransform:"uppercase",letterSpacing:".04em"}}>{e.name}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {r.engines[0].queries.map((q,qi)=>{
+              const statusColor=(s)=>s==="Cited"?C.green:s==="Mentioned"?C.amber:C.red;
+              const statusBg=(s)=>s==="Cited"?`${C.green}10`:s==="Mentioned"?`${C.amber}10`:`${C.red}08`;
+              return(<tr key={qi} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
+                <td style={{padding:"10px",color:C.text,fontWeight:500,maxWidth:280}}>{q.query}</td>
+                {r.engines.map(e=>{const eq=e.queries[qi];const st=eq?.status||"Absent";return(
+                  <td key={e.id} style={{textAlign:"center",padding:"10px"}}>
+                    <span style={{display:"inline-block",padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,color:statusColor(st),background:statusBg(st)}}>{st}</span>
+                  </td>
+                );})}
+              </tr>);
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+
+    <NavBtn onClick={()=>goTo("archetypes")} label="Next: User Archetypes →"/>
+  </div>);
+}
+
+/* ─── PAGE: AEO AUDIT (Overview) — now redirects to Dashboard ─── */
+function AuditPage({r,history,goTo}){
+  const[expandComp,setExpandComp]=useState(null);
+  const trend=history.map(h=>({label:h.date,overall:h.overall}));
+  const engineTrend=history.map(h=>({label:h.date,ChatGPT:h.engines[0],Gemini:h.engines[1]}));
+  const latestChange=history.length>1?r.overall-history[history.length-2].overall:0;
+  const catChanges=r.painPoints.map(pp=>{const hist=history.map(h=>{const f=h.categories.find(c=>c.label===pp.label);return f?f.score:null;}).filter(Boolean);const prev=hist.length>1?hist[hist.length-2]:pp.score;return{...pp,change:pp.score-prev};});
+
+  // Compute share-of-voice data: brand + competitors
+  const allBrands=[{name:r.clientData.brand,website:r.clientData.website,mentionRate:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citationRate:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),color:C.accent},...r.competitors.map((c,i)=>{const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);return{name:c.name,website:compObj?compObj.website:"",mentionRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length):c.score,citationRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length*.6):Math.round(c.score*.6),color:["#10A37F","#D97706","#4285F4","#8b5cf6","#ec4899","#0ea5e9","#f97316"][i%7]};})];
+
+  return(<div>
     {/* Performance Tracking */}
     <div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",padding:"24px 28px",marginBottom:24}}>
       <h3 style={{fontSize:16,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'"}}>Performance Tracking</h3>
@@ -2505,8 +2565,9 @@ export default function App(){
     <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",marginLeft:sideCollapsed?60:220,transition:"margin-left .2s ease"}}>
       <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto"}}>
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={run} history={history}/>}
-        {step==="dashboard"&&results&&<DashboardPage r={results} history={history} goTo={setStep}/>}
-        {step==="audit"&&results&&<AuditPage r={results} history={history} goTo={setStep}/>}
+        {(step==="dashboard"||step==="audit")&&results&&<DashboardPage r={results} history={history} goTo={setStep}/>}
+        {step==="diagnostics"&&results&&<DiagnosticsPage r={results} goTo={setStep}/>}
+        {step==="engines"&&results&&<EnginesPage r={results} goTo={setStep}/>}
         {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep}/>}
         {step==="intent"&&results&&<IntentPage r={results} goTo={setStep}/>}
         {step==="playbook"&&results&&<PlaybookPage r={results} goTo={setStep}/>}
