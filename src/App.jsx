@@ -8,11 +8,12 @@ function Bar({value,color=C.accent,h=5}){return <div style={{width:"100%",height
 function Pill({children,color=C.accent,filled}){return <span style={{display:"inline-flex",padding:"3px 10px",borderRadius:100,fontSize:11,fontWeight:600,background:filled?color:`${color}10`,color:filled?"#fff":color}}>{children}</span>;}
 function Card({children,style={},onClick}){return <div onClick={onClick} style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:14,padding:22,boxShadow:"0 1px 2px rgba(0,0,0,.03)",...(onClick?{cursor:"pointer"}:{}),...style}}>{children}</div>;}
 function BrandLogo({name,website,size=22,color}){
-  const[err,setErr]=useState(false);
+  const[src,setSrc]=useState(null);
+  const[fallback,setFallback]=useState(false);
   const domain=website?website.replace(/^https?:\/\//,"").replace(/\/.*$/,""):null;
-  const faviconUrl=domain?`https://www.google.com/s2/favicons?domain=${domain}&sz=${size*2}`:null;
-  if(faviconUrl&&!err)return <img src={faviconUrl} width={size} height={size} style={{borderRadius:4,objectFit:"contain"}} onError={()=>setErr(true)} alt={name}/>;
-  return <div style={{width:size,height:size,borderRadius:4,background:`${color||C.accent}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:Math.round(size*.45),fontWeight:700,color:color||C.accent,fontFamily:"'Outfit'"}}>{(name||"?")[0]}</div>;
+  React.useEffect(()=>{setSrc(domain?`https://img.logo.dev/${domain}?token=${window.__LOGO_TOKEN||"pk_V2YlDNlxSO61y2CJt0JSDQ"}&size=${size*2}&format=png`:null);setFallback(false);},[domain,size]);
+  if(src&&!fallback)return <img src={src} width={size} height={size} style={{borderRadius:size/4,objectFit:"contain",background:"#fff"}} onError={()=>{if(src.includes("logo.dev")){setSrc(`https://www.google.com/s2/favicons?domain=${domain}&sz=${size*2}`);}else{setFallback(true);}}} alt={name}/>;
+  return <div style={{width:size,height:size,borderRadius:size/4,background:color||"#ccc",display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.5,fontWeight:700,color:"#fff"}}>{(name||"?")[0]}</div>;
 }
 function TagInput({label,tags,setTags,placeholder}){const[input,setInput]=useState("");const add=()=>{const v=input.trim();if(v&&!tags.includes(v)){setTags([...tags,v]);setInput("");}};return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label}</label><div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,minHeight:40,alignItems:"center"}}>{tags.map((tag,i)=>(<span key={i} style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",background:`${C.accent}15`,color:C.accent,borderRadius:100,fontSize:12,fontWeight:500}}>{tag}<span onClick={()=>setTags(tags.filter((_,j)=>j!==i))} style={{cursor:"pointer",opacity:.6,fontSize:14}}>×</span></span>))}<input value={input} onChange={e=>setInput(e.target.value)} placeholder={tags.length===0?placeholder:""} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}} style={{border:"none",background:"transparent",outline:"none",fontSize:13,color:C.text,flex:1,minWidth:80,fontFamily:"inherit"}}/></div><span style={{fontSize:10,color:C.muted}}>Press Enter to add</span></div>);}
 function normalizeUrl(url){if(!url||typeof url!=="string")return "";url=url.trim();if(!url)return "";if(url.startsWith("https://"))return url;if(url.startsWith("http://"))return url.replace("http://","https://");return "https://"+url;}
@@ -2008,7 +2009,7 @@ function DashboardPage({r,history,goTo}){
       const sentimentBrands=[
         {name:r.clientData.brand,website:r.clientData.website,sentimentScore:avgSentiment,color:C.accent},
         ...(r.sentiment?.competitors||[]).filter(c=>c.name.toLowerCase()!==brandNameLower).map((c,i)=>({
-          name:c.name,website:"",sentimentScore:c.avg||50,
+          name:c.name,website:((r.clientData.competitors||[]).find(cc=>cc.name.toLowerCase()===c.name.toLowerCase()))?.website||"",sentimentScore:c.avg||50,
           color:["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]
         }))
       ];
