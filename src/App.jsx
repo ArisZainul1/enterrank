@@ -1404,33 +1404,33 @@ Return JSON only:
     setAutoFilling(false);
   };
 
-  // Generate topics via OpenAI
+  // Generate topics via Gemini — NO brand name passed to AI
   const generateTopics=async()=>{
     setGenTopics(true);setError(null);
-    // Normalize URLs before generating
     const nw=normalizeUrl(data.website);const nc=(data.competitors||[]).map(c=>({...c,website:normalizeUrl(c.website||"")}));
     if(nw!==data.website||JSON.stringify(nc)!==JSON.stringify(data.competitors))setData(d=>({...d,website:nw,competitors:nc}));
     try{
-      const compInfo=nc.filter(c=>c.name).map(c=>`${c.name}${c.website?" ("+c.website+")":""}`).join(", ");
-      const prompt=`For the brand "${data.brand}" in the "${data.industry}" industry, operating in "${data.region||"Global"}", with website ${nw||"unknown"}${compInfo?", competitors: "+compInfo:""}.
+      const compNamesStr=nc.filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
+      const prompt=`You are helping generate search queries for testing AI engine visibility in the ${data.industry||"Technology"} industry in ${data.region||"Global"}.
 
-Generate 8-12 key topics that are most relevant for measuring this brand's AI engine visibility (AEO - Answer Engine Optimisation). These should be specific topics that real users in ${data.region||"Global"} would ask AI engines about in ${data.industry}.
+Generate exactly 8 search queries that a real person would type into ChatGPT or Gemini when looking for ${data.industry||"Technology"} products or services in ${data.region||"Global"}.
 
-Topics must reflect ${data.region||"Global"} context — reference local currency, local regulations, and regional market conditions where relevant. A topic about pricing should reference local currency. A topic about regulations should reference local laws. All topics must be written in English — do not translate to local languages.
+These must be queries someone types BEFORE they know which company to choose. They are exploring options, comparing alternatives, or researching the category.
 
-Focus on:
-- Core product/service topics relevant in ${data.region||"Global"}
-- Industry-specific comparison topics for the ${data.region||"Global"} market
-- Regional/local relevance topics (local providers, local regulations, local pricing)
-- Buyer decision topics for ${data.region||"Global"} consumers
-- Technical/feature topics
+Rules:
+- Do NOT include any company, brand, or product names in the queries
+${compNamesStr?`- Specifically do NOT mention: ${compNamesStr}`:""}
+- Each query must be 15-30 words, specific and detailed
+- Mix these angles: best/top recommendations, feature comparisons, where-to-buy, beginner guides, pricing comparisons, problem-solving, trends
+- Make queries specific to ${data.region||"Global"} where relevant (local currency, local context)
+- Write in English only
 
-Return ONLY a JSON array of strings, no markdown, no explanation:
-["topic 1", "topic 2", "topic 3", ...]`;
-      const raw=await callOpenAI(prompt,"You are an AEO (Answer Engine Optimisation) expert. Return ONLY valid JSON arrays, no markdown fences.");
+Return ONLY a JSON array of strings, no markdown:
+["query 1", "query 2", ...]`;
+      const raw=await callGemini(prompt,"You generate generic industry search queries. Never include any brand or company names. Return ONLY valid JSON.");
       const topics=safeJSON(raw);
       if(topics&&Array.isArray(topics)&&topics.length>0){
-        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>0).map(t=>t.trim()).slice(0,10)}));
+        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,10)}));
         setAuditStep("topics");
       }else{
         setError("Failed to generate topics. Please try again.");
@@ -1446,19 +1446,26 @@ Return ONLY a JSON array of strings, no markdown, no explanation:
     setGenTopics(true);setError(null);
     try{
       const existing=data.topics.join(", ");
-      const compInfo=(data.competitors||[]).filter(c=>c.name).map(c=>`${c.name}${c.website?" ("+c.website+")":""}`).join(", ");
-      const prompt=`For the brand "${data.brand}" in the "${data.industry}" industry (${data.region||"Global"}), website: ${data.website||"unknown"}${compInfo?", competitors: "+compInfo:""}.
+      const compNamesStr=(data.competitors||[]).filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
+      const prompt=`You are helping generate search queries for testing AI engine visibility in the ${data.industry||"Technology"} industry in ${data.region||"Global"}.
 
-I already have these topics: ${existing}
+I already have these queries: ${existing}
 
-Generate 5 MORE different topics that are also relevant for measuring AI engine visibility in ${data.region||"Global"}. These should NOT duplicate existing topics. Focus on gaps or angles not yet covered. Topics must reflect ${data.region||"Global"} context — reference local currency and regional market conditions. All topics must be in English.
+Generate 5 MORE different search queries that a real person would type into ChatGPT or Gemini when looking for ${data.industry||"Technology"} products or services in ${data.region||"Global"}. These must NOT duplicate existing queries. Focus on gaps or angles not yet covered.
+
+Rules:
+- Do NOT include any company, brand, or product names
+${compNamesStr?`- Specifically do NOT mention: ${compNamesStr}`:""}
+- Each query must be 15-30 words, specific and detailed
+- Make queries specific to ${data.region||"Global"} where relevant
+- Write in English only
 
 Return ONLY a JSON array of strings:
-["new topic 1", "new topic 2", ...]`;
-      const raw=await callOpenAI(prompt,"You are an AEO expert. Return ONLY valid JSON arrays.");
+["query 1", "query 2", ...]`;
+      const raw=await callGemini(prompt,"You generate generic industry search queries. Never include any brand or company names. Return ONLY valid JSON.");
       const newTopics=safeJSON(raw);
       if(newTopics&&Array.isArray(newTopics)&&newTopics.length>0){
-        const cleaned=newTopics.filter(t=>typeof t==="string"&&t.trim().length>0).map(t=>t.trim());
+        const cleaned=newTopics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim());
         setData(d=>({...d,topics:[...d.topics,...cleaned].slice(0,10)}));
       }
     }catch(e){console.error("Regenerate error:",e);}
