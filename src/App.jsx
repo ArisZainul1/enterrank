@@ -314,6 +314,51 @@ Rules:
   const gemScores=calcScores(gemParsed.queries);
   const gemData={score:Math.round(gemScores.mentionRate*0.5+gemScores.citationRate*0.5),mentionRate:gemScores.mentionRate,citationRate:gemScores.citationRate,queries:gemParsed.queries||[],strengths:gemParsed.strengths||[],weaknesses:gemParsed.weaknesses||[]};
 
+  // ── Step 2b: Sentiment Analysis ──
+  onProgress("Analyzing brand sentiment across AI engines...",24);
+
+  const sentimentPrompt=`Analyze the general public and industry sentiment around "${brand}" in the ${industry} industry in ${region}.
+
+Rate sentiment on a scale of 0-100:
+- 0-20: Very negative (scandals, lawsuits, major complaints)
+- 21-40: Negative (frequent criticism, declining reputation)
+- 41-60: Neutral (not well known, mixed opinions)
+- 61-80: Positive (well regarded, good reputation)
+- 81-100: Very positive (industry leader, beloved brand)
+
+Also rate these competitors: ${compNames.join(", ")}
+
+Return JSON only:
+{
+  "brand": {"score": <0-100>, "summary": "<1 sentence explaining the sentiment>"},
+  "competitors": [{"name": "<competitor>", "score": <0-100>, "summary": "<1 sentence>"}]
+}
+
+Be accurate. Base this on real market perception, not speculation. A brand nobody has heard of should score 40-55 (neutral), not high.`;
+
+  const [sentGptRaw, sentGemRaw]=await Promise.all([
+    callOpenAI(sentimentPrompt, engineSystemPrompt),
+    callGemini(sentimentPrompt, engineSystemPrompt)
+  ]);
+  const sentGpt=safeJSON(sentGptRaw)||{brand:{score:50,summary:"Could not assess"},competitors:[]};
+  const sentGem=safeJSON(sentGemRaw)||{brand:{score:50,summary:"Could not assess"},competitors:[]};
+
+  const sentimentData={
+    brand:{
+      gpt:sentGpt.brand?.score||50,
+      gemini:sentGem.brand?.score||50,
+      avg:Math.round(((sentGpt.brand?.score||50)+(sentGem.brand?.score||50))/2),
+      summary:sentGpt.brand?.summary||sentGem.brand?.summary||"Neutral sentiment"
+    },
+    competitors:compNames.map(name=>{
+      const gc=(sentGpt.competitors||[]).find(c=>c.name?.toLowerCase()===name.toLowerCase());
+      const gm=(sentGem.competitors||[]).find(c=>c.name?.toLowerCase()===name.toLowerCase());
+      const gScore=gc?.score||50;
+      const mScore=gm?.score||50;
+      return{name,gpt:gScore,gemini:mScore,avg:Math.round((gScore+mScore)/2),summary:gc?.summary||gm?.summary||""};
+    })
+  };
+
   // ── Step 4: Competitor analysis — BOTH engines + crawl data ──
   onProgress("Analysing competitors across both engines...",30);
   const compPromptBase=`Analyse these competitors against "${brand}" in ${industry} (${region}) for AI engine visibility.
@@ -697,7 +742,8 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
     channelData:{channels:(chData.channels||[]).slice(0,12)},
     contentGridData:(contentData.contentTypes||[]).slice(0,10),
     roadmapData:roadData,
-    contentData:(contentData.contentTypes||[]).slice(0,10)
+    contentData:(contentData.contentTypes||[]).slice(0,10),
+    sentimentData:sentimentData
   };
 }
 
@@ -774,7 +820,8 @@ function generateAll(cd, apiData){
   const contentTypes=(hasApi&&apiData.contentGridData&&Array.isArray(apiData.contentGridData)&&apiData.contentGridData.length>0)?apiData.contentGridData.map(ct=>({type:ct.type||"Content",channels:ct.channels||["Blog"],freq:ct.freq||"Monthly",p:ct.p||"P1",owner:ct.owner||"Content Team",impact:typeof ct.impact==="number"?ct.impact:70,rationale:ct.rationale||ct.description||""})):[];
   const roadmap=(hasApi&&apiData.roadmapData&&apiData.roadmapData.day30)?apiData.roadmapData:null;
   const outputReqs=contentTypes.slice(0,6).map(ct=>({n:ct.freq||"Monthly",u:"",l:ct.type,d:ct.rationale||""}));
-  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,clientData:cd};
+  const sentiment=(hasApi&&apiData.sentimentData)?apiData.sentimentData:{brand:{gpt:50,gemini:50,avg:50,summary:"Not assessed"},competitors:[]};
+  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,clientData:cd};
 }
 
 /* ─── LOGIN FORM ─── */
@@ -2261,7 +2308,7 @@ export default function App(){
 
   const run=async(apiData)=>{
     const r=generateAll(data, apiData);setResults(r);
-    const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
+    const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
     setHistory(prev=>[...prev,entry]);
     setStep("audit");
 
