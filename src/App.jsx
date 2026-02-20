@@ -1328,7 +1328,7 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     if(!brandName||brandName.trim().length<2||autoFilling)return;
     setAutoFilling(true);
     try{
-      const prompt=`I need information about the company or brand called "${brandName.trim()}".\n\nReturn JSON only:\n{\n  "website": "https://example.com",\n  "industry": "the primary industry (1-3 words, e.g. Telecommunications, SaaS, E-commerce)",\n  "region": "primary operating region (e.g. Malaysia, United States, Global, Southeast Asia)",\n  "competitors": [\n    {"name": "Competitor 1", "website": "https://competitor1.com"},\n    {"name": "Competitor 2", "website": "https://competitor2.com"},\n    {"name": "Competitor 3", "website": "https://competitor3.com"}\n  ],\n  "topics": ["search query 1", "search query 2", "search query 3", "search query 4", "search query 5"]\n}\n\nRules:\n- Website must be the MAIN company website, not Wikipedia or social\n- Return the top 3 direct competitors that actively compete with this brand in their primary operating region. Competitors must actually operate and be available in that region — do not list globally known brands that have no presence in the brand's market\n- Topics must be 5 realistic search queries a potential customer in the brand's region would type into ChatGPT or Gemini when looking for this type of product or service\n- Topics must NOT contain the brand name "${brandName.trim()}" or any competitor names\n- Topics should sound like natural searches e.g. "best credit cards with travel rewards in UAE", "low interest personal loan providers in Abu Dhabi", "which cloud hosting is best for startups"\n- Mix of: "best/top" queries, comparison queries, problem-solving queries, pricing queries\n- Make topics specific to the company's operating region — reference local competitors, local currency, local regulations\n- All output must be in English. Do not translate to local languages\n- If unsure about the brand, make your best guess based on the name`;
+      const prompt=`I need information about the company or brand called "${brandName.trim()}".\n\nReturn JSON only:\n{\n  "website": "https://example.com",\n  "industry": "the primary industry (1-3 words, e.g. Telecommunications, SaaS, E-commerce)",\n  "region": "primary operating region (e.g. Malaysia, United States, Global, Southeast Asia)",\n  "competitors": [\n    {"name": "Competitor 1", "website": "https://competitor1.com"},\n    {"name": "Competitor 2", "website": "https://competitor2.com"},\n    {"name": "Competitor 3", "website": "https://competitor3.com"}\n  ],\n  "topics": ["search query 1", "search query 2", "search query 3", "search query 4", "search query 5"]\n}\n\nRules:\n- Website must be the MAIN company website, not Wikipedia or social\n- Return the top 3 direct competitors that actively compete with this brand in their primary operating region. Competitors must actually operate and be available in that region — do not list globally known brands that have no presence in the brand's market\n\n"topics": Generate 5 search queries that a potential CUSTOMER would type into ChatGPT or Gemini when looking for products or services in this company's industry. These queries must represent what someone searches for BEFORE they know which brand to choose.\n\nCRITICAL RULES FOR TOPICS:\n- Topics must NEVER contain "${brandName.trim()}" or any brand/company name\n- Topics must NEVER contain any competitor names\n- Topics must be GENERIC CATEGORY queries like:\n  GOOD: "best heated tobacco devices for beginners in Malaysia"\n  GOOD: "compare heat-not-burn devices by battery life and price"\n  GOOD: "where to buy authentic heated tobacco consumables online in Malaysia"\n  BAD: "what are IQOS health risks" (contains brand name)\n  BAD: "how does IQOS compare to glo" (contains brand AND competitor name)\n  BAD: "IQOS pricing in Malaysia" (contains brand name)\n- Think about what a customer searches BEFORE they know any brand exists\n- Mix of: best/top recommendations, comparisons, where-to-buy, beginner guides, feature comparisons\n- Make them specific to the region\n- All output must be in English. Do not translate to local languages\n- If unsure about the brand, make your best guess based on the name`;
       const raw=await callGemini(prompt,"You are a business intelligence assistant. Return ONLY valid JSON, no markdown fences.");
       const result=safeJSON(raw);
       if(result){
@@ -1344,7 +1344,20 @@ function NewAuditPage({data,setData,onRun,history=[]}){
           }
           const hasTopics=(prev.topics||[]).length>0;
           if(!hasTopics&&result.topics&&Array.isArray(result.topics)){
-            updates.topics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>3).map(t=>t.trim()).slice(0,5);
+            const brandLower=brandName.trim().toLowerCase();
+            const brandRegex=new RegExp('\\b'+brandName.trim().replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','gi');
+            const compRegexes=(result.competitors||[]).map(c=>{
+              if(!c.name||c.name.length<2)return null;
+              return new RegExp('\\b'+c.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','gi');
+            }).filter(Boolean);
+            const cleanedTopics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>3).map(t=>{
+              let cleaned=t.trim();
+              cleaned=cleaned.replace(brandRegex,'').trim();
+              compRegexes.forEach(rx=>{cleaned=cleaned.replace(rx,'').trim();});
+              cleaned=cleaned.replace(/\s{2,}/g,' ').replace(/^[,\s.\u2014-]+|[,\s.\u2014-]+$/g,'').trim();
+              return cleaned;
+            }).filter(t=>t.length>15);
+            if(cleanedTopics.length>0)updates.topics=cleanedTopics.slice(0,5);
           }
           if(Object.keys(updates).length>0){didFill=true;return{...prev,...updates};}
           return prev;
@@ -1587,7 +1600,7 @@ Return ONLY a JSON array of strings:
       </div>
       {/* Topic list */}
       <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
-        {data.topics.map((topic,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:C.bg,borderRadius:8,border:`1px solid ${C.borderSoft}`}}>
+        {data.topics.map((topic,i)=>{const topicLower=topic.toLowerCase();const topicContainsBrand=data.brand&&data.brand.trim().length>1&&topicLower.includes(data.brand.trim().toLowerCase());const topicContainsComp=(data.competitors||[]).some(c=>c.name&&c.name.trim().length>1&&topicLower.includes(c.name.trim().toLowerCase()));const hasWarning=topicContainsBrand||topicContainsComp;return(<div key={i}><div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:hasWarning?"#fef2f2":C.bg,borderRadius:8,border:`1px solid ${hasWarning?"#fecaca":C.borderSoft}`}}>
           <span style={{fontSize:13,color:C.accent,fontWeight:600,fontFamily:"'Outfit'",minWidth:22}}>{i+1}.</span>
           {editingTopic===i?(<>
             <input value={editVal} onChange={e=>setEditVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")saveEdit(i);if(e.key==="Escape"){setEditingTopic(null);setEditVal("");}}} autoFocus style={{flex:1,padding:"4px 8px",background:"#fff",border:`1px solid ${C.accent}40`,borderRadius:6,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit"}}/>
@@ -1598,7 +1611,7 @@ Return ONLY a JSON array of strings:
             <span onClick={()=>startEdit(i)} style={{cursor:"pointer",fontSize:11,color:C.accent,fontWeight:500,opacity:.7}}>Edit</span>
             <span onClick={()=>deleteTopic(i)} style={{cursor:"pointer",fontSize:14,color:C.muted,lineHeight:1}}>×</span>
           </>)}
-        </div>))}
+        </div>{hasWarning&&(<div style={{fontSize:10,color:"#dc2626",marginTop:2,paddingLeft:24,marginBottom:2}}>{topicContainsBrand?"This topic contains your brand name":"This topic contains a competitor name"} — results may be inflated. Consider rephrasing as a generic query.</div>)}</div>);})}
       </div>
 
       {/* Topic counter */}
