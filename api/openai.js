@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   if (!OPENAI_API_KEY) return res.status(500).json({ error: 'OPENAI_API_KEY not configured' });
 
   try {
-    const { prompt, systemPrompt } = req.body;
+    const { prompt, systemPrompt, model } = req.body;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 55000); // 55s safety
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: model || 'gpt-4o-mini',
         max_tokens: 4000,
         temperature: 0.2,
         messages: [

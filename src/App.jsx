@@ -114,6 +114,20 @@ async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst.")
   });
 }
 
+async function callOpenAI4o(prompt, systemPrompt="You are an expert AEO analyst."){
+  return callWithRetry(async()=>{
+    try{
+      const controller=new AbortController();
+      const timeout=setTimeout(()=>controller.abort(),55000);
+      const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt,model:"gpt-4o"}),signal:controller.signal});
+      clearTimeout(timeout);
+      const data=await res.json();
+      if(data.error){console.error("OpenAI 4o error:",data.error);return null;}
+      return data.text||"";
+    }catch(e){console.error("OpenAI 4o API error:",e);return null;}
+  });
+}
+
 async function callGemini(prompt, systemPrompt="You are an expert AEO analyst."){
   return callWithRetry(async()=>{
     try{
@@ -230,34 +244,81 @@ async function runRealAudit(cd, onProgress){
   }
   const compCrawlSummary=Object.entries(compCrawls).map(([name,data])=>`\n--- ${name} ---\n${data}`).join("\n")||"No competitor crawl data.";
 
-  // ── Step 2: Generate real search queries from key topics ──
+  // ── Step 2: Generate high-quality search queries from key topics ──
   onProgress("Generating search queries from your topics...", 10);
 
   const topicsToUse = topics.slice(0, 10);
-  const queryGenPrompt = `For each of these search topics, generate 2 different but related search queries that a real person would type into an AI chatbot like ChatGPT or Gemini. The topics are already phrased as searches — create variations that approach the same need from a different angle.
+  const queryGenPrompt = `You are an expert in AI engine optimization (AEO/GEO). Your job is to generate realistic, high-quality search queries that real users would type into ChatGPT or Gemini.
+
+I need exactly 2 search queries for each of these topics. Each query must approach the topic from a DIFFERENT angle.
 
 Industry: ${industry}
 Region: ${region}
-Topics: ${topicsToUse.join(", ")}
+Topics:
+${topicsToUse.map((t, i) => `${i + 1}. ${t}`).join("\n")}
 
-Return JSON only:
-{"queries": ["query 1", "query 2", ...]}
+For each topic, generate 2 queries using DIFFERENT angles from this list:
+- Comparison/versus: "Compare X vs Y for [use case]"
+- Best-of with specific criteria: "What are the best X with [specific feature] in [region]?"
+- Purchase intent: "Where to buy X in [region]?" or "Which X is worth buying right now?"
+- Problem-solving: "How to choose the right X for [specific need]?"
+- Feature-specific: "Which X offers the best [specific feature like battery life, rewards, coverage]?"
+- Price/value: "Who offers the best deals/pricing on X in [region]?"
+- Beginner/newcomer: "Best X for beginners/first-time users in [region]?"
+- Authenticity/trust: "Where to find authentic/genuine X in [region]?"
+- Trends/current: "What are the top-rated X in [region] in 2026?"
+- Trade-in/switching: "Best X for people switching from [alternative]?"
 
 Rules:
-- Each query must be a natural question or search a real user would ask
-- Queries must NEVER contain the brand name "${brand}" or any of these competitor names: ${compNames.filter(n=>n).join(", ")}
-- Queries should be what someone asks when they do NOT have a specific company in mind
-- Good: "What are the best mortgage rates in UAE right now?"
-- Bad: "What are First Abu Dhabi Bank's mortgage rates?"
-- If a topic contains a brand name, rephrase it as a generic category query
-- Vary the angle: if the topic is about "best X", make one a comparison and another a recommendation request
-- Make them specific to ${region} where relevant
-- All queries must be in English — do not translate to local languages
-- Total must be exactly ${topicsToUse.length * 2}`;
+- Queries must be specific and detailed — NOT generic like "best X in Y"
+- Include specific criteria, features, or use cases in each query
+- NEVER include the brand "${brand}" or these competitor names: ${compNames.filter(n=>n).join(", ")}
+- Queries must be what someone asks when they do NOT have a specific company in mind
+- Make queries specific to ${region} where relevant (mention cities, local context)
+- All queries must be in English
+- Each query should be 15-25 words long — detailed enough to get a substantive AI response
+- The 2 queries per topic MUST use different angles — never repeat the same structure
 
-  const queryGenRaw = await callOpenAI(queryGenPrompt, "You generate search queries for testing AI engine visibility. Queries must be generic and must never include any brand or company names. Return ONLY valid JSON, no markdown fences.");
+BAD examples (too generic):
+- "What are the best credit cards in UAE?"
+- "Top heated tobacco brands in Malaysia"
+- "Best mortgage rates"
+
+GOOD examples (specific, varied angles):
+- "Which credit cards in UAE offer the highest cashback on grocery and fuel purchases?"
+- "Compare heat-not-burn devices by battery life, price and compatible tobacco sticks — which should I buy in Malaysia?"
+- "Who offers the best mortgage refinancing deals for expats in Abu Dhabi right now?"
+- "What are the most reliable heated tobacco devices for beginners who want easy maintenance?"
+- "Where to buy authentic heat-not-burn devices and consumables online in Malaysia?"
+
+Return JSON only:
+{"queries": [${topicsToUse.map((t, i) => `\n  {"topic": "${t.replace(/"/g, '\\"')}", "q1": "first query for this topic", "q2": "second query for this topic"}`).join(",")}
+]}`;
+
+  const queryGenRaw = await callOpenAI4o(queryGenPrompt, "You are an AEO/GEO search query expert. Generate highly specific, realistic search queries. Return ONLY valid JSON, no markdown fences.");
   const queryGenParsed = safeJSON(queryGenRaw) || { queries: [] };
-  let searchQueries = (queryGenParsed.queries || []).filter(q => typeof q === "string" && q.length > 5).slice(0, 20);
+
+  // Extract queries from the structured response
+  let searchQueries = [];
+  if (Array.isArray(queryGenParsed.queries)) {
+    queryGenParsed.queries.forEach(item => {
+      if (typeof item === "string") {
+        searchQueries.push(item);
+      } else if (item && typeof item === "object") {
+        if (item.q1) searchQueries.push(item.q1);
+        if (item.q2) searchQueries.push(item.q2);
+      }
+    });
+  }
+  searchQueries = searchQueries.filter(q => typeof q === "string" && q.length > 15).slice(0, 20);
+
+  // Fallback if generation failed
+  if (searchQueries.length < 4) {
+    searchQueries = topicsToUse.flatMap(t => [
+      `What are the best ${t} options with the highest ratings in ${region}?`,
+      `Compare the top ${t} providers by features, pricing and customer reviews in ${region}`
+    ]).slice(0, 20);
+  }
 
   // Post-generation: strip any brand/competitor names that leaked through
   const brandEscaped = brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -271,13 +332,6 @@ Rules:
     });
     return cleaned;
   }).filter(q => q.length > 10);
-
-  if (searchQueries.length < 4) {
-    searchQueries = topicsToUse.flatMap(t => [
-      `What are the best ${t} options in ${region}?`,
-      `Can you recommend ${t} providers in ${region}?`
-    ]).slice(0, 20);
-  }
 
   // ── Step 3: Test all queries on both engines with real responses ──
   const allBrandNames = [brand, ...compNames.filter(n => n)].slice(0, 6);
