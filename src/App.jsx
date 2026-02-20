@@ -1331,28 +1331,26 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     setGeneratingTopics(true);
     try{
       const compNamesStr=(competitorNames||[]).filter(n=>n&&n.trim().length>1).map(n=>n.trim()).join(", ");
-      const prompt=`You are helping generate search queries for testing AI engine visibility in the ${industry} industry in ${region||"Global"}.
+      const prompt=`Generate exactly 5 search queries that someone would type into ChatGPT or Gemini when they are ACTIVELY LOOKING TO BUY or CHOOSE a product/service in the ${industry} industry in ${region||"Global"}.
 
-Generate exactly 5 search queries that a real person would type into ChatGPT or Gemini when looking for ${industry} products or services in ${region||"Global"}.
+These are people who ALREADY KNOW they want this type of product. They are comparing options, checking prices, reading reviews, or deciding which one to buy. They have NOT chosen a brand yet.
 
-These must be queries someone types BEFORE they know which company to choose. They are exploring options, comparing alternatives, or researching the category.
+Generate queries for these 5 specific angles:
+1. COMPARISON: "Compare the top [products] by [2-3 specific features like price, battery life, flavors, quality]"
+2. BEST-OF: "What are the best [products] for [specific use case] in ${region||"Global"}?"
+3. WHERE TO BUY: "Where to buy authentic [products] online in ${region||"Global"}?" or "Who offers the best deals on [products] in [city in ${region||"Global"}]?"
+4. BEGINNER: "What is the best [product] for someone who is new to [category] in ${region||"Global"}?"
+5. FEATURE-SPECIFIC: "Which [products] offer the best [specific feature like flavor variety, device reliability, value for money] in ${region||"Global"}?"
 
-Rules:
-- Do NOT include any company, brand, or product names in the queries
-${compNamesStr?`- Specifically do NOT mention: ${compNamesStr}`:""}
-- Each query must be 15-30 words, specific and detailed
-- Mix these angles:
-  1. A "best/top recommended" query with specific criteria
-  2. A comparison query mentioning specific features (price, quality, features)
-  3. A "where to buy" or availability query for ${region||"Global"}
-  4. A beginner/newcomer guide query
-  5. A specific feature or use-case query
-- Make queries specific to ${region||"Global"} where relevant
-- Write in English only
+${compNamesStr?"Do NOT mention these names: "+compNamesStr:""}
+Do NOT include any brand or company names.
+Use the specific product category terminology (e.g. "heated tobacco devices" not "tobacco industry products").
+All queries must be in English.
+Each query should be 12-25 words.
 
 Return JSON only:
 {"topics": ["query 1", "query 2", "query 3", "query 4", "query 5"]}`;
-      const raw=await callGemini(prompt,"You generate generic industry search queries. Never include any brand or company names. Return ONLY valid JSON.");
+      const raw=await callOpenAI4o(prompt,"You generate purchase-intent search queries for people actively shopping for a product. Every query must be from a buyer comparing options. Never include any brand or company names. Return ONLY valid JSON.");
       const result=safeJSON(raw);
       if(result&&result.topics&&Array.isArray(result.topics)){
         const validTopics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,5);
@@ -1404,33 +1402,37 @@ Return JSON only:
     setAutoFilling(false);
   };
 
-  // Generate topics via Gemini — NO brand name passed to AI
+  // Generate topics via gpt-4o — NO brand name passed to AI
   const generateTopics=async()=>{
     setGenTopics(true);setError(null);
     const nw=normalizeUrl(data.website);const nc=(data.competitors||[]).map(c=>({...c,website:normalizeUrl(c.website||"")}));
     if(nw!==data.website||JSON.stringify(nc)!==JSON.stringify(data.competitors))setData(d=>({...d,website:nw,competitors:nc}));
     try{
       const compNamesStr=nc.filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
-      const prompt=`You are helping generate search queries for testing AI engine visibility in the ${data.industry||"Technology"} industry in ${data.region||"Global"}.
+      const prompt=`Generate exactly 5 search queries that someone would type into ChatGPT or Gemini when they are ACTIVELY LOOKING TO BUY or CHOOSE a product/service in the ${data.industry||"Technology"} industry in ${data.region||"Global"}.
 
-Generate exactly 8 search queries that a real person would type into ChatGPT or Gemini when looking for ${data.industry||"Technology"} products or services in ${data.region||"Global"}.
+These are people who ALREADY KNOW they want this type of product. They are comparing options, checking prices, reading reviews, or deciding which one to buy. They have NOT chosen a brand yet.
 
-These must be queries someone types BEFORE they know which company to choose. They are exploring options, comparing alternatives, or researching the category.
+Generate queries for these 5 specific angles:
+1. COMPARISON: "Compare the top [products] by [2-3 specific features like price, battery life, flavors, quality]"
+2. BEST-OF: "What are the best [products] for [specific use case] in ${data.region||"Global"}?"
+3. WHERE TO BUY: "Where to buy authentic [products] online in ${data.region||"Global"}?" or "Who offers the best deals on [products] in [city in ${data.region||"Global"}]?"
+4. BEGINNER: "What is the best [product] for someone who is new to [category] in ${data.region||"Global"}?"
+5. FEATURE-SPECIFIC: "Which [products] offer the best [specific feature like flavor variety, device reliability, value for money] in ${data.region||"Global"}?"
 
-Rules:
-- Do NOT include any company, brand, or product names in the queries
-${compNamesStr?`- Specifically do NOT mention: ${compNamesStr}`:""}
-- Each query must be 15-30 words, specific and detailed
-- Mix these angles: best/top recommendations, feature comparisons, where-to-buy, beginner guides, pricing comparisons, problem-solving, trends
-- Make queries specific to ${data.region||"Global"} where relevant (local currency, local context)
-- Write in English only
+${compNamesStr?"Do NOT mention these names: "+compNamesStr:""}
+Do NOT include any brand or company names.
+Use the specific product category terminology (e.g. "heated tobacco devices" not "tobacco industry products").
+All queries must be in English.
+Each query should be 12-25 words.
 
-Return ONLY a JSON array of strings, no markdown:
-["query 1", "query 2", ...]`;
-      const raw=await callGemini(prompt,"You generate generic industry search queries. Never include any brand or company names. Return ONLY valid JSON.");
-      const topics=safeJSON(raw);
+Return JSON only:
+{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5"]}`;
+      const raw=await callOpenAI4o(prompt,"You generate purchase-intent search queries for people actively shopping for a product. Every query must be from a buyer comparing options. Never include any brand or company names. Return ONLY valid JSON.");
+      const parsed=safeJSON(raw);
+      const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(topics&&Array.isArray(topics)&&topics.length>0){
-        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,10)}));
+        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,5)}));
         setAuditStep("topics");
       }else{
         setError("Failed to generate topics. Please try again.");
@@ -1445,27 +1447,34 @@ Return ONLY a JSON array of strings, no markdown:
   const regenerateTopics=async()=>{
     setGenTopics(true);setError(null);
     try{
-      const existing=data.topics.join(", ");
+      const existing=data.topics.join("; ");
       const compNamesStr=(data.competitors||[]).filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
-      const prompt=`You are helping generate search queries for testing AI engine visibility in the ${data.industry||"Technology"} industry in ${data.region||"Global"}.
+      const prompt=`Generate exactly 5 search queries that someone would type into ChatGPT or Gemini when they are ACTIVELY LOOKING TO BUY or CHOOSE a product/service in the ${data.industry||"Technology"} industry in ${data.region||"Global"}.
 
-I already have these queries: ${existing}
+These are people who ALREADY KNOW they want this type of product. They are comparing options, checking prices, reading reviews, or deciding which one to buy. They have NOT chosen a brand yet.
 
-Generate 5 MORE different search queries that a real person would type into ChatGPT or Gemini when looking for ${data.industry||"Technology"} products or services in ${data.region||"Global"}. These must NOT duplicate existing queries. Focus on gaps or angles not yet covered.
+I already have these queries (do NOT duplicate them): ${existing}
 
-Rules:
-- Do NOT include any company, brand, or product names
-${compNamesStr?`- Specifically do NOT mention: ${compNamesStr}`:""}
-- Each query must be 15-30 words, specific and detailed
-- Make queries specific to ${data.region||"Global"} where relevant
-- Write in English only
+Generate queries for these 5 specific angles:
+1. COMPARISON: "Compare the top [products] by [2-3 specific features like price, battery life, flavors, quality]"
+2. BEST-OF: "What are the best [products] for [specific use case] in ${data.region||"Global"}?"
+3. WHERE TO BUY: "Where to buy authentic [products] online in ${data.region||"Global"}?" or "Who offers the best deals on [products] in [city in ${data.region||"Global"}]?"
+4. BEGINNER: "What is the best [product] for someone who is new to [category] in ${data.region||"Global"}?"
+5. FEATURE-SPECIFIC: "Which [products] offer the best [specific feature like flavor variety, device reliability, value for money] in ${data.region||"Global"}?"
 
-Return ONLY a JSON array of strings:
-["query 1", "query 2", ...]`;
-      const raw=await callGemini(prompt,"You generate generic industry search queries. Never include any brand or company names. Return ONLY valid JSON.");
-      const newTopics=safeJSON(raw);
+${compNamesStr?"Do NOT mention these names: "+compNamesStr:""}
+Do NOT include any brand or company names.
+Use the specific product category terminology (e.g. "heated tobacco devices" not "tobacco industry products").
+All queries must be in English.
+Each query should be 12-25 words.
+
+Return JSON only:
+{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5"]}`;
+      const raw=await callOpenAI4o(prompt,"You generate purchase-intent search queries for people actively shopping for a product. Every query must be from a buyer comparing options. Never include any brand or company names. Return ONLY valid JSON.");
+      const parsed=safeJSON(raw);
+      const newTopics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(newTopics&&Array.isArray(newTopics)&&newTopics.length>0){
-        const cleaned=newTopics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim());
+        const cleaned=newTopics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,5);
         setData(d=>({...d,topics:[...d.topics,...cleaned].slice(0,10)}));
       }
     }catch(e){console.error("Regenerate error:",e);}
