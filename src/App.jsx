@@ -231,7 +231,7 @@ async function runRealAudit(cd, onProgress){
   onProgress("Generating search queries from your topics...", 10);
 
   const topicsToUse = topics.slice(0, 10);
-  const queryGenPrompt = `Generate exactly 2 realistic search queries per topic that a real person would type into an AI chatbot like ChatGPT or Gemini.
+  const queryGenPrompt = `For each of these search topics, generate 2 different but related search queries that a real person would type into an AI chatbot like ChatGPT or Gemini. The topics are already phrased as searches — create variations that approach the same need from a different angle.
 
 Industry: ${industry}
 Region: ${region}
@@ -241,15 +241,32 @@ Return JSON only:
 {"queries": ["query 1", "query 2", ...]}
 
 Rules:
-- Natural language questions, not keywords
-- Mix of: "best/top/recommended" queries, comparison queries, how-to-choose queries, pricing/review queries
+- Each query must be a natural question or search a real user would ask
+- Queries must NEVER contain the brand name "${brand}" or any of these competitor names: ${compNames.filter(n=>n).join(", ")}
+- Queries should be what someone asks when they do NOT have a specific company in mind
+- Good: "What are the best mortgage rates in UAE right now?"
+- Bad: "What are First Abu Dhabi Bank's mortgage rates?"
+- If a topic contains a brand name, rephrase it as a generic category query
+- Vary the angle: if the topic is about "best X", make one a comparison and another a recommendation request
 - Make them specific to ${region} where relevant
-- Do NOT include any brand names — keep queries generic
 - Total must be exactly ${topicsToUse.length * 2}`;
 
-  const queryGenRaw = await callOpenAI(queryGenPrompt, engineSystemPrompt);
+  const queryGenRaw = await callOpenAI(queryGenPrompt, "You generate search queries for testing AI engine visibility. Queries must be generic and must never include any brand or company names. Return ONLY valid JSON, no markdown fences.");
   const queryGenParsed = safeJSON(queryGenRaw) || { queries: [] };
   let searchQueries = (queryGenParsed.queries || []).filter(q => typeof q === "string" && q.length > 5).slice(0, 20);
+
+  // Post-generation: strip any brand/competitor names that leaked through
+  const brandEscaped = brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const brandStripRegex = new RegExp('\\b' + brandEscaped + '\\b', 'gi');
+  searchQueries = searchQueries.map(q => {
+    let cleaned = q;
+    cleaned = cleaned.replace(brandStripRegex, '').replace(/\s{2,}/g, ' ').trim();
+    compNames.filter(n => n && n.length > 2).forEach(cn => {
+      const esc = cn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      cleaned = cleaned.replace(new RegExp('\\b' + esc + '\\b', 'gi'), '').replace(/\s{2,}/g, ' ').trim();
+    });
+    return cleaned;
+  }).filter(q => q.length > 10);
 
   if (searchQueries.length < 4) {
     searchQueries = topicsToUse.flatMap(t => [
@@ -1098,7 +1115,7 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     if(!brandName||brandName.trim().length<2||autoFilling)return;
     setAutoFilling(true);
     try{
-      const prompt=`I need information about the company or brand called "${brandName.trim()}".\n\nReturn JSON only:\n{\n  "website": "https://example.com",\n  "industry": "the primary industry (1-3 words, e.g. Telecommunications, SaaS, E-commerce)",\n  "region": "primary operating region (e.g. Malaysia, United States, Global, Southeast Asia)",\n  "competitors": [\n    {"name": "Competitor 1", "website": "https://competitor1.com"},\n    {"name": "Competitor 2", "website": "https://competitor2.com"},\n    {"name": "Competitor 3", "website": "https://competitor3.com"}\n  ]\n}\n\nRules:\n- Website must be the MAIN company website, not Wikipedia or social\n- Give exactly 3 real, direct competitors in the same industry\n- If unsure, make your best guess based on the name`;
+      const prompt=`I need information about the company or brand called "${brandName.trim()}".\n\nReturn JSON only:\n{\n  "website": "https://example.com",\n  "industry": "the primary industry (1-3 words, e.g. Telecommunications, SaaS, E-commerce)",\n  "region": "primary operating region (e.g. Malaysia, United States, Global, Southeast Asia)",\n  "competitors": [\n    {"name": "Competitor 1", "website": "https://competitor1.com"},\n    {"name": "Competitor 2", "website": "https://competitor2.com"},\n    {"name": "Competitor 3", "website": "https://competitor3.com"}\n  ],\n  "topics": ["search query 1", "search query 2", "search query 3", "search query 4", "search query 5"]\n}\n\nRules:\n- Website must be the MAIN company website, not Wikipedia or social\n- Give exactly 3 real, direct competitors in the same industry\n- Topics must be 5 realistic search queries a potential customer would type into ChatGPT or Gemini when looking for this type of product or service\n- Topics must NOT contain the brand name "${brandName.trim()}" or any competitor names\n- Topics should sound like natural searches e.g. "best credit cards with travel rewards in UAE", "low interest personal loan providers in Abu Dhabi", "which cloud hosting is best for startups"\n- Mix of: "best/top" queries, comparison queries, problem-solving queries, pricing queries\n- Make topics specific to the company's region where relevant\n- If unsure about the brand, make your best guess based on the name`;
       const raw=await callGemini(prompt,"You are a business intelligence assistant. Return ONLY valid JSON, no markdown fences.");
       const result=safeJSON(raw);
       if(result){
@@ -1111,6 +1128,10 @@ function NewAuditPage({data,setData,onRun,history=[]}){
           const hasComps=(prev.competitors||[]).some(c=>c.name&&c.name.trim());
           if(!hasComps&&result.competitors&&Array.isArray(result.competitors)){
             updates.competitors=result.competitors.slice(0,3).map(c=>({name:c.name||"",website:normalizeUrl(c.website||"")}));
+          }
+          const hasTopics=(prev.topics||[]).length>0;
+          if(!hasTopics&&result.topics&&Array.isArray(result.topics)){
+            updates.topics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>3).map(t=>t.trim()).slice(0,5);
           }
           if(Object.keys(updates).length>0){didFill=true;return{...prev,...updates};}
           return prev;
@@ -1342,6 +1363,13 @@ Return ONLY a JSON array of strings:
       <p style={{color:C.sub,fontSize:13,marginTop:4}}>These topics will be used to measure AI engine visibility. Edit, remove, or add more.</p>
     </div>
     <Card>
+      {/* Topic guidance */}
+      <div style={{display:"flex",alignItems:"flex-start",gap:8,padding:"10px 14px",background:"#fffbeb",border:"1px solid #fef3c7",borderRadius:10,marginBottom:12,fontSize:11,lineHeight:1.6,color:"#92400e"}}>
+        <span style={{fontSize:14,flexShrink:0,marginTop:1}}>💡</span>
+        <div>
+          <span style={{fontWeight:500}}>Tip:</span> Enter topics as real search queries — the way someone would actually ask ChatGPT or Gemini. For example, "best credit cards with rewards in UAE" instead of just "credit cards". We test whether AI engines mention your brand in response to these queries <em>without</em> naming any brand.
+        </div>
+      </div>
       {/* Topic list */}
       <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
         {data.topics.map((topic,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:C.bg,borderRadius:8,border:`1px solid ${C.borderSoft}`}}>
