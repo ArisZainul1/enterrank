@@ -295,11 +295,30 @@ Rules:
   });
 
   function classifyResponse(responseText, detector) {
-    if (!responseText || responseText.length < 10) return "Absent";
+    if (!responseText || responseText.length < 20) return { status: "Absent", confidence: "high" };
     const text = responseText;
-    if (detector.domain && text.toLowerCase().includes(detector.domain.toLowerCase())) return "Cited";
-    if (detector.nameRegex.test(text)) return "Mentioned";
-    return "Absent";
+    const nameFound = detector.nameRegex.test(text);
+    const urlFound = detector.domain && text.toLowerCase().includes(detector.domain.toLowerCase());
+    if (!nameFound && !urlFound) return { status: "Absent", confidence: "high" };
+    if (urlFound) return { status: "Cited", confidence: "high" };
+
+    const escaped = detector.brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const citedPatterns = [
+      new RegExp('(?:recommend|suggest|consider|try|check out|look into|go with|opt for|choose)\\s+(?:.*?' + escaped + '|' + escaped + ')', 'i'),
+      new RegExp(escaped + '\\s+(?:is|are)\\s+(?:a great|an excellent|the best|a top|a leading|a strong|highly|well-known|recommended|ideal|perfect)', 'i'),
+      new RegExp('(?:best|top|leading|premier|#1|number one|first choice|top pick|standout|stands out)\\s+.*?' + escaped, 'i'),
+      new RegExp(escaped + '.*?(?:best|top|leading|premier|stands out|excels|outperforms)', 'i'),
+      new RegExp(escaped + '.*?(?:offers|provides|features|includes|starts at|starting from|rates from|pricing|\\d+%|\\$\\d+|AED\\s*\\d+|USD\\s*\\d+|RM\\s*\\d+)', 'i'),
+    ];
+    if (citedPatterns.some(p => p.test(text))) return { status: "Cited", confidence: "high" };
+
+    const paragraph = text.split(/\n\n+/).find(p => detector.nameRegex.test(p)) || text;
+    const weakPatterns = [
+      /(?:such as|including|like|options include|examples include|among|other|also|alongside)/i,
+      /(?:here are|here's a list|some options|several|various|multiple|a few)/i,
+    ];
+    if (weakPatterns.some(p => p.test(paragraph))) return { status: "Mentioned", confidence: "medium" };
+    return { status: "Mentioned", confidence: "low" };
   }
 
   // Send queries in parallel batches
@@ -333,11 +352,19 @@ Rules:
 
   function computeVisibility(responses, detectors) {
     const result = {};
+    const ambiguousCases = [];
     detectors.forEach(det => {
-      const queries = responses.map(r => ({
-        query: r.query,
-        status: classifyResponse(r.response, det)
-      }));
+      const queries = responses.map((r, qi) => {
+        const classification = classifyResponse(r.response, det);
+        if (classification.confidence === "low") {
+          const sentences = (r.response || "").split(/[.!?\n]+/).filter(s => det.nameRegex.test(s));
+          const excerpt = sentences.slice(0, 3).join(". ").slice(0, 300);
+          if (excerpt.length > 20) {
+            ambiguousCases.push({ brandName: det.brandName, queryIndex: qi, query: r.query, excerpt });
+          }
+        }
+        return { query: r.query, status: classification.status, confidence: classification.confidence };
+      });
       const total = queries.length || 1;
       const cited = queries.filter(q => q.status === "Cited").length;
       const mentioned = queries.filter(q => q.status === "Mentioned").length;
@@ -347,11 +374,59 @@ Rules:
         queries
       };
     });
-    return result;
+    return { result, ambiguousCases };
   }
 
-  const gptVisibility = computeVisibility(gptResponses, brandDetectors);
-  const gemVisibility = computeVisibility(gemResponses, brandDetectors);
+  const gptVisRaw = computeVisibility(gptResponses, brandDetectors);
+  const gemVisRaw = computeVisibility(gemResponses, brandDetectors);
+  let gptVisibility = gptVisRaw.result;
+  let gemVisibility = gemVisRaw.result;
+
+  // Batch reclassify ambiguous cases via AI
+  async function batchReclassify(ambiguousCases, callFn, visibility) {
+    if (ambiguousCases.length === 0) return;
+    const batchPrompt = `For each case below, a user asked an AI engine a question and the response mentioned a specific brand. Classify whether the brand was CITED (directly recommended, given specific actionable details, called out as a top choice, or given pricing/product info) or just MENTIONED (listed among others, passing reference, no specific recommendation).
+
+${ambiguousCases.map((c, i) => `${i + 1}. Brand: "${c.brandName}"\nQuery: "${c.query}"\nResponse excerpt: "${c.excerpt}"`).join("\n\n")}
+
+Return JSON only:
+{"classifications": [{"index": 1, "status": "Cited"}, {"index": 2, "status": "Mentioned"}, ...]}
+
+Be strict: only "Cited" if specifically recommended or given detailed actionable info. Being one of several options is "Mentioned".`;
+    try {
+      const raw = await callFn(batchPrompt, "You are a text classifier. Return ONLY valid JSON, no markdown fences.");
+      const parsed = safeJSON(raw);
+      if (parsed && parsed.classifications) {
+        parsed.classifications.forEach(cl => {
+          const cd2 = ambiguousCases[cl.index - 1];
+          if (cd2 && (cl.status === "Cited" || cl.status === "Mentioned")) {
+            const bv = visibility[cd2.brandName];
+            if (bv && bv.queries[cd2.queryIndex]) {
+              bv.queries[cd2.queryIndex].status = cl.status;
+              bv.queries[cd2.queryIndex].confidence = "ai-verified";
+            }
+          }
+        });
+        Object.keys(visibility).forEach(bn => {
+          const qs = visibility[bn].queries;
+          const total = qs.length || 1;
+          const cited = qs.filter(q => q.status === "Cited").length;
+          const mentioned = qs.filter(q => q.status === "Mentioned").length;
+          visibility[bn].mentionRate = Math.round(((cited + mentioned) / total) * 100);
+          visibility[bn].citationRate = Math.round((cited / total) * 100);
+        });
+      }
+    } catch (e) { console.error("Batch reclassification failed:", e); }
+  }
+
+  if (gptVisRaw.ambiguousCases.length > 0) {
+    onProgress("Verifying ChatGPT citations...", 26);
+    await batchReclassify(gptVisRaw.ambiguousCases, callOpenAI, gptVisibility);
+  }
+  if (gemVisRaw.ambiguousCases.length > 0) {
+    onProgress("Verifying Gemini citations...", 27);
+    await batchReclassify(gemVisRaw.ambiguousCases, callGemini, gemVisibility);
+  }
 
   // Build compScoresMap with real data for all competitors
   const compScoresMap = {};
