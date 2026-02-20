@@ -19,7 +19,7 @@ function Field({label,value,onChange,placeholder}){return(<div style={{display:"
 function InfoTip({text}){const[show,setShow]=useState(false);return(<span style={{position:"relative",display:"inline-flex",marginLeft:4,cursor:"help"}} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}><span style={{width:14,height:14,borderRadius:"50%",background:C.bg,border:`1px solid ${C.border}`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.muted,fontWeight:600}}>?</span>{show&&<div style={{position:"absolute",bottom:"calc(100% + 6px)",left:"50%",transform:"translateX(-50%)",width:240,padding:"10px 12px",background:C.text,color:"#fff",borderRadius:8,fontSize:11,lineHeight:1.5,zIndex:999,boxShadow:"0 8px 24px rgba(0,0,0,.2)",pointerEvents:"none"}}><div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%) rotate(45deg)",width:8,height:8,background:C.text}}/>{text}</div>}</span>);}
 function SectionNote({text}){return <div style={{padding:"10px 14px",background:`${C.accent}04`,border:`1px solid ${C.accent}10`,borderRadius:C.rs,marginBottom:16,display:"flex",gap:8,alignItems:"flex-start"}}><span style={{fontSize:14,lineHeight:1}}>💡</span><span style={{fontSize:12,color:C.sub,lineHeight:1.6}}>{text}</span></div>;}
 function NavBtn({onClick,label}){return <div style={{display:"flex",justifyContent:"flex-end",marginTop:20}}><button onClick={onClick} style={{padding:"10px 22px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>{label}</button></div>;}
-function Logo(){return(<div style={{display:"flex",alignItems:"center",gap:9}}><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg><div><span style={{fontWeight:700,fontSize:16,color:C.text,letterSpacing:"-.03em",fontFamily:"'Outfit'"}}>EnterRank</span><span style={{fontSize:9,color:C.muted,marginLeft:6,fontWeight:500,textTransform:"uppercase",letterSpacing:".08em"}}>by Entermind</span></div></div>);}
+function Logo(){return(<div style={{display:"flex",alignItems:"center",gap:9}}><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg><div><span style={{fontWeight:800,fontSize:16,color:C.text,letterSpacing:"-.03em",fontFamily:"'Outfit'"}}>EnterRank</span><span style={{fontSize:9,color:C.muted,marginLeft:6,fontWeight:500,textTransform:"uppercase",letterSpacing:".08em"}}>by Entermind</span></div></div>);}
 function BRow({name,score,color,bold,diff}){return(<div style={{display:"flex",alignItems:"center",gap:12}}><span style={{minWidth:120,fontSize:12,fontWeight:bold?600:400,color:bold?C.accent:C.sub}}>{name}</span><div style={{flex:1}}><Bar value={score} color={color} h={8}/></div><span style={{minWidth:26,textAlign:"right",fontSize:13,fontWeight:700,color:bold?C.text:C.sub}}>{score}</span>{diff!==undefined&&<span style={{fontSize:11,fontWeight:600,color:diff>0?C.red:C.green,minWidth:32,textAlign:"right"}}>{diff>0?`+${diff}`:diff}</span>}</div>);}
 function SC(s){return s==="critical"?C.red:s==="warning"?C.amber:C.green;}
 
@@ -1355,6 +1355,8 @@ Return ONLY a JSON array of strings:
 
 /* ─── PAGE: DASHBOARD ─── */
 function DashboardPage({r,history,goTo}){
+  const[perfMetric,setPerfMetric]=useState("mentions");
+
   // ── Metric calculations ──
   const avgMentions=Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length);
   const avgCitations=Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length);
@@ -1511,6 +1513,111 @@ function DashboardPage({r,history,goTo}){
     {/* Section divider */}
     <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"40px 0"}}/>
 
+    {/* ═══ SECTION 3: HISTORICAL PERFORMANCE ═══ */}
+
+    {/* 3a. Section header */}
+    <div style={{marginBottom:20}}>
+      <div style={{fontSize:18,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Historical Performance</div>
+      <div style={{fontSize:13,color:C.muted,marginTop:3}}>Track {r.clientData.brand}'s AI visibility over time</div>
+    </div>
+
+    {/* 3b. Performance chart card */}
+    {(()=>{
+      const chartData=history.map(h=>{
+        let gpt=0,gemini=0;
+        if(perfMetric==="mentions"){gpt=h.mentionsPerEngine?.gpt??h.mentions??0;gemini=h.mentionsPerEngine?.gemini??h.mentions??0;}
+        else if(perfMetric==="citations"){gpt=h.citationsPerEngine?.gpt??h.citations??0;gemini=h.citationsPerEngine?.gemini??h.citations??0;}
+        else{gpt=h.sentimentPerEngine?.gpt??50;gemini=h.sentimentPerEngine?.gemini??50;}
+        const dateLabel=typeof h.date==="string"?h.date.slice(0,10):new Date(h.date).toLocaleDateString("en-GB",{day:"2-digit",month:"short"});
+        return{date:dateLabel,gpt,gemini};
+      });
+      const padL=45,padR=15,padT=15,padB=35;
+      const chartW=620-padL-padR,chartH=220-padT-padB;
+      const yToSvg=(val)=>padT+chartH-(val/100)*chartH;
+      const xToSvg=(i)=>padL+(chartData.length>1?(i/(chartData.length-1))*chartW:chartW/2);
+      const polyStr=(arr,key)=>arr.map((d,i)=>`${xToSvg(i)},${yToSvg(d[key])}`).join(" ");
+      const areaStr=(arr,key)=>`${xToSvg(0)},${padT+chartH} ${polyStr(arr,key)} ${xToSvg(arr.length-1)},${padT+chartH}`;
+      const gridYs=[0,25,50,75,100];
+      return(
+        <Card>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+            <span style={{fontSize:14,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Performance Tracker</span>
+            <select value={perfMetric} onChange={e=>setPerfMetric(e.target.value)} style={{padding:"7px 14px",paddingRight:28,borderRadius:8,border:`1px solid ${C.border}`,fontSize:12,fontWeight:500,color:C.text,background:"#fff",fontFamily:"inherit",cursor:"pointer",outline:"none",appearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 10px center"}}>
+              <option value="mentions">Mentions</option>
+              <option value="citations">Citations</option>
+              <option value="sentiments">Sentiments</option>
+            </select>
+          </div>
+          <svg viewBox="0 0 620 220" style={{width:"100%"}} preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <linearGradient id="gptGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10A37F" stopOpacity="0.12"/><stop offset="100%" stopColor="#10A37F" stopOpacity="0.01"/></linearGradient>
+              <linearGradient id="gemGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4285F4" stopOpacity="0.12"/><stop offset="100%" stopColor="#4285F4" stopOpacity="0.01"/></linearGradient>
+            </defs>
+            {gridYs.map(v=>{const y=yToSvg(v);return <g key={v}><line x1={padL} y1={y} x2={padL+chartW} y2={y} stroke={C.borderSoft} strokeDasharray="3,3" strokeWidth="1"/><text x={padL-8} y={y+4} textAnchor="end" fontSize="10" fill={C.muted} fontFamily="'Plus Jakarta Sans'">{v}</text></g>;})}
+            {chartData.map((d,i)=><text key={"xl"+i} x={xToSvg(i)} y={212} textAnchor="middle" fontSize="9" fill={C.muted}>{d.date}</text>)}
+            {chartData.length>=2&&<>
+              <polygon points={areaStr(chartData,"gpt")} fill="url(#gptGrad)"/>
+              <polygon points={areaStr(chartData,"gemini")} fill="url(#gemGrad)"/>
+              <polyline points={polyStr(chartData,"gpt")} fill="none" stroke="#10A37F" strokeWidth="2" strokeLinejoin="round"/>
+              <polyline points={polyStr(chartData,"gemini")} fill="none" stroke="#4285F4" strokeWidth="2" strokeLinejoin="round"/>
+            </>}
+            {chartData.length<2&&<text x="310" y="110" textAnchor="middle" fontSize="13" fill={C.muted}>Run more audits to track trends</text>}
+            {chartData.map((d,i)=><g key={"pt"+i}><circle cx={xToSvg(i)} cy={yToSvg(d.gpt)} r="4" fill="#fff" stroke="#10A37F" strokeWidth="2"><title>ChatGPT: {d.gpt}% — {d.date}</title></circle><circle cx={xToSvg(i)} cy={yToSvg(d.gemini)} r="4" fill="#fff" stroke="#4285F4" strokeWidth="2"><title>Gemini: {d.gemini}% — {d.date}</title></circle></g>)}
+          </svg>
+          <div style={{display:"flex",justifyContent:"center",gap:24,marginTop:12}}>
+            <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}><div style={{width:8,height:8,borderRadius:"50%",background:"#10A37F"}}/>ChatGPT</div>
+            <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}><div style={{width:8,height:8,borderRadius:"50%",background:"#4285F4"}}/>Gemini</div>
+          </div>
+        </Card>
+      );
+    })()}
+
+    {/* Section divider */}
+    <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"40px 0"}}/>
+
+    {/* ═══ SECTION 4: SHARE OF VOICE ═══ */}
+
+    {/* 4a. Section header */}
+    <div style={{marginBottom:20}}>
+      <div style={{fontSize:18,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Share of Voice</div>
+      <div style={{fontSize:13,color:C.muted,marginTop:3}}>{r.clientData.brand} vs competitors across key metrics</div>
+    </div>
+
+    {/* 4b-c. Three ShareOfVoiceSection donuts */}
+    {(()=>{
+      const compData=r.competitors||[];
+      const allBrands=[
+        {name:r.clientData.brand,website:r.clientData.website,mentionRate:avgMentions,citationRate:avgCitations,color:C.accent},
+        ...compData.map((c,i)=>{
+          const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);
+          return{
+            name:c.name,
+            website:compObj?.website||compObj?.url||"",
+            mentionRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length):c.score,
+            citationRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length*.6):Math.round(c.score*.6),
+            color:["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]
+          };
+        })
+      ];
+      const sentimentBrands=[
+        {name:r.clientData.brand,website:r.clientData.website,sentimentScore:avgSentiment,color:C.accent},
+        ...(r.sentiment?.competitors||[]).map((c,i)=>({
+          name:c.name,website:"",sentimentScore:c.avg||50,
+          color:["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]
+        }))
+      ];
+      return(
+        <div style={{display:"flex",flexDirection:"column",gap:16}}>
+          <ShareOfVoiceSection title="Share of Mentions" rankTitle="Mention Rate" brands={allBrands} metricKey="mentionRate"/>
+          <ShareOfVoiceSection title="Share of Citations" rankTitle="Citation Rate" brands={allBrands} metricKey="citationRate"/>
+          <ShareOfVoiceSection title="Share of Sentiments" rankTitle="Sentiment Score" brands={sentimentBrands} metricKey="sentimentScore"/>
+        </div>
+      );
+    })()}
+
+    {/* Section divider */}
+    <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"40px 0"}}/>
+
   </div>);
 }
 
@@ -1604,7 +1711,7 @@ function EnginesPage({r,goTo}){
         {r.engines.map(e=>(<div key={e.id} style={{padding:"20px 24px",background:C.bg,borderRadius:12,border:`1px solid ${C.borderSoft}`}}>
           <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
             <e.Logo size={22}/>
-            <span style={{fontSize:15,fontWeight:600,color:C.text}}>{e.name}</span>
+            <span style={{fontSize:15,fontWeight:500,color:C.text}}>{e.name}</span>
             <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:12}}>
               <div style={{textAlign:"right"}}><div style={{fontSize:11,color:C.muted}}>Mentions</div><div style={{fontSize:14,fontWeight:700,color:C.text,fontFamily:"'Outfit'"}}>{e.mentionRate}%</div></div>
               <div style={{textAlign:"right"}}><div style={{fontSize:11,color:C.muted}}>Citations</div><div style={{fontSize:14,fontWeight:700,color:C.text,fontFamily:"'Outfit'"}}>{e.citationRate}%</div></div>
@@ -1684,9 +1791,9 @@ function AuditPage({r,history,goTo}){
           <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:4,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>First Audit Complete</div>
           <div style={{fontSize:13,color:C.muted,maxWidth:360,margin:"0 auto"}}>Run another audit to see trends and score changes.</div>
         </div>:<>
-          <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>AEO Score Trend</div><MiniAreaChart data={trend} dataKey="overall" color={C.accent}/></div>
-          <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>Engine Performance</div><MiniLineChart data={engineTrend} lines={[{key:"ChatGPT",color:"#10A37F",label:"ChatGPT"},{key:"Gemini",color:"#4285F4",label:"Gemini"}]}/></div>
-          <div><div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>Category Movement</div>
+          <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:8}}>AEO Score Trend</div><MiniAreaChart data={trend} dataKey="overall" color={C.accent}/></div>
+          <div style={{marginBottom:18}}><div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:8}}>Engine Performance</div><MiniLineChart data={engineTrend} lines={[{key:"ChatGPT",color:"#10A37F",label:"ChatGPT"},{key:"Gemini",color:"#4285F4",label:"Gemini"}]}/></div>
+          <div><div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:8}}>Category Movement</div>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>{catChanges.map((cat,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:11,color:C.sub,minWidth:100}}>{cat.label.split(" ").slice(0,2).join(" ")}</span><div style={{flex:1}}><Bar value={cat.score} color={SC(cat.severity)} h={5}/></div><span style={{fontSize:12,fontWeight:700,color:C.text,minWidth:26,textAlign:"right"}}>{cat.score}%</span><span style={{fontSize:10,fontWeight:600,minWidth:32,textAlign:"right",color:cat.change>0?C.green:cat.change<0?C.red:C.muted}}>{cat.change>0?`+${cat.change}`:cat.change===0?"—":cat.change}</span></div>))}</div>
           </div>
         </>}
@@ -1867,7 +1974,7 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
       <Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <div>
-            <div style={{fontSize:13,fontWeight:600,color:C.text}}>Funnel Visibility</div>
+            <div style={{fontSize:13,fontWeight:500,color:C.text}}>Funnel Visibility</div>
             <div style={{fontSize:11,color:C.muted}}>{allPrompts.length} prompts · weighted by AEO impact</div>
           </div>
           <div style={{fontSize:28,fontWeight:800,color:funnelScore>=40?C.green:funnelScore>=20?C.amber:C.red,fontFamily:"'Outfit'"}}>{funnelScore}%</div>
@@ -1892,7 +1999,7 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
 
       {/* Trigger word analysis */}
       <Card>
-        <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:4}}>High-Impact Trigger Words</div>
+        <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>High-Impact Trigger Words</div>
         <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Words in prompts that influence AI citation behavior for {r.clientData.industry}.</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
           {triggerRank.length>0?triggerRank.map((t,i)=>{
@@ -1911,7 +2018,7 @@ Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
 
     {/* Add prompt input */}
     <Card style={{marginBottom:16,background:`${C.accent}03`,borderColor:`${C.accent}20`}}>
-      <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:4}}>Test a Prompt</div>
+      <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>Test a Prompt</div>
       <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Type any prompt. We'll test it on both engines, score its weight, and identify trigger words.</div>
       <div style={{display:"flex",gap:8}}>
         <input value={newPrompt} onChange={e=>setNewPrompt(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")testPrompt();}}
@@ -2084,7 +2191,7 @@ function PlaybookPage({r,goTo}){
         {r.brandGuidelines.map((g,i)=>{const isOpen=expandG===i;return(<div key={i} style={{borderRadius:C.rs,border:`1px solid ${isOpen?`${C.accent}25`:C.border}`,overflow:"hidden",transition:"all .15s"}}>
           <div onClick={()=>setExpandG(isOpen?null:i)} style={{padding:"12px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,background:isOpen?`${C.accent}03`:"transparent"}}>
             <div style={{flex:1}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><span style={{fontSize:11,fontWeight:700,color:C.accent,fontFamily:"'Outfit'",background:`${C.accent}08`,padding:"2px 8px",borderRadius:4}}>G{String(i+1).padStart(2,"0")}</span><span style={{fontSize:13,fontWeight:600,color:C.text}}>{g.area}</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><span style={{fontSize:11,fontWeight:700,color:C.accent,fontFamily:"'Outfit'",background:`${C.accent}08`,padding:"2px 8px",borderRadius:4}}>G{String(i+1).padStart(2,"0")}</span><span style={{fontSize:13,fontWeight:500,color:C.text}}>{g.area}</span></div>
               {!isOpen&&<div style={{fontSize:11,color:C.muted,marginTop:4,lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{g.rule}</div>}
             </div>
             <span style={{fontSize:10,color:C.accent,marginTop:4,flexShrink:0}}>{isOpen?"▲":"▼"}</span>
@@ -2092,7 +2199,7 @@ function PlaybookPage({r,goTo}){
           {isOpen&&<div style={{padding:"0 16px 16px"}}>
             <div style={{fontSize:12,color:C.sub,lineHeight:1.7,marginBottom:12}}>{g.rule}</div>
             <div style={{padding:"12px 14px",background:`${C.accent}03`,borderRadius:8,border:`1px solid ${C.accent}10`}}>
-              <div style={{fontSize:10,fontWeight:700,color:C.accent,textTransform:"uppercase",letterSpacing:".05em",marginBottom:4}}>Implementation Example</div>
+              <div style={{fontSize:10,fontWeight:500,color:C.accent,textTransform:"uppercase",letterSpacing:".05em",marginBottom:4}}>Implementation Example</div>
               <div style={{fontSize:11,color:C.text,lineHeight:1.7}}>{g.example}</div>
             </div>
           </div>}
@@ -2274,7 +2381,7 @@ function RoadmapPage({r}){
             <div style={{padding:"5px 12px",background:`${p.accent}08`,borderRadius:8,border:`1px solid ${p.accent}20`}}><span style={{fontSize:10,color:C.muted}}>Lift: </span><span style={{fontSize:14,fontWeight:700,color:p.accent,fontFamily:"'Outfit'"}}>{p.lift}</span></div>
           </div>
           {p.departments.map((d,di)=>(<div key={di} style={{marginBottom:di<p.departments.length-1?10:0}}>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}><div style={{width:3,height:14,borderRadius:2,background:d.color}}/><span style={{fontSize:12,fontWeight:700,color:d.color}}>{d.dept}</span></div>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}><div style={{width:3,height:14,borderRadius:2,background:d.color}}/><span style={{fontSize:12,fontWeight:500,color:d.color}}>{d.dept}</span></div>
             <div style={{display:"flex",flexDirection:"column",gap:3,marginLeft:10}}>{d.tasks.map((tk,ti)=>(<div key={ti} style={{padding:"6px 8px",background:C.bg,borderRadius:5,fontSize:11,color:C.sub,display:"flex",gap:6}}><span style={{color:d.color,fontSize:10}}>→</span>{tk}</div>))}</div>
           </div>))}
         </Card>
