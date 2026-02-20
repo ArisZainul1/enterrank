@@ -200,8 +200,11 @@ function summariseCrawl(crawl){
 
 async function runRealAudit(cd, onProgress){
   const brand=cd.brand||"Brand",industry=cd.industry||"Technology",region=cd.region||"Global",topics=cd.topics||["tech"];
-  const compNames=(cd.competitors||[]).map(c=>typeof c==="string"?c:c.name).filter(Boolean);
-  const compUrls=(cd.competitors||[]).map(c=>typeof c==="object"?c.website:"").filter(Boolean);
+  const brandLower=brand.toLowerCase();
+  const compNamesRaw=(cd.competitors||[]).map(c=>typeof c==="string"?c:c.name).filter(Boolean);
+  const compUrlsRaw=(cd.competitors||[]).map(c=>typeof c==="object"?c.website:"");
+  const compNames=compNamesRaw.filter(n=>n.toLowerCase()!==brandLower);
+  const compUrls=compNamesRaw.map((n,i)=>compUrlsRaw[i]||"").filter((_,i)=>compNamesRaw[i]?.toLowerCase()!==brandLower);
   const topicList=topics.join(", ");
   const engineSystemPrompt=`You are an AEO (Answer Engine Optimization) analyst. Respond ONLY with valid JSON, no markdown fences, no explanations.`;
 
@@ -302,13 +305,27 @@ Rules:
     if (!nameFound && !urlFound) return { status: "Absent", confidence: "high" };
     if (urlFound) return { status: "Cited", confidence: "high" };
 
-    const escaped = detector.brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const bn = detector.brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // Quick check: brand is #1 in a numbered list
+    const numListMatch = text.match(/(?:^|\n)\s*1[\.\)]\s*\*?\*?([^\n]{5,100})/m);
+    if (numListMatch && detector.nameRegex.test(numListMatch[1])) return { status: "Cited", confidence: "high" };
+
     const citedPatterns = [
-      new RegExp('(?:recommend|suggest|consider|try|check out|look into|go with|opt for|choose)\\s+(?:.*?' + escaped + '|' + escaped + ')', 'i'),
-      new RegExp(escaped + '\\s+(?:is|are)\\s+(?:a great|an excellent|the best|a top|a leading|a strong|highly|well-known|recommended|ideal|perfect)', 'i'),
-      new RegExp('(?:best|top|leading|premier|#1|number one|first choice|top pick|standout|stands out)\\s+.*?' + escaped, 'i'),
-      new RegExp(escaped + '.*?(?:best|top|leading|premier|stands out|excels|outperforms)', 'i'),
-      new RegExp(escaped + '.*?(?:offers|provides|features|includes|starts at|starting from|rates from|pricing|\\d+%|\\$\\d+|AED\\s*\\d+|USD\\s*\\d+|RM\\s*\\d+)', 'i'),
+      // Explicit recommendations
+      new RegExp('(?:i\\s+)?(?:recommend|suggest|would\\s+recommend|highly\\s+recommend|strongly\\s+suggest).*?' + bn, 'i'),
+      new RegExp(bn + '.*?(?:is\\s+(?:a\\s+)?(?:great|excellent|top|best|leading|strong|solid|reliable|popular|well-known|highly\\s+rated|recommended|ideal|go-to))', 'i'),
+      // Ranked first or called top/best
+      new RegExp('(?:^|\\n)\\s*(?:1\\.|#1|first)\\s*[.:\\-—)]?\\s*' + bn, 'im'),
+      new RegExp('(?:the\\s+)?(?:best|top|leading|most\\s+popular|number\\s+one|#1|dominant|largest).*?' + bn, 'i'),
+      new RegExp(bn + '.*?(?:stands?\\s+out|excels?|leads?\\s+the|dominates?|is\\s+the\\s+(?:top|best|leading|most))', 'i'),
+      // Specific details (pricing, features, products)
+      new RegExp(bn + '.*?(?:offers?|provides?|features?|includes?|comes?\\s+with|starts?\\s+at|(?:starting|priced?)\\s+(?:at|from)|\\d+\\.\\d+%|\\$\\d|AED|USD|RM|EUR|GBP)', 'i'),
+      // Brand given its own section/heading
+      new RegExp('(?:^|\\n)\\s*(?:\\d+\\.\\s*)?\\*?\\*?' + bn + '\\*?\\*?\\s*(?:\\(|—|:|\\n)', 'im'),
+      // "top choice", "best option", "go-to" near brand
+      new RegExp('(?:top\\s+choice|best\\s+option|go-to|first\\s+choice|safest\\s+bet|clear\\s+winner|obvious\\s+choice|strong\\s+contender).*?' + bn, 'i'),
+      new RegExp(bn + '.*?(?:top\\s+choice|best\\s+option|go-to|first\\s+choice|safest\\s+bet|clear\\s+winner)', 'i'),
     ];
     if (citedPatterns.some(p => p.test(text))) return { status: "Cited", confidence: "high" };
 
@@ -448,11 +465,13 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
   const brandGptVis = gptVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
   const brandGemVis = gemVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
 
-  const swBasePrompt = (engineName, mentionRate, citationRate) => `You are ${engineName}. Based on your knowledge of "${brand}" in ${industry} (${region}):
+  const swBasePrompt = (engineName, mentionRate, citationRate) => `You are ${engineName}. Evaluate this brand's visibility specifically for users in ${region} searching on ${engineName}.
+
+Brand: "${brand}" in ${industry} (${region}).
 Website signals: ${crawlSummary.slice(0, 400)}
 This brand's visibility on YOUR engine: ${mentionRate}% mentioned, ${citationRate}% cited out of ${searchQueries.length} real queries tested.
 
-Give 3 strengths and 3 weaknesses for why this brand performs this way specifically on ${engineName}. Be specific and actionable.
+Give 3 strengths and 3 weaknesses for why this brand performs this way specifically on ${engineName} for ${region}-based users. Consider whether the brand has strong regional presence, local-language content, and relevance to ${region} audiences. Be specific and actionable.
 Return JSON only:
 {"strengths":["...","...","..."],"weaknesses":["...","...","..."]}`;
 
@@ -484,24 +503,26 @@ Return JSON only:
   // ── Step 5b: Sentiment Analysis ──
   onProgress("Analyzing brand sentiment across AI engines...",24);
 
-  const sentimentPrompt=`Analyze the general public and industry sentiment around "${brand}" in the ${industry} industry in ${region}.
+  const sentimentPrompt=`Analyze the general public and industry sentiment around "${brand}" in the ${industry} industry, specifically in ${region}.
+
+CRITICAL: Rate sentiment specifically in ${region}, not globally. Consider local customer reviews, local news coverage, local social media perception, and regional reputation. A brand loved globally but unknown or unavailable in ${region} should score 40-50 (neutral). A brand with strong local presence and positive regional reputation should score higher than a global brand with no ${region} footprint.
 
 Rate sentiment on a scale of 0-100:
-- 0-20: Very negative (scandals, lawsuits, major complaints)
-- 21-40: Negative (frequent criticism, declining reputation)
-- 41-60: Neutral (not well known, mixed opinions)
-- 61-80: Positive (well regarded, good reputation)
-- 81-100: Very positive (industry leader, beloved brand)
+- 0-20: Very negative (scandals, lawsuits, major complaints in ${region})
+- 21-40: Negative (frequent criticism, declining reputation in ${region})
+- 41-60: Neutral (not well known in ${region}, mixed local opinions)
+- 61-80: Positive (well regarded in ${region}, good local reputation)
+- 81-100: Very positive (market leader in ${region}, beloved by local customers)
 
-Also rate these competitors: ${compNames.join(", ")}
+Also rate these competitors based on their reputation in ${region}: ${compNames.join(", ")}
 
 Return JSON only:
 {
-  "brand": {"score": <0-100>, "summary": "<1 sentence explaining the sentiment>"},
-  "competitors": [{"name": "<competitor>", "score": <0-100>, "summary": "<1 sentence>"}]
+  "brand": {"score": <0-100>, "summary": "<1 sentence explaining the sentiment in ${region}>"},
+  "competitors": [{"name": "<competitor>", "score": <0-100>, "summary": "<1 sentence about their ${region} reputation>"}]
 }
 
-Be accurate. Base this on real market perception, not speculation. A brand nobody has heard of should score 40-55 (neutral), not high.`;
+Be accurate. Base this on real market perception in ${region}, not global speculation. A brand nobody in ${region} has heard of should score 40-50 (neutral), not high.`;
 
   const [sentGptRaw, sentGemRaw]=await Promise.all([
     callOpenAI(sentimentPrompt, engineSystemPrompt),
@@ -537,6 +558,10 @@ Competitor website crawl data:
 ${compCrawlSummary}
 
 Competitors: ${compNames.map((n,i)=>`${n}${compUrls[i]?" ("+compUrls[i]+")":""}`).join(", ")||"none"}.
+
+CRITICAL: Score ALL competitors based ONLY on their presence, reputation, and market share in ${region}. A globally known brand that is not available or not popular in ${region} should score VERY LOW. If a competitor does not operate in ${region}, score them near 0. Regional availability and local market dominance matter more than global brand recognition.
+
+Evaluate each competitor's online presence targeting ${region}. Check if their website has ${region}-specific content, local language support, regional pricing, and local testimonials. Score based on their ${region} presence, not their global presence.
 
 Based on the actual crawl data, score each competitor. Return JSON:
 {
@@ -584,6 +609,8 @@ Use the crawl data to give accurate scores. If a competitor has better schema ma
 
 ${crawlSummary}
 
+Evaluate each category based on how well "${brand}" targets the ${region} market. Consider whether the website has ${region}-specific content, local language support, regional pricing, and local testimonials. A website with no ${region}-specific presence should score lower on Content Authority and E-E-A-T even if it has strong global content.
+
 Score each AEO category 0-100. Return JSON:
 {
   "painPoints": [
@@ -615,7 +642,9 @@ Use severity: "critical" if <30, "warning" if 30-60, "good" if >60. Base scores 
   onProgress("Generating user archetypes...",48);
   const archPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}, competitors: ${compNames.join(", ")||"none"}.
 
-Create 2-3 stakeholder groups with 2-3 archetypes each. Each archetype needs a 4-stage customer journey with 2-3 prompts per stage.
+Generate archetypes for ${industry} customers specifically in ${region}. Use local demographics, local behaviors, and regional context. The archetypes should reflect real user personas in ${region} — their local needs, purchasing habits, and how they search for ${industry} solutions in their region.
+
+Create 2-3 stakeholder groups with 2-3 archetypes each. Each archetype needs a 4-stage customer journey with 2-3 prompts per stage. Prompts should be what a user in ${region} would actually type, using local language patterns and regional context.
 
 For each prompt, assess: would ChatGPT mention/cite ${brand}? Would Gemini?
 
@@ -651,7 +680,7 @@ Return JSON:
   ]
 }
 
-Be accurate for ${region}. ${brand} likely has low visibility on most prompts — use "Absent" where appropriate. ChatGPT and Gemini may differ.`;
+Be accurate for ${region}. All demographics, behaviors, and prompts must reflect ${region}-specific context — use local currency, local regulations, local language patterns. ${brand} likely has low visibility on most prompts — use "Absent" where appropriate. ChatGPT and Gemini may differ.`;
   const archRaw=await callOpenAI(archPrompt, engineSystemPrompt);
   const archData=safeJSON(archRaw)||{stakeholders:[]};
 
@@ -687,7 +716,9 @@ Be accurate. "Cited" = you would link to their website. "Mentioned" = you'd name
   const intentPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}.
 Competitors: ${compNames.join(", ")}.
 
-Create an intent funnel with 4 stages. For each stage, list 6-8 realistic prompts a real user would actually type into ChatGPT or Gemini. For each prompt:
+IMPORTANT: Generate prompts that users in ${region} would actually type. Use local language patterns, local currency, local regulations where relevant. A user in ${region} searching for ${industry} solutions will phrase queries differently than a user in the US or UK — reflect that regional context in every prompt.
+
+Create an intent funnel with 4 stages. For each stage, list 6-8 realistic prompts a real user in ${region} would actually type into ChatGPT or Gemini. For each prompt:
 1. Assess whether each engine would mention or cite ${brand}
 2. Assign a "weight" score (1-10) indicating how important this prompt is for ${brand}'s AEO visibility. Higher weight = more likely to drive conversions, more search volume, more competitive.
 3. Identify the trigger words in the prompt that influence AI engine citation behavior
@@ -766,13 +797,14 @@ Return JSON:
   {"channel":"Academic/Research Citations","status":"Active"|"Needs Work"|"Not Present","finding":"<detail>","priority":"High"|"Medium"|"Low","action":"<recommendation>"}
 ]}
 
-Be accurate. Only "Active" if ${brand} is well-known enough.`;
+Be accurate for the ${region} market. Only "Active" if ${brand} has verifiable presence on these channels in ${region}. Recommendations should be specific to ${region}.`;
     const gapRaw=await callGemini(gapPrompt, engineSystemPrompt);
     const gapData=safeJSON(gapRaw);
     if(gapData&&gapData.channels)chData.channels=[...chData.channels,...gapData.channels];
   }else{
     const channelPrompt=`For "${brand}" (website: ${cd.website||"unknown"}) in ${industry} (${region}):
 Website crawl: ${crawlSummary}
+Evaluate channel presence specifically in ${region}. Consider regional platforms, local review sites, and ${region}-specific directories. A channel that exists globally but has no ${region} presence should be "Needs Work".
 Determine channel presence. Return JSON:
 {"channels":[
   {"channel":"Wikipedia","status":"Active"|"Needs Work"|"Not Present","finding":"<detail>","priority":"High"|"Medium"|"Low","action":"<rec>"},
@@ -820,6 +852,8 @@ Return JSON:
   ]
 }
 
+Suggest content strategies relevant to the ${region} market. Content should target ${region}-based audiences, use local language and cultural context, and address regional ${industry} trends. Prioritize channels and formats that are popular in ${region}.
+
 IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, markup), video, social, PR, research, partnerships. Vary the owners — dev team for technical, PR for outreach, analytics for research. Each content type must tie back to a specific finding from the audit.`;
 
   const[contentGptRaw,contentGemRaw]=await Promise.all([
@@ -841,7 +875,7 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
   const weakCats=(mergedPainPoints||[]).filter(p=>p.severity==="warning").map(p=>p.label).join(", ");
   const channelGaps=(chData.channels||[]).filter(c=>c.status==="Not Present").map(c=>c.channel).join(", ");
 
-  const roadmapPrompt=`Create a 90-day AEO roadmap for "${brand}" in ${industry} (${region}).
+  const roadmapPrompt=`Create a 90-day AEO roadmap for "${brand}" in ${industry}, specifically for improving visibility in ${region}.
 
 AUDIT FINDINGS TO ADDRESS:
 - Overall visibility score: ${overallScore}%
@@ -889,7 +923,7 @@ Return JSON:
   }
 }
 
-Each department: 3-5 specific tasks that directly address the audit findings above. Reference actual issues found.`;
+Each department: 3-5 specific tasks that directly address the audit findings above. Reference actual issues found. All tasks must be tailored to the ${region} market — include regional content creation, local partnerships, ${region}-specific PR outreach, and local language optimisation where applicable.`;
   const roadRaw=await callOpenAI(roadmapPrompt, engineSystemPrompt);
   const roadData=safeJSON(roadRaw)||null;
 
@@ -950,7 +984,7 @@ function generateAll(cd, apiData){
   const painCats=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
   const painPoints=(hasApi&&apiData.engineData.painPoints&&apiData.engineData.painPoints.length>0)?apiData.engineData.painPoints.map(pp=>({label:pp.label,score:pp.score,severity:pp.score<30?"critical":pp.score<60?"warning":"good"})):painCats.map(label=>({label,score:0,severity:"critical"}));
   const compVis = (hasApi && apiData.compVisibilityData) ? apiData.compVisibilityData : {};
-  const competitors=(hasApi&&apiData.competitorData)?(()=>{const raw=Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors||[];return raw.map(c=>{const cPain=(c.painPoints||painCats.map(l=>({label:l,score:c.score||0}))).map(p=>({label:p.label,score:p.score}));const advantages=cPain.map(pp=>{const brandPP=painPoints.find(bp=>bp.label===pp.label);const diff=pp.score-(brandPP?brandPP.score:0);return{category:pp.label,diff,insight:getInsight(pp.label,c.name,cd.brand,diff>0)};}).filter(a=>a.insight);return{name:c.name,score:c.score||0,painPoints:cPain,advantages,mentionRate:(compVis[c.name]?.avgMentionRate)??0,citationRate:(compVis[c.name]?.avgCitationRate)??0,engineScores:[compVis[c.name]?.gpt?.score??c.score??0,compVis[c.name]?.gemini?.score??c.score??0],topStrength:c.topStrength||"N/A"};});})():[];
+  const competitors=(hasApi&&apiData.competitorData)?(()=>{const raw=Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors||[];return raw.filter(c=>c.name&&c.name.toLowerCase()!==cd.brand.toLowerCase()).map(c=>{const cPain=(c.painPoints||painCats.map(l=>({label:l,score:c.score||0}))).map(p=>({label:p.label,score:p.score}));const advantages=cPain.map(pp=>{const brandPP=painPoints.find(bp=>bp.label===pp.label);const diff=pp.score-(brandPP?brandPP.score:0);return{category:pp.label,diff,insight:getInsight(pp.label,c.name,cd.brand,diff>0)};}).filter(a=>a.insight);return{name:c.name,score:c.score||0,painPoints:cPain,advantages,mentionRate:(compVis[c.name]?.avgMentionRate)??0,citationRate:(compVis[c.name]?.avgCitationRate)??0,engineScores:[compVis[c.name]?.gpt?.score??c.score??0,compVis[c.name]?.gemini?.score??c.score??0],topStrength:c.topStrength||"N/A"};});})():[];
   const stakeholders=(hasApi&&apiData.archData&&Array.isArray(apiData.archData)&&apiData.archData.length>0)?apiData.archData:[];
   const funnelStages=(hasApi&&apiData.intentData&&Array.isArray(apiData.intentData)&&apiData.intentData.length>0)?apiData.intentData.map(s=>({stage:s.stage,desc:s.desc||"",color:s.color||"#6366f1",prompts:(s.prompts||[]).map(p=>({query:p.query||"",rank:p.rank||0,status:p.status||"Absent",engines:p.engines||{gpt:"Absent",gemini:"Absent"},weight:p.weight||5,triggerWords:p.triggerWords||[],optimisedPrompt:p.optimisedPrompt||"",contentTip:p.contentTip||""}))})):[{stage:"Awareness",desc:"",color:"#6366f1",prompts:[]},{stage:"Consideration",desc:"",color:"#8b5cf6",prompts:[]},{stage:"Decision",desc:"",color:"#a855f7",prompts:[]},{stage:"Retention",desc:"",color:"#c084fc",prompts:[]}];
   const brandGuidelines=[{area:"Entity Disambiguation",rule:"Establish "+cd.brand+" as a distinct entity across knowledge graph sources.",example:"Audit Wikidata, Knowledge Panel, Crunchbase for consistency."},{area:"Semantic Content Architecture",rule:"Structure content using topic clusters with pillar pages.",example:"Pillar: "+cd.brand+"'s Guide to "+(cd.topics[0]||cd.industry)},{area:"JSON-LD Schema",rule:"Deploy Organization, Product, FAQ, Article, Speakable schema.",example:"Every blog: Article schema with author, dates, FAQ markup."},{area:"E-E-A-T Signals",rule:"Every piece must demonstrate Experience, Expertise, Authority, Trust.",example:"Author bios with credentials, Person schema, cited sources."},{area:"Citation Velocity",rule:"Target DA50+ domains. 3 fresh citations beat 10 stale ones.",example:"Monthly: 2 guest articles DA60+, 3 HARO quotes, 1 data study."},{area:"Content Freshness",rule:"Quarterly review cycle. Update dateModified in schema.",example:"Flag pages >100 traffic/month for quarterly refresh."},{area:"Multi-Modal Content",rule:"Every piece in 2+ formats. Manual video transcripts.",example:"Guide → YouTube + infographic + LinkedIn carousel."},{area:"Competitor Response",rule:"Weekly monitoring. 14-day response to competitor citations.",example:"Monitor top-50 prompts weekly. Create displacement briefs."},{area:"Brand Narrative Consistency",rule:"150-word canonical description across all channels.",example:cd.brand+" is a "+(cd.region||"global")+" "+cd.industry+" company specialising in "+cd.topics.slice(0,3).join(", ")+"."},{area:"AI-Specific Formatting",rule:"Clear H2/H3, definitive answers in first 2 sentences.",example:"Direct claims with verifiable data points."}];
@@ -1115,11 +1149,12 @@ function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,s
 /* ─── SHARE OF VOICE — Large donut + ranked list like Profound ─── */
 function ShareOfVoiceSection({title,rankTitle,brands,metricKey}){
   const[hover,setHover]=useState(null);
+  const uniqueBrands=brands.filter((b,i,arr)=>arr.findIndex(x=>x.name.toLowerCase()===b.name.toLowerCase())===i);
   const size=200,cx=size/2,cy=size/2,r=size/2-8,ir=r*.65;
-  const total=brands.reduce((a,b)=>a+b[metricKey],0)||1;
+  const total=uniqueBrands.reduce((a,b)=>a+b[metricKey],0)||1;
   let cumAngle=-Math.PI/2;
   const gapAngle=0.03;
-  const arcs=brands.map(b=>{const val=b[metricKey];const angle=Math.max(0.02,(val/total)*2*Math.PI)-gapAngle;const start=cumAngle;cumAngle+=angle+gapAngle;const end=start+angle;
+  const arcs=uniqueBrands.map(b=>{const val=b[metricKey];const angle=Math.max(0.02,(val/total)*2*Math.PI)-gapAngle;const start=cumAngle;cumAngle+=angle+gapAngle;const end=start+angle;
     const x1=cx+r*Math.cos(start),y1=cy+r*Math.sin(start),x2=cx+r*Math.cos(end),y2=cy+r*Math.sin(end);
     const ix1=cx+ir*Math.cos(end),iy1=cy+ir*Math.sin(end),ix2=cx+ir*Math.cos(start),iy2=cy+ir*Math.sin(start);
     const large=angle>Math.PI?1:0;
@@ -1190,7 +1225,7 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     if(!brandName||brandName.trim().length<2||autoFilling)return;
     setAutoFilling(true);
     try{
-      const prompt=`I need information about the company or brand called "${brandName.trim()}".\n\nReturn JSON only:\n{\n  "website": "https://example.com",\n  "industry": "the primary industry (1-3 words, e.g. Telecommunications, SaaS, E-commerce)",\n  "region": "primary operating region (e.g. Malaysia, United States, Global, Southeast Asia)",\n  "competitors": [\n    {"name": "Competitor 1", "website": "https://competitor1.com"},\n    {"name": "Competitor 2", "website": "https://competitor2.com"},\n    {"name": "Competitor 3", "website": "https://competitor3.com"}\n  ],\n  "topics": ["search query 1", "search query 2", "search query 3", "search query 4", "search query 5"]\n}\n\nRules:\n- Website must be the MAIN company website, not Wikipedia or social\n- Give exactly 3 real, direct competitors in the same industry\n- Topics must be 5 realistic search queries a potential customer would type into ChatGPT or Gemini when looking for this type of product or service\n- Topics must NOT contain the brand name "${brandName.trim()}" or any competitor names\n- Topics should sound like natural searches e.g. "best credit cards with travel rewards in UAE", "low interest personal loan providers in Abu Dhabi", "which cloud hosting is best for startups"\n- Mix of: "best/top" queries, comparison queries, problem-solving queries, pricing queries\n- Make topics specific to the company's region where relevant\n- If unsure about the brand, make your best guess based on the name`;
+      const prompt=`I need information about the company or brand called "${brandName.trim()}".\n\nReturn JSON only:\n{\n  "website": "https://example.com",\n  "industry": "the primary industry (1-3 words, e.g. Telecommunications, SaaS, E-commerce)",\n  "region": "primary operating region (e.g. Malaysia, United States, Global, Southeast Asia)",\n  "competitors": [\n    {"name": "Competitor 1", "website": "https://competitor1.com"},\n    {"name": "Competitor 2", "website": "https://competitor2.com"},\n    {"name": "Competitor 3", "website": "https://competitor3.com"}\n  ],\n  "topics": ["search query 1", "search query 2", "search query 3", "search query 4", "search query 5"]\n}\n\nRules:\n- Website must be the MAIN company website, not Wikipedia or social\n- Return the top 3 direct competitors that actively compete with this brand in their primary operating region. Competitors must actually operate and be available in that region — do not list globally known brands that have no presence in the brand's market\n- Topics must be 5 realistic search queries a potential customer in the brand's region would type into ChatGPT or Gemini when looking for this type of product or service\n- Topics must NOT contain the brand name "${brandName.trim()}" or any competitor names\n- Topics should sound like natural searches e.g. "best credit cards with travel rewards in UAE", "low interest personal loan providers in Abu Dhabi", "which cloud hosting is best for startups"\n- Mix of: "best/top" queries, comparison queries, problem-solving queries, pricing queries\n- Make topics specific to the company's operating region — use local context, local currency, local regulations\n- If unsure about the brand, make your best guess based on the name`;
       const raw=await callGemini(prompt,"You are a business intelligence assistant. Return ONLY valid JSON, no markdown fences.");
       const result=safeJSON(raw);
       if(result){
@@ -1202,7 +1237,7 @@ function NewAuditPage({data,setData,onRun,history=[]}){
           if(!prev.region||!prev.region.trim())updates.region=result.region||"";
           const hasComps=(prev.competitors||[]).some(c=>c.name&&c.name.trim());
           if(!hasComps&&result.competitors&&Array.isArray(result.competitors)){
-            updates.competitors=result.competitors.slice(0,3).map(c=>({name:c.name||"",website:normalizeUrl(c.website||"")}));
+            updates.competitors=result.competitors.filter(c=>c.name&&c.name.toLowerCase()!==brandName.trim().toLowerCase()).slice(0,3).map(c=>({name:c.name||"",website:normalizeUrl(c.website||"")}));
           }
           const hasTopics=(prev.topics||[]).length>0;
           if(!hasTopics&&result.topics&&Array.isArray(result.topics)){
@@ -1225,15 +1260,17 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     if(nw!==data.website||JSON.stringify(nc)!==JSON.stringify(data.competitors))setData(d=>({...d,website:nw,competitors:nc}));
     try{
       const compInfo=nc.filter(c=>c.name).map(c=>`${c.name}${c.website?" ("+c.website+")":""}`).join(", ");
-      const prompt=`For the brand "${data.brand}" in the "${data.industry}" industry, based in "${data.region||"Global"}", with website ${nw||"unknown"}${compInfo?", competitors: "+compInfo:""}.
+      const prompt=`For the brand "${data.brand}" in the "${data.industry}" industry, operating in "${data.region||"Global"}", with website ${nw||"unknown"}${compInfo?", competitors: "+compInfo:""}.
 
-Generate 8-12 key topics that are most relevant for measuring this brand's AI engine visibility (AEO - Answer Engine Optimisation). These should be specific topics that users would ask AI engines about in this industry and region.
+Generate 8-12 key topics that are most relevant for measuring this brand's AI engine visibility (AEO - Answer Engine Optimisation). These should be specific topics that real users in ${data.region||"Global"} would ask AI engines about in ${data.industry}.
+
+Topics must reflect ${data.region||"Global"} context — use local language patterns, local currency, local regulations, and regional market conditions where relevant. A topic about pricing should reference local currency. A topic about regulations should reference local laws.
 
 Focus on:
-- Core product/service topics
-- Industry-specific comparison topics  
-- Regional/local relevance topics
-- Buyer decision topics
+- Core product/service topics relevant in ${data.region||"Global"}
+- Industry-specific comparison topics for the ${data.region||"Global"} market
+- Regional/local relevance topics (local providers, local regulations, local pricing)
+- Buyer decision topics for ${data.region||"Global"} consumers
 - Technical/feature topics
 
 Return ONLY a JSON array of strings, no markdown, no explanation:
@@ -1262,7 +1299,7 @@ Return ONLY a JSON array of strings, no markdown, no explanation:
 
 I already have these topics: ${existing}
 
-Generate 5 MORE different topics that are also relevant for measuring AI engine visibility. These should NOT duplicate existing topics. Focus on gaps or angles not yet covered.
+Generate 5 MORE different topics that are also relevant for measuring AI engine visibility in ${data.region||"Global"}. These should NOT duplicate existing topics. Focus on gaps or angles not yet covered. Topics must reflect ${data.region||"Global"} context — use local language patterns, local currency, and regional market conditions.
 
 Return ONLY a JSON array of strings:
 ["new topic 1", "new topic 2", ...]`;
@@ -1553,7 +1590,8 @@ function DashboardPage({r,history,goTo}){
   const criticalCats=r.painPoints.filter(p=>p.severity==="critical");
   const weakestCat=r.painPoints.reduce((a,b)=>b.score<a.score?b:a,r.painPoints[0]);
   const strongestCat=r.painPoints.reduce((a,b)=>b.score>a.score?b:a,r.painPoints[0]);
-  const compsAhead=r.competitors.filter(c=>c.score>r.overall);
+  const brandAvgRate=Math.round((avgMentions+avgCitations)/2);
+  const compsAhead=r.competitors.filter(c=>{const cr=Math.round(((c.mentionRate||0)+(c.citationRate||0))/2);return cr>brandAvgRate;});
   const channels=r.aeoChannels||[];
   const missingChannels=channels.filter(ch=>ch.status==="Not Present"||ch.statusLabel==="Not Present");
 
@@ -1565,7 +1603,7 @@ function DashboardPage({r,history,goTo}){
   else if(avgMentions<35)diags.push({icon:"\uD83D\uDCAC",severity:"warning",text:`Mentioned in ~1 of ${Math.round(100/avgMentions)} relevant responses (${avgMentions}%).`});
   if(criticalCats.length>0)diags.push({icon:"\uD83D\uDEA8",severity:"critical",text:`${criticalCats.map(c=>c.label.split("/")[0].trim()+" "+c.score+"%").join(", ")} \u2014 ${criticalCats.length>1?"these need":"needs"} immediate attention.`});
   if(weakestCat.score<30)diags.push({icon:"\uD83D\uDCC9",severity:"critical",text:`${weakestCat.label.split("/")[0].trim()} at ${weakestCat.score}% \u2014 lowest category score.`});
-  if(compsAhead.length>0)diags.push({icon:"\uD83C\uDFC1",severity:compsAhead.length>1?"critical":"warning",text:`${compsAhead.map(c=>c.name+" "+c.score+"%").join(", ")} ${compsAhead.length>1?"are":"is"} scoring above you.`});
+  if(compsAhead.length>0){const compMsgs=compsAhead.map(c=>{const cr=Math.round(((c.mentionRate||0)+(c.citationRate||0))/2);return c.name+" "+cr+"%";});diags.push({icon:"\uD83C\uDFC1",severity:compsAhead.length>1?"critical":"warning",text:`${compMsgs.join(", ")} ${compsAhead.length>1?"are":"is"} scoring above you (${brandAvgRate}%) on real visibility metrics.`});}
   if(missingChannels.length>0)diags.push({icon:"\uD83D\uDCE1",severity:"warning",text:`Not found on ${missingChannels.length} distribution channel${missingChannels.length>1?"s":""}.`});
   if(strongestCat.score>60)diags.push({icon:"\u2705",severity:"good",text:`${strongestCat.label.split("/")[0].trim()} is your strongest signal at ${strongestCat.score}%.`});
   const sevOrder={critical:0,warning:1,info:2,good:3};
@@ -1769,9 +1807,10 @@ function DashboardPage({r,history,goTo}){
     {/* 4b-c. Three ShareOfVoiceSection donuts */}
     {(()=>{
       const compData=r.competitors||[];
+      const brandNameLower=r.clientData.brand.toLowerCase();
       const allBrands=[
         {name:r.clientData.brand,website:r.clientData.website,mentionRate:avgMentions,citationRate:avgCitations,color:C.accent},
-        ...compData.map((c,i)=>{
+        ...compData.filter(c=>c.name.toLowerCase()!==brandNameLower).map((c,i)=>{
           const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);
           return{
             name:c.name,
@@ -1784,7 +1823,7 @@ function DashboardPage({r,history,goTo}){
       ];
       const sentimentBrands=[
         {name:r.clientData.brand,website:r.clientData.website,sentimentScore:avgSentiment,color:C.accent},
-        ...(r.sentiment?.competitors||[]).map((c,i)=>({
+        ...(r.sentiment?.competitors||[]).filter(c=>c.name.toLowerCase()!==brandNameLower).map((c,i)=>({
           name:c.name,website:"",sentimentScore:c.avg||50,
           color:["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]
         }))
@@ -2048,14 +2087,14 @@ function IntentPage({r,goTo}){
     const q=newPrompt.trim();
     setNewPrompt("");
     try{
-      const testPr=`A user typed this prompt into your AI engine: "${q}"
-Brand: "${r.clientData.brand}" in ${r.clientData.industry} (${r.clientData.website}).
+      const testPr=`A user in ${r.clientData.region||"Global"} typed this prompt into your AI engine: "${q}"
+Brand: "${r.clientData.brand}" in ${r.clientData.industry} (${r.clientData.website}), operating in ${r.clientData.region||"Global"}.
 
-1. Would you mention or cite this brand in your response?
-2. Rate the prompt weight (1-10) for AEO importance.
+1. Would you mention or cite this brand in your response to a user in ${r.clientData.region||"Global"}? Consider the brand's regional presence and relevance.
+2. Rate the prompt weight (1-10) for AEO importance in the ${r.clientData.region||"Global"} market.
 3. Identify trigger words that influence citation behavior.
-4. Suggest an optimised version of this prompt that ${r.clientData.brand} should create content to target.
-5. Give a content tip for winning this prompt.
+4. Suggest an optimised version of this prompt that ${r.clientData.brand} should create content to target for ${r.clientData.region||"Global"} audiences.
+5. Give a content tip for winning this prompt in ${r.clientData.region||"Global"}.
 
 Return JSON only:
 {"status":"Cited"|"Mentioned"|"Absent","reason":"<1-sentence>","weight":<1-10>,"triggerWords":["word1","word2"],"optimisedPrompt":"<version to target>","contentTip":"<what content to create>"}`;
@@ -2071,7 +2110,7 @@ Return JSON only:
         contentTip:gptR.contentTip||gemR.contentTip||""};
 
       const classifyPr=`Classify this prompt into ONE stage: Awareness, Consideration, Decision, or Retention.
-Prompt: "${q}" | Brand: "${r.clientData.brand}" in ${r.clientData.industry}.
+Prompt: "${q}" | Brand: "${r.clientData.brand}" in ${r.clientData.industry} (${r.clientData.region||"Global"}).
 Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
       const classRaw=await callOpenAI(classifyPr);
       const classR=safeJSON(classRaw)||{stage:"Awareness"};
