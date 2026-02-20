@@ -1346,152 +1346,165 @@ Return ONLY a JSON array of strings:
 
 /* ─── PAGE: DASHBOARD ─── */
 function DashboardPage({r,history,goTo}){
-  const[chartMetric,setChartMetric]=useState("mentions");
+  const[perfMetric,setPerfMetric]=useState("mentions");
 
-  // Metric calculations
+  // ── Metric calculations ──
   const avgMentions=Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length);
   const avgCitations=Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length);
   const avgSentiment=r.sentiment?.brand?.avg||50;
-
-  // Deltas vs previous audit
   const prev=history.length>1?history[history.length-2]:null;
-  const prevMentions=prev?prev.mentions:null;
-  const prevCitations=prev?prev.citations:null;
   const prevSentiment=prev?.sentimentPerEngine?Math.round((prev.sentimentPerEngine.gpt+prev.sentimentPerEngine.gemini)/2):null;
 
-  const DeltaBadge=({current,previous})=>{
-    if(previous===null||previous===undefined)return <span style={{fontSize:11,fontWeight:600,color:C.muted,background:C.bg,padding:"2px 8px",borderRadius:20}}>First audit</span>;
-    const d=current-previous;
-    const pos=d>=0;
-    return <span style={{fontSize:11,fontWeight:600,color:pos?"#059669":"#dc2626",background:pos?"#d1fae520":"#fee2e220",padding:"2px 8px",borderRadius:20}}>{pos?"+":""}{d}%</span>;
+  const delta=(cur,pre)=>{
+    if(pre===null||pre===undefined)return <span style={{fontSize:11,fontWeight:500,color:C.muted,background:C.bg,padding:"2px 8px",borderRadius:100}}>First audit</span>;
+    const d=cur-pre;
+    return <span style={{fontSize:11,fontWeight:500,padding:"2px 8px",borderRadius:100,color:d>=0?"#15803d":"#dc2626",background:d>=0?"#dcfce7":"#fee2e2"}}>{d>=0?"+":""}{d}%</span>;
   };
 
-  // Chart data
+  // ── System Diagnostics logic ──
+  const avgMention=Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length);
+  const avgCitation=Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length);
+  const worstEngine=r.engines.reduce((a,e)=>e.score<a.score?e:a,r.engines[0]);
+  const bestEngine=r.engines.reduce((a,e)=>e.score>a.score?e:a,r.engines[0]);
+  const criticalCats=r.painPoints.filter(p=>p.severity==="critical");
+  const weakestCat=r.painPoints.reduce((a,b)=>b.score<a.score?b:a,r.painPoints[0]);
+  const strongestCat=r.painPoints.reduce((a,b)=>b.score>a.score?b:a,r.painPoints[0]);
+  const compsAhead=r.competitors.filter(c=>c.score>r.overall);
+  const channels=r.aeoChannels||[];
+  const missingChannels=channels.filter(ch=>ch.status==="Not Present"||ch.statusLabel==="Not Present");
+
+  const diags=[];
+  if(bestEngine.score-worstEngine.score>15)diags.push({icon:"\u26A1",severity:"warning",text:`${bestEngine.score-worstEngine.score}pt gap between ${bestEngine.name} (${bestEngine.score}%) and ${worstEngine.name} (${worstEngine.score}%).`});
+  if(avgCitation<10)diags.push({icon:"\uD83D\uDD17",severity:"critical",text:`${avgCitation}% citation rate. Users get answers about your space but aren't sent to your site.`});
+  else if(avgCitation<25)diags.push({icon:"\uD83D\uDD17",severity:"warning",text:`${avgCitation}% citation rate \u2014 ${100-avgCitation}% of mentions don't link back to you.`});
+  if(avgMention<15)diags.push({icon:"\uD83D\uDCAC",severity:"critical",text:`${avgMention}% mention rate across engines. ${r.clientData.brand} isn't part of the AI conversation yet.`});
+  else if(avgMention<35)diags.push({icon:"\uD83D\uDCAC",severity:"warning",text:`Mentioned in ~1 of ${Math.round(100/avgMention)} relevant responses (${avgMention}%).`});
+  if(criticalCats.length>0)diags.push({icon:"\uD83D\uDEA8",severity:"critical",text:`${criticalCats.map(c=>c.label.split("/")[0].trim()+" "+c.score+"%").join(", ")} \u2014 ${criticalCats.length>1?"these need":"needs"} immediate attention.`});
+  if(weakestCat.score<30)diags.push({icon:"\uD83D\uDCC9",severity:"critical",text:`${weakestCat.label.split("/")[0].trim()} at ${weakestCat.score}% \u2014 lowest category score.`});
+  if(compsAhead.length>0)diags.push({icon:"\uD83C\uDFC1",severity:compsAhead.length>1?"critical":"warning",text:`${compsAhead.map(c=>c.name+" "+c.score+"%").join(", ")} ${compsAhead.length>1?"are":"is"} scoring above you.`});
+  if(missingChannels.length>0)diags.push({icon:"\uD83D\uDCE1",severity:"warning",text:`Not found on ${missingChannels.length} distribution channel${missingChannels.length>1?"s":""}.`});
+  if(strongestCat.score>60)diags.push({icon:"\u2705",severity:"good",text:`${strongestCat.label.split("/")[0].trim()} is your strongest signal at ${strongestCat.score}%.`});
+  const sevOrder={critical:0,warning:1,info:2,good:3};
+  diags.sort((a,b)=>(sevOrder[a.severity]??2)-(sevOrder[b.severity]??2));
+  const sevColors={critical:C.red,warning:C.amber,info:C.accent,good:C.green};
+
+  // ── Performance chart data ──
   const chartData=history.map(h=>{
-    if(chartMetric==="mentions")return{label:h.date,gpt:h.mentionsPerEngine?.gpt??h.mentions??0,gemini:h.mentionsPerEngine?.gemini??h.mentions??0};
-    if(chartMetric==="citations")return{label:h.date,gpt:h.citationsPerEngine?.gpt??h.citations??0,gemini:h.citationsPerEngine?.gemini??h.citations??0};
-    return{label:h.date,gpt:h.sentimentPerEngine?.gpt??50,gemini:h.sentimentPerEngine?.gemini??50};
+    let gpt=0,gemini=0;
+    if(perfMetric==="mentions"){gpt=h.mentionsPerEngine?.gpt??h.mentions??0;gemini=h.mentionsPerEngine?.gemini??h.mentions??0;}
+    else if(perfMetric==="citations"){gpt=h.citationsPerEngine?.gpt??h.citations??0;gemini=h.citationsPerEngine?.gemini??h.citations??0;}
+    else{gpt=h.sentimentPerEngine?.gpt??50;gemini=h.sentimentPerEngine?.gemini??50;}
+    return{date:h.date,gpt,gemini};
   });
 
-  const renderChart=()=>{
+  const renderPerfChart=()=>{
     if(chartData.length<2)return(
-      <div style={{height:220,display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontSize:13}}>
-        Run more audits to track performance over time
-      </div>
+      <svg viewBox="0 0 600 240" style={{width:"100%",height:240}}>
+        <text x="300" y="125" textAnchor="middle" fontSize="12" fill={C.muted}>Run more audits to track performance over time</text>
+      </svg>
     );
-    const W=600,H=200,pad={l:36,r:16,t:12,b:28};
-    const cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
+    const W=600,H=240,pL=40,pR=20,pT=10,pB=30;
+    const cW=W-pL-pR,cH=H-pT-pB;
     const n=chartData.length;
-    const xStep=n>1?cW/(n-1):cW;
-    const pts=(key)=>chartData.map((d,i)=>{const x=pad.l+(n>1?i*xStep:cW/2);const y=pad.t+cH-(d[key]/100)*cH;return{x,y,v:d[key],label:d.label};});
-    const gptPts=pts("gpt"),gemPts=pts("gemini");
-    const polyStr=(arr)=>arr.map(p=>`${p.x},${p.y}`).join(" ");
-    const areaStr=(arr)=>`${pad.l},${pad.t+cH} ${polyStr(arr)} ${arr[arr.length-1].x},${pad.t+cH}`;
+    const xStep=cW/(n-1);
+    const toXY=(val,i)=>({x:pL+i*xStep,y:pT+cH-(val/100)*cH});
+    const gptPts=chartData.map((d,i)=>toXY(d.gpt,i));
+    const gemPts=chartData.map((d,i)=>toXY(d.gemini,i));
+    const polyStr=arr=>arr.map(p=>`${p.x},${p.y}`).join(" ");
+    const areaStr=arr=>`${pL},${pT+cH} ${polyStr(arr)} ${arr[arr.length-1].x},${pT+cH}`;
     const gridYs=[0,25,50,75,100];
     return(
-      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:220}}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:240}}>
         <defs>
-          <linearGradient id="gptFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10A37F" stopOpacity="0.12"/><stop offset="100%" stopColor="#10A37F" stopOpacity="0"/></linearGradient>
-          <linearGradient id="gemFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4285F4" stopOpacity="0.12"/><stop offset="100%" stopColor="#4285F4" stopOpacity="0"/></linearGradient>
+          <linearGradient id="dgF" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10A37F" stopOpacity="0.15"/><stop offset="100%" stopColor="#10A37F" stopOpacity="0"/></linearGradient>
+          <linearGradient id="dmF" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4285F4" stopOpacity="0.15"/><stop offset="100%" stopColor="#4285F4" stopOpacity="0"/></linearGradient>
         </defs>
-        {gridYs.map(v=>{const y=pad.t+cH-(v/100)*cH;return <g key={v}><line x1={pad.l} y1={y} x2={W-pad.r} y2={y} stroke={C.border} strokeWidth="0.7" strokeDasharray="4,3"/><text x={pad.l-6} y={y+3.5} textAnchor="end" fontSize="9" fill={C.muted}>{v}</text></g>;})}
-        <polygon points={areaStr(gptPts)} fill="url(#gptFill)"/>
-        <polygon points={areaStr(gemPts)} fill="url(#gemFill)"/>
-        <polyline points={polyStr(gptPts)} fill="none" stroke="#10A37F" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
-        <polyline points={polyStr(gemPts)} fill="none" stroke="#4285F4" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
-        {gptPts.map((p,i)=><circle key={"g"+i} cx={p.x} cy={p.y} r="4" fill="#fff" stroke="#10A37F" strokeWidth="2"><title>ChatGPT: {p.v}% — {p.label}</title></circle>)}
-        {gemPts.map((p,i)=><circle key={"m"+i} cx={p.x} cy={p.y} r="4" fill="#fff" stroke="#4285F4" strokeWidth="2"><title>Gemini: {p.v}% — {p.label}</title></circle>)}
-        {chartData.map((d,i)=>{const x=pad.l+(n>1?i*xStep:cW/2);return <text key={"x"+i} x={x} y={H-4} textAnchor="middle" fontSize="9" fill={C.muted}>{d.label}</text>;})}
+        {gridYs.map(v=>{const y=pT+cH-(v/100)*cH;return <g key={v}><line x1={pL} y1={y} x2={W-pR} y2={y} stroke={C.borderSoft} strokeDasharray="4,4"/><text x="35" y={y+4} textAnchor="end" fontSize="10" fill={C.muted}>{v}</text></g>;})}
+        <polygon points={areaStr(gptPts)} fill="url(#dgF)"/>
+        <polygon points={areaStr(gemPts)} fill="url(#dmF)"/>
+        <polyline points={polyStr(gptPts)} fill="none" stroke="#10A37F" strokeWidth="2"/>
+        <polyline points={polyStr(gemPts)} fill="none" stroke="#4285F4" strokeWidth="2"/>
+        {gptPts.map((p,i)=><circle key={"g"+i} cx={p.x} cy={p.y} r="3.5" fill="#fff" stroke="#10A37F" strokeWidth="2"><title>ChatGPT: {chartData[i].gpt}% — {chartData[i].date}</title></circle>)}
+        {gemPts.map((p,i)=><circle key={"m"+i} cx={p.x} cy={p.y} r="3.5" fill="#fff" stroke="#4285F4" strokeWidth="2"><title>Gemini: {chartData[i].gemini}% — {chartData[i].date}</title></circle>)}
+        {chartData.map((d,i)=><text key={"x"+i} x={pL+i*xStep} y={H-6} textAnchor="middle" fontSize="9" fill={C.muted}>{d.date}</text>)}
       </svg>
     );
   };
 
-  // Share of voice data
-  const allBrands=[{name:r.clientData.brand,website:r.clientData.website,mentionRate:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citationRate:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),color:C.accent},...r.competitors.map((c,i)=>{const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);return{name:c.name,website:compObj?compObj.website:"",mentionRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length):c.score,citationRate:c.engineScores?Math.round(c.engineScores.reduce((a,s)=>a+s,0)/c.engineScores.length*.6):Math.round(c.score*.6),color:["#10A37F","#D97706","#4285F4","#8b5cf6","#ec4899","#0ea5e9","#f97316"][i%7]};})];
-
-  const sentimentBrands=[
-    {name:r.clientData.brand,sentimentScore:r.sentiment?.brand?.avg||50,color:C.accent},
-    ...(r.sentiment?.competitors||[]).map((c,i)=>({name:c.name,sentimentScore:c.avg||50,color:["#f97316","#8b5cf6","#06b6d4","#ec4899"][i%4]}))
-  ];
-
-  const today=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+  const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
 
   const metricCards=[
-    {label:"Mentions",value:avgMentions,prev:prevMentions,iconBg:"#dbeafe",iconColor:"#2563eb",icon:<><path d="M11 5L6 9H2v6h4l5 4V5z" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/></>},
-    {label:"Citations",value:avgCitations,prev:prevCitations,iconBg:"#d1fae5",iconColor:"#059669",icon:<><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/></>},
-    {label:"Sentiments",value:avgSentiment,prev:prevSentiment,iconBg:"#fef3c7",iconColor:"#d97706",icon:<><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8" fill="none"/><path d="M8 14s1.5 2 4 2 4-2 4-2" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/><line x1="9" y1="9" x2="9.01" y2="9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><line x1="15" y1="9" x2="15.01" y2="9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></>}
+    {label:"Mentions",value:avgMentions,prev:prev?.mentions??null,iconBg:"#dbeafe",
+      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>},
+    {label:"Citations",value:avgCitations,prev:prev?.citations??null,iconBg:"#d1fae5",
+      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>},
+    {label:"Sentiments",value:avgSentiment,prev:prevSentiment,iconBg:"#fef3c7",
+      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>}
   ];
 
-  const toggleBtns=["mentions","citations","sentiments"];
-
   return(<div>
-    {/* Section A: Greeting Header */}
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:28}}>
+    {/* ═══ SECTION 1: OVERVIEW ═══ */}
+
+    {/* 1a. Greeting header */}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
       <div>
-        <div style={{fontSize:28,fontWeight:600,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Hello, Aris</div>
-        <div style={{fontSize:14,color:C.muted,marginTop:2}}>GEO Dashboard for {r.clientData.brand}</div>
+        <div style={{fontSize:24,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Hello, Aris</div>
+        <div style={{fontSize:13,fontWeight:400,color:C.muted,marginTop:2}}>GEO Dashboard for {r.clientData.brand}</div>
       </div>
-      <div style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:C.muted,fontWeight:500,marginTop:6}}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        {today}
-      </div>
+      <div style={{fontSize:13,color:C.muted,marginTop:6}}>{today}</div>
     </div>
 
-    {/* Section B: Three Metric Cards */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16,marginBottom:24}}>
+    {/* 1b. Three metric cards */}
+    <div style={{display:"flex",gap:14,marginBottom:48}}>
       {metricCards.map(m=>(
-        <Card key={m.label}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
-            <div style={{width:40,height:40,borderRadius:10,background:m.iconBg,display:"flex",alignItems:"center",justifyContent:"center",color:m.iconColor}}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">{m.icon}</svg>
+        <Card key={m.label} style={{flex:1,padding:20}}>
+          <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
+            <div style={{width:44,height:44,borderRadius:12,background:m.iconBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              {m.icon}
             </div>
-            <span style={{fontSize:13,fontWeight:500,color:C.muted}}>{m.label}</span>
-          </div>
-          <div style={{display:"flex",alignItems:"baseline",gap:10}}>
-            <span style={{fontSize:32,fontWeight:800,fontFamily:"'Outfit'",color:C.text}}>{m.value}<span style={{fontSize:18,fontWeight:600,color:C.muted}}>%</span></span>
-            <DeltaBadge current={m.value} previous={m.prev}/>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:12,fontWeight:500,color:C.muted,letterSpacing:".02em",textTransform:"uppercase",marginBottom:6}}>{m.label}</div>
+              <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+                <span style={{fontSize:30,fontWeight:700,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>{m.value}<span style={{fontSize:16,fontWeight:500,color:C.muted}}>%</span></span>
+                {delta(m.value,m.prev)}
+              </div>
+            </div>
           </div>
         </Card>
       ))}
     </div>
 
-    {/* Section C: Performance Graph */}
-    <Card style={{marginBottom:24}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-        <span style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Performance</span>
-        <div style={{display:"flex",gap:4}}>
-          {toggleBtns.map(t=>(
-            <button key={t} onClick={()=>setChartMetric(t)} style={{padding:"5px 14px",borderRadius:20,border:"none",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",background:chartMetric===t?C.accent:C.bg,color:chartMetric===t?"#fff":C.sub,transition:"all .15s"}}>
-              {t.charAt(0).toUpperCase()+t.slice(1)}
-            </button>
-          ))}
-        </div>
+    {/* ═══ SECTION 2: SYSTEM DIAGNOSTICS ═══ */}
+    <div style={{marginBottom:48}}>
+      <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text,marginBottom:14}}>System Diagnostics</div>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {diags.map((d,i)=>(
+          <div key={i} style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 16px",display:"flex",gap:10,alignItems:"flex-start"}}>
+            <span style={{fontSize:14,lineHeight:1,flexShrink:0}}>{d.icon}</span>
+            <span style={{fontSize:12,color:C.sub,lineHeight:1.6}}>{d.text}</span>
+          </div>
+        ))}
       </div>
-      {renderChart()}
-      <div style={{display:"flex",justifyContent:"center",gap:20,marginTop:12}}>
+      <div style={{fontSize:11,color:C.muted,marginTop:10}}>{diags.filter(d=>d.severity==="critical").length} critical · {diags.filter(d=>d.severity==="warning").length} warnings · {diags.filter(d=>d.severity==="good").length} healthy</div>
+    </div>
+
+    {/* ═══ SECTION 3: PERFORMANCE TRACKER ═══ */}
+    <Card style={{marginBottom:48}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <span style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Performance</span>
+        <select value={perfMetric} onChange={e=>setPerfMetric(e.target.value)} style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${C.border}`,fontSize:12,color:C.text,background:"#fff",fontFamily:"inherit",cursor:"pointer",outline:"none"}}>
+          <option value="mentions">Mentions</option>
+          <option value="citations">Citations</option>
+          <option value="sentiments">Sentiments</option>
+        </select>
+      </div>
+      {renderPerfChart()}
+      <div style={{display:"flex",justifyContent:"center",gap:20,marginTop:10}}>
         <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}><div style={{width:8,height:8,borderRadius:"50%",background:"#10A37F"}}/>ChatGPT</div>
         <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}><div style={{width:8,height:8,borderRadius:"50%",background:"#4285F4"}}/>Gemini</div>
       </div>
     </Card>
 
-    {/* Section D: Share of Voice */}
-    <div style={{marginBottom:24}}>
-      <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text,marginBottom:16}}>Share of Voice</div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
-        <ShareOfVoiceSection title="Share of Mentions" rankTitle="Mentions Rank" brands={allBrands} metricKey="mentionRate"/>
-        <ShareOfVoiceSection title="Share of Citations" rankTitle="Citation Rank" brands={allBrands} metricKey="citationRate"/>
-        <ShareOfVoiceSection title="Share of Sentiments" rankTitle="Sentiment Rank" brands={sentimentBrands} metricKey="sentimentScore"/>
-      </div>
-    </div>
-
-    {/* Section E: Quick Actions */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
-      {[{label:"View Engine Details",to:"engines"},{label:"View Diagnostics",to:"diagnostics"},{label:"View 90-Day Roadmap",to:"roadmap"}].map(a=>(
-        <Card key={a.to} onClick={()=>goTo(a.to)} style={{cursor:"pointer",transition:"box-shadow .15s, border-color .15s"}}>
-          <span style={{fontSize:13,fontWeight:600,color:C.accent}}>{a.label} →</span>
-        </Card>
-      ))}
-    </div>
   </div>);
 }
 
