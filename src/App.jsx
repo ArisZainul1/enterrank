@@ -367,25 +367,28 @@ Rules:
   const brandGptVis = gptVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
   const brandGemVis = gemVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
 
-  const swPrompt = `Based on your knowledge of "${brand}" in ${industry} (${region}):
+  const swBasePrompt = (engineName, mentionRate, citationRate) => `You are ${engineName}. Based on your knowledge of "${brand}" in ${industry} (${region}):
 Website signals: ${crawlSummary.slice(0, 400)}
-ChatGPT visibility: ${brandGptVis.mentionRate}% mentioned, ${brandGptVis.citationRate}% cited
-Gemini visibility: ${brandGemVis.mentionRate}% mentioned, ${brandGemVis.citationRate}% cited
+This brand's visibility on YOUR engine: ${mentionRate}% mentioned, ${citationRate}% cited out of ${searchQueries.length} real queries tested.
 
-Give 3 strengths and 3 weaknesses for this brand's AI engine visibility. Be specific to this brand.
+Give 3 strengths and 3 weaknesses for why this brand performs this way specifically on ${engineName}. Be specific and actionable.
 Return JSON only:
-{"gptStrengths":["...","...","..."],"gptWeaknesses":["...","...","..."],"gemStrengths":["...","...","..."],"gemWeaknesses":["...","...","..."]}`;
+{"strengths":["...","...","..."],"weaknesses":["...","...","..."]}`;
 
-  const swRaw = await callOpenAI(swPrompt, engineSystemPrompt);
-  const sw = safeJSON(swRaw) || {};
+  const [swGptRaw, swGemRaw] = await Promise.all([
+    callOpenAI(swBasePrompt("ChatGPT", brandGptVis.mentionRate, brandGptVis.citationRate), engineSystemPrompt),
+    callGemini(swBasePrompt("Gemini", brandGemVis.mentionRate, brandGemVis.citationRate), engineSystemPrompt)
+  ]);
+  const swGpt = safeJSON(swGptRaw) || {};
+  const swGem = safeJSON(swGemRaw) || {};
 
   const gptData = {
     score: Math.round(brandGptVis.mentionRate * 0.5 + brandGptVis.citationRate * 0.5),
     mentionRate: brandGptVis.mentionRate,
     citationRate: brandGptVis.citationRate,
     queries: brandGptVis.queries || [],
-    strengths: sw.gptStrengths || ["Assessment not available"],
-    weaknesses: sw.gptWeaknesses || ["Assessment not available"]
+    strengths: swGpt.strengths || ["Assessment not available"],
+    weaknesses: swGpt.weaknesses || ["Assessment not available"]
   };
 
   const gemData = {
@@ -393,8 +396,8 @@ Return JSON only:
     mentionRate: brandGemVis.mentionRate,
     citationRate: brandGemVis.citationRate,
     queries: brandGemVis.queries || [],
-    strengths: sw.gemStrengths || ["Assessment not available"],
-    weaknesses: sw.gemWeaknesses || ["Assessment not available"]
+    strengths: swGem.strengths || ["Assessment not available"],
+    weaknesses: swGem.weaknesses || ["Assessment not available"]
   };
 
   // ── Step 5b: Sentiment Analysis ──
