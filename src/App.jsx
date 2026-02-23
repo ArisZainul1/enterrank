@@ -2270,20 +2270,17 @@ function ArchetypesPage({r,goTo}){
 
 /* ─── PAGE: INTENT PATHWAY ─── */
 function IntentPage({r,goTo}){
-  const[expandedTopics,setExpandedTopics]=useState({});
+  const[expandedTopics,setExpandedTopics]=useState({0:true});
   const[testQuery,setTestQuery]=useState("");
   const[testingPrompt,setTestingPrompt]=useState(false);
   const[testResults,setTestResults]=useState(null);
   const[testedPrompts,setTestedPrompts]=useState([]);
 
-  // StatusBadge helper
-  const StatusBadge=({label,status})=>{
-    const colors={Cited:{bg:"#dcfce7",text:"#166534",icon:"\u2713"},Mentioned:{bg:"#dbeafe",text:"#1e40af",icon:"~"},Absent:{bg:"#fee2e2",text:"#991b1b",icon:"\u2717"},Error:{bg:"#f3f4f6",text:"#6b7280",icon:"!"}};
-    const c=colors[status]||colors.Absent;
-    return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-      {label&&<span style={{fontSize:10,color:C.muted}}>{label}</span>}
-      <span style={{fontSize:11,fontWeight:500,padding:"3px 10px",borderRadius:6,background:c.bg,color:c.text}}>{c.icon} {status}</span>
-    </div>);
+  // Inline status badge
+  const SBadge=({status})=>{
+    const m={Cited:{bg:"#dcfce7",c:"#166534",i:"✓"},Mentioned:{bg:"#dbeafe",c:"#1e40af",i:"~"},Absent:{bg:"#fee2e2",c:"#991b1b",i:"✗"},Error:{bg:"#f3f4f6",c:"#6b7280",i:"!"},Unknown:{bg:"#f3f4f6",c:"#6b7280",i:"?"}};
+    const s=m[status]||m.Absent;
+    return <span style={{fontSize:11,fontWeight:500,padding:"4px 10px",borderRadius:6,display:"inline-block",background:s.bg,color:s.c}}>{s.i} {status}</span>;
   };
 
   // Build combined query data from engines
@@ -2292,14 +2289,9 @@ function IntentPage({r,goTo}){
   const topics=r.clientData.topics||[];
   const allSearchQueries=r.searchQueries||gptQueries.map(q=>q.query);
 
-  // Build combined query list with per-engine status
   const combinedQueries=allSearchQueries.map((query,i)=>{
     const qText=typeof query==="string"?query:query.query;
-    return{
-      query:qText,
-      gptStatus:gptQueries[i]?.status||"Unknown",
-      gemStatus:gemQueries[i]?.status||"Unknown"
-    };
+    return{query:qText,gptStatus:gptQueries[i]?.status||"Unknown",gemStatus:gemQueries[i]?.status||"Unknown"};
   });
 
   // Group queries by topic (2 queries per topic)
@@ -2310,7 +2302,6 @@ function IntentPage({r,goTo}){
       const queries=combinedQueries.slice(startIdx,startIdx+2).filter(q=>q.query);
       if(queries.length>0)topicGroups.push({topic,queries});
     });
-    // Any remaining queries that don't map to a topic
     const mapped=topics.length*2;
     const remaining=combinedQueries.slice(mapped);
     if(remaining.length>0)topicGroups.push({topic:"Other Queries",queries:remaining});
@@ -2345,7 +2336,7 @@ function IntentPage({r,goTo}){
       new RegExp(bn+'.*?(?:is\\s+(?:a\\s+)?(?:great|excellent|top|best|leading|strong|solid|reliable|popular|recommended))','i'),
       new RegExp('(?:the\\s+)?(?:best|top|leading|most\\s+popular|number\\s+one|#1).*?'+bn,'i'),
       new RegExp(bn+'.*?(?:offers?|provides?|features?|starts?\\s+at|\\d+\\.\\d+%|\\$\\d|AED|USD|RM|EUR|GBP)','i'),
-      new RegExp('(?:^|\\n)\\s*(?:\\d+\\.\\s*)?\\*?\\*?'+bn+'\\*?\\*?\\s*(?:\\(|\\u2014|:|\\n)','im'),
+      new RegExp('(?:^|\\n)\\s*(?:\\d+\\.\\s*)?\\*?\\*?'+bn+'\\*?\\*?\\s*(?:\\(|\u2014|:|\\n)','im'),
     ];
     if(citedPatterns.some(p=>p.test(responseText)))return "Cited";
     return "Mentioned";
@@ -2387,65 +2378,61 @@ function IntentPage({r,goTo}){
 
   return(<div>
     {/* Header */}
-    <div style={{marginBottom:24}}>
+    <div style={{marginBottom:32}}>
       <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Intent Pathway</h2>
-      <p style={{color:C.sub,fontSize:13,marginTop:3}}>Audit query results across ChatGPT and Gemini for {r.clientData.brand}</p>
+      <p style={{color:C.muted,fontSize:13,marginTop:4}}>Audit query results across ChatGPT and Gemini for {r.clientData.brand}</p>
     </div>
 
     {/* Overall summary */}
-    <Card style={{marginBottom:20}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div>
-          <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Outfit'"}}>Query Visibility Summary</div>
-          <div style={{fontSize:12,color:C.muted,marginTop:2}}>{combinedQueries.length} prompts tested across both engines</div>
-        </div>
-        <div style={{display:"flex",gap:8}}>
-          <span style={{fontSize:12,padding:"4px 10px",borderRadius:6,background:"#dcfce7",color:"#166534",fontWeight:600}}>{totalCited} cited</span>
-          <span style={{fontSize:12,padding:"4px 10px",borderRadius:6,background:"#dbeafe",color:"#1e40af",fontWeight:600}}>{totalMentioned} mentioned</span>
-          {totalAbsent>0&&<span style={{fontSize:12,padding:"4px 10px",borderRadius:6,background:"#fee2e2",color:"#991b1b",fontWeight:600}}>{totalAbsent} absent</span>}
-        </div>
+    <div style={{padding:"20px 24px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:14,marginBottom:32,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div>
+        <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Outfit'"}}>Query Visibility Summary</div>
+        <div style={{fontSize:12,color:C.muted,marginTop:2}}>{combinedQueries.length} prompts tested across both engines</div>
       </div>
-    </Card>
-
-    {/* Section A: Query Results grouped by topic */}
-    <div style={{marginBottom:8}}>
-      <div style={{fontSize:15,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em",marginBottom:14}}>Audit Query Results</div>
+      <div style={{display:"flex",gap:8}}>
+        <span style={{fontSize:12,fontWeight:500,padding:"5px 12px",borderRadius:8,background:"#dcfce7",color:"#166534"}}>{totalCited} cited</span>
+        <span style={{fontSize:12,fontWeight:500,padding:"5px 12px",borderRadius:8,background:"#dbeafe",color:"#1e40af"}}>{totalMentioned} mentioned</span>
+        <span style={{fontSize:12,fontWeight:500,padding:"5px 12px",borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{totalAbsent} absent</span>
+      </div>
     </div>
 
-    {topicGroups.length===0&&<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>No query data available. Run an audit to see results.</div></Card>}
+    {/* Section A: Query Results grouped by topic */}
+    <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Outfit'",marginBottom:16}}>Audit Query Results</div>
+
+    {topicGroups.length===0&&<div style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:14,padding:24,textAlign:"center",color:C.muted,fontSize:13}}>No query data available. Run an audit to see results.</div>}
 
     {topicGroups.map((group,gi)=>{
-      const expanded=expandedTopics[gi]!==undefined?expandedTopics[gi]:(gi===0);
+      const expanded=!!expandedTopics[gi];
       const citedCount=group.queries.filter(q=>q.gptStatus==="Cited"||q.gemStatus==="Cited").length;
       const mentionedCount=group.queries.filter(q=>(q.gptStatus==="Mentioned"||q.gemStatus==="Mentioned")&&q.gptStatus!=="Cited"&&q.gemStatus!=="Cited").length;
       const absentCount=group.queries.length-citedCount-mentionedCount;
-      return(<div key={gi} style={{marginBottom:10}}>
+      return(<div key={gi} style={{marginBottom:expanded?12:8}}>
         {/* Topic header */}
-        <div onClick={()=>toggleTopic(gi)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:expanded?"12px 12px 0 0":12,cursor:"pointer",userSelect:"none",transition:"all .15s"}}>
+        <div onClick={()=>toggleTopic(gi)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",background:expanded?"#fff":"transparent",border:`1px solid ${expanded?C.border:C.border+"60"}`,borderRadius:expanded?"12px 12px 0 0":12,cursor:"pointer",userSelect:"none",transition:"all 0.15s ease"}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <span style={{fontSize:12,color:C.muted,transform:expanded?"rotate(90deg)":"rotate(0deg)",transition:"transform 0.2s",display:"inline-block"}}>\u25B6</span>
+            <span style={{display:"inline-block",fontSize:10,color:C.muted,transform:expanded?"rotate(90deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▶</span>
             <span style={{fontWeight:500,fontSize:14,color:C.text,fontFamily:"'Outfit'"}}>{group.topic}</span>
             <span style={{fontSize:11,color:C.muted}}>{group.queries.length} prompt{group.queries.length!==1?"s":""}</span>
           </div>
           <div style={{display:"flex",gap:8}}>
-            {citedCount>0&&<span style={{fontSize:11,padding:"3px 8px",borderRadius:6,background:"#dcfce7",color:"#166534",fontWeight:500}}>{citedCount} cited</span>}
-            {mentionedCount>0&&<span style={{fontSize:11,padding:"3px 8px",borderRadius:6,background:"#dbeafe",color:"#1e40af",fontWeight:500}}>{mentionedCount} mentioned</span>}
-            {absentCount>0&&<span style={{fontSize:11,padding:"3px 8px",borderRadius:6,background:"#fee2e2",color:"#991b1b",fontWeight:500}}>{absentCount} absent</span>}
+            {citedCount>0&&<span style={{fontSize:11,fontWeight:500,padding:"3px 8px",borderRadius:6,background:"#dcfce7",color:"#166534"}}>{citedCount} cited</span>}
+            {mentionedCount>0&&<span style={{fontSize:11,fontWeight:500,padding:"3px 8px",borderRadius:6,background:"#dbeafe",color:"#1e40af"}}>{mentionedCount} mentioned</span>}
+            {absentCount>0&&<span style={{fontSize:11,fontWeight:500,padding:"3px 8px",borderRadius:6,background:"#fee2e2",color:"#991b1b"}}>{absentCount} absent</span>}
           </div>
         </div>
 
         {/* Expanded: show individual queries */}
-        {expanded&&<div style={{border:`1px solid ${C.border}`,borderTop:"none",borderRadius:"0 0 12px 12px",background:"#fff",overflow:"hidden"}}>
+        {expanded&&<div style={{border:`1px solid ${C.border}`,borderTop:"none",borderRadius:"0 0 12px 12px",overflow:"hidden",background:"#fff"}}>
           {/* Column headers */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 120px 120px",gap:12,padding:"8px 18px",borderBottom:`2px solid ${C.borderSoft}`,background:C.bg}}>
-            <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Query</span>
-            <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center",textTransform:"uppercase"}}>ChatGPT</span>
-            <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center",textTransform:"uppercase"}}>Gemini</span>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 100px 100px",gap:8,padding:"8px 16px",fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",borderBottom:`1px solid ${C.border}`}}>
+            <span>Query</span>
+            <span style={{textAlign:"center"}}>ChatGPT</span>
+            <span style={{textAlign:"center"}}>Gemini</span>
           </div>
-          {group.queries.map((q,qi)=>(<div key={qi} style={{display:"grid",gridTemplateColumns:"1fr 120px 120px",gap:12,padding:"12px 18px",borderBottom:qi<group.queries.length-1?`1px solid ${C.borderSoft}`:"none",alignItems:"center"}}>
+          {group.queries.map((q,qi)=>(<div key={qi} style={{display:"grid",gridTemplateColumns:"1fr 100px 100px",gap:8,padding:"12px 16px",alignItems:"center",borderBottom:qi<group.queries.length-1?`1px solid ${C.border}30`:"none"}}>
             <span style={{fontSize:13,lineHeight:1.5,color:C.text}}>{q.query}</span>
-            <StatusBadge label="" status={q.gptStatus}/>
-            <StatusBadge label="" status={q.gemStatus}/>
+            <div style={{textAlign:"center"}}><SBadge status={q.gptStatus}/></div>
+            <div style={{textAlign:"center"}}><SBadge status={q.gemStatus}/></div>
           </div>))}
         </div>}
       </div>);
@@ -2453,7 +2440,7 @@ function IntentPage({r,goTo}){
 
     {/* Section B: Test a Prompt */}
     <div style={{marginTop:40,padding:24,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
-      <h3 style={{fontSize:15,fontWeight:500,marginBottom:4,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text,margin:"0 0 4px"}}>Test a Prompt</h3>
+      <div style={{fontSize:15,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text,marginBottom:4}}>Test a Prompt</div>
       <p style={{fontSize:12,color:C.muted,marginBottom:16,marginTop:0}}>Type any search query to test whether {r.clientData.brand} gets cited or mentioned on ChatGPT and Gemini.</p>
 
       <div style={{display:"flex",gap:8}}>
@@ -2476,28 +2463,28 @@ function IntentPage({r,goTo}){
       {testResults&&<div style={{marginTop:16,display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
         <div style={{padding:14,borderRadius:10,border:`1px solid ${C.border}`}}>
           <div style={{fontSize:11,color:C.muted,marginBottom:6}}>ChatGPT (with web search)</div>
-          <StatusBadge label="" status={testResults.gpt}/>
-          {testResults.gptSnippet&&<p style={{fontSize:11,color:C.muted,marginTop:8,lineHeight:1.5,maxHeight:100,overflow:"auto",margin:"8px 0 0"}}>{testResults.gptSnippet}</p>}
+          <SBadge status={testResults.gpt}/>
+          {testResults.gptSnippet&&<p style={{fontSize:11,color:C.muted,lineHeight:1.5,maxHeight:100,overflow:"auto",margin:"8px 0 0"}}>{testResults.gptSnippet}</p>}
         </div>
         <div style={{padding:14,borderRadius:10,border:`1px solid ${C.border}`}}>
           <div style={{fontSize:11,color:C.muted,marginBottom:6}}>Gemini</div>
-          <StatusBadge label="" status={testResults.gem}/>
-          {testResults.gemSnippet&&<p style={{fontSize:11,color:C.muted,marginTop:8,lineHeight:1.5,maxHeight:100,overflow:"auto",margin:"8px 0 0"}}>{testResults.gemSnippet}</p>}
+          <SBadge status={testResults.gem}/>
+          {testResults.gemSnippet&&<p style={{fontSize:11,color:C.muted,lineHeight:1.5,maxHeight:100,overflow:"auto",margin:"8px 0 0"}}>{testResults.gemSnippet}</p>}
         </div>
       </div>}
 
       {/* History of tested prompts */}
       {testedPrompts.length>0&&<div style={{marginTop:16}}>
         <div style={{fontSize:11,color:C.muted,marginBottom:8}}>Previously tested</div>
-        {testedPrompts.map((tp,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 120px 120px",gap:12,padding:"8px 0",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center"}}>
+        {testedPrompts.map((tp,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 100px 100px",gap:8,padding:"8px 0",borderBottom:`1px solid ${C.border}30`,alignItems:"center"}}>
           <span style={{fontSize:12,color:C.text}}>{tp.query}</span>
-          <StatusBadge label="ChatGPT" status={tp.gpt}/>
-          <StatusBadge label="Gemini" status={tp.gem}/>
+          <div style={{textAlign:"center"}}><SBadge status={tp.gpt}/></div>
+          <div style={{textAlign:"center"}}><SBadge status={tp.gem}/></div>
         </div>))}
       </div>}
     </div>
 
-    <NavBtn onClick={()=>goTo("channels")} label="Next: AEO Channels \u2192"/>
+    <NavBtn onClick={()=>goTo("channels")} label="Next: AEO Channels →"/>
   </div>);
 }
 
