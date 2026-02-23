@@ -2264,7 +2264,6 @@ function ArchetypesPage({r,goTo}){
         </div>}
       </Card>))}
     </div>
-    <NavBtn onClick={()=>goTo("intent")} label="Next: Intent Pathway →"/>
   </div>);
 }
 
@@ -2312,9 +2311,12 @@ function IntentPage({r,goTo}){
   const toggleTopic=(idx)=>setExpandedTopics(prev=>({...prev,[idx]:!prev[idx]}));
 
   // Overall stats
-  const totalCited=combinedQueries.filter(q=>q.gptStatus==="Cited"||q.gemStatus==="Cited").length;
-  const totalMentioned=combinedQueries.filter(q=>(q.gptStatus==="Mentioned"||q.gemStatus==="Mentioned")&&q.gptStatus!=="Cited"&&q.gemStatus!=="Cited").length;
-  const totalAbsent=combinedQueries.length-totalCited-totalMentioned;
+  let totalCited=0,totalMentionedOnly=0,totalAbsent=0;
+  combinedQueries.forEach(q=>{
+    if(q.gptStatus==="Cited"||q.gemStatus==="Cited")totalCited++;
+    else if(q.gptStatus==="Mentioned"||q.gemStatus==="Mentioned")totalMentionedOnly++;
+    else totalAbsent++;
+  });
 
   // Brand classification helper (mirrors runRealAudit's classifyResponse)
   function classifyText(responseText,brandName,website,citationUrls){
@@ -2391,7 +2393,7 @@ function IntentPage({r,goTo}){
       </div>
       <div style={{display:"flex",gap:8}}>
         <span style={{fontSize:12,fontWeight:500,padding:"5px 12px",borderRadius:8,background:"#dcfce7",color:"#166534"}}>{totalCited} cited</span>
-        <span style={{fontSize:12,fontWeight:500,padding:"5px 12px",borderRadius:8,background:"#dbeafe",color:"#1e40af"}}>{totalMentioned} mentioned</span>
+        <span style={{fontSize:12,fontWeight:500,padding:"5px 12px",borderRadius:8,background:"#dbeafe",color:"#1e40af"}}>{totalMentionedOnly} mentioned only</span>
         <span style={{fontSize:12,fontWeight:500,padding:"5px 12px",borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{totalAbsent} absent</span>
       </div>
     </div>
@@ -2403,9 +2405,8 @@ function IntentPage({r,goTo}){
 
     {topicGroups.map((group,gi)=>{
       const expanded=!!expandedTopics[gi];
-      const citedCount=group.queries.filter(q=>q.gptStatus==="Cited"||q.gemStatus==="Cited").length;
-      const mentionedCount=group.queries.filter(q=>(q.gptStatus==="Mentioned"||q.gemStatus==="Mentioned")&&q.gptStatus!=="Cited"&&q.gemStatus!=="Cited").length;
-      const absentCount=group.queries.length-citedCount-mentionedCount;
+      let gCited=0,gMentioned=0,gAbsent=0;
+      group.queries.forEach(q=>{if(q.gptStatus==="Cited"||q.gemStatus==="Cited")gCited++;else if(q.gptStatus==="Mentioned"||q.gemStatus==="Mentioned")gMentioned++;else gAbsent++;});
       return(<div key={gi} style={{marginBottom:expanded?12:8}}>
         {/* Topic header */}
         <div onClick={()=>toggleTopic(gi)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",background:expanded?"#fff":"transparent",border:`1px solid ${expanded?C.border:C.border+"60"}`,borderRadius:expanded?"12px 12px 0 0":12,cursor:"pointer",userSelect:"none",transition:"all 0.15s ease"}}>
@@ -2415,24 +2416,23 @@ function IntentPage({r,goTo}){
             <span style={{fontSize:11,color:C.muted}}>{group.queries.length} prompt{group.queries.length!==1?"s":""}</span>
           </div>
           <div style={{display:"flex",gap:8}}>
-            {citedCount>0&&<span style={{fontSize:11,fontWeight:500,padding:"3px 8px",borderRadius:6,background:"#dcfce7",color:"#166534"}}>{citedCount} cited</span>}
-            {mentionedCount>0&&<span style={{fontSize:11,fontWeight:500,padding:"3px 8px",borderRadius:6,background:"#dbeafe",color:"#1e40af"}}>{mentionedCount} mentioned</span>}
-            {absentCount>0&&<span style={{fontSize:11,fontWeight:500,padding:"3px 8px",borderRadius:6,background:"#fee2e2",color:"#991b1b"}}>{absentCount} absent</span>}
+            {gCited>0&&<span style={{fontSize:11,fontWeight:500,padding:"3px 8px",borderRadius:6,background:"#dcfce7",color:"#166534"}}>{gCited} cited</span>}
+            {gMentioned>0&&<span style={{fontSize:11,fontWeight:500,padding:"3px 8px",borderRadius:6,background:"#dbeafe",color:"#1e40af"}}>{gMentioned} mentioned only</span>}
+            {gAbsent>0&&<span style={{fontSize:11,fontWeight:500,padding:"3px 8px",borderRadius:6,background:"#fee2e2",color:"#991b1b"}}>{gAbsent} absent</span>}
           </div>
         </div>
 
         {/* Expanded: show individual queries */}
         {expanded&&<div style={{border:`1px solid ${C.border}`,borderTop:"none",borderRadius:"0 0 12px 12px",overflow:"hidden",background:"#fff"}}>
-          {/* Column headers */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 100px 100px",gap:8,padding:"8px 16px",fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",borderBottom:`1px solid ${C.border}`}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 110px 110px",gap:8,padding:"8px 16px",fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",borderBottom:`1px solid ${C.border}`}}>
             <span>Query</span>
             <span style={{textAlign:"center"}}>ChatGPT</span>
             <span style={{textAlign:"center"}}>Gemini</span>
           </div>
-          {group.queries.map((q,qi)=>(<div key={qi} style={{display:"grid",gridTemplateColumns:"1fr 100px 100px",gap:8,padding:"12px 16px",alignItems:"center",borderBottom:qi<group.queries.length-1?`1px solid ${C.border}30`:"none"}}>
+          {group.queries.map((q,qi)=>(<div key={qi} style={{display:"grid",gridTemplateColumns:"1fr 110px 110px",gap:8,padding:"12px 16px",alignItems:"center",borderBottom:qi<group.queries.length-1?`1px solid ${C.border}30`:"none"}}>
             <span style={{fontSize:13,lineHeight:1.5,color:C.text}}>{q.query}</span>
-            <div style={{textAlign:"center"}}><SBadge status={q.gptStatus}/></div>
-            <div style={{textAlign:"center"}}><SBadge status={q.gemStatus}/></div>
+            <div style={{display:"flex",justifyContent:"center"}}><SBadge status={q.gptStatus}/></div>
+            <div style={{display:"flex",justifyContent:"center"}}><SBadge status={q.gemStatus}/></div>
           </div>))}
         </div>}
       </div>);
@@ -2476,15 +2476,13 @@ function IntentPage({r,goTo}){
       {/* History of tested prompts */}
       {testedPrompts.length>0&&<div style={{marginTop:16}}>
         <div style={{fontSize:11,color:C.muted,marginBottom:8}}>Previously tested</div>
-        {testedPrompts.map((tp,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 100px 100px",gap:8,padding:"8px 0",borderBottom:`1px solid ${C.border}30`,alignItems:"center"}}>
+        {testedPrompts.map((tp,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 110px 110px",gap:8,padding:"8px 0",borderBottom:`1px solid ${C.border}30`,alignItems:"center"}}>
           <span style={{fontSize:12,color:C.text}}>{tp.query}</span>
-          <div style={{textAlign:"center"}}><SBadge status={tp.gpt}/></div>
-          <div style={{textAlign:"center"}}><SBadge status={tp.gem}/></div>
+          <div style={{display:"flex",justifyContent:"center"}}><SBadge status={tp.gpt}/></div>
+          <div style={{display:"flex",justifyContent:"center"}}><SBadge status={tp.gem}/></div>
         </div>))}
       </div>}
     </div>
-
-    <NavBtn onClick={()=>goTo("channels")} label="Next: AEO Channels →"/>
   </div>);
 }
 
@@ -2557,7 +2555,6 @@ function PlaybookPage({r,goTo}){
         </div>);})}
       </div>
     </Card>
-    <NavBtn onClick={()=>goTo("channels")} label="Next: AEO Channels →"/>
   </div>);
 }
 
@@ -2595,7 +2592,6 @@ function ChannelsPage({r,goTo}){
         </div>}
       </div>);})}
     </Card>
-    <NavBtn onClick={()=>goTo("grid")} label="Next: Content Grid →"/>
   </div>);
 }
 
@@ -2619,7 +2615,6 @@ function GridPage({r,goTo}){
         {(r.outputReqs||[]).map((item,i)=>(<div key={i} style={{padding:"14px",background:C.bg,borderRadius:C.rs,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{item.n}</div><div style={{fontSize:10,color:C.muted,marginBottom:4}}>{item.u}</div><div style={{fontSize:12,fontWeight:500,color:C.text}}>{item.l}</div><div style={{fontSize:10,color:C.muted,marginTop:2}}>{item.d}</div></div>))}
       </div>
     </Card>
-    <NavBtn onClick={()=>goTo("roadmap")} label="Next: 90-Day Roadmap →"/>
   </div>);
 }
 
