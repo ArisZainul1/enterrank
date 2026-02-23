@@ -1171,9 +1171,9 @@ const NAV_ITEMS=[
     {id:"intent",label:"Intent Pathway",icon:"route"},
   ]},
   {group:"Strategy",items:[
-    {id:"playbook",label:"Brand Playbook",icon:"book"},
+    {id:"playbook",label:"Brand Playbook",icon:"book",comingSoon:true},
     {id:"channels",label:"AEO Channels",icon:"broadcast"},
-    {id:"grid",label:"Content-Channel Grid",icon:"edit"},
+    {id:"grid",label:"Content Grid",icon:"edit"},
     {id:"roadmap",label:"90-Day Roadmap",icon:"calendar"},
   ]},
 ];
@@ -1227,7 +1227,7 @@ function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,s
             onMouseLeave={e=>{if(!active)e.currentTarget.style.background="transparent";}}>
             <SidebarIcon name={item.icon} size={18} color={active?"#fff":dis?"#d1d5db":"#6b7280"}/>
             {!collapsed&&<span>{item.label}</span>}
-            {!collapsed&&item.comingSoon&&<span style={{fontSize:8,fontWeight:700,color:"#fff",background:"#d1d5db",padding:"1px 5px",borderRadius:3,marginLeft:"auto"}}>SOON</span>}
+            {!collapsed&&item.comingSoon&&<span style={{fontSize:9,background:"#f1f1f1",color:"#999",padding:"2px 6px",borderRadius:4,marginLeft:6,fontWeight:500}}>Soon</span>}
           </div>);
         })}
       </div>))}
@@ -2270,281 +2270,234 @@ function ArchetypesPage({r,goTo}){
 
 /* ─── PAGE: INTENT PATHWAY ─── */
 function IntentPage({r,goTo}){
-  const[selStage,setSelStage]=useState(0);
-  const[customPrompts,setCustomPrompts]=useState({0:[],1:[],2:[],3:[]});
-  const[newPrompt,setNewPrompt]=useState("");
-  const[testing,setTesting]=useState(false);
-  const[expandedRow,setExpandedRow]=useState(null);
-  const stageColors=["#6366f1","#8b5cf6","#a855f7","#c084fc"];
-  const stageNames=["Awareness","Consideration","Decision","Retention"];
-  const stageDescs=["User discovers the problem or category","User evaluates and compares options","User is ready to purchase or commit","User seeks ongoing value"];
-  const stageIcons=["🔍","⚖️","💳","🔄"];
-  const stages=r.funnelStages||[];
+  const[expandedTopics,setExpandedTopics]=useState({});
+  const[testQuery,setTestQuery]=useState("");
+  const[testingPrompt,setTestingPrompt]=useState(false);
+  const[testResults,setTestResults]=useState(null);
+  const[testedPrompts,setTestedPrompts]=useState([]);
 
-  const getMergedPrompts=(si)=>{
-    const apiPrompts=(stages[si]&&stages[si].prompts)||[];
-    const custom=customPrompts[si]||[];
-    return[...apiPrompts,...custom];
+  // StatusBadge helper
+  const StatusBadge=({label,status})=>{
+    const colors={Cited:{bg:"#dcfce7",text:"#166534",icon:"\u2713"},Mentioned:{bg:"#dbeafe",text:"#1e40af",icon:"~"},Absent:{bg:"#fee2e2",text:"#991b1b",icon:"\u2717"},Error:{bg:"#f3f4f6",text:"#6b7280",icon:"!"}};
+    const c=colors[status]||colors.Absent;
+    return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+      {label&&<span style={{fontSize:10,color:C.muted}}>{label}</span>}
+      <span style={{fontSize:11,fontWeight:500,padding:"3px 10px",borderRadius:6,background:c.bg,color:c.text}}>{c.icon} {status}</span>
+    </div>);
   };
 
-  const stageStats=stageNames.map((_,si)=>{
-    const prompts=getMergedPrompts(si);
-    return{cited:prompts.filter(p=>p.status==="Cited").length,mentioned:prompts.filter(p=>p.status==="Mentioned").length,absent:prompts.filter(p=>p.status==="Absent").length,total:prompts.length};
+  // Build combined query data from engines
+  const gptQueries=r.engines[0]?.queries||[];
+  const gemQueries=r.engines[1]?.queries||[];
+  const topics=r.clientData.topics||[];
+  const allSearchQueries=r.searchQueries||gptQueries.map(q=>q.query);
+
+  // Build combined query list with per-engine status
+  const combinedQueries=allSearchQueries.map((query,i)=>{
+    const qText=typeof query==="string"?query:query.query;
+    return{
+      query:qText,
+      gptStatus:gptQueries[i]?.status||"Unknown",
+      gemStatus:gemQueries[i]?.status||"Unknown"
+    };
   });
 
-  const allPrompts=stageNames.flatMap((_,si)=>getMergedPrompts(si));
-  const totalCited=allPrompts.filter(p=>p.status==="Cited").length;
-  const totalMentioned=allPrompts.filter(p=>p.status==="Mentioned").length;
-  const totalAll=allPrompts.length||1;
-  const funnelScore=Math.round((totalCited*1+totalMentioned*0.5)/totalAll*100);
+  // Group queries by topic (2 queries per topic)
+  const topicGroups=[];
+  if(topics.length>0){
+    topics.forEach((topic,ti)=>{
+      const startIdx=ti*2;
+      const queries=combinedQueries.slice(startIdx,startIdx+2).filter(q=>q.query);
+      if(queries.length>0)topicGroups.push({topic,queries});
+    });
+    // Any remaining queries that don't map to a topic
+    const mapped=topics.length*2;
+    const remaining=combinedQueries.slice(mapped);
+    if(remaining.length>0)topicGroups.push({topic:"Other Queries",queries:remaining});
+  }else if(combinedQueries.length>0){
+    topicGroups.push({topic:"All Queries",queries:combinedQueries});
+  }
 
-  // Aggregate trigger word analysis
-  const allTriggers={};
-  allPrompts.forEach(p=>{(p.triggerWords||[]).forEach(tw=>{
-    const k=tw.toLowerCase();
-    if(!allTriggers[k])allTriggers[k]={word:tw,count:0,cited:0,mentioned:0,absent:0,totalWeight:0};
-    allTriggers[k].count++;
-    allTriggers[k].totalWeight+=(p.weight||5);
-    if(p.status==="Cited")allTriggers[k].cited++;
-    else if(p.status==="Mentioned")allTriggers[k].mentioned++;
-    else allTriggers[k].absent++;
-  });});
-  const triggerRank=Object.values(allTriggers).sort((a,b)=>b.totalWeight-a.totalWeight).slice(0,12);
+  const toggleTopic=(idx)=>setExpandedTopics(prev=>({...prev,[idx]:!prev[idx]}));
 
-  // Weight colour
-  const weightColor=(w)=>w>=8?"#059669":w>=6?C.accent:w>=4?C.amber:"#94a3b8";
-  const weightLabel=(w)=>w>=8?"High":w>=6?"Medium":w>=4?"Low":"Minimal";
+  // Overall stats
+  const totalCited=combinedQueries.filter(q=>q.gptStatus==="Cited"||q.gemStatus==="Cited").length;
+  const totalMentioned=combinedQueries.filter(q=>(q.gptStatus==="Mentioned"||q.gemStatus==="Mentioned")&&q.gptStatus!=="Cited"&&q.gemStatus!=="Cited").length;
+  const totalAbsent=combinedQueries.length-totalCited-totalMentioned;
 
-  // Highlight trigger words in query text
-  const highlightQuery=(query,triggers)=>{
-    if(!triggers||triggers.length===0)return <span>{query}</span>;
-    const parts=[];
-    let remaining=query;
-    const sorted=[...triggers].sort((a,b)=>b.length-a.length);
-    const regex=new RegExp(`(${sorted.map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join("|")})`,"gi");
-    const split=remaining.split(regex);
-    return <span>{split.map((part,i)=>{
-      const isT=sorted.some(t=>t.toLowerCase()===part.toLowerCase());
-      return isT?<span key={i} style={{background:`${C.accent}18`,color:C.accent,fontWeight:600,borderRadius:3,padding:"0 2px"}}>{part}</span>:<span key={i}>{part}</span>;
-    })}</span>;
-  };
+  // Brand classification helper (mirrors runRealAudit's classifyResponse)
+  function classifyText(responseText,brandName,website,citationUrls){
+    if(!responseText||responseText.length<20)return "Absent";
+    const escaped=brandName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const nameRegex=new RegExp('\\b'+escaped+'\\b','i');
+    let domain="";
+    if(website){try{domain=new URL(website.startsWith("http")?website:"https://"+website).hostname.replace("www.","");}catch(e){}}
+    const nameFound=nameRegex.test(responseText);
+    const urlCited=domain&&citationUrls&&citationUrls.length>0&&citationUrls.some(c=>(c.url||"").toLowerCase().includes(domain.toLowerCase()));
+    const textUrlFound=domain&&responseText.toLowerCase().includes(domain.toLowerCase());
+    if(!nameFound&&!urlCited&&!textUrlFound)return "Absent";
+    if(urlCited||textUrlFound)return "Cited";
+    const bn=escaped;
+    const numListMatch=responseText.match(/(?:^|\n)\s*1[\.\)]\s*\*?\*?([^\n]{5,100})/m);
+    if(numListMatch&&nameRegex.test(numListMatch[1]))return "Cited";
+    const citedPatterns=[
+      new RegExp('(?:i\\s+)?(?:recommend|suggest|would\\s+recommend|highly\\s+recommend).*?'+bn,'i'),
+      new RegExp(bn+'.*?(?:is\\s+(?:a\\s+)?(?:great|excellent|top|best|leading|strong|solid|reliable|popular|recommended))','i'),
+      new RegExp('(?:the\\s+)?(?:best|top|leading|most\\s+popular|number\\s+one|#1).*?'+bn,'i'),
+      new RegExp(bn+'.*?(?:offers?|provides?|features?|starts?\\s+at|\\d+\\.\\d+%|\\$\\d|AED|USD|RM|EUR|GBP)','i'),
+      new RegExp('(?:^|\\n)\\s*(?:\\d+\\.\\s*)?\\*?\\*?'+bn+'\\*?\\*?\\s*(?:\\(|\\u2014|:|\\n)','im'),
+    ];
+    if(citedPatterns.some(p=>p.test(responseText)))return "Cited";
+    return "Mentioned";
+  }
 
-  const testPrompt=async()=>{
-    if(!newPrompt.trim()||testing)return;
-    setTesting(true);
-    const q=newPrompt.trim();
-    setNewPrompt("");
+  // Test a Prompt handler
+  async function handleTestPrompt(){
+    if(!testQuery.trim()||testingPrompt)return;
+    setTestingPrompt(true);
+    setTestResults(null);
+    const query=testQuery.trim();
+    const brand=r.clientData.brand;
+    const website=r.clientData.website;
+    const region=r.clientData.region;
     try{
-      const testPr=`A user in ${r.clientData.region||"Global"} typed this prompt into your AI engine: "${q}"
-Brand: "${r.clientData.brand}" in ${r.clientData.industry} (${r.clientData.website}), operating in ${r.clientData.region||"Global"}.
-
-1. Would you mention or cite this brand in your response to a user in ${r.clientData.region||"Global"}? Consider the brand's regional presence and relevance.
-2. Rate the prompt weight (1-10) for AEO importance in the ${r.clientData.region||"Global"} market.
-3. Identify trigger words that influence citation behavior.
-4. Suggest an optimised version of this prompt that ${r.clientData.brand} should create content to target for ${r.clientData.region||"Global"} audiences.
-5. Give a content tip for winning this prompt in ${r.clientData.region||"Global"}.
-
-Respond in English only.
-Return JSON only:
-{"status":"Cited"|"Mentioned"|"Absent","reason":"<1-sentence>","weight":<1-10>,"triggerWords":["word1","word2"],"optimisedPrompt":"<version to target>","contentTip":"<what content to create>"}`;
-      const[gptRaw,gemRaw]=await Promise.all([callOpenAI(testPr),callGemini(testPr)]);
-      const gptR=safeJSON(gptRaw)||{status:"Absent"};
-      const gemR=safeJSON(gemRaw)||{status:"Absent"};
-      const overall=(gptR.status==="Cited"||gemR.status==="Cited")?"Cited":(gptR.status==="Mentioned"||gemR.status==="Mentioned")?"Mentioned":"Absent";
-      const newP={query:q,status:overall,engines:{gpt:gptR.status||"Absent",gemini:gemR.status||"Absent"},
-        reason:gptR.reason||gemR.reason||"",custom:true,
-        weight:gptR.weight||gemR.weight||5,
-        triggerWords:[...new Set([...(gptR.triggerWords||[]),...(gemR.triggerWords||[])])],
-        optimisedPrompt:gptR.optimisedPrompt||gemR.optimisedPrompt||"",
-        contentTip:gptR.contentTip||gemR.contentTip||""};
-
-      const classifyPr=`Classify this prompt into ONE stage: Awareness, Consideration, Decision, or Retention.
-Prompt: "${q}" | Brand: "${r.clientData.brand}" in ${r.clientData.industry} (${r.clientData.region||"Global"}).
-Return JSON: {"stage":"Awareness"|"Consideration"|"Decision"|"Retention"}`;
-      const classRaw=await callOpenAI(classifyPr);
-      const classR=safeJSON(classRaw)||{stage:"Awareness"};
-      const stageIdx=stageNames.indexOf(classR.stage);
-      const targetStage=stageIdx>=0?stageIdx:0;
-      setCustomPrompts(prev=>({...prev,[targetStage]:[...prev[targetStage],newP]}));
-      setSelStage(targetStage);
-    }catch(e){console.error("Prompt test error:",e);}
-    setTesting(false);
-  };
-
-  const statusColor=(s)=>s==="Cited"?C.green:s==="Mentioned"?C.amber:C.red;
-  const statusIcon=(s)=>s==="Cited"?"✓":s==="Mentioned"?"◐":"✗";
+      const[gptResult,gemResult]=await Promise.all([
+        callOpenAISearch(query,region),
+        callGemini(query,"You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.")
+      ]);
+      const gptText=gptResult?.text||gptResult||"";
+      const gemText=gemResult||"";
+      const gptClass=classifyText(gptText,brand,website,gptResult?.citations||[]);
+      const gemClass=classifyText(gemText,brand,website,[]);
+      const result={
+        gpt:gptClass,
+        gem:gemClass,
+        gptSnippet:(typeof gptText==="string"?gptText:"").slice(0,300),
+        gemSnippet:(typeof gemText==="string"?gemText:"").slice(0,300)
+      };
+      setTestResults(result);
+      setTestedPrompts(prev=>[{query,...result},...prev].slice(0,10));
+      setTestQuery("");
+    }catch(e){
+      console.error("Test prompt failed:",e);
+      setTestResults({gpt:"Error",gem:"Error",gptSnippet:"API call failed",gemSnippet:"API call failed"});
+    }
+    setTestingPrompt(false);
+  }
 
   return(<div>
+    {/* Header */}
     <div style={{marginBottom:24}}>
       <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Intent Pathway</h2>
-      <p style={{color:C.sub,fontSize:13,marginTop:3}}>How visible is {r.clientData.brand} at each stage of the customer journey? Prompts are weighted by their AEO impact.</p>
+      <p style={{color:C.sub,fontSize:13,marginTop:3}}>Audit query results across ChatGPT and Gemini for {r.clientData.brand}</p>
     </div>
 
-    {/* Funnel overview + trigger word analysis side by side */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
-      <Card>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-          <div>
-            <div style={{fontSize:13,fontWeight:500,color:C.text}}>Funnel Visibility</div>
-            <div style={{fontSize:11,color:C.muted}}>{allPrompts.length} prompts · weighted by AEO impact</div>
-          </div>
-          <div style={{fontSize:28,fontWeight:800,color:funnelScore>=40?C.green:funnelScore>=20?C.amber:C.red,fontFamily:"'Outfit'"}}>{funnelScore}%</div>
+    {/* Overall summary */}
+    <Card style={{marginBottom:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div>
+          <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Outfit'"}}>Query Visibility Summary</div>
+          <div style={{fontSize:12,color:C.muted,marginTop:2}}>{combinedQueries.length} prompts tested across both engines</div>
         </div>
-        <div style={{display:"flex",gap:4,marginBottom:6}}>
-          <Pill color={C.green}>{totalCited} Cited</Pill>
-          <Pill color={C.amber}>{totalMentioned} Mentioned</Pill>
-          <Pill color={C.red}>{allPrompts.length-totalCited-totalMentioned} Absent</Pill>
+        <div style={{display:"flex",gap:8}}>
+          <span style={{fontSize:12,padding:"4px 10px",borderRadius:6,background:"#dcfce7",color:"#166534",fontWeight:600}}>{totalCited} cited</span>
+          <span style={{fontSize:12,padding:"4px 10px",borderRadius:6,background:"#dbeafe",color:"#1e40af",fontWeight:600}}>{totalMentioned} mentioned</span>
+          {totalAbsent>0&&<span style={{fontSize:12,padding:"4px 10px",borderRadius:6,background:"#fee2e2",color:"#991b1b",fontWeight:600}}>{totalAbsent} absent</span>}
         </div>
-        <div style={{display:"flex",gap:4,height:6,borderRadius:4,overflow:"hidden"}}>
-          {stageNames.map((_,si)=>{const s=stageStats[si];const t=s.total||1;
-            return(<div key={si} style={{flex:1,background:C.bg,borderRadius:3,overflow:"hidden",display:"flex"}}>
-              <div style={{width:`${(s.cited/t)*100}%`,background:C.green}}/>
-              <div style={{width:`${(s.mentioned/t)*100}%`,background:C.amber}}/>
-            </div>);
-          })}
-        </div>
-        <div style={{display:"flex",gap:4,marginTop:4}}>
-          {stageNames.map((n,i)=>(<div key={i} style={{flex:1,textAlign:"center",fontSize:9,color:C.muted}}>{n}</div>))}
-        </div>
-      </Card>
-
-      {/* Trigger word analysis */}
-      <Card>
-        <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>High-Impact Trigger Words</div>
-        <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Words in prompts that influence AI citation behavior for {r.clientData.industry}.</div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-          {triggerRank.length>0?triggerRank.map((t,i)=>{
-            const eff=t.count>0?Math.round(((t.cited+t.mentioned*0.5)/t.count)*100):0;
-            return(<div key={i} style={{padding:"4px 10px",borderRadius:6,fontSize:11,fontWeight:600,
-              background:eff>=50?`${C.green}10`:eff>=25?`${C.amber}10`:`${C.red}06`,
-              color:eff>=50?C.green:eff>=25?C.amber:C.red,
-              border:`1px solid ${eff>=50?`${C.green}25`:eff>=25?`${C.amber}25`:`${C.red}15`}`}}>
-              {t.word} <span style={{opacity:.6,fontWeight:400}}>×{t.count}</span>
-              <span style={{marginLeft:4,fontSize:9}}>{eff}% effective</span>
-            </div>);
-          }):<span style={{fontSize:11,color:C.muted}}>Run audit to see trigger words</span>}
-        </div>
-      </Card>
-    </div>
-
-    {/* Add prompt input */}
-    <Card style={{marginBottom:16,background:`${C.accent}03`,borderColor:`${C.accent}20`}}>
-      <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>Test a Prompt</div>
-      <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Type any prompt. We'll test it on both engines, score its weight, and identify trigger words.</div>
-      <div style={{display:"flex",gap:8}}>
-        <input value={newPrompt} onChange={e=>setNewPrompt(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")testPrompt();}}
-          placeholder={`e.g. "Best ${r.clientData.industry||"tech"} companies in ${r.clientData.region||"my area"}"`}
-          style={{flex:1,padding:"10px 14px",border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit",background:"#fff"}}
-          onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
-        <button onClick={testPrompt} disabled={!newPrompt.trim()||testing}
-          style={{padding:"10px 20px",background:!newPrompt.trim()||testing?"#d1d5db":C.accent,color:"#fff",border:"none",borderRadius:10,fontSize:13,fontWeight:600,cursor:!newPrompt.trim()||testing?"not-allowed":"pointer",fontFamily:"'Outfit'",whiteSpace:"nowrap",minWidth:110}}>
-          {testing?"Testing...":"Test Prompt"}
-        </button>
       </div>
     </Card>
 
-    {/* Stage tabs */}
-    <div style={{display:"flex",gap:6,marginBottom:16}}>
-      {stageNames.map((name,i)=>{
-        const s=stageStats[i];const active=selStage===i;const color=stageColors[i];
-        const avgWeight=getMergedPrompts(i).length>0?Math.round(getMergedPrompts(i).reduce((a,p)=>a+(p.weight||5),0)/getMergedPrompts(i).length*10)/10:0;
-        return(<div key={i} onClick={()=>{setSelStage(i);setExpandedRow(null);}} style={{flex:1,padding:"14px 10px",cursor:"pointer",background:active?"#fff":C.surface,border:`1.5px solid ${active?color:C.border}`,borderRadius:12,textAlign:"center",transition:"all .15s",boxShadow:active?`0 2px 8px ${color}15`:"none"}}>
-          <div style={{fontSize:18,marginBottom:4}}>{stageIcons[i]}</div>
-          <div style={{fontSize:18,fontWeight:700,color:color,fontFamily:"'Outfit'"}}>{s.total>0?Math.round((s.cited+s.mentioned)/Math.max(1,s.total)*100):0}%</div>
-          <div style={{fontSize:12,fontWeight:500,color:active?C.text:C.sub,marginTop:2}}>{name}</div>
-          <div style={{fontSize:10,color:C.muted,marginTop:2}}>{s.total} prompts · avg wt {avgWeight}</div>
-        </div>);
-      })}
+    {/* Section A: Query Results grouped by topic */}
+    <div style={{marginBottom:8}}>
+      <div style={{fontSize:15,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em",marginBottom:14}}>Audit Query Results</div>
     </div>
 
-    {/* Stage detail with weighted prompts */}
-    {(()=>{
-      const prompts=getMergedPrompts(selStage);
-      const color=stageColors[selStage];
-      const s=stageStats[selStage];
-      if(prompts.length===0)return(<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>No prompts for {stageNames[selStage]} yet. Use "Test a Prompt" above.</div></Card>);
-      // Sort by weight descending
-      const sorted=[...prompts].sort((a,b)=>(b.weight||5)-(a.weight||5));
-      return(<Card style={{padding:0,overflow:"hidden"}}>
-        <div style={{padding:"16px 20px",borderBottom:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:18}}>{stageIcons[selStage]}</span>
-              <h3 style={{fontSize:16,fontWeight:500,color:color,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>{stageNames[selStage]}</h3>
-            </div>
-            <p style={{fontSize:11,color:C.muted,margin:"3px 0 0"}}>{stageDescs[selStage]} · sorted by AEO weight</p>
-          </div>
-          <div style={{display:"flex",gap:4}}>
-            <Pill color={C.green} filled>{s.cited} Cited</Pill>
-            <Pill color={C.amber} filled>{s.mentioned} Mentioned</Pill>
-            <Pill color={C.red} filled>{s.absent} Absent</Pill>
-          </div>
-        </div>
-        {/* Column headers */}
-        <div style={{display:"grid",gridTemplateColumns:"46px 1fr 60px 60px 60px",padding:"8px 20px",borderBottom:`2px solid ${C.borderSoft}`,background:C.bg}}>
-          <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Weight</span>
-          <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Prompt</span>
-          <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}>ChatGPT</span>
-          <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}>Gemini</span>
-          <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center"}}>Overall</span>
-        </div>
-        {sorted.map((p,j)=>{
-          const eng=p.engines||{};
-          const gptS=eng.gpt||p.status||"Absent";
-          const gemS=eng.gemini||p.status||"Absent";
-          const w=p.weight||5;
-          const isExpanded=expandedRow===`${selStage}-${j}`;
-          const hasTips=p.optimisedPrompt||p.contentTip||(p.triggerWords&&p.triggerWords.length>0);
-          return(<div key={j}>
-            <div onClick={()=>hasTips&&setExpandedRow(isExpanded?null:`${selStage}-${j}`)}
-              style={{display:"grid",gridTemplateColumns:"46px 1fr 60px 60px 60px",padding:"10px 20px",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center",
-                background:p.custom?`${C.accent}04`:isExpanded?`${color}04`:"transparent",cursor:hasTips?"pointer":"default",transition:"background .1s"}}>
-              {/* Weight badge */}
-              <div style={{display:"flex",alignItems:"center",gap:4}}>
-                <div style={{width:28,height:28,borderRadius:6,background:`${weightColor(w)}12`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:weightColor(w),fontFamily:"'Outfit'"}}>{w}</div>
-              </div>
-              {/* Query with highlighted trigger words */}
-              <div>
-                <div style={{fontSize:12,lineHeight:1.4,color:C.text}}>"{highlightQuery(p.query,p.triggerWords)}"</div>
-                {p.custom&&<span style={{fontSize:9,fontWeight:600,color:C.accent,padding:"1px 5px",background:`${C.accent}10`,borderRadius:3}}>CUSTOM</span>}
-                {hasTips&&<span style={{fontSize:9,color:C.muted,marginLeft:4}}>{isExpanded?"▲":"▼ details"}</span>}
-              </div>
-              <div style={{textAlign:"center"}}>
-                <span style={{fontSize:12,fontWeight:700,color:statusColor(gptS)}}>{statusIcon(gptS)}</span>
-                <div style={{fontSize:9,color:statusColor(gptS),marginTop:1}}>{gptS}</div>
-              </div>
-              <div style={{textAlign:"center"}}>
-                <span style={{fontSize:12,fontWeight:700,color:statusColor(gemS)}}>{statusIcon(gemS)}</span>
-                <div style={{fontSize:9,color:statusColor(gemS),marginTop:1}}>{gemS}</div>
-              </div>
-              <span style={{textAlign:"center"}}><Pill color={statusColor(p.status||"Absent")}>{p.status||"Absent"}</Pill></span>
-            </div>
-            {/* Expanded detail row */}
-            {isExpanded&&<div style={{padding:"12px 20px 14px 66px",borderBottom:`1px solid ${C.borderSoft}`,background:`${color}03`}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                {p.triggerWords&&p.triggerWords.length>0&&<div>
-                  <div style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",marginBottom:4}}>Trigger Words</div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                    {p.triggerWords.map((tw,ti)=>(<span key={ti} style={{padding:"2px 8px",borderRadius:4,fontSize:11,fontWeight:600,background:`${C.accent}12`,color:C.accent}}>{tw}</span>))}
-                  </div>
-                </div>}
-                {p.optimisedPrompt&&<div>
-                  <div style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",marginBottom:4}}>Optimised Prompt to Target</div>
-                  <div style={{fontSize:11,color:C.sub,fontStyle:"italic",lineHeight:1.5}}>"{p.optimisedPrompt}"</div>
-                </div>}
-              </div>
-              {p.contentTip&&<div style={{marginTop:10,padding:"8px 12px",background:`${C.green}06`,borderRadius:6,borderLeft:`3px solid ${C.green}`}}>
-                <div style={{fontSize:10,fontWeight:600,color:C.green,marginBottom:2}}>CONTENT STRATEGY TIP</div>
-                <div style={{fontSize:11,color:C.sub,lineHeight:1.5}}>{p.contentTip}</div>
-              </div>}
-              {p.reason&&<div style={{marginTop:8,fontSize:11,color:C.muted,lineHeight:1.4}}>{p.reason}</div>}
-            </div>}
-          </div>);
-        })}
-      </Card>);
-    })()}
+    {topicGroups.length===0&&<Card><div style={{textAlign:"center",padding:24,color:C.muted,fontSize:13}}>No query data available. Run an audit to see results.</div></Card>}
 
-    <NavBtn onClick={()=>goTo("channels")} label="Next: AEO Channels →"/>
+    {topicGroups.map((group,gi)=>{
+      const expanded=expandedTopics[gi]!==undefined?expandedTopics[gi]:(gi===0);
+      const citedCount=group.queries.filter(q=>q.gptStatus==="Cited"||q.gemStatus==="Cited").length;
+      const mentionedCount=group.queries.filter(q=>(q.gptStatus==="Mentioned"||q.gemStatus==="Mentioned")&&q.gptStatus!=="Cited"&&q.gemStatus!=="Cited").length;
+      const absentCount=group.queries.length-citedCount-mentionedCount;
+      return(<div key={gi} style={{marginBottom:10}}>
+        {/* Topic header */}
+        <div onClick={()=>toggleTopic(gi)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:expanded?"12px 12px 0 0":12,cursor:"pointer",userSelect:"none",transition:"all .15s"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:12,color:C.muted,transform:expanded?"rotate(90deg)":"rotate(0deg)",transition:"transform 0.2s",display:"inline-block"}}>\u25B6</span>
+            <span style={{fontWeight:500,fontSize:14,color:C.text,fontFamily:"'Outfit'"}}>{group.topic}</span>
+            <span style={{fontSize:11,color:C.muted}}>{group.queries.length} prompt{group.queries.length!==1?"s":""}</span>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            {citedCount>0&&<span style={{fontSize:11,padding:"3px 8px",borderRadius:6,background:"#dcfce7",color:"#166534",fontWeight:500}}>{citedCount} cited</span>}
+            {mentionedCount>0&&<span style={{fontSize:11,padding:"3px 8px",borderRadius:6,background:"#dbeafe",color:"#1e40af",fontWeight:500}}>{mentionedCount} mentioned</span>}
+            {absentCount>0&&<span style={{fontSize:11,padding:"3px 8px",borderRadius:6,background:"#fee2e2",color:"#991b1b",fontWeight:500}}>{absentCount} absent</span>}
+          </div>
+        </div>
+
+        {/* Expanded: show individual queries */}
+        {expanded&&<div style={{border:`1px solid ${C.border}`,borderTop:"none",borderRadius:"0 0 12px 12px",background:"#fff",overflow:"hidden"}}>
+          {/* Column headers */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 120px 120px",gap:12,padding:"8px 18px",borderBottom:`2px solid ${C.borderSoft}`,background:C.bg}}>
+            <span style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase"}}>Query</span>
+            <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center",textTransform:"uppercase"}}>ChatGPT</span>
+            <span style={{fontSize:10,fontWeight:600,color:C.muted,textAlign:"center",textTransform:"uppercase"}}>Gemini</span>
+          </div>
+          {group.queries.map((q,qi)=>(<div key={qi} style={{display:"grid",gridTemplateColumns:"1fr 120px 120px",gap:12,padding:"12px 18px",borderBottom:qi<group.queries.length-1?`1px solid ${C.borderSoft}`:"none",alignItems:"center"}}>
+            <span style={{fontSize:13,lineHeight:1.5,color:C.text}}>{q.query}</span>
+            <StatusBadge label="" status={q.gptStatus}/>
+            <StatusBadge label="" status={q.gemStatus}/>
+          </div>))}
+        </div>}
+      </div>);
+    })}
+
+    {/* Section B: Test a Prompt */}
+    <div style={{marginTop:40,padding:24,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
+      <h3 style={{fontSize:15,fontWeight:500,marginBottom:4,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text,margin:"0 0 4px"}}>Test a Prompt</h3>
+      <p style={{fontSize:12,color:C.muted,marginBottom:16,marginTop:0}}>Type any search query to test whether {r.clientData.brand} gets cited or mentioned on ChatGPT and Gemini.</p>
+
+      <div style={{display:"flex",gap:8}}>
+        <input value={testQuery} onChange={e=>setTestQuery(e.target.value)}
+          placeholder={`e.g. What are the best ${r.clientData.industry||"tech"} options in ${r.clientData.region||"my region"}?`}
+          style={{flex:1,padding:"10px 14px",fontSize:13,border:`1px solid ${C.border}`,borderRadius:10,outline:"none",fontFamily:"inherit",color:C.text}}
+          onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}
+          onKeyDown={e=>e.key==="Enter"&&testQuery.trim()&&handleTestPrompt()}/>
+        <button onClick={handleTestPrompt} disabled={!testQuery.trim()||testingPrompt}
+          style={{padding:"10px 20px",fontSize:13,fontWeight:500,fontFamily:"'Outfit'",
+            background:testQuery.trim()&&!testingPrompt?C.accent:"#e5e7eb",
+            color:testQuery.trim()&&!testingPrompt?"#fff":"#999",
+            border:"none",borderRadius:10,cursor:testQuery.trim()&&!testingPrompt?"pointer":"default",
+            display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>
+          {testingPrompt?<><div style={{width:12,height:12,border:"2px solid #fff",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>Testing...</>:"Test"}
+        </button>
+      </div>
+
+      {/* Test results */}
+      {testResults&&<div style={{marginTop:16,display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        <div style={{padding:14,borderRadius:10,border:`1px solid ${C.border}`}}>
+          <div style={{fontSize:11,color:C.muted,marginBottom:6}}>ChatGPT (with web search)</div>
+          <StatusBadge label="" status={testResults.gpt}/>
+          {testResults.gptSnippet&&<p style={{fontSize:11,color:C.muted,marginTop:8,lineHeight:1.5,maxHeight:100,overflow:"auto",margin:"8px 0 0"}}>{testResults.gptSnippet}</p>}
+        </div>
+        <div style={{padding:14,borderRadius:10,border:`1px solid ${C.border}`}}>
+          <div style={{fontSize:11,color:C.muted,marginBottom:6}}>Gemini</div>
+          <StatusBadge label="" status={testResults.gem}/>
+          {testResults.gemSnippet&&<p style={{fontSize:11,color:C.muted,marginTop:8,lineHeight:1.5,maxHeight:100,overflow:"auto",margin:"8px 0 0"}}>{testResults.gemSnippet}</p>}
+        </div>
+      </div>}
+
+      {/* History of tested prompts */}
+      {testedPrompts.length>0&&<div style={{marginTop:16}}>
+        <div style={{fontSize:11,color:C.muted,marginBottom:8}}>Previously tested</div>
+        {testedPrompts.map((tp,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 120px 120px",gap:12,padding:"8px 0",borderBottom:`1px solid ${C.borderSoft}`,alignItems:"center"}}>
+          <span style={{fontSize:12,color:C.text}}>{tp.query}</span>
+          <StatusBadge label="ChatGPT" status={tp.gpt}/>
+          <StatusBadge label="Gemini" status={tp.gem}/>
+        </div>))}
+      </div>}
+    </div>
+
+    <NavBtn onClick={()=>goTo("channels")} label="Next: AEO Channels \u2192"/>
   </div>);
 }
 
@@ -3097,6 +3050,9 @@ export default function App(){
   const[sideCollapsed,setSideCollapsed]=useState(false);
   const[loginError,setLoginError]=useState("");
   const[loggingIn,setLoggingIn]=useState(false);
+
+  // Redirect away from coming-soon pages
+  React.useEffect(()=>{if(step==="playbook")setStep("dashboard");},[step]);
 
   const handleLogin=async(email,password)=>{
     if(isLocal){setAuthed(true);return;}
