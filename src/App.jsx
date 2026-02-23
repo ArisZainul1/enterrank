@@ -1037,8 +1037,8 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
   return {
     engineData:{
       engines:[
-        {id:"chatgpt",...gptData,queries:(gptData.queries||[]).slice(0,8)},
-        {id:"gemini",...gemData,queries:(gemData.queries||[]).slice(0,8)}
+        {id:"chatgpt",...gptData,queries:(gptData.queries||[])},
+        {id:"gemini",...gemData,queries:(gemData.queries||[])}
       ],
       painPoints:mergedPainPoints.length>0?mergedPainPoints.slice(0,6):null
     },
@@ -1079,7 +1079,7 @@ function generateAll(cd, apiData){
   const fB=(arr,fb)=>{if(!arr||!Array.isArray(arr))return fb;const f=arr.filter(s=>s&&typeof s==="string"&&!badP.some(bp=>s.toLowerCase().includes(bp))&&s.length>10);return f.length>=2?f:fb;};
   const engines=engineMeta.map((e,i)=>{
     if(hasApi&&apiData.engineData.engines&&apiData.engineData.engines[i]){const ae=apiData.engineData.engines[i];
-      return{...e,score:ae.score||0,mentionRate:ae.mentionRate||0,citationRate:ae.citationRate||0,queries:(ae.queries||[]).slice(0,8).map(q=>({query:q.query||"",status:q.status||"Absent"})),strengths:fB(ae.strengths,[`${cd.brand} appears in some ${cd.industry} queries`]),weaknesses:fB(ae.weaknesses,[`Competitors cited more frequently`])};}
+      return{...e,score:ae.score||0,mentionRate:ae.mentionRate||0,citationRate:ae.citationRate||0,queries:(ae.queries||[]).map(q=>({query:q.query||"",status:q.status||"Absent"})),strengths:fB(ae.strengths,[`${cd.brand} appears in some ${cd.industry} queries`]),weaknesses:fB(ae.weaknesses,[`Competitors cited more frequently`])};}
     return{...e,score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["No API data received"]};
   });
   engines.forEach(e=>{e.score=Math.round(e.mentionRate*0.5+e.citationRate*0.5);});
@@ -2277,7 +2277,7 @@ function IntentPage({r,goTo}){
 
   // Inline status badge
   const SBadge=({status})=>{
-    const m={Cited:{bg:"#dcfce7",c:"#166534",i:"✓"},Mentioned:{bg:"#dbeafe",c:"#1e40af",i:"~"},Absent:{bg:"#fee2e2",c:"#991b1b",i:"✗"},Error:{bg:"#f3f4f6",c:"#6b7280",i:"!"},Unknown:{bg:"#f3f4f6",c:"#6b7280",i:"?"}};
+    const m={Cited:{bg:"#dcfce7",c:"#166534",i:"✓"},Mentioned:{bg:"#dbeafe",c:"#1e40af",i:"~"},Absent:{bg:"#fee2e2",c:"#991b1b",i:"✗"},Error:{bg:"#f3f4f6",c:"#6b7280",i:"!"}};
     const s=m[status]||m.Absent;
     return <span style={{fontSize:11,fontWeight:500,padding:"4px 10px",borderRadius:6,display:"inline-block",background:s.bg,color:s.c}}>{s.i} {status}</span>;
   };
@@ -2288,9 +2288,10 @@ function IntentPage({r,goTo}){
   const topics=r.clientData.topics||[];
   const allSearchQueries=r.searchQueries||gptQueries.map(q=>q.query);
 
+  const normalizeStatus=(s)=>(s==="Cited"||s==="Mentioned"||s==="Absent")?s:"Absent";
   const combinedQueries=allSearchQueries.map((query,i)=>{
     const qText=typeof query==="string"?query:query.query;
-    return{query:qText,gptStatus:gptQueries[i]?.status||"Unknown",gemStatus:gemQueries[i]?.status||"Unknown"};
+    return{query:qText,gptStatus:normalizeStatus(gptQueries[i]?.status),gemStatus:normalizeStatus(gemQueries[i]?.status)};
   });
 
   // Group queries by topic (2 queries per topic)
