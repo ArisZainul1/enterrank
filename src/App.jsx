@@ -2996,14 +2996,11 @@ function ProjectHub({onSelect,onNew,onLogout}){
               onMouseEnter={()=>setHovered(p.id)} onMouseLeave={()=>setHovered(null)}
               style={{padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",borderBottom:pi<projects.length-1?`1px solid ${C.borderSoft}`:"none",background:hovered===p.id?"#f8fafc":"transparent",transition:"background .15s"}}>
               <div style={{display:"flex",alignItems:"center",gap:14}}>
-                <div style={{width:36,height:36,borderRadius:10,background:`${C.accent}08`,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  <span style={{fontSize:16,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{(p.brand||"?")[0].toUpperCase()}</span>
-                </div>
+                <BrandLogo name={p.brand} website={p.website} size={36} color={C.accent}/>
                 <div>
                   <div style={{fontSize:14,fontWeight:500,color:C.text}}>{p.brand}</div>
                   <div style={{fontSize:12,color:C.muted,marginTop:1}}>
-                    {p.lastScore?<><span style={{color:scoreColor(p.lastScore),fontWeight:600}}>{p.lastScore}%</span><span> visibility score</span></>:"No audits yet"}
-                    {p.auditCount>0&&<span> · {p.auditCount} audit{p.auditCount>1?"s":""}</span>}
+                    {(()=>{const ac=p.audits?.length||p.auditCount||0;const ls=p.audits?.[0]?.overall_score||p.lastScore||null;return ac===0?"No audits yet":`${ac} audit${ac>1?"s":""}${ls!=null?` \u00B7 Score: ${ls}%`:""}`;})()}
                   </div>
                 </div>
               </div>
