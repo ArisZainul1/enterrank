@@ -2269,23 +2269,14 @@ function ArchetypesPage({r,goTo}){
 
 /* ─── PAGE: INTENT PATHWAY ─── */
 function IntentPage({r,goTo}){
-  const[expandedTopics,setExpandedTopics]=useState({0:true});
   const[testQuery,setTestQuery]=useState("");
   const[testingPrompt,setTestingPrompt]=useState(false);
   const[testResults,setTestResults]=useState(null);
   const[testedPrompts,setTestedPrompts]=useState([]);
 
-  // Inline status badge
-  const SBadge=({status})=>{
-    const m={Cited:{bg:"#dcfce7",c:"#166534",i:"✓"},Mentioned:{bg:"#dbeafe",c:"#1e40af",i:"~"},Absent:{bg:"#fee2e2",c:"#991b1b",i:"✗"},Error:{bg:"#f3f4f6",c:"#6b7280",i:"!"}};
-    const s=m[status]||m.Absent;
-    return <span style={{fontSize:11,fontWeight:500,padding:"4px 10px",borderRadius:6,display:"inline-block",background:s.bg,color:s.c}}>{s.i} {status}</span>;
-  };
-
   // Build combined query data from engines
   const gptQueries=r.engines[0]?.queries||[];
   const gemQueries=r.engines[1]?.queries||[];
-  const topics=r.clientData.topics||[];
   const allSearchQueries=r.searchQueries||gptQueries.map(q=>q.query);
 
   const normalizeStatus=(s)=>(s==="Cited"||s==="Mentioned"||s==="Absent")?s:"Absent";
@@ -2294,22 +2285,13 @@ function IntentPage({r,goTo}){
     return{query:qText,gptStatus:normalizeStatus(gptQueries[i]?.status),gemStatus:normalizeStatus(gemQueries[i]?.status)};
   });
 
-  // Group queries by topic (2 queries per topic)
-  const topicGroups=[];
-  if(topics.length>0){
-    topics.forEach((topic,ti)=>{
-      const startIdx=ti*2;
-      const queries=combinedQueries.slice(startIdx,startIdx+2).filter(q=>q.query);
-      if(queries.length>0)topicGroups.push({topic,queries});
-    });
-    const mapped=topics.length*2;
-    const remaining=combinedQueries.slice(mapped);
-    if(remaining.length>0)topicGroups.push({topic:"Other Queries",queries:remaining});
-  }else if(combinedQueries.length>0){
-    topicGroups.push({topic:"All Queries",queries:combinedQueries});
-  }
-
-  const toggleTopic=(idx)=>setExpandedTopics(prev=>({...prev,[idx]:!prev[idx]}));
+  // Status badge helper
+  const statusBadge=(status)=>{
+    const bg=status==="Cited"?"#dcfce7":status==="Mentioned"?"#dbeafe":"#fee2e2";
+    const cl=status==="Cited"?"#166534":status==="Mentioned"?"#1e40af":"#991b1b";
+    const icon=status==="Cited"?"\u2713":status==="Mentioned"?"~":"\u2717";
+    return <span style={{fontSize:11,fontWeight:500,padding:"4px 10px",borderRadius:6,display:"inline-block",background:bg,color:cl}}>{icon} {status}</span>;
+  };
 
   // Overall stats
   let totalCited=0,totalMentionedOnly=0,totalAbsent=0;
@@ -2399,45 +2381,22 @@ function IntentPage({r,goTo}){
       </div>
     </div>
 
-    {/* Section A: Query Results grouped by topic */}
-    <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Outfit'",marginBottom:16}}>Audit Query Results</div>
+    {/* Audit Query Results — flat table */}
+    <div style={{fontSize:14,fontWeight:500,marginBottom:16}}>Audit Query Results</div>
 
-    {topicGroups.length===0&&<div style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:14,padding:24,textAlign:"center",color:C.muted,fontSize:13}}>No query data available. Run an audit to see results.</div>}
-
-    {topicGroups.map((group,gi)=>{
-      const expanded=!!expandedTopics[gi];
-      let gCited=0,gMentioned=0,gAbsent=0;
-      group.queries.forEach(q=>{if(q.gptStatus==="Cited"||q.gemStatus==="Cited")gCited++;else if(q.gptStatus==="Mentioned"||q.gemStatus==="Mentioned")gMentioned++;else gAbsent++;});
-      return(<div key={gi} style={{marginBottom:expanded?12:8}}>
-        {/* Topic header */}
-        <div onClick={()=>toggleTopic(gi)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",background:expanded?"#fff":"transparent",border:`1px solid ${expanded?C.border:C.border+"60"}`,borderRadius:expanded?"12px 12px 0 0":12,cursor:"pointer",userSelect:"none",transition:"all 0.15s ease"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <span style={{display:"inline-block",fontSize:10,color:C.muted,transform:expanded?"rotate(90deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▶</span>
-            <span style={{fontWeight:500,fontSize:14,color:C.text,fontFamily:"'Outfit'"}}>{group.topic}</span>
-            <span style={{fontSize:11,color:C.muted}}>{group.queries.length} prompt{group.queries.length!==1?"s":""}</span>
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            {gCited>0&&<span style={{fontSize:11,fontWeight:500,padding:"3px 8px",borderRadius:6,background:"#dcfce7",color:"#166534"}}>{gCited} cited</span>}
-            {gMentioned>0&&<span style={{fontSize:11,fontWeight:500,padding:"3px 8px",borderRadius:6,background:"#dbeafe",color:"#1e40af"}}>{gMentioned} mentioned only</span>}
-            {gAbsent>0&&<span style={{fontSize:11,fontWeight:500,padding:"3px 8px",borderRadius:6,background:"#fee2e2",color:"#991b1b"}}>{gAbsent} absent</span>}
-          </div>
-        </div>
-
-        {/* Expanded: show individual queries */}
-        {expanded&&<div style={{border:`1px solid ${C.border}`,borderTop:"none",borderRadius:"0 0 12px 12px",overflow:"hidden",background:"#fff"}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 110px 110px",gap:8,padding:"8px 16px",fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",borderBottom:`1px solid ${C.border}`}}>
-            <span>Query</span>
-            <span style={{textAlign:"center"}}>ChatGPT</span>
-            <span style={{textAlign:"center"}}>Gemini</span>
-          </div>
-          {group.queries.map((q,qi)=>(<div key={qi} style={{display:"grid",gridTemplateColumns:"1fr 110px 110px",gap:8,padding:"12px 16px",alignItems:"center",borderBottom:qi<group.queries.length-1?`1px solid ${C.border}30`:"none"}}>
-            <span style={{fontSize:13,lineHeight:1.5,color:C.text}}>{q.query}</span>
-            <div style={{display:"flex",justifyContent:"center"}}><SBadge status={q.gptStatus}/></div>
-            <div style={{display:"flex",justifyContent:"center"}}><SBadge status={q.gemStatus}/></div>
-          </div>))}
-        </div>}
-      </div>);
-    })}
+    {combinedQueries.length===0?<div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:24,textAlign:"center",color:C.muted,fontSize:13}}>No query data available. Run an audit to see results.</div>
+    :<div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,overflow:"hidden"}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 110px 110px",padding:"12px 20px",borderBottom:"1px solid "+C.border,fontSize:11,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em"}}>
+        <span>Query</span>
+        <span style={{textAlign:"center"}}>ChatGPT</span>
+        <span style={{textAlign:"center"}}>Gemini</span>
+      </div>
+      {combinedQueries.map((q,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 110px 110px",padding:"14px 20px",alignItems:"center",borderBottom:i<combinedQueries.length-1?"1px solid "+C.border+"30":"none",background:i%2===0?"transparent":C.border+"10"}}>
+        <span style={{fontSize:13,lineHeight:1.5,color:C.text,paddingRight:12}}>{q.query}</span>
+        <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gptStatus)}</div>
+        <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gemStatus)}</div>
+      </div>))}
+    </div>}
 
     {/* Section B: Test a Prompt */}
     <div style={{marginTop:40,padding:24,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
@@ -2464,12 +2423,12 @@ function IntentPage({r,goTo}){
       {testResults&&<div style={{marginTop:16,display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
         <div style={{padding:14,borderRadius:10,border:`1px solid ${C.border}`}}>
           <div style={{fontSize:11,color:C.muted,marginBottom:6}}>ChatGPT (with web search)</div>
-          <SBadge status={testResults.gpt}/>
+          {statusBadge(testResults.gpt)}
           {testResults.gptSnippet&&<p style={{fontSize:11,color:C.muted,lineHeight:1.5,maxHeight:100,overflow:"auto",margin:"8px 0 0"}}>{testResults.gptSnippet}</p>}
         </div>
         <div style={{padding:14,borderRadius:10,border:`1px solid ${C.border}`}}>
           <div style={{fontSize:11,color:C.muted,marginBottom:6}}>Gemini</div>
-          <SBadge status={testResults.gem}/>
+          {statusBadge(testResults.gem)}
           {testResults.gemSnippet&&<p style={{fontSize:11,color:C.muted,lineHeight:1.5,maxHeight:100,overflow:"auto",margin:"8px 0 0"}}>{testResults.gemSnippet}</p>}
         </div>
       </div>}
@@ -2479,8 +2438,8 @@ function IntentPage({r,goTo}){
         <div style={{fontSize:11,color:C.muted,marginBottom:8}}>Previously tested</div>
         {testedPrompts.map((tp,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 110px 110px",gap:8,padding:"8px 0",borderBottom:`1px solid ${C.border}30`,alignItems:"center"}}>
           <span style={{fontSize:12,color:C.text}}>{tp.query}</span>
-          <div style={{display:"flex",justifyContent:"center"}}><SBadge status={tp.gpt}/></div>
-          <div style={{display:"flex",justifyContent:"center"}}><SBadge status={tp.gem}/></div>
+          <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(tp.gpt)}</div>
+          <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(tp.gem)}</div>
         </div>))}
       </div>}
     </div>
