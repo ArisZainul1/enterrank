@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { supabase } from './supabase';
 
 const ChatGPTLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.998 5.998 0 0 0-3.998 2.9 6.042 6.042 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" fill="#10A37F"/></svg>);
 const GeminiLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M12 24C12 20.8174 10.7357 17.7652 8.48528 15.5147C6.23484 13.2643 3.18261 12 0 12C3.18261 12 6.23484 10.7357 8.48528 8.48528C10.7357 6.23484 12 3.18261 12 0C12 3.18261 13.2643 6.23484 15.5147 8.48528C17.7652 10.7357 20.8174 12 24 12C20.8174 12 17.7652 13.2643 15.5147 15.5147C13.2643 17.7652 12 20.8174 12 24Z" fill="url(#gG2)"/><defs><linearGradient id="gG2" x1="0" y1="12" x2="24" y2="12"><stop stopColor="#4285F4"/><stop offset=".5" stopColor="#9B72CB"/><stop offset="1" stopColor="#D96570"/></linearGradient></defs></svg>);
@@ -2814,6 +2815,112 @@ function lsSaveProject(project){try{const all=lsGetProjects().filter(p=>p.id!==p
 function lsDeleteProject(id){try{const all=lsGetProjects().filter(p=>p.id!==id);localStorage.setItem(LS_KEY,JSON.stringify(all));}catch(e){}}
 function lsGetProject(id){return lsGetProjects().find(p=>p.id===id)||null;}
 
+/* ─── SUPABASE HELPERS ─── */
+
+async function sbSaveProject(projectData) {
+  const { data: existing } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('user_id', 'default')
+    .eq('brand', projectData.brand)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    const { data, error } = await supabase
+      .from('projects')
+      .update({
+        website: projectData.website,
+        industry: projectData.industry,
+        region: projectData.region,
+        competitors: projectData.competitors,
+        topics: projectData.topics,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existing[0].id)
+      .select()
+      .single();
+    if (error) console.error('Error updating project:', error);
+    return data;
+  } else {
+    const { data, error } = await supabase
+      .from('projects')
+      .insert({
+        user_id: 'default',
+        brand: projectData.brand,
+        website: projectData.website,
+        industry: projectData.industry,
+        region: projectData.region,
+        competitors: projectData.competitors,
+        topics: projectData.topics
+      })
+      .select()
+      .single();
+    if (error) console.error('Error creating project:', error);
+    return data;
+  }
+}
+
+async function sbSaveAudit(projectId, results) {
+  const { data, error } = await supabase
+    .from('audits')
+    .insert({
+      project_id: projectId,
+      user_id: 'default',
+      results: results,
+      overall_score: results.overall || null,
+      mention_rate: results.gptData?.mentionRate != null && results.gemData?.mentionRate != null
+        ? Math.round((results.gptData.mentionRate + results.gemData.mentionRate) / 2)
+        : null,
+      citation_rate: results.gptData?.citationRate != null && results.gemData?.citationRate != null
+        ? Math.round((results.gptData.citationRate + results.gemData.citationRate) / 2)
+        : null,
+      sentiment_score: results.sentimentData?.brand?.avg || null
+    })
+    .select()
+    .single();
+  if (error) console.error('Error saving audit:', error);
+  return data;
+}
+
+async function sbLoadProjects() {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*, audits(id, overall_score, mention_rate, citation_rate, created_at)')
+    .eq('user_id', 'default')
+    .order('updated_at', { ascending: false });
+  if (error) { console.error('Error loading projects:', error); return []; }
+  return data || [];
+}
+
+async function sbLoadAudit(auditId) {
+  const { data, error } = await supabase
+    .from('audits')
+    .select('*')
+    .eq('id', auditId)
+    .single();
+  if (error) { console.error('Error loading audit:', error); return null; }
+  return data;
+}
+
+async function sbLoadProjectAudits(projectId) {
+  const { data, error } = await supabase
+    .from('audits')
+    .select('id, overall_score, mention_rate, citation_rate, sentiment_score, created_at')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false });
+  if (error) { console.error('Error loading audits:', error); return []; }
+  return data || [];
+}
+
+async function sbDeleteProject(projectId) {
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('id', projectId);
+  if (error) console.error('Error deleting project:', error);
+  return !error;
+}
+
 /* ─── PROJECT HUB ─── */
 function ProjectHub({onSelect,onNew,onLogout}){
   const[projects,setProjects]=useState(null);
@@ -2823,20 +2930,66 @@ function ProjectHub({onSelect,onNew,onLogout}){
 
   React.useEffect(()=>{
     const localProjects=lsGetProjects();
-    fetch("/api/projects").then(r=>r.json()).then(d=>{
-      const apiProjects=d.projects||[];
-      // Merge: API projects win on duplicates, add any local-only
-      const merged=[...apiProjects];
-      localProjects.forEach(lp=>{if(!merged.find(ap=>ap.id===lp.id))merged.push(lp);});
-      setProjects(merged);setLoading(false);
-    }).catch(()=>{setProjects(localProjects);setLoading(false);});
+    sbLoadProjects().then(sbProjects=>{
+      if(sbProjects.length>0){
+        // Map Supabase projects to the shape the hub expects
+        const mapped=sbProjects.map(p=>{
+          const audits=(p.audits||[]).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+          const latest=audits[0];
+          return{
+            id:p.id,
+            brand:p.brand,
+            website:p.website,
+            industry:p.industry,
+            region:p.region,
+            topics:p.topics,
+            competitors:p.competitors,
+            auditCount:audits.length,
+            lastScore:latest?.overall_score||null,
+            lastAudit:latest?.created_at||p.updated_at||p.created_at,
+            createdAt:p.created_at,
+            _supabase:true
+          };
+        });
+        // Merge: Supabase projects win, add any local-only
+        const merged=[...mapped];
+        localProjects.forEach(lp=>{if(!merged.find(sp=>sp.brand===lp.brand))merged.push(lp);});
+        setProjects(merged);setLoading(false);
+      }else{
+        // Fallback to API + localStorage
+        fetch("/api/projects").then(r=>r.json()).then(d=>{
+          const apiProjects=d.projects||[];
+          const merged=[...apiProjects];
+          localProjects.forEach(lp=>{if(!merged.find(ap=>ap.id===lp.id))merged.push(lp);});
+          setProjects(merged);setLoading(false);
+        }).catch(()=>{setProjects(localProjects);setLoading(false);});
+      }
+    }).catch(()=>{
+      // Supabase failed — fallback to API + localStorage
+      fetch("/api/projects").then(r=>r.json()).then(d=>{
+        const apiProjects=d.projects||[];
+        const merged=[...apiProjects];
+        localProjects.forEach(lp=>{if(!merged.find(ap=>ap.id===lp.id))merged.push(lp);});
+        setProjects(merged);setLoading(false);
+      }).catch(()=>{setProjects(localProjects);setLoading(false);});
+    });
   },[]);
 
   const handleDelete=async(id,e)=>{
     e.stopPropagation();
     if(!confirm("Delete this project and all its audit history?"))return;
     setDeleting(id);
-    try{await fetch(`/api/projects?id=${id}`,{method:"DELETE"});lsDeleteProject(id);setProjects(projects.filter(p=>p.id!==id));}catch(e){}
+    try{
+      await sbDeleteProject(id);
+      try{await fetch(`/api/projects?id=${id}`,{method:"DELETE"});}catch(e){}
+      lsDeleteProject(id);
+      setProjects(projects.filter(p=>p.id!==id));
+    }catch(e){
+      // Fallback: try old API delete
+      try{await fetch(`/api/projects?id=${id}`,{method:"DELETE"});}catch(e2){}
+      lsDeleteProject(id);
+      setProjects(projects.filter(p=>p.id!==id));
+    }
     setDeleting(null);
   };
 
@@ -2963,6 +3116,37 @@ export default function App(){
 
   const handleSelectProject=async(projectSummary)=>{
     try{
+      // Supabase project — load latest audit from Supabase
+      if(projectSummary._supabase){
+        const audits=await sbLoadProjectAudits(projectSummary.id);
+        const project={...projectSummary,history:[]};
+        if(audits.length>0){
+          const fullAudit=await sbLoadAudit(audits[0].id);
+          if(fullAudit&&fullAudit.results){
+            // Build history from all audits for the performance chart
+            const historyEntries=audits.map(a=>({
+              date:new Date(a.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),
+              overall:a.overall_score,
+              mentions:a.mention_rate,
+              citations:a.citation_rate,
+              sentimentAvg:a.sentiment_score,
+              mentionsPerEngine:{gpt:a.mention_rate,gemini:a.mention_rate},
+              citationsPerEngine:{gpt:a.citation_rate,gemini:a.citation_rate},
+              sentimentPerEngine:{gpt:a.sentiment_score||50,gemini:a.sentiment_score||50},
+              apiData:null // only latest gets full data
+            })).reverse();
+            const lastAudit={...historyEntries[historyEntries.length-1],apiData:fullAudit.results};
+            project.history=historyEntries.map((h,i)=>i===historyEntries.length-1?lastAudit:h);
+            setProjectPrompt({project,lastAudit});
+          }else{
+            openProjectForAudit(project);
+          }
+        }else{
+          openProjectForAudit(project);
+        }
+        return;
+      }
+      // Legacy: old API + localStorage path
       let project=null;
       try{
         const res=await fetch(`/api/projects?id=${projectSummary.id}`);
@@ -2971,23 +3155,20 @@ export default function App(){
       }catch(e){}
       if(!project)project=lsGetProject(projectSummary.id);
       if(!project){alert("Failed to load project");return;}
-      // Check if project has previous audit data
       const lastAudit=(project.history||[]).length>0?(project.history||[])[project.history.length-1]:null;
       if(lastAudit&&lastAudit.apiData){
-        // Has previous results — ask user what they want
         setProjectPrompt({project,lastAudit});
       }else{
-        // No previous audit — go straight to audit input
         openProjectForAudit(project);
       }
-    }catch(e){alert("Failed to load project");}
+    }catch(e){console.error("Failed to load project:",e);alert("Failed to load project");}
   };
 
   const openProjectForAudit=(project)=>{
     setProjectPrompt(null);
     setActiveProject(project);
     setData({brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors&&project.competitors.length>0?project.competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
-    setHistory((project.history||[]).map(h=>({date:h.date||new Date(h.timestamp).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),...h})));
+    setHistory((project.history||[]).map(h=>({date:h.date||new Date(h.timestamp||h.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),...h})));
     setResults(null);
     setStep("input");
     setScreen("dashboard");
@@ -2997,7 +3178,7 @@ export default function App(){
     setProjectPrompt(null);
     setActiveProject(project);
     setData({brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors&&project.competitors.length>0?project.competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
-    setHistory((project.history||[]).map(h=>({date:h.date||new Date(h.timestamp).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),...h})));
+    setHistory((project.history||[]).map(h=>({date:h.date||new Date(h.timestamp||h.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),...h})));
     // Rebuild results from last audit
     const cd={brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors||[]};
     const r=generateAll(cd,lastAudit.apiData);
@@ -3064,29 +3245,49 @@ export default function App(){
     setHistory(prev=>[...prev,entry]);
     setStep("dashboard");
 
-    // Save to project (create if new, update if existing) — skip in artifact mode
+    // Save to localStorage as backup
+    try{localStorage.setItem('enterrank_lastAudit',JSON.stringify(apiData));}catch(e){}
+
+    // Save to Supabase (primary)
+    try{
+      const project=await sbSaveProject({
+        brand:data.brand,
+        website:data.website,
+        industry:data.industry,
+        region:data.region,
+        competitors:data.competitors,
+        topics:data.topics
+      });
+      if(project){
+        await sbSaveAudit(project.id,apiData);
+        console.log('Audit saved to Supabase:',project.id);
+        setActiveProject({...project,_supabase:true});
+      }
+    }catch(e){
+      console.error('Failed to save to Supabase:',e);
+    }
+
+    // Also save to old API + localStorage as fallback
     if(!isLocal){try{
-      if(activeProject){
+      if(activeProject&&!activeProject._supabase){
         const res=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:activeProject.id,auditEntry:entry})});
         const updated=await res.json();
-        if(!updated.error){setActiveProject(updated);lsSaveProject(updated);}
-        else{const lp=lsGetProject(activeProject.id);if(lp){lp.history=[...(lp.history||[]),{...entry,timestamp:new Date().toISOString()}];lp.lastAudit=new Date().toISOString();lp.lastScore=entry.overall;lsSaveProject(lp);setActiveProject(lp);}}
-      }else{
+        if(!updated.error){lsSaveProject(updated);}
+        else{const lp=lsGetProject(activeProject.id);if(lp){lp.history=[...(lp.history||[]),{...entry,timestamp:new Date().toISOString()}];lp.lastAudit=new Date().toISOString();lp.lastScore=entry.overall;lsSaveProject(lp);}}
+      }else if(!activeProject){
         const res=await fetch("/api/projects",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({brand:data.brand,industry:data.industry,website:data.website,region:data.region,topics:data.topics,competitors:data.competitors})});
         const created=await res.json();
         if(!created.error){
-          setActiveProject(created);
           const res2=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:created.id,auditEntry:entry})});
           const updated2=await res2.json();
-          if(!updated2.error){setActiveProject(updated2);lsSaveProject(updated2);}else{lsSaveProject(created);}
+          if(!updated2.error){lsSaveProject(updated2);}else{lsSaveProject(created);}
         }else{
-          // API failed — save locally
           const localId=data.brand.toLowerCase().replace(/[^a-z0-9]+/g,"-")+"-"+Date.now().toString(36);
           const localProject={id:localId,brand:data.brand,industry:data.industry,website:data.website,region:data.region,topics:data.topics,competitors:data.competitors,history:[{...entry,timestamp:new Date().toISOString()}],lastAudit:new Date().toISOString(),lastScore:entry.overall,createdAt:new Date().toISOString()};
-          lsSaveProject(localProject);setActiveProject(localProject);
+          lsSaveProject(localProject);
         }
       }
-    }catch(e){console.error("Failed to save project:",e);}}
+    }catch(e){console.error("Failed to save project (legacy):",e);}}
   };
 
 

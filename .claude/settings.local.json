@@ -15,7 +15,11 @@
       "Bash(python:*)",
       "WebFetch(domain:worldvectorlogo.com)",
       "Bash(python3:*)",
-      "Bash(perl -ne:*)"
+      "Bash(perl -ne:*)",
+      "Bash(git stash:*)",
+      "Bash(git stash pop:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
