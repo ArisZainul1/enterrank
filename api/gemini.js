@@ -44,6 +44,12 @@ export default async function handler(req, res) {
       return res.status(response.status).json({ error: data.error?.message || 'Gemini API error' });
     }
 
+    // Handle safety blocks — return empty text instead of error
+    const finishReason = data.candidates?.[0]?.finishReason;
+    if (finishReason === "SAFETY" || data.promptFeedback?.blockReason) {
+      return res.status(200).json({ text: "", blocked: true });
+    }
+
     const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
     return res.status(200).json({ text });
   } catch (error) {

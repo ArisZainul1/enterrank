@@ -96,62 +96,91 @@ function MiniDonut({data,size=110,innerRatio=.6}){
 }
 
 /* ─── MULTI-ENGINE API LAYER ─── */
-async function callWithRetry(fn, retries=2, delay=1500){
-  for(let i=0;i<=retries;i++){
-    const result=await fn();
-    if(result!==null)return result;
-    if(i<retries)await new Promise(r=>setTimeout(r,delay*(i+1)));
+async function callWithRetry(fn, maxRetries=3, baseDelayMs=1000){
+  for(let attempt=0;attempt<=maxRetries;attempt++){
+    try{
+      const result=await fn();
+      if(result!==null)return result;
+      if(attempt===maxRetries)return null;
+      await new Promise(r=>setTimeout(r,baseDelayMs*Math.pow(2,attempt)));
+    }catch(e){
+      if(attempt===maxRetries)return null;
+      const isRateLimit=e.message?.includes("429")||e.message?.includes("rate")||e.message?.includes("quota");
+      let delay=baseDelayMs*Math.pow(2,attempt);
+      if(isRateLimit)delay=delay*2;
+      console.error(`API attempt ${attempt+1}/${maxRetries+1} failed (${isRateLimit?"rate limit":"error"}), retrying in ${delay}ms...`);
+      await new Promise(r=>setTimeout(r,delay));
+    }
   }
   return null;
 }
 
+function validateResponse(raw,minLength=10){
+  if(!raw)return null;
+  const text=typeof raw==="string"?raw:raw.text||raw.result||"";
+  if(text.length<minLength)return null;
+  return text;
+}
+
 async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst."){
   return callWithRetry(async()=>{
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),30000);
     try{
-      const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
+      const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt}),signal:controller.signal});
+      clearTimeout(timeout);
       const data=await res.json();
       if(data.error){console.error("OpenAI error:",data.error);return null;}
-      return data.text||"";
-    }catch(e){console.error("OpenAI API error:",e);return null;}
+      if(data.rateLimit?.remaining&&parseInt(data.rateLimit.remaining)<5)await new Promise(r=>setTimeout(r,3000));
+      return validateResponse(data.text)||"";
+    }catch(e){clearTimeout(timeout);console.error("OpenAI API error:",e);return null;}
   });
 }
 
 async function callOpenAI4o(prompt, systemPrompt="You are an expert AEO analyst."){
   return callWithRetry(async()=>{
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),30000);
     try{
-      const controller=new AbortController();
-      const timeout=setTimeout(()=>controller.abort(),55000);
       const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt,model:"gpt-4o"}),signal:controller.signal});
       clearTimeout(timeout);
       const data=await res.json();
       if(data.error){console.error("OpenAI 4o error:",data.error);return null;}
-      return data.text||"";
-    }catch(e){console.error("OpenAI 4o API error:",e);return null;}
+      if(data.rateLimit?.remaining&&parseInt(data.rateLimit.remaining)<5)await new Promise(r=>setTimeout(r,3000));
+      return validateResponse(data.text)||"";
+    }catch(e){clearTimeout(timeout);console.error("OpenAI 4o API error:",e);return null;}
   });
 }
 
 async function callGemini(prompt, systemPrompt="You are an expert AEO analyst."){
   return callWithRetry(async()=>{
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),30000);
     try{
-      const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
+      const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt}),signal:controller.signal});
+      clearTimeout(timeout);
       const data=await res.json();
-      if(data.error){console.error("Gemini error:",data.error);return null;}
-      return data.text||"";
-    }catch(e){console.error("Gemini API error:",e);return null;}
+      if(data.error){
+        if(data.error.includes("SAFETY")||data.error.includes("block"))return "";
+        console.error("Gemini error:",data.error);return null;
+      }
+      return validateResponse(data.text)||"";
+    }catch(e){clearTimeout(timeout);console.error("Gemini API error:",e);return null;}
   });
 }
 
 async function callOpenAISearch(query, region){
   return callWithRetry(async()=>{
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),45000);
     try{
-      const controller=new AbortController();
-      const timeout=setTimeout(()=>controller.abort(),55000);
       const r=await fetch("/api/openai-search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,region}),signal:controller.signal});
       clearTimeout(timeout);
       const d=await r.json();
       if(d.error&&!d.result){console.error("OpenAI Search error:",d.error);return null;}
+      if(d.rateLimit?.remaining&&parseInt(d.rateLimit.remaining)<5)await new Promise(r=>setTimeout(r,3000));
       return{text:d.result||"",citations:d.citations||[]};
-    }catch(e){console.error("OpenAI Search API error:",e);return null;}
+    }catch(e){clearTimeout(timeout);console.error("OpenAI Search API error:",e);return null;}
   })||{text:"",citations:[]};
 }
 
@@ -162,13 +191,15 @@ async function callEngine(engine, prompt, systemPrompt){
   return await callOpenAI(prompt, systemPrompt);
 }
 
-function safeJSON(text){
-  if(!text)return null;
-  try{const clean=text.replace(/```json|```/g,"").trim();return JSON.parse(clean);}catch(e){
-    const m=text.match(/\{[\s\S]*\}/)||text.match(/\[[\s\S]*\]/);
-    if(m)try{return JSON.parse(m[0]);}catch(e2){}
-    return null;
-  }
+function safeJSON(raw){
+  if(!raw)return null;
+  let text=typeof raw==="string"?raw:JSON.stringify(raw);
+  text=text.replace(/```json\s*/gi,"").replace(/```\s*/gi,"").trim();
+  try{return JSON.parse(text);}catch(e){}
+  const jsonMatch=text.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+  if(jsonMatch){try{return JSON.parse(jsonMatch[1]);}catch(e){}}
+  try{const fixed=text.replace(/,\s*([}\]])/g,"$1").replace(/'/g,'"');return JSON.parse(fixed);}catch(e){}
+  return null;
 }
 
 /* ─── WEBSITE CRAWLER ─── */
@@ -473,8 +504,8 @@ Return JSON only:
   let gptResponses=[],gemResponses=[];
   try{
     const [gR,gmR]=await Promise.all([
-      runGptSearchBatches(searchQueries, region, 5, 500).catch(e=>{console.error("ChatGPT testing failed:",e.message);return[];}),
-      runQueryBatches(callGemini, searchQueries, 3, 4000, "Gemini").catch(e=>{console.error("Gemini testing failed:",e.message);return[];})
+      runGptSearchBatches(searchQueries, region, 3, 1500).catch(e=>{console.error("ChatGPT testing failed:",e.message);return[];}),
+      runQueryBatches(callGemini, searchQueries, 2, 5000, "Gemini").catch(e=>{console.error("Gemini testing failed:",e.message);return[];})
     ]);
     gptResponses=gR||[];gemResponses=gmR||[];
     if(gptResponses.length===0&&gemResponses.length===0)onProgress("Warning: both engine tests failed, continuing with limited data...",26);

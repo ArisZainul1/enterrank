@@ -88,9 +88,12 @@ export default async function handler(req, res) {
       }
     }
 
+    const remaining = response.headers.get("x-ratelimit-remaining-requests");
+    const resetMs = response.headers.get("x-ratelimit-reset-requests");
     return res.status(200).json({
       result: responseText,
-      citations: citations
+      citations: citations,
+      rateLimit: { remaining, resetMs }
     });
 
   } catch (e) {
