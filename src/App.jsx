@@ -226,6 +226,7 @@ function summariseCrawl(crawlResult){
 }
 
 async function runRealAudit(cd, onProgress){
+ try{
   const brand=cd.brand||"Brand",industry=cd.industry||"Technology",region=cd.region||"Global",topics=cd.topics||["tech"];
   const brandLower=brand.toLowerCase();
   const compNamesRaw=(cd.competitors||[]).map(c=>typeof c==="string"?c:c.name).filter(Boolean);
@@ -259,8 +260,9 @@ async function runRealAudit(cd, onProgress){
 
   // ── Step 2: Generate high-quality search queries from key topics ──
   onProgress("Generating search queries from your topics...", 10);
-
+  let searchQueries = [];
   const topicsToUse = topics.slice(0, 10);
+  try{
   const queryGenPrompt = `You are an expert in AI engine optimization (AEO/GEO). Your job is to generate realistic, high-quality search queries that real users would type into ChatGPT or Gemini.
 
 I need exactly 2 search queries for each of these topics. Each query must approach the topic from a DIFFERENT angle.
@@ -312,7 +314,6 @@ Return JSON only:
   const queryGenParsed = safeJSON(queryGenRaw) || { queries: [] };
 
   // Extract queries from the structured response
-  let searchQueries = [];
   if (Array.isArray(queryGenParsed.queries)) {
     queryGenParsed.queries.forEach(item => {
       if (typeof item === "string") {
@@ -345,6 +346,14 @@ Return JSON only:
     });
     return cleaned;
   }).filter(q => q.length > 10);
+  }catch(stepError){
+    console.error("Query generation failed:",stepError.message);
+    onProgress("Warning: query generation had an issue, using fallback queries...",12);
+    searchQueries=topicsToUse.flatMap(t=>[
+      `What are the best ${t} options with the highest ratings in ${region}?`,
+      `Compare the top ${t} providers by features, pricing and customer reviews in ${region}`
+    ]).slice(0,20);
+  }
 
   // ── Step 3: Test all queries on both engines with real responses ──
   const allBrandNames = [brand, ...compNames.filter(n => n)].slice(0, 6);
@@ -461,13 +470,26 @@ Return JSON only:
   }
 
   // Run both engines simultaneously
-  const [gptResponses, gemResponses] = await Promise.all([
-    runGptSearchBatches(searchQueries, region, 5, 500),
-    runQueryBatches(callGemini, searchQueries, 3, 4000, "Gemini")
-  ]);
+  let gptResponses=[],gemResponses=[];
+  try{
+    const [gR,gmR]=await Promise.all([
+      runGptSearchBatches(searchQueries, region, 5, 500).catch(e=>{console.error("ChatGPT testing failed:",e.message);return[];}),
+      runQueryBatches(callGemini, searchQueries, 3, 4000, "Gemini").catch(e=>{console.error("Gemini testing failed:",e.message);return[];})
+    ]);
+    gptResponses=gR||[];gemResponses=gmR||[];
+    if(gptResponses.length===0&&gemResponses.length===0)onProgress("Warning: both engine tests failed, continuing with limited data...",26);
+    else if(gptResponses.length===0)onProgress("Warning: ChatGPT testing failed, continuing with Gemini data...",26);
+    else if(gemResponses.length===0)onProgress("Warning: Gemini testing failed, continuing with ChatGPT data...",26);
+  }catch(stepError){
+    console.error("Engine testing failed:",stepError.message);
+    onProgress("Warning: engine testing encountered an issue, continuing...",26);
+  }
 
   // ── Step 4: Classify responses — scan real text for brand names and URLs ──
   onProgress("Analyzing responses for brand visibility...", 28);
+  let gptVisibility={},gemVisibility={};
+  const emptyVis={mentionRate:0,citationRate:0,queries:searchQueries.map(q=>({query:q,status:"Absent",confidence:"fallback"}))};
+  try{
 
   function computeVisibility(responses, detectors) {
     const result = {};
@@ -498,8 +520,8 @@ Return JSON only:
 
   const gptVisRaw = computeVisibility(gptResponses, brandDetectors);
   const gemVisRaw = computeVisibility(gemResponses, brandDetectors);
-  let gptVisibility = gptVisRaw.result;
-  let gemVisibility = gemVisRaw.result;
+  gptVisibility = gptVisRaw.result;
+  gemVisibility = gemVisRaw.result;
 
   // Batch reclassify ambiguous cases via AI
   async function batchReclassify(ambiguousCases, callFn, visibility) {
@@ -546,6 +568,12 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
     onProgress("Verifying Gemini citations...", 27);
     await batchReclassify(gemVisRaw.ambiguousCases, callGemini, gemVisibility);
   }
+  }catch(stepError){
+    console.error("Visibility computation failed:",stepError.message);
+    onProgress("Warning: visibility analysis had an issue, continuing...",28);
+    const fallbackBrands=[brand,...compNames.filter(n=>n)];
+    fallbackBrands.forEach(n=>{if(!gptVisibility[n])gptVisibility[n]=emptyVis;if(!gemVisibility[n])gemVisibility[n]=emptyVis;});
+  }
 
   // Build compScoresMap with real data for all competitors
   const compScoresMap = {};
@@ -567,6 +595,8 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
   const brandGptVis = gptVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
   const brandGemVis = gemVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
 
+  let swGpt={},swGem={};
+  try{
   const swBasePrompt = (engineName, mentionRate, citationRate) => `You are ${engineName}. Evaluate this brand's visibility specifically for users in ${region} searching on ${engineName}.
 
 Brand: "${brand}" in ${industry} (${region}).
@@ -582,16 +612,20 @@ Return JSON only:
     callOpenAI(swBasePrompt("ChatGPT", brandGptVis.mentionRate, brandGptVis.citationRate), engineSystemPrompt),
     callGemini(swBasePrompt("Gemini", brandGemVis.mentionRate, brandGemVis.citationRate), engineSystemPrompt)
   ]);
-  const swGpt = safeJSON(swGptRaw) || {};
-  const swGem = safeJSON(swGemRaw) || {};
+  swGpt = safeJSON(swGptRaw) || {};
+  swGem = safeJSON(swGemRaw) || {};
+  }catch(stepError){
+    console.error("Strengths/weaknesses analysis failed:",stepError.message);
+    onProgress("Warning: strengths analysis had an issue, continuing...",32);
+  }
 
   const gptData = {
     score: Math.round(brandGptVis.mentionRate * 0.5 + brandGptVis.citationRate * 0.5),
     mentionRate: brandGptVis.mentionRate,
     citationRate: brandGptVis.citationRate,
     queries: brandGptVis.queries || [],
-    strengths: swGpt.strengths || ["Assessment not available"],
-    weaknesses: swGpt.weaknesses || ["Assessment not available"]
+    strengths: swGpt.strengths || ["Analysis unavailable"],
+    weaknesses: swGpt.weaknesses || ["Analysis unavailable"]
   };
 
   const gemData = {
@@ -599,13 +633,14 @@ Return JSON only:
     mentionRate: brandGemVis.mentionRate,
     citationRate: brandGemVis.citationRate,
     queries: brandGemVis.queries || [],
-    strengths: swGem.strengths || ["Assessment not available"],
-    weaknesses: swGem.weaknesses || ["Assessment not available"]
+    strengths: swGem.strengths || ["Analysis unavailable"],
+    weaknesses: swGem.weaknesses || ["Analysis unavailable"]
   };
 
   // ── Step 5b: Sentiment Analysis ──
   onProgress("Analyzing brand sentiment across AI engines...",24);
-
+  let sentimentData={brand:{gpt:50,gemini:50,avg:50,summary:"Sentiment analysis unavailable"},competitors:compNames.map(n=>({name:n,gpt:50,gemini:50,avg:50,summary:""}))};
+  try{
   const sentimentPrompt=`Analyze the general public and industry sentiment around "${brand}" in the ${industry} industry, specifically in ${region}.
 
 CRITICAL: Rate sentiment specifically in ${region}, not globally. Consider local customer reviews, local news coverage, local social media perception, and regional reputation. A brand loved globally but unknown or unavailable in ${region} should score 40-50 (neutral). A brand with strong local presence and positive regional reputation should score higher than a global brand with no ${region} footprint.
@@ -635,7 +670,7 @@ Be accurate. Base this on real market perception in ${region}, not global specul
   const sentGpt=safeJSON(sentGptRaw)||{brand:{score:50,summary:"Could not assess"},competitors:[]};
   const sentGem=safeJSON(sentGemRaw)||{brand:{score:50,summary:"Could not assess"},competitors:[]};
 
-  const sentimentData={
+  sentimentData={
     brand:{
       gpt:sentGpt.brand?.score||50,
       gemini:sentGem.brand?.score||50,
@@ -650,9 +685,16 @@ Be accurate. Base this on real market perception in ${region}, not global specul
       return{name,gpt:gScore,gemini:mScore,avg:Math.round((gScore+mScore)/2),summary:gc?.summary||gm?.summary||""};
     })
   };
+  }catch(stepError){
+    console.error("Sentiment analysis failed:",stepError.message);
+    onProgress("Warning: sentiment analysis had an issue, continuing...",26);
+  }
 
   // ── Step 4: Competitor analysis — BOTH engines + crawl data ──
   onProgress("Analysing competitors across both engines...",30);
+  let compData={competitors:[]};
+  let mergedComps=[];
+  try{
   const compPromptBase=`Analyse these competitors against "${brand}" in ${industry} (${region}) for AI engine visibility.
 
 Brand website crawl data:
@@ -696,7 +738,7 @@ Use the crawl data to give accurate scores. If a competitor has better schema ma
   const compGpt=safeJSON(compGptRaw)||{competitors:[]};
   const compGem=safeJSON(compGemRaw)||{competitors:[]};
   // Merge: average scores from both engines
-  const mergedComps=(compGpt.competitors||[]).map(gc=>{
+  mergedComps=(compGpt.competitors||[]).map(gc=>{
     const gemMatch=(compGem.competitors||[]).find(g=>g.name&&gc.name&&g.name.toLowerCase()===gc.name.toLowerCase());
     if(gemMatch){
       return{...gc,score:Math.round((gc.score+gemMatch.score)/2),
@@ -705,10 +747,17 @@ Use the crawl data to give accurate scores. If a competitor has better schema ma
     }
     return gc;
   });
-  const compData={competitors:mergedComps.length>0?mergedComps:(compGem.competitors||[])};
+  compData={competitors:mergedComps.length>0?mergedComps:(compGem.competitors||[])};
+  }catch(stepError){
+    console.error("Competitor analysis failed:",stepError.message);
+    onProgress("Warning: competitor analysis had an issue, continuing...",35);
+  }
 
   // ── Step 5: Pain points — BOTH engines + crawl data ──
   onProgress("Scoring AEO categories across both engines...",40);
+  const painCatLabels=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
+  let mergedPainPoints=painCatLabels.map(l=>({label:l,score:0,severity:"critical"}));
+  try{
   const catPrompt=`Based on this website analysis for "${brand}" (${industry}, ${region}):
 
 ${crawlSummary}
@@ -736,14 +785,20 @@ Use severity: "critical" if <30, "warning" if 30-60, "good" if >60. Base scores 
   const catGpt=safeJSON(catGptRaw)||{painPoints:[]};
   const catGem=safeJSON(catGemRaw)||{painPoints:[]};
   // Merge: average pain point scores from both engines
-  const mergedPainPoints=(catGpt.painPoints&&catGpt.painPoints.length>0?catGpt.painPoints:catGem.painPoints||[]).map((pp,i)=>{
+  mergedPainPoints=(catGpt.painPoints&&catGpt.painPoints.length>0?catGpt.painPoints:catGem.painPoints||[]).map((pp,i)=>{
     const gemPP=(catGem.painPoints||[])[i];
     const avgScore=gemPP?Math.round((pp.score+gemPP.score)/2):pp.score;
     return{label:pp.label,score:avgScore,severity:avgScore<30?"critical":avgScore<60?"warning":"good"};
   });
+  }catch(stepError){
+    console.error("Pain points analysis failed:",stepError.message);
+    onProgress("Warning: AEO category scoring had an issue, continuing...",42);
+  }
 
   // ── Step 6: User archetypes + journeys — OpenAI generates, Gemini verifies engine statuses ──
   onProgress("Generating user archetypes...",48);
+  let archData={stakeholders:[]};
+  try{
   const archPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}, competitors: ${compNames.join(", ")||"none"}.
 
 Generate archetypes for ${industry} customers specifically in ${region}. Use regional demographics, local behaviors, and regional context. The archetypes should reflect real user personas in ${region} — their local needs, purchasing habits, and how they search for ${industry} solutions in their region.
@@ -787,7 +842,7 @@ Return JSON:
 IMPORTANT: All output must be in English. Do not translate or localize the language. Use regional context (local competitors, local pricing, local regulations, local currency) but always respond in English.
 Be accurate for ${region}. All demographics, behaviors, and prompts must reflect ${region}-specific context. ${brand} likely has low visibility on most prompts — use "Absent" where appropriate. ChatGPT and Gemini may differ.`;
   const archRaw=await callOpenAI(archPrompt, engineSystemPrompt);
-  const archData=safeJSON(archRaw)||{stakeholders:[]};
+  archData=safeJSON(archRaw)||{stakeholders:[]};
 
   // Now ask Gemini to verify/correct the engine statuses
   onProgress("Verifying archetype journeys with Gemini...",54);
@@ -815,9 +870,15 @@ Be accurate. "Cited" = you would link to their website. "Mentioned" = you'd name
       }
     }
   }
+  }catch(stepError){
+    console.error("Archetypes generation failed:",stepError.message);
+    onProgress("Warning: archetypes generation had an issue, continuing...",56);
+  }
 
   // ── Step 6b: Intent Pathway — real data from BOTH engines ──
   onProgress("Testing intent pathway prompts...",58);
+  let intentData=[];
+  try{
   const intentPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}.
 Competitors: ${compNames.join(", ")}.
 
@@ -870,7 +931,7 @@ Rules:
   const intentGpt=safeJSON(intentGptRaw)||[];
   const intentGem=safeJSON(intentGemRaw)||[];
   // Merge: use GPT structure, override Gemini statuses from Gemini's own response
-  const intentData=(Array.isArray(intentGpt)&&intentGpt.length>0?intentGpt:intentGem).map((stage,si)=>{
+  intentData=(Array.isArray(intentGpt)&&intentGpt.length>0?intentGpt:intentGem).map((stage,si)=>{
     const gemStage=(Array.isArray(intentGem)?intentGem:[])[si];
     return{...stage,prompts:(stage.prompts||[]).map((p,pi)=>{
       const gemP=gemStage&&gemStage.prompts?gemStage.prompts[pi]:null;
@@ -882,13 +943,18 @@ Rules:
         weight:p.weight||5,triggerWords:p.triggerWords||[],optimisedPrompt:p.optimisedPrompt||"",contentTip:p.contentTip||""};
     })};
   });
+  }catch(stepError){
+    console.error("Intent pathway analysis failed:",stepError.message);
+    onProgress("Warning: intent pathway had an issue, continuing...",62);
+  }
 
   // ── Step 7: AEO Channel verification via REAL web crawling ──
   onProgress("Verifying AEO channels via web search...",65);
+  let chData={channels:[]};
+  try{
   let realChannels=null;
   try{realChannels=await verifyChannels(brand, cd.website, industry, region);}catch(e){console.error("Channel verify failed:",e);}
 
-  let chData={channels:[]};
   if(realChannels&&realChannels.channels&&realChannels.channels.length>0){
     chData.channels=realChannels.channels;
     onProgress("Checking podcast & academic presence...",70);
@@ -926,9 +992,15 @@ Determine channel presence. Return JSON:
     const chRaw=await callGemini(channelPrompt, engineSystemPrompt);
     chData=safeJSON(chRaw)||{channels:[]};
   }
+  }catch(stepError){
+    console.error("Channel verification failed:",stepError.message);
+    onProgress("Warning: channel verification had an issue, continuing...",68);
+  }
 
   // ── Step 8: Content recommendations — BOTH engines, using ALL audit data ──
   onProgress("Building content recommendations from both engines...",78);
+  let contentData={contentTypes:[]};
+  try{
   const critCats=(mergedPainPoints||[]).filter(p=>p.severity==="critical").map(p=>`${p.label} (${p.score}%)`).join(", ");
   const warnCats=(mergedPainPoints||[]).filter(p=>p.severity==="warning").map(p=>`${p.label} (${p.score}%)`).join(", ");
   const chGaps=(chData.channels||[]).filter(c=>c.status==="Not Present"||c.status==="Needs Work").map(c=>c.channel).join(", ");
@@ -971,10 +1043,16 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
   (contentGem.contentTypes||[]).forEach(gc=>{
     if(!allContentTypes.find(c=>c.type&&gc.type&&c.type.toLowerCase()===gc.type.toLowerCase()))allContentTypes.push(gc);
   });
-  const contentData={contentTypes:allContentTypes.slice(0,10)};
+  contentData={contentTypes:allContentTypes.slice(0,10)};
+  }catch(stepError){
+    console.error("Content recommendations failed:",stepError.message);
+    onProgress("Warning: content recommendations had an issue, continuing...",82);
+  }
 
   // ── Step 9: 90-Day Roadmap — using ALL previous data ──
   onProgress("Creating 90-day roadmap from audit data...",88);
+  let roadData=null;
+  try{
   const overallScore=Math.round(((gptData.score||0)+(gemData.score||0))/2);
   const criticalCats=(mergedPainPoints||[]).filter(p=>p.severity==="critical").map(p=>p.label).join(", ");
   const weakCats=(mergedPainPoints||[]).filter(p=>p.severity==="warning").map(p=>p.label).join(", ");
@@ -1030,7 +1108,11 @@ Return JSON:
 
 Each department: 3-5 specific tasks that directly address the audit findings above. Reference actual issues found. All tasks must be tailored to the ${region} market — include regional content creation, local partnerships, and ${region}-specific PR outreach. Respond in English only.`;
   const roadRaw=await callOpenAI(roadmapPrompt, engineSystemPrompt);
-  const roadData=safeJSON(roadRaw)||null;
+  roadData=safeJSON(roadRaw)||null;
+  }catch(stepError){
+    console.error("Roadmap generation failed:",stepError.message);
+    onProgress("Warning: roadmap generation had an issue, continuing...",92);
+  }
 
   onProgress("Compiling final report...",95);
 
@@ -1055,6 +1137,16 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
     compVisibilityData: compScoresMap,
     searchQueries: searchQueries
   };
+ }catch(fatalError){
+    console.error("Audit failed:",fatalError);
+    onProgress("Audit failed: "+(fatalError.message||"Unknown error"),-1);
+    return{
+      error:true,
+      errorMessage:fatalError.message||"The audit encountered an unexpected error. Please try again.",
+      engineData:{engines:[{id:"chatgpt",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"gemini",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}],painPoints:[]},
+      competitorData:{competitors:[]},archData:[],intentData:null,channelData:{channels:[]},contentGridData:[],roadmapData:null,contentData:[],sentimentData:{brand:{gpt:50,gemini:50,avg:50,summary:"Audit failed"},competitors:[]},brandCrawlData:null,compCrawlData:{},compVisibilityData:{},searchQueries:[]
+    };
+  }
 }
 
 
@@ -1817,6 +1909,11 @@ function DashboardPage({r,history,goTo}){
       <div style={{fontSize:13,color:C.muted,marginTop:2}}>GEO Dashboard for {r.clientData.brand}</div>
     </div>
 
+    {r._auditError&&<div style={{padding:"16px 20px",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:12,marginBottom:24,display:"flex",alignItems:"center",gap:12}}>
+      <span style={{fontSize:18}}>&#9888;</span>
+      <div><div style={{fontSize:13,fontWeight:500,color:"#991b1b"}}>Audit completed with errors</div><div style={{fontSize:12,color:"#b91c1c",marginTop:2}}>{r._auditError} Some sections may show limited data.</div></div>
+    </div>}
+
     {/* ═══ SECTION 1: SYSTEM DIAGNOSTICS ═══ */}
 
     {/* 1a. Section header */}
@@ -2234,6 +2331,7 @@ function DashboardPage({r,history,goTo}){
 function ArchetypesPage({r,goTo}){
   const[selGroup,setSelGroup]=useState(0);
   const[selArch,setSelArch]=useState(null);
+  if(!r.stakeholders||r.stakeholders.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>User Archetypes</h2></div><div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>Data unavailable for this section. Try running a new audit.</div></div>);
   return(<div>
     <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>User Archetypes</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Who is searching — grouped by stakeholder type</p></div>
     <SectionNote text="Select a stakeholder group to see customer segments within it. 'Visibility' shows how often AI engines mention your brand for this segment's queries."/>
@@ -2521,6 +2619,7 @@ function PlaybookPage({r,goTo}){
 /* ─── PAGE: AEO CHANNELS (Step 06 with drill-down) ─── */
 function ChannelsPage({r,goTo}){
   const[expandCh,setExpandCh]=useState(null);
+  if(!r.aeoChannels||r.aeoChannels.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>AEO Channels</h2></div><div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>Data unavailable for this section. Try running a new audit.</div></div>);
   const hasAnyFindings=r.aeoChannels.some(ch=>ch.finding);
   return(<div>
     <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>AEO Channels</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Channels ranked by impact on AI engine visibility {hasAnyFindings&&<span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>✓ Verified via Web Search</span>}</p></div>
@@ -2557,6 +2656,7 @@ function ChannelsPage({r,goTo}){
 
 /* ─── PAGE: CONTENT GRID (Step 07) ─── */
 function GridPage({r,goTo}){
+  if(!r.contentTypes||r.contentTypes.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Grid</h2></div><div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>Data unavailable for this section. Try running a new audit.</div></div>);
   return(<div>
     <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content-Channel Grid</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Personalised content strategy based on {r.clientData.brand}'s audit findings.</p></div>
     <SectionNote text={`This content grid is tailored to ${r.clientData.brand}'s specific AEO gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
@@ -2580,6 +2680,7 @@ function GridPage({r,goTo}){
 
 /* ─── PAGE: 90-DAY ROADMAP (Step 08 with premium PDF) ─── */
 function RoadmapPage({r}){
+  if(!r.roadmap||!r.roadmap.day30)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>90-Day Roadmap</h2></div><div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>Data unavailable for this section. Try running a new audit.</div></div>);
   const phases=[r.roadmap.day30,r.roadmap.day60,r.roadmap.day90];
 
   const handleExport=()=>{
@@ -3135,6 +3236,12 @@ export default function App(){
   </>);
 
   const run=async(apiData)=>{
+    if(apiData&&apiData.error){
+      // Fatal error — still generate with whatever partial data we have
+      const r=generateAll(data, apiData);
+      r._auditError=apiData.errorMessage||"The audit encountered an error.";
+      setResults(r);setStep("dashboard");return;
+    }
     const r=generateAll(data, apiData);setResults(r);
     const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
     setHistory(prev=>[...prev,entry]);
