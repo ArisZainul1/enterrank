@@ -2273,7 +2273,7 @@ function DashboardPage({r,history,goTo}){
       <div style={{fontSize:13,color:C.muted,marginBottom:16}}>Track {r.clientData.brand}'s AI visibility over time</div>
 
       {(()=>{
-        const chartData=(history||[]).map(h=>({
+        const chartData=(history||[]).filter(h=>h.overall!=null&&h.overall>0).map(h=>({
           date:(typeof h.date==="string"?h.date:new Date(h.date).toLocaleDateString("en-GB",{day:"numeric",month:"short"})).replace(/\s\d{4}$/,""),
           fullDate:typeof h.date==="string"?h.date:new Date(h.date).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}),
           overall:h.overall||0,
@@ -2632,10 +2632,12 @@ function IntentPage({r,goTo}){
   const gemQueries=r.engines[1]?.queries||[];
   const allSearchQueries=r.searchQueries||gptQueries.map(q=>q.query);
 
-  const normalizeStatus=(s)=>(s==="Cited"||s==="Mentioned"||s==="Absent")?s:"Absent";
+  const normalizeStatus=(s)=>{if(!s)return"Absent";const l=s.trim().toLowerCase();if(l==="cited")return"Cited";if(l==="mentioned")return"Mentioned";return"Absent";};
   const combinedQueries=allSearchQueries.map((query,i)=>{
     const qText=typeof query==="string"?query:query.query;
-    return{query:qText,gptStatus:normalizeStatus(gptQueries[i]?.status),gemStatus:normalizeStatus(gemQueries[i]?.status)};
+    const gptMatch=gptQueries.find(q=>q.query===qText)||gptQueries[i];
+    const gemMatch=gemQueries.find(q=>q.query===qText)||gemQueries[i];
+    return{query:qText,gptStatus:normalizeStatus(gptMatch?.status),gemStatus:normalizeStatus(gemMatch?.status)};
   });
 
   // Status badge helper
@@ -3659,21 +3661,17 @@ async function sbSaveProject(projectData) {
   }
 }
 
-async function sbSaveAudit(projectId, results) {
+async function sbSaveAudit(projectId, apiData, computedScores) {
   const { data, error } = await supabase
     .from('audits')
     .insert({
       project_id: projectId,
       user_id: 'default',
-      results: results,
-      overall_score: results.overall || null,
-      mention_rate: results.gptData?.mentionRate != null && results.gemData?.mentionRate != null
-        ? Math.round((results.gptData.mentionRate + results.gemData.mentionRate) / 2)
-        : null,
-      citation_rate: results.gptData?.citationRate != null && results.gemData?.citationRate != null
-        ? Math.round((results.gptData.citationRate + results.gemData.citationRate) / 2)
-        : null,
-      sentiment_score: results.sentimentData?.brand?.avg || null
+      results: apiData,
+      overall_score: computedScores?.overall || null,
+      mention_rate: computedScores?.mentions || null,
+      citation_rate: computedScores?.citations || null,
+      sentiment_score: computedScores?.sentiment || null
     })
     .select()
     .single();
@@ -4198,7 +4196,7 @@ export default function App(){
         topics:data.topics
       });
       if(project){
-        await sbSaveAudit(project.id,apiData);
+        await sbSaveAudit(project.id,apiData,{overall:entry.overall,mentions:entry.mentions,citations:entry.citations,sentiment:entry.sentimentAvg});
         console.log('Audit saved to Supabase:',project.id);
         setActiveProject({...project,_supabase:true});
       }
