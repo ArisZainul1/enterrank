@@ -1510,6 +1510,7 @@ const NAV_ITEMS=[
     {id:"playbook",label:"Brand Playbook",icon:"book"},
     {id:"channels",label:"AEO Channels",icon:"broadcast"},
     {id:"grid",label:"Content Grid",icon:"edit"},
+    {id:"contenthub",label:"Content Hub",icon:"filetext"},
     {id:"roadmap",label:"90-Day Roadmap",icon:"calendar"},
   ]},
 ];
@@ -1524,7 +1525,8 @@ const SidebarIcon=({name,size=18,color="#9ca3af"})=>{
     edit:<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke={color} strokeWidth="1.5" fill="none"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke={color} strokeWidth="1.5" fill="none"/></>,
     calendar:<><rect x="3" y="4" width="18" height="18" rx="2" stroke={color} strokeWidth="1.5" fill="none"/><line x1="16" y1="2" x2="16" y2="6" stroke={color} strokeWidth="1.5"/><line x1="8" y1="2" x2="8" y2="6" stroke={color} strokeWidth="1.5"/><line x1="3" y1="10" x2="21" y2="10" stroke={color} strokeWidth="1.5"/></>,
     book:<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke={color} strokeWidth="1.5" fill="none"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke={color} strokeWidth="1.5" fill="none"/></>,
-    activity:<><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>};
+    activity:<><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>,
+    filetext:<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke={color} strokeWidth="1.5" fill="none"/><polyline points="14 2 14 8 20 8" stroke={color} strokeWidth="1.5" fill="none"/><line x1="16" y1="13" x2="8" y2="13" stroke={color} strokeWidth="1.5"/><line x1="16" y1="17" x2="8" y2="17" stroke={color} strokeWidth="1.5"/><line x1="10" y1="9" x2="8" y2="9" stroke={color} strokeWidth="1.5"/></>};
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none">{p[name]||null}</svg>;
 };
 
@@ -3143,6 +3145,348 @@ function ChannelsPage({r,goTo}){
   </div>);
 }
 
+/* ─── PAGE: CONTENT HUB ─── */
+function ContentHubPage({r,goTo,activeProject}){
+  const TABS=[{id:"suggested",label:"Suggested",icon:"💡"},{id:"create",label:"Create",icon:"✍️"},{id:"library",label:"Library",icon:"📚"}];
+  const[activeTab,setActiveTab]=useState("suggested");
+  const[contentLibrary,setContentLibrary]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[generating,setGenerating]=useState(false);
+  const[editingContent,setEditingContent]=useState(null);
+  const[filterType,setFilterType]=useState("all");
+  const[filterStatus,setFilterStatus]=useState("all");
+  const[playbook,setPlaybook]=useState(null);
+  // Create tab state
+  const[selectedType,setSelectedType]=useState("blog");
+  const[createTopic,setCreateTopic]=useState("");
+  const[createChannel,setCreateChannel]=useState("");
+  // Library tab state
+  const[editText,setEditText]=useState("");
+  const[editTitle,setEditTitle]=useState("");
+  const[libSaving,setLibSaving]=useState(false);
+  const[copied,setCopied]=useState(false);
+
+  const projectId=activeProject?.id||null;
+
+  React.useEffect(()=>{
+    if(!projectId){setLoading(false);return;}
+    Promise.all([sbLoadContent(projectId),sbLoadPlaybook(projectId)]).then(([content,pb])=>{
+      setContentLibrary(content||[]);
+      setPlaybook(pb);
+      setLoading(false);
+    });
+  },[projectId]);
+
+  React.useEffect(()=>{
+    if(editingContent){setEditText(editingContent.content||"");setEditTitle(editingContent.title||"");}
+  },[editingContent?.id]);
+
+  const contentTypes=[
+    {id:"blog",label:"Blog Article",icon:"📝",desc:"Long-form SEO-optimized article (800-1500 words)"},
+    {id:"faq",label:"FAQ Page",icon:"❓",desc:"Schema-optimized Q&A content (8-12 questions)"},
+    {id:"social",label:"Social Post",icon:"📱",desc:"Platform-specific social media content"},
+    {id:"email",label:"Email Newsletter",icon:"📧",desc:"Email content with subject line and CTA"},
+    {id:"video",label:"Video Script",icon:"🎬",desc:"Script with scenes, narration, and visual notes"},
+    {id:"landing",label:"Landing Page",icon:"🖥",desc:"Hero copy, benefits, and conversion-focused content"},
+    {id:"schema",label:"Schema Markup",icon:"🔧",desc:"JSON-LD structured data snippets for AEO"}
+  ];
+
+  function buildBrandContext(){
+    const voice=playbook?.brand_voice||{};
+    const tags=playbook?.taglines||{};
+    const comp=playbook?.compliance||{};
+    const products=playbook?.products||[];
+    let ctx="";
+    if(voice.tone)ctx+=`Brand tone: ${voice.tone}. `;
+    if(voice.personality)ctx+=`Brand personality: ${voice.personality}. `;
+    if(voice.dos?.length)ctx+=`Always: ${voice.dos.join(", ")}. `;
+    if(voice.donts?.length)ctx+=`Never: ${voice.donts.join(", ")}. `;
+    if(voice.examples?.length)ctx+=`Example phrases: "${voice.examples.join('", "')}". `;
+    if(tags.primary)ctx+=`Primary tagline: "${tags.primary}". `;
+    if(comp.restrictions?.length)ctx+=`COMPLIANCE RESTRICTIONS (must follow): ${comp.restrictions.join("; ")}. `;
+    if(comp.notes)ctx+=`Compliance notes: ${comp.notes}. `;
+    if(products.length)ctx+=`Products: ${products.map(p=>`${p.name}${p.description?" - "+p.description:""}`).join("; ")}. `;
+    return ctx||"No brand playbook data available — use professional, neutral tone.";
+  }
+
+  async function generateContent(type,topic,channel,sourceQuery,sourceRoadmapItem){
+    setGenerating(true);
+    const brand=r?.clientData?.brand||"";
+    const region=r?.clientData?.region||"";
+    const industry=r?.clientData?.industry||"";
+    const brandContext=buildBrandContext();
+
+    const typePrompts={
+      blog:`Write a comprehensive, SEO-optimized blog article (800-1500 words) about: "${topic}"\n\nStructure it with:\n- An engaging headline (H1)\n- An intro paragraph that hooks the reader\n- 3-5 subheadings (H2) with detailed paragraphs under each\n- Practical tips, data points, or examples where relevant\n- A conclusion with a clear next step or CTA\n- Meta description (150 chars)\n\nOptimize for AEO/GEO: include natural question-and-answer patterns within the text, use clear factual statements that AI engines can extract, and structure information in a way that's easy for AI to cite.`,
+      faq:`Create a schema-optimized FAQ page with 8-12 questions and answers about: "${topic}"\n\nEach Q&A should:\n- Use natural language questions people actually search for\n- Provide comprehensive, authoritative answers (3-5 sentences each)\n- Include specific details, numbers, or examples where relevant\n- Be structured so AI engines can easily extract and cite individual answers\n\nAlso provide the JSON-LD FAQPage schema markup at the end.`,
+      social:`Create a social media post for ${channel||"LinkedIn"} about: "${topic}"\n\nInclude:\n- The post text (optimized for the platform's algorithm and character limits)\n- 3-5 relevant hashtags\n- A suggested image description\n- A call to action\n\nPlatform guidelines:\n- LinkedIn: professional, thought-leadership, 1300 chars max, use line breaks\n- Twitter/X: concise, punchy, 280 chars, conversational\n- Facebook: storytelling, community-focused, medium length\n- Instagram: visual-first, lifestyle-oriented, include emoji, 2200 chars max\n- TikTok: trend-aware, casual, hook in first line`,
+      email:`Write an email newsletter about: "${topic}"\n\nInclude:\n- Subject line (50 chars max, high open rate optimized)\n- Preview text (90 chars)\n- Email body with:\n  - Opening hook\n  - Main content (3-4 short paragraphs)\n  - Key takeaway or insight\n  - Clear CTA button text\n- P.S. line (optional but effective)`,
+      video:`Write a video script about: "${topic}"\n\nStructure:\n- Hook (first 3 seconds — attention grabber)\n- Introduction (who this is for and what they'll learn)\n- Main content (3-5 key points with talking points for each)\n- For each section include: [VISUAL] notes for what to show on screen\n- Call to action (what to do next)\n- Estimated duration: 2-4 minutes\n\nFormat each section clearly with timestamps and visual/narration separation.`,
+      landing:`Write landing page copy about: "${topic}"\n\nInclude these sections:\n- Hero headline + subheadline\n- Hero CTA button text\n- 3 key benefit blocks (icon suggestion + headline + 2-sentence description each)\n- Social proof section (suggested testimonial format)\n- Feature comparison or "How it works" (3 steps)\n- FAQ section (4-5 questions)\n- Final CTA section with headline + button text\n\nMake it conversion-focused. Every section should move the reader toward the CTA.`,
+      schema:`Generate JSON-LD structured data markup for: "${topic}"\n\nProvide these schema types (whichever are relevant):\n- Organization schema\n- Product schema (if product-related)\n- FAQPage schema\n- Article schema\n- BreadcrumbList schema\n- HowTo schema (if process-related)\n\nEach schema should be complete, valid JSON-LD that can be directly pasted into a webpage <script> tag. Include all required and recommended properties.`
+    };
+
+    const systemPrompt=`You are an expert AEO/GEO content strategist. You create content specifically optimized to be cited and recommended by AI search engines (ChatGPT, Gemini, Perplexity, etc).\n\nBRAND CONTEXT:\nBrand: ${brand}\nIndustry: ${industry}\nRegion: ${region}\n${brandContext}\n\nAEO OPTIMIZATION RULES:\n- Use clear, factual, authoritative language that AI engines prefer to cite\n- Include natural question-and-answer patterns\n- Structure content with clear headings and logical flow\n- Include specific details, statistics, and examples\n- Write in a way that answers user queries directly and comprehensively\n- Avoid fluff, filler, and vague statements\n- Make statements that are quotable and extractable by AI\n\nIMPORTANT: All content must be in English. Follow all compliance restrictions listed above. Never violate brand guidelines.`;
+
+    const userPrompt=typePrompts[type]||`Create ${type} content about: "${topic}"`;
+
+    try{
+      const result=await callOpenAI(userPrompt,systemPrompt);
+      const title=topic.length>60?topic.substring(0,57)+"...":topic;
+      const newContent={type,title,content:result,channel:channel||null,source_query:sourceQuery||null,source_roadmap_item:sourceRoadmapItem||null,status:"draft"};
+      if(projectId){
+        const saved=await sbSaveContent(projectId,newContent);
+        if(saved){setContentLibrary(prev=>[saved,...prev]);setEditingContent(saved);setActiveTab("library");}
+        setGenerating(false);
+        return saved;
+      }else{
+        const local={...newContent,id:"local_"+Date.now(),created_at:new Date().toISOString()};
+        setContentLibrary(prev=>[local,...prev]);setEditingContent(local);setActiveTab("library");
+        setGenerating(false);
+        return local;
+      }
+    }catch(e){
+      console.error("Content generation failed:",e);
+      setGenerating(false);
+      return null;
+    }
+  }
+
+  /* ── Suggested Tab ── */
+  const renderSuggested=()=>{
+    const suggestions=[];
+    const gptQueries=r?.gptData?.queries||[];
+    const gemQueries=r?.gemData?.queries||[];
+    const searchQueries=r?.searchQueries||[];
+
+    searchQueries.forEach((q,i)=>{
+      const qText=typeof q==="string"?q:q.query||q;
+      const gptStatus=gptQueries[i]?.status||"Absent";
+      const gemStatus=gemQueries[i]?.status||"Absent";
+      if(gptStatus==="Absent"&&gemStatus==="Absent"){
+        suggestions.push({type:"blog",topic:qText,reason:"Your brand is absent on both ChatGPT and Gemini for this query",priority:"high",source_query:qText});
+      }else if(gptStatus==="Absent"||gemStatus==="Absent"){
+        suggestions.push({type:"faq",topic:qText,reason:`Your brand is absent on ${gptStatus==="Absent"?"ChatGPT":"Gemini"} for this query`,priority:"medium",source_query:qText});
+      }
+    });
+
+    const contentGrid=r?.contentTypes||[];
+    contentGrid.slice(0,5).forEach(item=>{
+      const topic=item.type||item.topic||item.title||"";
+      const channel=(item.channels?item.channels[0]:"").toLowerCase();
+      let type="blog";
+      if(channel.includes("social")||channel.includes("linkedin")||channel.includes("twitter")||channel.includes("instagram")||channel.includes("facebook")||channel.includes("tiktok"))type="social";
+      else if(channel.includes("email")||channel.includes("newsletter"))type="email";
+      else if(channel.includes("video")||channel.includes("youtube"))type="video";
+      else if(channel.includes("faq"))type="faq";
+      if(topic&&!suggestions.find(s=>s.topic===topic)){
+        suggestions.push({type,topic,reason:`Recommended in your Content Grid — ${item.channels?item.channels.join(", "):"multi-channel"}`,priority:item.p==="P0"?"high":"medium",channel:item.channels?item.channels[0]:null});
+      }
+    });
+
+    const roadmap=r?.roadmap||[];
+    roadmap.forEach(phase=>{
+      const tasks=phase.tasks||phase.items||phase.actions||[];
+      tasks.slice(0,3).forEach(task=>{
+        const taskText=typeof task==="string"?task:task.task||task.title||task.description||"";
+        if(taskText&&taskText.length>20&&!suggestions.find(s=>s.topic===taskText)){
+          suggestions.push({type:"blog",topic:taskText,reason:`From your 90-Day Roadmap — ${phase.phase||phase.title||""}`,priority:"medium",source_roadmap_item:taskText});
+        }
+      });
+    });
+
+    suggestions.sort((a,b)=>(a.priority==="high"?0:1)-(b.priority==="high"?0:1));
+
+    const priorityColors={high:{bg:"#fee2e2",text:"#991b1b",label:"High Priority"},medium:{bg:"#fef3c7",text:"#92400e",label:"Medium"},low:{bg:"#f0fdf4",text:"#166534",label:"Low"}};
+
+    if(suggestions.length===0)return(<div style={{padding:40,textAlign:"center"}}><div style={{fontSize:32,marginBottom:8}}>✨</div><div style={{fontSize:14,fontWeight:500,color:C.text}}>No suggestions yet</div><div style={{fontSize:12,color:C.muted,marginTop:4}}>Run an audit first to get content recommendations based on your visibility gaps.</div></div>);
+
+    return(<div>
+      <div style={{fontSize:12,color:C.muted,marginBottom:16}}>{suggestions.length} content suggestions based on your audit data</div>
+      {suggestions.slice(0,15).map((s,i)=>{
+        const typeInfo=contentTypes.find(ct=>ct.id===s.type)||contentTypes[0];
+        const pColor=priorityColors[s.priority]||priorityColors.medium;
+        return(<div key={i} style={{padding:"16px 20px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,marginBottom:10,display:"flex",alignItems:"flex-start",gap:14}}>
+          <span style={{fontSize:22}}>{typeInfo.icon}</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:500,color:C.text,lineHeight:1.4}}>{s.topic}</div>
+            <div style={{fontSize:11,color:C.muted,marginTop:4}}>{s.reason}</div>
+            <div style={{display:"flex",gap:6,marginTop:8}}>
+              <span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:pColor.bg,color:pColor.text,fontWeight:500}}>{pColor.label}</span>
+              <span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:"#f1f5f9",color:C.muted}}>{typeInfo.label}</span>
+            </div>
+          </div>
+          <button onClick={()=>generateContent(s.type,s.topic,s.channel,s.source_query,s.source_roadmap_item)} disabled={generating} style={{padding:"8px 16px",fontSize:11,fontWeight:500,background:generating?"#e5e7eb":C.accent,color:generating?"#999":"#fff",border:"none",borderRadius:8,cursor:generating?"default":"pointer",whiteSpace:"nowrap",fontFamily:"'Outfit'"}}>{generating?"Generating...":"Generate"}</button>
+        </div>);
+      })}
+    </div>);
+  };
+
+  /* ── Create Tab ── */
+  const renderCreate=()=>{
+    const topic=createTopic;
+    const setTopic=setCreateTopic;
+    const channel=createChannel;
+    const setChannel=setCreateChannel;
+    const socialChannels=["LinkedIn","Twitter/X","Facebook","Instagram","TikTok"];
+    const selectedTypeInfo=contentTypes.find(ct=>ct.id===selectedType);
+
+    return(<div>
+      <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".05em",marginBottom:12}}>Content Type</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8,marginBottom:24}}>
+        {contentTypes.map(ct=>(<button key={ct.id} onClick={()=>setSelectedType(ct.id)} style={{padding:"14px 12px",background:selectedType===ct.id?`${C.accent}10`:C.surface,border:selectedType===ct.id?`2px solid ${C.accent}`:`1px solid ${C.border}`,borderRadius:10,cursor:"pointer",textAlign:"left"}}>
+          <div style={{fontSize:18,marginBottom:4}}>{ct.icon}</div>
+          <div style={{fontSize:12,fontWeight:500,color:selectedType===ct.id?C.accent:C.text}}>{ct.label}</div>
+          <div style={{fontSize:10,color:C.muted,marginTop:2}}>{ct.desc}</div>
+        </button>))}
+      </div>
+
+      {selectedType==="social"&&<div style={{marginBottom:20}}>
+        <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".05em",marginBottom:8}}>Platform</div>
+        <div style={{display:"flex",gap:6}}>
+          {socialChannels.map(ch=>(<button key={ch} onClick={()=>setChannel(ch)} style={{padding:"6px 14px",fontSize:12,background:channel===ch?C.accent:"transparent",color:channel===ch?"#fff":C.muted,border:channel===ch?"none":`1px solid ${C.border}`,borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>{ch}</button>))}
+        </div>
+      </div>}
+
+      <div style={{marginBottom:20}}>
+        <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".05em",marginBottom:8}}>Topic or Brief</div>
+        <textarea value={topic} onChange={e=>setTopic(e.target.value)} placeholder={`What should this ${selectedTypeInfo?.label||"content"} be about? Be specific — the more detail you provide, the better the output.`} style={{width:"100%",minHeight:100,padding:"12px 14px",fontSize:13,border:`1px solid ${C.border}`,borderRadius:10,outline:"none",resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",color:C.text,background:C.bg}}/>
+      </div>
+
+      <button onClick={()=>{if(topic.trim())generateContent(selectedType,topic.trim(),channel||null);}} disabled={!topic.trim()||generating} style={{padding:"12px 28px",fontSize:13,fontWeight:500,background:topic.trim()&&!generating?C.accent:"#e5e7eb",color:topic.trim()&&!generating?"#fff":"#999",border:"none",borderRadius:10,cursor:topic.trim()&&!generating?"pointer":"default",display:"flex",alignItems:"center",gap:8,fontFamily:"'Outfit'"}}>
+        {generating?(<><div style={{width:14,height:14,border:"2px solid #fff",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>Generating {selectedTypeInfo?.label}...</>):(<>✨ Generate {selectedTypeInfo?.label}</>)}
+      </button>
+
+      <div style={{marginTop:20,padding:"12px 16px",background:C.bg,borderRadius:8,fontSize:11,color:C.muted}}>
+        {playbook?.brand_voice?.tone?(<>✓ Brand Playbook connected — content will use your brand voice, compliance rules, and product details.</>):(<>⚠ Brand Playbook is empty — content will use a neutral professional tone. <span onClick={()=>goTo("playbook")} style={{color:C.accent,cursor:"pointer"}}>Set up your Brand Playbook</span> for better results.</>)}
+      </div>
+    </div>);
+  };
+
+  /* ── Library Tab ── */
+  const renderLibrary=()=>{
+    const saving=libSaving;
+    const setSaving=setLibSaving;
+
+    const filtered=contentLibrary.filter(c=>{
+      if(filterType!=="all"&&c.type!==filterType)return false;
+      if(filterStatus!=="all"&&c.status!==filterStatus)return false;
+      return true;
+    });
+
+    const saveEdit=async()=>{
+      if(!editingContent)return;
+      setSaving(true);
+      const updated=await sbUpdateContent(editingContent.id,{title:editTitle,content:editText});
+      if(updated){setContentLibrary(prev=>prev.map(c=>c.id===updated.id?updated:c));setEditingContent(updated);}
+      setSaving(false);
+    };
+
+    const updateStatus=async(contentId,newStatus)=>{
+      const updated=await sbUpdateContent(contentId,{status:newStatus});
+      if(updated){setContentLibrary(prev=>prev.map(c=>c.id===updated.id?updated:c));if(editingContent?.id===contentId)setEditingContent(updated);}
+    };
+
+    const deleteContent=async(contentId)=>{
+      const ok=await sbDeleteContent(contentId);
+      if(ok){setContentLibrary(prev=>prev.filter(c=>c.id!==contentId));if(editingContent?.id===contentId)setEditingContent(null);}
+    };
+
+    const copyContent=()=>{
+      navigator.clipboard.writeText(editText).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);});
+    };
+
+    const statusColors={draft:{bg:"#f3f4f6",text:"#6b7280"},published:{bg:"#dcfce7",text:"#166534"}};
+
+    return(<div style={{display:"grid",gridTemplateColumns:editingContent?"300px 1fr":"1fr",gap:20}}>
+      <div>
+        <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+          <select value={filterType} onChange={e=>setFilterType(e.target.value)} style={{fontSize:11,padding:"4px 8px",border:`1px solid ${C.border}`,borderRadius:6,background:"#fff",color:C.text,fontFamily:"inherit"}}>
+            <option value="all">All types</option>
+            {contentTypes.map(ct=><option key={ct.id} value={ct.id}>{ct.label}</option>)}
+          </select>
+          <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} style={{fontSize:11,padding:"4px 8px",border:`1px solid ${C.border}`,borderRadius:6,background:"#fff",color:C.text,fontFamily:"inherit"}}>
+            <option value="all">All status</option>
+            <option value="draft">Drafts</option>
+            <option value="published">Published</option>
+          </select>
+        </div>
+
+        {filtered.length===0?(<div style={{padding:24,textAlign:"center",color:C.muted,fontSize:12}}>{contentLibrary.length===0?"No content generated yet. Use the Suggested or Create tab to get started.":"No content matches filters"}</div>):(
+          filtered.map(c=>{
+            const typeInfo=contentTypes.find(ct=>ct.id===c.type)||{icon:"📄",label:c.type};
+            const sColor=statusColors[c.status]||statusColors.draft;
+            const isActive=editingContent?.id===c.id;
+            return(<div key={c.id} onClick={()=>setEditingContent(c)} style={{padding:"12px 14px",background:isActive?`${C.accent}08`:C.surface,border:isActive?`1px solid ${C.accent}40`:`1px solid ${C.border}`,borderRadius:10,marginBottom:6,cursor:"pointer",transition:"all .1s"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:14}}>{typeInfo.icon}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:500,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.title||"Untitled"}</div>
+                  <div style={{fontSize:10,color:C.muted,marginTop:2}}>{new Date(c.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</div>
+                </div>
+                <span style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:sColor.bg,color:sColor.text,fontWeight:500}}>{c.status}</span>
+              </div>
+            </div>);
+          })
+        )}
+      </div>
+
+      {editingContent&&(<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:20,display:"flex",flexDirection:"column"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,gap:8}}>
+          <input value={editTitle} onChange={e=>setEditTitle(e.target.value)} style={{fontSize:16,fontWeight:500,border:"none",outline:"none",background:"transparent",flex:1,padding:0,color:C.text,fontFamily:"'Outfit'"}} placeholder="Content title..."/>
+          <div style={{display:"flex",gap:6,flexShrink:0}}>
+            <button onClick={copyContent} style={{padding:"5px 10px",fontSize:11,background:"#f1f5f9",border:"none",borderRadius:6,cursor:"pointer",color:C.text,fontFamily:"inherit"}}>{copied?"Copied!":"📋 Copy"}</button>
+            <button onClick={()=>updateStatus(editingContent.id,editingContent.status==="draft"?"published":"draft")} style={{padding:"5px 10px",fontSize:11,background:editingContent.status==="draft"?"#dcfce7":"#f3f4f6",color:editingContent.status==="draft"?"#166534":"#6b7280",border:"none",borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>{editingContent.status==="draft"?"✓ Publish":"↩ Draft"}</button>
+            <button onClick={()=>deleteContent(editingContent.id)} style={{padding:"5px 10px",fontSize:11,background:"#fee2e2",color:"#991b1b",border:"none",borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
+          </div>
+        </div>
+
+        <div style={{display:"flex",gap:12,marginBottom:12,fontSize:11,color:C.muted}}>
+          <span>{contentTypes.find(ct=>ct.id===editingContent.type)?.label||editingContent.type}</span>
+          {editingContent.channel&&<span>· {editingContent.channel}</span>}
+          <span>· {new Date(editingContent.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</span>
+          <span>· {(editText||"").split(/\s+/).filter(Boolean).length} words</span>
+        </div>
+
+        <textarea value={editText} onChange={e=>setEditText(e.target.value)} style={{flex:1,minHeight:400,padding:16,fontSize:13,lineHeight:1.7,border:`1px solid ${C.border}`,borderRadius:10,outline:"none",resize:"vertical",fontFamily:"Georgia, serif",boxSizing:"border-box",color:C.text,background:C.bg}}/>
+
+        <div style={{display:"flex",justifyContent:"flex-end",marginTop:12,gap:8}}>
+          <button onClick={saveEdit} disabled={saving} style={{padding:"8px 20px",fontSize:12,fontWeight:500,background:saving?"#e5e7eb":C.accent,color:saving?"#999":"#fff",border:"none",borderRadius:8,cursor:saving?"default":"pointer",fontFamily:"'Outfit'"}}>{saving?"Saving...":"Save Changes"}</button>
+        </div>
+      </div>)}
+    </div>);
+  };
+
+  if(!projectId)return(<div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Generate AEO-optimized content powered by your brand playbook and audit insights.</p></div>
+    <Card style={{textAlign:"center",padding:32}}>
+      <div style={{fontSize:20,marginBottom:8}}>📋</div>
+      <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>No project linked yet</div>
+      <div style={{fontSize:12,color:C.muted}}>Save an audit first to start generating content.</div>
+    </Card>
+  </div>);
+
+  if(loading)return(<div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2></div>
+    <div style={{textAlign:"center",padding:40,color:C.muted,fontSize:13}}>Loading content library...</div>
+  </div>);
+
+  return(<div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Generate AEO-optimized content powered by your brand playbook and audit insights.</p></div>
+
+    <div style={{display:"flex",gap:0,marginBottom:20,borderBottom:`1px solid ${C.border}`,overflowX:"auto"}}>
+      {TABS.map(tab=>(<button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{padding:"10px 16px",background:"transparent",border:"none",borderBottom:activeTab===tab.id?`2px solid ${C.accent}`:"2px solid transparent",color:activeTab===tab.id?C.accent:C.muted,fontSize:12,fontWeight:activeTab===tab.id?600:500,cursor:"pointer",fontFamily:"'Outfit'",whiteSpace:"nowrap",transition:"all .15s",display:"flex",alignItems:"center",gap:6}}>
+        <span>{tab.icon}</span>{tab.label}
+        {tab.id==="library"&&contentLibrary.length>0&&<span style={{fontSize:10,background:C.border,color:C.text,padding:"2px 6px",borderRadius:10}}>{contentLibrary.length}</span>}
+      </button>))}
+    </div>
+
+    {activeTab==="suggested"&&renderSuggested()}
+    {activeTab==="create"&&renderCreate()}
+    {activeTab==="library"&&renderLibrary()}
+  </div>);
+}
+
 /* ─── PAGE: CONTENT GRID (Step 07) ─── */
 function GridPage({r,goTo}){
   if(!r.contentTypes||r.contentTypes.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Grid</h2></div><div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>Data unavailable for this section. Try running a new audit.</div></div>);
@@ -3409,6 +3753,56 @@ async function sbDeleteAsset(assetId, storagePath) {
     .eq('id', assetId);
   if (error) { console.error('Error deleting asset record:', error); return false; }
   return true;
+}
+
+/* ─── SUPABASE: CONTENT HUB HELPERS ─── */
+async function sbLoadContent(projectId) {
+  const { data, error } = await supabase
+    .from('generated_content')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false });
+  if (error) console.error('Error loading content:', error);
+  return data || [];
+}
+
+async function sbSaveContent(projectId, content) {
+  const { data, error } = await supabase
+    .from('generated_content')
+    .insert({
+      project_id: projectId,
+      type: content.type,
+      title: content.title,
+      content: content.content,
+      channel: content.channel || null,
+      source_query: content.source_query || null,
+      source_roadmap_item: content.source_roadmap_item || null,
+      status: content.status || 'draft'
+    })
+    .select()
+    .single();
+  if (error) console.error('Error saving content:', error);
+  return data;
+}
+
+async function sbUpdateContent(contentId, updates) {
+  const { data, error } = await supabase
+    .from('generated_content')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', contentId)
+    .select()
+    .single();
+  if (error) console.error('Error updating content:', error);
+  return data;
+}
+
+async function sbDeleteContent(contentId) {
+  const { error } = await supabase
+    .from('generated_content')
+    .delete()
+    .eq('id', contentId);
+  if (error) console.error('Error deleting content:', error);
+  return !error;
 }
 
 /* ─── PROJECT HUB ─── */
@@ -3802,6 +4196,7 @@ export default function App(){
         {step==="playbook"&&results&&<PlaybookPage r={results} goTo={setStep} activeProject={activeProject}/>}
         {step==="channels"&&results&&<ChannelsPage r={results} goTo={setStep}/>}
         {step==="grid"&&results&&<GridPage r={results} goTo={setStep}/>}
+        {step==="contenthub"&&results&&<ContentHubPage r={results} goTo={setStep} activeProject={activeProject}/>}
         {step==="roadmap"&&results&&<RoadmapPage r={results}/>}
       </div>
     </div>
