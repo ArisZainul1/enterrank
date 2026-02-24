@@ -3199,13 +3199,13 @@ function ContentHubPage({r,goTo,activeProject}){
     let ctx="";
     if(voice.tone)ctx+=`Brand tone: ${voice.tone}. `;
     if(voice.personality)ctx+=`Brand personality: ${voice.personality}. `;
-    if(voice.dos?.length)ctx+=`Always: ${voice.dos.join(", ")}. `;
-    if(voice.donts?.length)ctx+=`Never: ${voice.donts.join(", ")}. `;
-    if(voice.examples?.length)ctx+=`Example phrases: "${voice.examples.join('", "')}". `;
+    if(voice.dos?.length)ctx+=`Always: ${(voice.dos||[]).join(", ")}. `;
+    if(voice.donts?.length)ctx+=`Never: ${(voice.donts||[]).join(", ")}. `;
+    if(voice.examples?.length)ctx+=`Example phrases: "${(voice.examples||[]).join('", "')}". `;
     if(tags.primary)ctx+=`Primary tagline: "${tags.primary}". `;
-    if(comp.restrictions?.length)ctx+=`COMPLIANCE RESTRICTIONS (must follow): ${comp.restrictions.join("; ")}. `;
+    if(comp.restrictions?.length)ctx+=`COMPLIANCE RESTRICTIONS (must follow): ${(comp.restrictions||[]).join("; ")}. `;
     if(comp.notes)ctx+=`Compliance notes: ${comp.notes}. `;
-    if(products.length)ctx+=`Products: ${products.map(p=>`${p.name}${p.description?" - "+p.description:""}`).join("; ")}. `;
+    if((products||[]).length)ctx+=`Products: ${(products||[]).map(p=>`${p.name}${p.description?" - "+p.description:""}`).join("; ")}. `;
     return ctx||"No brand playbook data available — use professional, neutral tone.";
   }
 
@@ -3255,12 +3255,13 @@ function ContentHubPage({r,goTo,activeProject}){
   /* ── Suggested Tab ── */
   const renderSuggested=()=>{
     const suggestions=[];
-    const gptQueries=r?.gptData?.queries||[];
-    const gemQueries=r?.gemData?.queries||[];
-    const searchQueries=r?.searchQueries||[];
+    const gptQueries=Array.isArray(r?.gptData?.queries)?r.gptData.queries:[];
+    const gemQueries=Array.isArray(r?.gemData?.queries)?r.gemData.queries:[];
+    const searchQueries=Array.isArray(r?.searchQueries)?r.searchQueries:[];
 
     searchQueries.forEach((q,i)=>{
-      const qText=typeof q==="string"?q:q.query||q;
+      const qText=typeof q==="string"?q:(q&&q.query)||"";
+      if(!qText)return;
       const gptStatus=gptQueries[i]?.status||"Absent";
       const gemStatus=gemQueries[i]?.status||"Absent";
       if(gptStatus==="Absent"&&gemStatus==="Absent"){
@@ -3270,25 +3271,26 @@ function ContentHubPage({r,goTo,activeProject}){
       }
     });
 
-    const contentGrid=r?.contentTypes||[];
-    contentGrid.slice(0,5).forEach(item=>{
+    const contentGrid=Array.isArray(r?.contentTypes)?r.contentTypes:[];
+    (contentGrid||[]).slice(0,5).forEach(item=>{
       const topic=item.type||item.topic||item.title||"";
-      const channel=(item.channels?item.channels[0]:"").toLowerCase();
+      const chArr=Array.isArray(item.channels)?item.channels:[];
+      const channel=(chArr[0]||"").toLowerCase();
       let type="blog";
       if(channel.includes("social")||channel.includes("linkedin")||channel.includes("twitter")||channel.includes("instagram")||channel.includes("facebook")||channel.includes("tiktok"))type="social";
       else if(channel.includes("email")||channel.includes("newsletter"))type="email";
       else if(channel.includes("video")||channel.includes("youtube"))type="video";
       else if(channel.includes("faq"))type="faq";
       if(topic&&!suggestions.find(s=>s.topic===topic)){
-        suggestions.push({type,topic,reason:`Recommended in your Content Grid — ${item.channels?item.channels.join(", "):"multi-channel"}`,priority:item.p==="P0"?"high":"medium",channel:item.channels?item.channels[0]:null});
+        suggestions.push({type,topic,reason:`Recommended in your Content Grid — ${chArr.length?chArr.join(", "):"multi-channel"}`,priority:item.p==="P0"?"high":"medium",channel:chArr[0]||null});
       }
     });
 
-    const roadmap=r?.roadmap||[];
-    roadmap.forEach(phase=>{
-      const tasks=phase.tasks||phase.items||phase.actions||[];
-      tasks.slice(0,3).forEach(task=>{
-        const taskText=typeof task==="string"?task:task.task||task.title||task.description||"";
+    const roadmap=Array.isArray(r?.roadmap)?r.roadmap:[];
+    (roadmap||[]).forEach(phase=>{
+      const tasks=Array.isArray(phase.tasks)?phase.tasks:Array.isArray(phase.items)?phase.items:Array.isArray(phase.actions)?phase.actions:[];
+      (tasks||[]).slice(0,3).forEach(task=>{
+        const taskText=typeof task==="string"?task:(task&&(task.task||task.title||task.description))||"";
         if(taskText&&taskText.length>20&&!suggestions.find(s=>s.topic===taskText)){
           suggestions.push({type:"blog",topic:taskText,reason:`From your 90-Day Roadmap — ${phase.phase||phase.title||""}`,priority:"medium",source_roadmap_item:taskText});
         }
@@ -3368,7 +3370,7 @@ function ContentHubPage({r,goTo,activeProject}){
     const saving=libSaving;
     const setSaving=setLibSaving;
 
-    const filtered=contentLibrary.filter(c=>{
+    const filtered=(contentLibrary||[]).filter(c=>{
       if(filterType!=="all"&&c.type!==filterType)return false;
       if(filterStatus!=="all"&&c.status!==filterStatus)return false;
       return true;
@@ -3672,7 +3674,7 @@ async function sbDeleteProject(projectId) {
 /* ─── SUPABASE: PLAYBOOK HELPERS ─── */
 async function sbLoadPlaybook(projectId) {
   const { data, error } = await supabase
-    .from('playbooks')
+    .from('brand_playbook')
     .select('*')
     .eq('project_id', projectId)
     .single();
@@ -3682,13 +3684,13 @@ async function sbLoadPlaybook(projectId) {
 
 async function sbSavePlaybook(projectId, section, value) {
   const { data: existing } = await supabase
-    .from('playbooks')
+    .from('brand_playbook')
     .select('id')
     .eq('project_id', projectId)
     .single();
   if (existing) {
     const { data, error } = await supabase
-      .from('playbooks')
+      .from('brand_playbook')
       .update({ [section]: value, updated_at: new Date().toISOString() })
       .eq('project_id', projectId)
       .select()
@@ -3697,7 +3699,7 @@ async function sbSavePlaybook(projectId, section, value) {
     return data;
   } else {
     const { data, error } = await supabase
-      .from('playbooks')
+      .from('brand_playbook')
       .insert({ project_id: projectId, [section]: value })
       .select()
       .single();
