@@ -787,7 +787,7 @@ Use the crawl data to give accurate scores. If a competitor has better schema ma
   }
 
   // ── Step 5: Pain points — BOTH engines + crawl data ──
-  onProgress("Scoring AEO categories across both engines...",40);
+  onProgress("Scoring categories across both engines...",40);
   const painCatLabels=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
   let mergedPainPoints=painCatLabels.map(l=>({label:l,score:0,severity:"critical"}));
   try{
@@ -825,7 +825,7 @@ Use severity: "critical" if <30, "warning" if 30-60, "good" if >60. Base scores 
   });
   }catch(stepError){
     console.error("Pain points analysis failed:",stepError.message);
-    onProgress("Warning: AEO category scoring had an issue, continuing...",42);
+    onProgress("Warning: Category scoring had an issue, continuing...",42);
   }
 
   // ── Step 6: User archetypes + journeys — OpenAI generates, Gemini verifies engine statuses ──
@@ -982,7 +982,7 @@ Rules:
   }
 
   // ── Step 7: AEO Channel verification via REAL web crawling ──
-  onProgress("Verifying AEO channels via web search...",65);
+  onProgress("Verifying channels via web search...",65);
   let chData={channels:[]};
   try{
   let realChannels=null;
@@ -1218,7 +1218,7 @@ function exportPDF(r){
 
   // ── COVER PAGE ──
   doc.setFillColor(...accent);doc.rect(0,0,W,50,"F");
-  doc.setFontSize(24);doc.setFont("helvetica","bold");doc.setTextColor(255,255,255);doc.text("AEO Audit Report",margin,25);
+  doc.setFontSize(24);doc.setFont("helvetica","bold");doc.setTextColor(255,255,255);doc.text("Audit Report",margin,25);
   doc.setFontSize(12);doc.setFont("helvetica","normal");doc.text(brand,margin,35);
   y=65;doc.setTextColor(...dark);doc.setFontSize(11);doc.setFont("helvetica","bold");doc.text(brand,margin,y);y+=8;
   doc.setFontSize(9);doc.setFont("helvetica","normal");doc.setTextColor(...muted);
@@ -1337,7 +1337,7 @@ function exportPDF(r){
   });
 
   // ── AEO CHANNELS ──
-  checkPage(30);sectionHeader("AEO Channels");
+  checkPage(30);sectionHeader("Target Channels");
   const chSorted=[...(r.aeoChannels||[])].sort((a,b)=>b.impact-a.impact);
   if(chSorted.length>0){
     doc.autoTable({startY:y,head:[["Channel","Impact","Status","Finding"]],
@@ -1400,10 +1400,10 @@ function exportPDF(r){
   const pageCount=doc.internal.getNumberOfPages();
   for(let i=1;i<=pageCount;i++){
     doc.setPage(i);doc.setFontSize(7);doc.setFont("helvetica","normal");doc.setTextColor(...muted);
-    doc.text("EnterRank AEO Audit Report \u2014 "+brand+" \u2014 "+date,margin,H-8);
+    doc.text("EnterRank Audit Report \u2014 "+brand+" \u2014 "+date,margin,H-8);
     doc.text("Page "+i+" of "+pageCount,W-margin,H-8,{align:"right"});
   }
-  doc.save(brand.replace(/\s+/g,"_")+"_AEO_Audit_"+new Date().toISOString().split("T")[0]+".pdf");
+  doc.save(brand.replace(/\s+/g,"_")+"_Audit_"+new Date().toISOString().split("T")[0]+".pdf");
 }
 
 function generateAll(cd, apiData){
@@ -1837,7 +1837,7 @@ Return JSON only:
 
   // All log messages grouped by phase
   const allLogs=React.useRef([
-    {at:0,msg:"Crawling "+data.website+" for AEO signals..."},
+    {at:0,msg:"Crawling "+data.website+" for optimization signals..."},
     {at:1,msg:"Extracting schema markup, meta tags, heading structure..."},
     {at:2,msg:"Checking for blog, FAQ, about, and product pages..."},
     {at:3,msg:"Crawling competitor websites for comparison data..."},
@@ -1877,7 +1877,7 @@ Return JSON only:
     {at:80,msg:`All 10 channels verified with real URLs...`},
     {at:82,msg:"Generating industry-specific site recommendations..."},
     {at:84,msg:"Building personalised content strategy from audit data..."},
-    {at:86,msg:"Matching content types to "+data.brand+"'s specific AEO gaps..."},
+    {at:86,msg:"Matching content types to "+data.brand+"'s specific gaps..."},
     {at:88,msg:"Creating personalised 90-day roadmap..."},
     {at:89,msg:"Tailoring tasks to "+data.brand+"'s crawl findings..."},
     {at:90,msg:"Mapping competitor advantages into action items..."},
@@ -1952,7 +1952,7 @@ Return JSON only:
       <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:30,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{progress}%</span></div>
     </div>
     {/* Title */}
-    <div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Running Full AEO Audit</div></div>
+    <div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Running Full Audit</div></div>
     {/* Scrolling techy text — single line that changes */}
     <div style={{height:20,overflow:"hidden",textAlign:"center"}}>
       {logLines.length>0&&<div key={logLines[logLines.length-1].t} style={{fontSize:12,color:C.accent,fontWeight:500,fontFamily:"'Outfit'",animation:"fadeInUp .3s ease-out"}}>{logLines[logLines.length-1].msg.replace(/^\[.*?\]\s*/,"")}</div>}
@@ -2035,7 +2035,7 @@ Return JSON only:
         <button onClick={()=>setAuditStep("input")} style={{padding:"8px 16px",background:"none",border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,color:C.sub,cursor:"pointer",fontFamily:"'Outfit'"}}>← Back to Details</button>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <span style={{fontSize:11,color:C.muted}}>{data.topics.length} topics</span>
-          <button onClick={go} disabled={!topicsOk} style={{padding:"10px 24px",background:topicsOk?C.accent:"#dde1e7",color:topicsOk?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:topicsOk?"pointer":"not-allowed",fontFamily:"'Outfit'"}}>Run AEO Audit →</button>
+          <button onClick={go} disabled={!topicsOk} style={{padding:"10px 24px",background:topicsOk?C.accent:"#dde1e7",color:topicsOk?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:topicsOk?"pointer":"not-allowed",fontFamily:"'Outfit'"}}>Run Audit →</button>
         </div>
       </div>
     </Card>
@@ -2044,7 +2044,7 @@ Return JSON only:
 
   /* ─── STEP 1: Client Details Input ─── */
   return(<div style={{maxWidth:620,margin:"0 auto"}}>
-    <div style={{marginBottom:24,textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>{data.brand?"Configure AEO Audit":"New AEO Audit"}</h2><p style={{color:C.sub,fontSize:13,marginTop:4}}>{data.brand?`${history.length>0?"Run another":"Set up"} audit for ${data.brand}.`:"Enter client details to begin."}</p></div>
+    <div style={{marginBottom:24,textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>{data.brand?"Configure Audit":"New Audit"}</h2><p style={{color:C.sub,fontSize:13,marginTop:4}}>{data.brand?`${history.length>0?"Run another":"Set up"} audit for ${data.brand}.`:"Enter client details to begin."}</p></div>
     {autoFilled&&(
       <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:`${C.accent}08`,border:`1px solid ${C.accent}20`,borderRadius:10,marginBottom:16,fontSize:12,color:C.accent}}>
         <span style={{fontSize:14}}>✦</span>
@@ -2151,7 +2151,7 @@ function DashboardPage({r,history,goTo}){
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:32}}>
       <div>
         <div style={{fontSize:22,fontWeight:600,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Hello, Aris</div>
-        <div style={{fontSize:13,color:C.muted,marginTop:2}}>GEO Dashboard for {r.clientData.brand}</div>
+        <div style={{fontSize:13,color:C.muted,marginTop:2}}>Dashboard for {r.clientData.brand}</div>
       </div>
       <button onClick={()=>exportPDF(r)} style={{padding:"8px 16px",fontSize:12,fontWeight:500,background:C.accent,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"'Outfit'",whiteSpace:"nowrap"}}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -2527,7 +2527,7 @@ function DashboardPage({r,history,goTo}){
                     </div>
                   </div>
 
-                  {/* Technical AEO Signals comparison */}
+                  {/* Technical Signals comparison */}
                   {(()=>{
                     const brandD=r.brandCrawl;
                     const compD=r.compCrawlData?.[comp.name]||null;
@@ -2535,7 +2535,7 @@ function DashboardPage({r,history,goTo}){
                     const weightColor={Critical:C.red,High:C.amber,Medium:C.accent,Low:C.muted};
                     return(
                       <div style={{marginTop:16,paddingTop:16,borderTop:`1px solid ${C.borderSoft}`}}>
-                        <div style={{fontSize:12,fontWeight:500,color:C.text,marginBottom:10}}>Technical AEO Signals</div>
+                        <div style={{fontSize:12,fontWeight:500,color:C.text,marginBottom:10}}>Technical Signals</div>
                         <div style={{display:"grid",gridTemplateColumns:"1fr 60px 60px",gap:"0",fontSize:11}}>
                           <div style={{fontWeight:500,color:C.muted,paddingBottom:6,borderBottom:`1px solid ${C.borderSoft}`}}>Signal</div>
                           <div style={{fontWeight:500,color:C.accent,textAlign:"center",paddingBottom:6,borderBottom:`1px solid ${C.borderSoft}`,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.clientData.brand}</div>
@@ -3085,8 +3085,8 @@ function PlaybookPage({r,goTo,activeProject}){
   };
 
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Playbook</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Your AEO brand hub — identity, assets, and AI-optimised guidelines</p></div>
-    <SectionNote text="This is your central brand hub for AEO. Define your brand voice, upload assets, and manage compliance. The guidelines below are tailored to how AI engines process and cite brand information."/>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Playbook</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Your brand hub — identity, voice, and AI-optimised guidelines</p></div>
+    <SectionNote text="This is your central brand hub. Define your brand voice, manage compliance, and set guidelines. Everything here powers your content generation and AI engine strategy."/>
 
     {/* Tab Bar */}
     <div style={{display:"flex",gap:0,marginBottom:16,borderBottom:`1px solid ${C.border}`,overflowX:"auto"}}>
@@ -3106,9 +3106,9 @@ function PlaybookPage({r,goTo,activeProject}){
     {/* Tab content */}
     {!loading&&projectId&&<div style={{marginBottom:16}}>{renderTab()}</div>}
 
-    {/* AEO Brand Guidelines - expandable (always shown when results available) */}
+    {/* Brand Guidelines - expandable (always shown when results available) */}
     <Card style={{marginBottom:16}}>
-      <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>AEO Brand Guidelines</h3>
+      <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Guidelines</h3>
       <p style={{fontSize:12,color:C.muted,margin:"0 0 14px"}}>{r.brandGuidelines.length} technical guidelines for maximising AI engine citation rate. Click to expand.</p>
       <div style={{display:"flex",flexDirection:"column",gap:6}}>
         {r.brandGuidelines.map((g,i)=>{const isOpen=expandG===i;return(<div key={i} style={{borderRadius:C.rs,border:`1px solid ${isOpen?`${C.accent}25`:C.border}`,overflow:"hidden",transition:"all .15s"}}>
@@ -3132,13 +3132,13 @@ function PlaybookPage({r,goTo,activeProject}){
   </div>);
 }
 
-/* ─── PAGE: AEO CHANNELS (Step 06 with drill-down) ─── */
+/* ─── PAGE: TARGET CHANNELS (Step 06 with drill-down) ─── */
 function ChannelsPage({r,goTo}){
   const[expandCh,setExpandCh]=useState(null);
-  if(!r.aeoChannels||r.aeoChannels.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>AEO Channels</h2></div><div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>Data unavailable for this section. Try running a new audit.</div></div>);
+  if(!r.aeoChannels||r.aeoChannels.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Target Channels</h2></div><div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>Data unavailable for this section. Try running a new audit.</div></div>);
   const hasAnyFindings=r.aeoChannels.some(ch=>ch.finding);
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>AEO Channels</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Channels ranked by impact on AI engine visibility {hasAnyFindings&&<span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>✓ Verified via Web Search</span>}</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Target Channels</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Channels ranked by impact on AI engine visibility {hasAnyFindings&&<span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>✓ Verified via Web Search</span>}</p></div>
     <SectionNote text="These channels directly influence whether AI engines cite your brand. Each channel has been verified through real web searches — URLs confirmed, not estimated. Channels with ▼ include specific sites to target."/>
     <Card>
       {r.aeoChannels.sort((a,b)=>b.impact-a.impact).map((ch,i)=>{const isOpen=expandCh===i;const hasSites=ch.sites&&ch.sites.length>0;const canExpand=hasSites||ch.finding;return(<div key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
@@ -3213,7 +3213,7 @@ function ContentHubPage({r,goTo,activeProject}){
     {id:"email",label:"Email Newsletter",icon:"📧",desc:"Email content with subject line and CTA"},
     {id:"video",label:"Video Script",icon:"🎬",desc:"Script with scenes, narration, and visual notes"},
     {id:"landing",label:"Landing Page",icon:"🖥",desc:"Hero copy, benefits, and conversion-focused content"},
-    {id:"schema",label:"Schema Markup",icon:"🔧",desc:"JSON-LD structured data snippets for AEO"}
+    {id:"schema",label:"Schema Markup",icon:"🔧",desc:"JSON-LD structured data snippets"}
   ];
 
   function buildBrandContext(){
@@ -3282,7 +3282,7 @@ function ContentHubPage({r,goTo,activeProject}){
     const ct=Array.isArray(r?.contentTypes)?r.contentTypes:[];
     if(ct.length===0)return(<div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>Content grid data unavailable. Try running a new audit.</div>);
     return(<div>
-      <SectionNote text={`This content grid is tailored to ${r.clientData?.brand||"your brand"}'s specific AEO gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
+      <SectionNote text={`This content grid is tailored to ${r.clientData?.brand||"your brand"}'s specific gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
       <Card style={{marginBottom:20,overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
         <thead><tr style={{borderBottom:`2px solid ${C.border}`}}>{["Content Type","Channels","Frequency","Priority","Owner"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:600,color:C.muted,fontSize:10,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
         <tbody>{[...ct].sort((a,b)=>{const po={"P0":0,"P1":1,"P2":2,"P3":3};return(po[a.p]??9)-(po[b.p]??9);}).map((item,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
@@ -3509,7 +3509,7 @@ function ContentHubPage({r,goTo,activeProject}){
   };
 
   if(!projectId)return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Generate AEO-optimized content powered by your brand playbook and audit insights.</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Generate content powered by your brand playbook and audit insights.</p></div>
     <Card style={{textAlign:"center",padding:32}}>
       <div style={{fontSize:20,marginBottom:8}}>📋</div>
       <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>No project linked yet</div>
@@ -3523,7 +3523,7 @@ function ContentHubPage({r,goTo,activeProject}){
   </div>);
 
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Generate AEO-optimized content powered by your brand playbook and audit insights.</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Generate content powered by your brand playbook and audit insights.</p></div>
 
     <div style={{display:"flex",gap:0,marginBottom:20,borderBottom:`1px solid ${C.border}`,overflowX:"auto"}}>
       {TABS.map(tab=>(<button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{padding:"10px 16px",background:"transparent",border:"none",borderBottom:activeTab===tab.id?`2px solid ${C.accent}`:"2px solid transparent",color:activeTab===tab.id?C.accent:C.muted,fontSize:12,fontWeight:activeTab===tab.id?600:500,cursor:"pointer",fontFamily:"'Outfit'",whiteSpace:"nowrap",transition:"all .15s",display:"flex",alignItems:"center",gap:6}}>
@@ -3544,7 +3544,7 @@ function GridPage({r,goTo}){
   if(!r.contentTypes||r.contentTypes.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Grid</h2></div><div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>Data unavailable for this section. Try running a new audit.</div></div>);
   return(<div>
     <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content-Channel Grid</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Personalised content strategy based on {r.clientData.brand}'s audit findings.</p></div>
-    <SectionNote text={`This content grid is tailored to ${r.clientData.brand}'s specific AEO gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
+    <SectionNote text={`This content grid is tailored to ${r.clientData.brand}'s specific gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
     <Card style={{marginBottom:20,overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
       <thead><tr style={{borderBottom:`2px solid ${C.border}`}}>{["Content Type","Channels","Frequency","Priority","Owner"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:600,color:C.muted,fontSize:10,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
       <tbody>{[...r.contentTypes].sort((a,b)=>{const po={"P0":0,"P1":1,"P2":2,"P3":3};return(po[a.p]??9)-(po[b.p]??9);}).map((ct,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
@@ -3600,7 +3600,7 @@ function RoadmapPage({r}){
 
     <Card style={{marginTop:20,background:`linear-gradient(135deg,${C.accent}08,${C.accent}03)`,border:`1px solid ${C.accent}20`,textAlign:"center"}}>
       <div style={{fontSize:17,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em",marginBottom:4}}>Ready to dominate AI search results?</div>
-      <p style={{fontSize:12,color:C.sub,maxWidth:460,margin:"0 auto 14px"}}>Let Entermind execute this strategy and guarantee measurable AEO improvements within 90 days.</p>
+      <p style={{fontSize:12,color:C.sub,maxWidth:460,margin:"0 auto 14px"}}>Let Entermind execute this strategy and guarantee measurable improvements within 90 days.</p>
       <button onClick={()=>exportPDF(r)} style={{padding:"11px 26px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>Export Full Report as PDF</button>
     </Card>
   </div>);
@@ -3970,7 +3970,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 4v14M4 11h14" stroke={C.muted} strokeWidth="2" strokeLinecap="round"/></svg>
           </div>
           <h3 style={{fontSize:16,fontWeight:500,color:C.text,margin:"0 0 6px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>No workspaces yet</h3>
-          <p style={{color:C.muted,fontSize:13,margin:"0 0 20px"}}>Create your first workspace to start tracking AEO visibility.</p>
+          <p style={{color:C.muted,fontSize:13,margin:"0 0 20px"}}>Create your first workspace to start tracking visibility.</p>
           <button onClick={onNew} style={{padding:"10px 22px",background:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>Create workspace</button>
         </div>:
         <div>
@@ -4165,7 +4165,7 @@ export default function App(){
         <div style={{fontSize:14,color:C.sub,textAlign:"center",marginBottom:24}}>Would you like to run another audit or view the existing dashboard?</div>
         <div style={{display:"flex",gap:12}}>
           <button onClick={()=>openProjectDashboard(projectPrompt.project,projectPrompt.lastAudit)} style={{flex:1,padding:"14px 20px",background:"#fff",border:`2px solid ${C.accent}`,borderRadius:12,fontSize:14,fontWeight:600,color:C.accent,cursor:"pointer",fontFamily:"'Outfit'",transition:"all .15s"}} onMouseEnter={e=>Object.assign(e.target.style,{background:`${C.accent}08`})} onMouseLeave={e=>Object.assign(e.target.style,{background:"#fff"})}>View Dashboard</button>
-          <button onClick={()=>openProjectForAudit(projectPrompt.project)} style={{flex:1,padding:"14px 20px",background:C.accent,border:`2px solid ${C.accent}`,borderRadius:12,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"'Outfit'",transition:"all .15s"}} onMouseEnter={e=>Object.assign(e.target.style,{background:"#1d4ed8"})} onMouseLeave={e=>Object.assign(e.target.style,{background:C.accent})}>Run AEO Audit</button>
+          <button onClick={()=>openProjectForAudit(projectPrompt.project)} style={{flex:1,padding:"14px 20px",background:C.accent,border:`2px solid ${C.accent}`,borderRadius:12,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"'Outfit'",transition:"all .15s"}} onMouseEnter={e=>Object.assign(e.target.style,{background:"#1d4ed8"})} onMouseLeave={e=>Object.assign(e.target.style,{background:C.accent})}>Run Audit</button>
         </div>
         <div onClick={()=>setProjectPrompt(null)} style={{textAlign:"center",marginTop:16,fontSize:12,color:C.muted,cursor:"pointer"}}>Cancel</div>
       </div>
