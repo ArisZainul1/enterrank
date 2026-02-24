@@ -1499,19 +1499,18 @@ function LoginForm({onSubmit,error,loading}){
 /* ─── CHAT PANEL — Human-in-the-loop AI assistant ─── */
 
 const NAV_ITEMS=[
-  {group:"Overview",items:[
-    {id:"dashboard",label:"Dashboard",icon:"grid"},
-  ]},
   {group:"Analysis",items:[
+    {id:"dashboard",label:"Dashboard",icon:"grid"},
     {id:"archetypes",label:"User Archetypes",icon:"users"},
     {id:"intent",label:"Intent Pathway",icon:"route"},
   ]},
   {group:"Strategy",items:[
-    {id:"playbook",label:"Brand Playbook",icon:"book"},
-    {id:"channels",label:"AEO Channels",icon:"broadcast"},
-    {id:"grid",label:"Content Grid",icon:"edit"},
-    {id:"contenthub",label:"Content Hub",icon:"filetext"},
+    {id:"channels",label:"Target Channels",icon:"broadcast"},
     {id:"roadmap",label:"90-Day Roadmap",icon:"calendar"},
+  ]},
+  {group:"Creation",items:[
+    {id:"playbook",label:"Brand Playbook",icon:"book"},
+    {id:"contenthub",label:"Content Hub",icon:"filetext"},
   ]},
 ];
 const STEPS=NAV_ITEMS.flatMap(g=>g.items).map((s,i)=>({...s,n:String(i+1).padStart(2,"0")}));
@@ -3147,8 +3146,8 @@ function ChannelsPage({r,goTo}){
 
 /* ─── PAGE: CONTENT HUB ─── */
 function ContentHubPage({r,goTo,activeProject}){
-  const TABS=[{id:"suggested",label:"Suggested",icon:"💡"},{id:"create",label:"Create",icon:"✍️"},{id:"library",label:"Library",icon:"📚"}];
-  const[activeTab,setActiveTab]=useState("suggested");
+  const TABS=[{id:"grid",label:"Grid",icon:"📊"},{id:"suggested",label:"Suggested",icon:"💡"},{id:"create",label:"Create",icon:"✍️"},{id:"library",label:"Library",icon:"📚"}];
+  const[activeTab,setActiveTab]=useState("grid");
   const[contentLibrary,setContentLibrary]=useState([]);
   const[loading,setLoading]=useState(true);
   const[generating,setGenerating]=useState(false);
@@ -3251,6 +3250,30 @@ function ContentHubPage({r,goTo,activeProject}){
       return null;
     }
   }
+
+  /* ── Grid Tab (moved from standalone Content Grid page) ── */
+  const renderGrid=()=>{
+    const ct=Array.isArray(r?.contentTypes)?r.contentTypes:[];
+    if(ct.length===0)return(<div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>Content grid data unavailable. Try running a new audit.</div>);
+    return(<div>
+      <SectionNote text={`This content grid is tailored to ${r.clientData?.brand||"your brand"}'s specific AEO gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
+      <Card style={{marginBottom:20,overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+        <thead><tr style={{borderBottom:`2px solid ${C.border}`}}>{["Content Type","Channels","Frequency","Priority","Owner"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:600,color:C.muted,fontSize:10,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
+        <tbody>{[...ct].sort((a,b)=>{const po={"P0":0,"P1":1,"P2":2,"P3":3};return(po[a.p]??9)-(po[b.p]??9);}).map((item,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
+          <td style={{padding:"10px"}}><div style={{fontWeight:500,color:C.text}}>{item.type}</div>{item.rationale&&<div style={{fontSize:10,color:C.muted,marginTop:2}}>{item.rationale}</div>}</td>
+          <td style={{padding:"10px"}}><div style={{display:"flex",flexWrap:"wrap",gap:3}}>{(item.channels||[]).map(ch=><Pill key={ch} color="#64748b">{ch}</Pill>)}</div></td>
+          <td style={{padding:"10px",color:C.sub}}>{item.freq}</td>
+          <td style={{padding:"10px"}}><Pill color={item.p==="P0"?C.red:item.p==="P1"?C.amber:"#94a3b8"}>{item.p}</Pill></td>
+          <td style={{padding:"10px",color:C.sub,fontSize:11}}>{item.owner}</td>
+        </tr>))}</tbody></table>
+      </Card>
+      <Card><h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 12px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Monthly Output Requirements</h3>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+          {(r.outputReqs||[]).map((item,i)=>(<div key={i} style={{padding:"14px",background:C.bg,borderRadius:C.rs,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{item.n}</div><div style={{fontSize:10,color:C.muted,marginBottom:4}}>{item.u}</div><div style={{fontSize:12,fontWeight:500,color:C.text}}>{item.l}</div><div style={{fontSize:10,color:C.muted,marginTop:2}}>{item.d}</div></div>))}
+        </div>
+      </Card>
+    </div>);
+  };
 
   /* ── Suggested Tab ── */
   const renderSuggested=()=>{
@@ -3483,6 +3506,7 @@ function ContentHubPage({r,goTo,activeProject}){
       </button>))}
     </div>
 
+    {activeTab==="grid"&&renderGrid()}
     {activeTab==="suggested"&&renderSuggested()}
     {activeTab==="create"&&renderCreate()}
     {activeTab==="library"&&renderLibrary()}
@@ -4197,7 +4221,6 @@ export default function App(){
         {step==="intent"&&results&&<IntentPage r={results} goTo={setStep}/>}
         {step==="playbook"&&results&&<PlaybookPage r={results} goTo={setStep} activeProject={activeProject}/>}
         {step==="channels"&&results&&<ChannelsPage r={results} goTo={setStep}/>}
-        {step==="grid"&&results&&<GridPage r={results} goTo={setStep}/>}
         {step==="contenthub"&&results&&<ContentHubPage r={results} goTo={setStep} activeProject={activeProject}/>}
         {step==="roadmap"&&results&&<RoadmapPage r={results}/>}
       </div>
