@@ -2801,25 +2801,28 @@ function IntentPage({r,goTo}){
 
 /* ─── PAGE: BRAND PLAYBOOK ─── */
 function PlaybookPage({r,goTo,activeProject}){
-  const TABS=[{id:"voice",label:"Brand Voice"},{id:"taglines",label:"Taglines"},{id:"visual",label:"Visual CI"},{id:"assets",label:"Assets"},{id:"compliance",label:"Compliance"},{id:"products",label:"Products"},{id:"positioning",label:"Positioning"}];
+  const TABS=[{id:"voice",label:"Brand Voice"},{id:"taglines",label:"Taglines"},{id:"visual",label:"Visual CI"},{id:"compliance",label:"Compliance"},{id:"products",label:"Products"},{id:"positioning",label:"Positioning"}];
   const[activeTab,setActiveTab]=useState("voice");
   const[loading,setLoading]=useState(false);
   const[saving,setSaving]=useState(false);
   const[saveStatus,setSaveStatus]=useState(null);
-  const[playbook,setPlaybook]=useState({brand_voice:{tone:"",personality:"",dos:[],donts:[],examples:[]},taglines:{primary:"",supporting:[]},visual_ci:{primaryColor:"#2563eb",secondaryColor:"#10b981",accentColor:"#d97706",fonts:[],logoUrl:""},compliance:{restrictions:[],notes:""},products:[],positioning:{statements:[]}});
-  const[assets,setAssets]=useState([]);
+  const[playbook,setPlaybook]=useState({brand_voice:{tone:"",personality:"",dos:[],donts:[],examples:[]},taglines:{primary:"",supporting:[]},visual_ci:{primaryColor:"#2563eb",secondaryColor:"#10b981",accentColor:"#d97706",fonts:[],logoUrl:""},compliance:{restrictions:[],notes:""},products:[],positioning:[]});
   const[expandG,setExpandG]=useState(null);
-  const[uploading,setUploading]=useState(false);
   const[editProduct,setEditProduct]=useState(null);
   const[prodForm,setProdForm]=useState({name:"",description:"",features:[]});
   const[featureInput,setFeatureInput]=useState("");
+  const[generating,setGenerating]=useState(false);
 
   const projectId=activeProject?.id||null;
+  const brand=r?.clientData?.brand||"";
+  const industry=r?.clientData?.industry||"";
+  const region=r?.clientData?.region||"";
+  const website=r?.clientData?.website||"";
 
   React.useEffect(()=>{
     if(!projectId)return;
     setLoading(true);
-    Promise.all([sbLoadPlaybook(projectId),sbLoadAssets(projectId)]).then(([pb,as])=>{
+    sbLoadPlaybook(projectId).then(pb=>{
       if(pb){
         setPlaybook({
           brand_voice:pb.brand_voice||{tone:"",personality:"",dos:[],donts:[],examples:[]},
@@ -2827,10 +2830,9 @@ function PlaybookPage({r,goTo,activeProject}){
           visual_ci:pb.visual_ci||{primaryColor:"#2563eb",secondaryColor:"#10b981",accentColor:"#d97706",fonts:[],logoUrl:""},
           compliance:pb.compliance||{restrictions:[],notes:""},
           products:pb.products||[],
-          positioning:pb.positioning||{statements:[]}
+          positioning:pb.positioning||[]
         });
       }
-      setAssets(as||[]);
       setLoading(false);
     });
   },[projectId]);
@@ -2844,30 +2846,18 @@ function PlaybookPage({r,goTo,activeProject}){
     else{setSaveStatus("error");setTimeout(()=>setSaveStatus(null),3000);}
   };
 
-  const handleUpload=async(e)=>{
-    const file=e.target.files?.[0];
-    if(!file||!projectId)return;
-    if(file.size>10*1024*1024){alert("File must be under 10 MB");return;}
-    setUploading(true);
-    const result=await sbUploadAsset(projectId,file);
-    if(result)setAssets(prev=>[result,...prev]);
-    setUploading(false);
-    e.target.value="";
-  };
-
-  const handleDeleteAsset=async(asset)=>{
-    const ok=await sbDeleteAsset(asset.id,asset.storage_path);
-    if(ok)setAssets(prev=>prev.filter(a=>a.id!==asset.id));
-  };
-
-  const fmtSize=(bytes)=>{if(bytes<1024)return bytes+" B";if(bytes<1024*1024)return(bytes/1024).toFixed(1)+" KB";return(bytes/(1024*1024)).toFixed(1)+" MB";};
-
   const inputStyle={width:"100%",padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,fontSize:12,color:C.text,outline:"none",fontFamily:"inherit"};
   const labelStyle={fontSize:11,fontWeight:500,color:C.muted,display:"block",marginBottom:4};
   const saveBtn=(onClick)=>(<div style={{marginTop:14,display:"flex",alignItems:"center",gap:10,justifyContent:"flex-end"}}>
     {saveStatus==="saved"&&<span style={{fontSize:11,color:C.green,fontWeight:500}}>Saved</span>}
     {saveStatus==="error"&&<span style={{fontSize:11,color:C.red,fontWeight:500}}>Save failed</span>}
     <button onClick={onClick} disabled={saving} style={{padding:"8px 20px",background:C.accent,color:"#fff",border:"none",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",opacity:saving?.6:1}}>{saving?"Saving...":"Save"}</button>
+  </div>);
+
+  const aiBtn=(onClick)=>(<div style={{display:"flex",justifyContent:"flex-end",marginBottom:16}}>
+    <button onClick={onClick} disabled={generating} style={{padding:"8px 16px",fontSize:11,fontWeight:500,background:generating?"#e5e7eb":"linear-gradient(135deg, #8b5cf6, #6366f1)",color:generating?"#999":"#fff",border:"none",borderRadius:8,cursor:generating?"default":"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"'Outfit'"}}>
+      {generating?(<><div style={{width:12,height:12,border:"2px solid #fff",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>Generating...</>):(<>✨ AI Generate</>)}
+    </button>
   </div>);
 
   const addToList=(section,field,value)=>{
@@ -2896,11 +2886,74 @@ function PlaybookPage({r,goTo,activeProject}){
     </div>);
   };
 
+  /* ── AI Generate handlers ── */
+  const genVoice=async()=>{
+    setGenerating(true);
+    try{
+      const prompt=`You are a brand strategist. Based on the following brand, generate a comprehensive brand voice guide.\n\nBrand: ${brand}\nIndustry: ${industry}\nRegion: ${region}\nWebsite: ${website}\n\nGenerate a JSON object with:\n- tone: A 1-2 sentence description of the brand's tone of voice\n- personality: A 2-3 sentence description of the brand's personality as if it were a person\n- dos: An array of 5 things the brand should ALWAYS do in communications\n- donts: An array of 5 things the brand should NEVER do in communications\n- examples: An array of 3 example phrases that capture how the brand sounds\n\nReturn ONLY valid JSON, no markdown, no explanation.\n{"tone":"...","personality":"...","dos":["..."],"donts":["..."],"examples":["..."]}`;
+      const result=await callGemini(prompt,"You are a brand strategist. Return ONLY valid JSON.");
+      const parsed=safeJSON(result);
+      if(parsed){setPlaybook(prev=>({...prev,brand_voice:{tone:parsed.tone||"",personality:parsed.personality||"",dos:parsed.dos||[],donts:parsed.donts||[],examples:parsed.examples||[]}}));}
+    }catch(e){console.error("Voice generation failed:",e);}
+    setGenerating(false);
+  };
+
+  const genTaglines=async()=>{
+    setGenerating(true);
+    try{
+      const prompt=`You are a brand copywriter. Generate taglines and key messages for this brand.\n\nBrand: ${brand}\nIndustry: ${industry}\nRegion: ${region}\n\nGenerate a JSON object with:\n- primary: One powerful primary tagline (5-10 words, memorable, captures the brand essence)\n- supporting: An array of 5 supporting messages / value propositions that reinforce the primary tagline. Each should be 1 sentence.\n\nReturn ONLY valid JSON, no markdown.\n{"primary":"...","supporting":["...","...","...","...","..."]}`;
+      const result=await callGemini(prompt,"You are a brand copywriter. Return ONLY valid JSON.");
+      const parsed=safeJSON(result);
+      if(parsed){setPlaybook(prev=>({...prev,taglines:{primary:parsed.primary||"",supporting:parsed.supporting||[]}}));}
+    }catch(e){console.error("Taglines generation failed:",e);}
+    setGenerating(false);
+  };
+
+  const genVisual=async()=>{
+    setGenerating(true);
+    try{
+      const prompt=`You are a brand designer. Based on the brand, suggest a visual identity color palette and typography.\n\nBrand: ${brand}\nIndustry: ${industry}\nRegion: ${region}\nWebsite: ${website}\n\nGenerate a JSON object with:\n- primaryColor: A hex color code for the primary brand color (based on the brand's actual colors if known, otherwise appropriate for the industry)\n- secondaryColor: A hex color code for the secondary color\n- accentColor: A hex color code for the accent/highlight color\n- fonts: An array of 2-3 recommended font families (e.g. ["Inter", "Georgia", "SF Pro"])\n- logoUrl: Leave as empty string ""\n\nConsider the brand's industry, target audience, and regional preferences. If you know the brand's actual colors from their website, use those.\n\nReturn ONLY valid JSON, no markdown.\n{"primaryColor":"#...","secondaryColor":"#...","accentColor":"#...","fonts":["..."],"logoUrl":""}`;
+      const result=await callGemini(prompt,"You are a brand designer. Return ONLY valid JSON.");
+      const parsed=safeJSON(result);
+      if(parsed){setPlaybook(prev=>({...prev,visual_ci:{primaryColor:parsed.primaryColor||"#000000",secondaryColor:parsed.secondaryColor||"#ffffff",accentColor:parsed.accentColor||"#2563eb",fonts:parsed.fonts||[],logoUrl:parsed.logoUrl||prev.visual_ci.logoUrl||""}}));}
+    }catch(e){console.error("Visual CI generation failed:",e);}
+    setGenerating(false);
+  };
+
+  const genCompliance=async()=>{
+    setGenerating(true);
+    try{
+      const research=await callOpenAISearch(`${industry} advertising regulations ${region} current laws restrictions`,region);
+      const researchText=(research&&research.text)?research.text:(typeof research==="string"?research:"");
+      const prompt=`Based on this research about ${industry} advertising regulations in ${region}:\n\n${researchText.slice(0,3000)}\n\nGenerate a JSON object with:\n- restrictions: An array of 8-12 specific, actionable content restrictions for ${brand} in ${region}. Each should be a clear rule like "Never show product being consumed in advertising material" or "All content must include mandatory health warning text". Be SPECIFIC to the industry and region.\n- notes: A paragraph summarizing the key regulatory framework, naming specific laws/acts that apply, and any important nuances or exceptions.\n\nReturn ONLY valid JSON.\n{"restrictions":["..."],"notes":"..."}`;
+      const result=await callOpenAI(prompt,"You are a regulatory compliance expert. Return ONLY valid JSON.");
+      const parsed=safeJSON(result);
+      if(parsed){setPlaybook(prev=>({...prev,compliance:{restrictions:parsed.restrictions||[],notes:parsed.notes||""}}));}
+    }catch(e){console.error("Compliance generation failed:",e);}
+    setGenerating(false);
+  };
+
+  const genPositioning=async()=>{
+    setGenerating(true);
+    try{
+      const competitors=r?.clientData?.competitors||[];
+      const compNames=competitors.map(c=>c.name||c).filter(Boolean);
+      const prompt=`You are a competitive strategy consultant. Generate positioning statements for this brand against its competitors.\n\nBrand: ${brand}\nIndustry: ${industry}\nRegion: ${region}\nCompetitors: ${compNames.join(", ")||"Unknown — suggest 3 likely competitors"}\n\nGenerate a JSON array of positioning statements, one per competitor. Each entry should have:\n- competitor: The competitor name\n- differentiator: One sentence explaining the brand's key advantage over this competitor\n- messaging: A 1-2 sentence messaging framework for how to position against this competitor in content\n\nReturn ONLY valid JSON array, no markdown.\n[{"competitor":"...","differentiator":"...","messaging":"..."}]`;
+      const result=await callGemini(prompt,"You are a competitive strategist. Return ONLY valid JSON array.");
+      const parsed=safeJSON(result);
+      if(Array.isArray(parsed)){setPlaybook(prev=>({...prev,positioning:parsed}));}
+    }catch(e){console.error("Positioning generation failed:",e);}
+    setGenerating(false);
+  };
+
   const renderTab=()=>{
     if(activeTab==="voice"){
       const v=playbook.brand_voice;
       return(<Card>
-        <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 14px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Voice & Tone</h3>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Voice & Tone</h3>
+        </div>
+        {aiBtn(genVoice)}
         <div style={{marginBottom:10}}><label style={labelStyle}>Tone of Voice</label><input value={v.tone} onChange={e=>setPlaybook({...playbook,brand_voice:{...v,tone:e.target.value}})} placeholder="e.g. Authoritative, data-driven, approachable" style={inputStyle}/></div>
         <div style={{marginBottom:10}}><label style={labelStyle}>Brand Personality</label><textarea value={v.personality} onChange={e=>setPlaybook({...playbook,brand_voice:{...v,personality:e.target.value}})} placeholder="Describe your brand personality in 2-3 sentences..." rows={3} style={{...inputStyle,resize:"vertical"}}/></div>
         <ListEditor section="brand_voice" field="dos" label="Do's — Voice Guidelines" placeholder="e.g. Use active voice"/>
@@ -2912,8 +2965,11 @@ function PlaybookPage({r,goTo,activeProject}){
     if(activeTab==="taglines"){
       const t=playbook.taglines;
       return(<Card>
-        <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 14px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Taglines & Messaging</h3>
-        <div style={{marginBottom:10}}><label style={labelStyle}>Primary Tagline</label><input value={t.primary} onChange={e=>setPlaybook({...playbook,taglines:{...t,primary:e.target.value}})} placeholder={`e.g. "${r.clientData.brand} — The future of ${r.clientData.industry}"`} style={inputStyle}/></div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Taglines & Messaging</h3>
+        </div>
+        {aiBtn(genTaglines)}
+        <div style={{marginBottom:10}}><label style={labelStyle}>Primary Tagline</label><input value={t.primary} onChange={e=>setPlaybook({...playbook,taglines:{...t,primary:e.target.value}})} placeholder={`e.g. "${brand} — The future of ${industry}"`} style={inputStyle}/></div>
         <ListEditor section="taglines" field="supporting" label="Supporting Messages" placeholder="e.g. Trusted by 500+ enterprises worldwide"/>
         {saveBtn(()=>saveSection("taglines",playbook.taglines))}
       </Card>);
@@ -2922,7 +2978,10 @@ function PlaybookPage({r,goTo,activeProject}){
       const vi=playbook.visual_ci;
       const setVi=(k,val)=>setPlaybook({...playbook,visual_ci:{...vi,[k]:val}});
       return(<Card>
-        <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 14px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Visual Corporate Identity</h3>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Visual Corporate Identity</h3>
+        </div>
+        {aiBtn(genVisual)}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:14}}>
           {[["primaryColor","Primary"],["secondaryColor","Secondary"],["accentColor","Accent"]].map(([key,lbl])=>(<div key={key}>
             <label style={labelStyle}>{lbl} Colour</label>
@@ -2946,49 +3005,13 @@ function PlaybookPage({r,goTo,activeProject}){
         {saveBtn(()=>saveSection("visual_ci",playbook.visual_ci))}
       </Card>);
     }
-    if(activeTab==="assets"){
-      const images=assets.filter(a=>a.category==="image");
-      const docs=assets.filter(a=>a.category!=="image");
-      return(<Card>
-        <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 14px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Assets</h3>
-        <label style={{display:"block",padding:24,background:C.bg,border:`2px dashed ${C.border}`,borderRadius:C.rs,textAlign:"center",cursor:"pointer",marginBottom:14,transition:"border-color .15s"}} onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=C.accent;}} onDragLeave={e=>{e.currentTarget.style.borderColor=C.border;}} onDrop={e=>{e.preventDefault();e.currentTarget.style.borderColor=C.border;const f=e.dataTransfer.files[0];if(f)handleUpload({target:{files:[f],value:""}});}}>
-          <input type="file" onChange={handleUpload} style={{display:"none"}} accept="image/*,.pdf,.doc,.docx,.svg"/>
-          <div style={{fontSize:24,marginBottom:6}}>📁</div>
-          <div style={{fontSize:12,fontWeight:500,color:C.text}}>{uploading?"Uploading...":"Drop file here or click to upload"}</div>
-          <div style={{fontSize:10,color:C.muted,marginTop:4}}>Images, PDFs, docs — max 10 MB</div>
-        </label>
-        {images.length>0&&<div style={{marginBottom:14}}>
-          <div style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",marginBottom:8}}>Images ({images.length})</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120,1fr))",gap:8}}>
-            {images.map(a=>(<div key={a.id} style={{position:"relative",borderRadius:C.rs,overflow:"hidden",border:`1px solid ${C.border}`,background:C.bg}}>
-              <img src={a.public_url} alt={a.file_name} style={{width:"100%",height:90,objectFit:"cover"}}/>
-              <div style={{padding:"6px 8px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div style={{fontSize:10,color:C.sub,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"70%"}}>{a.file_name}</div>
-                <span onClick={()=>handleDeleteAsset(a)} style={{fontSize:10,color:C.red,cursor:"pointer",fontWeight:600}}>×</span>
-              </div>
-            </div>))}
-          </div>
-        </div>}
-        {docs.length>0&&<div>
-          <div style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",marginBottom:8}}>Documents ({docs.length})</div>
-          {docs.map(a=>(<div key={a.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:C.surface,borderRadius:6,border:`1px solid ${C.borderSoft}`,marginBottom:4}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:14}}>📄</span>
-              <div><div style={{fontSize:11,fontWeight:500,color:C.text}}>{a.file_name}</div><div style={{fontSize:10,color:C.muted}}>{fmtSize(a.file_size)} · {new Date(a.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short"})}</div></div>
-            </div>
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <a href={a.public_url} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:C.accent,fontWeight:500,textDecoration:"none"}}>View</a>
-              <span onClick={()=>handleDeleteAsset(a)} style={{fontSize:11,color:C.red,cursor:"pointer",fontWeight:500}}>Delete</span>
-            </div>
-          </div>))}
-        </div>}
-        {assets.length===0&&!uploading&&<div style={{textAlign:"center",padding:20,color:C.muted,fontSize:12}}>No assets uploaded yet</div>}
-      </Card>);
-    }
     if(activeTab==="compliance"){
       const co=playbook.compliance;
       return(<Card>
-        <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 14px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Compliance & Restrictions</h3>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Compliance & Restrictions</h3>
+        </div>
+        {aiBtn(genCompliance)}
         <ListEditor section="compliance" field="restrictions" label="Brand Restrictions" placeholder="e.g. Never compare directly with competitor X" color={C.red}/>
         <div style={{marginBottom:10}}><label style={labelStyle}>Additional Notes</label><textarea value={co.notes} onChange={e=>setPlaybook({...playbook,compliance:{...co,notes:e.target.value}})} placeholder="Any additional compliance notes, legal disclaimers, or regulatory requirements..." rows={4} style={{...inputStyle,resize:"vertical"}}/></div>
         {saveBtn(()=>saveSection("compliance",playbook.compliance))}
@@ -3048,10 +3071,22 @@ function PlaybookPage({r,goTo,activeProject}){
       </Card>);
     }
     if(activeTab==="positioning"){
-      const po=playbook.positioning;
+      const po=Array.isArray(playbook.positioning)?playbook.positioning:[];
       return(<Card>
-        <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 14px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Competitive Positioning</h3>
-        <ListEditor section="positioning" field="statements" label="Positioning Statements" placeholder="e.g. Unlike [competitor], we focus on [differentiator]"/>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Competitive Positioning</h3>
+        </div>
+        {aiBtn(genPositioning)}
+        {po.length>0?po.map((p,i)=>(<div key={i} style={{padding:12,background:C.surface,borderRadius:C.rs,border:`1px solid ${C.borderSoft}`,marginBottom:8}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:500,color:C.accent,marginBottom:2}}>vs {p.competitor}</div>
+              <div style={{fontSize:12,color:C.text,marginBottom:4}}><strong>Differentiator:</strong> {p.differentiator}</div>
+              <div style={{fontSize:11,color:C.sub}}><strong>Messaging:</strong> {p.messaging}</div>
+            </div>
+            <span onClick={()=>{const updated=po.filter((_,j)=>j!==i);setPlaybook({...playbook,positioning:updated});}} style={{fontSize:11,color:C.red,cursor:"pointer",fontWeight:500,flexShrink:0,marginLeft:8}}>Remove</span>
+          </div>
+        </div>)):<div style={{textAlign:"center",padding:20,color:C.muted,fontSize:12}}>No positioning statements yet. Click "AI Generate" to create competitor positioning.</div>}
         {saveBtn(()=>saveSection("positioning",playbook.positioning))}
       </Card>);
     }
