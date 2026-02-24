@@ -3663,6 +3663,7 @@ async function sbSaveProject(projectData) {
 
 async function sbSaveAudit(projectId, apiData, computedScores) {
   console.log("AUDIT SCORES BEING SAVED:", computedScores);
+  console.log("SUPABASE INSERT VALUES:", JSON.stringify({overall_score:computedScores?.overall??null,mention_rate:computedScores?.mentions??null,citation_rate:computedScores?.citations??null,sentiment_score:computedScores?.sentiment??null,overallType:typeof(computedScores?.overall),mentionsType:typeof(computedScores?.mentions)}));
   const { data, error } = await supabase
     .from('audits')
     .insert({
@@ -4180,7 +4181,7 @@ export default function App(){
     }
     const r=generateAll(data, apiData);setResults(r);
     const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
-    console.log("ENTRY VALUES:", { overall: entry.overall, mentions: entry.mentions, citations: entry.citations, sentimentAvg: entry.sentimentAvg });
+    console.log("ENTRY DEBUG:", JSON.stringify({overall:entry.overall,mentions:entry.mentions,citations:entry.citations,sentimentAvg:entry.sentimentAvg,overallType:typeof entry.overall,mentionsType:typeof entry.mentions,citationsType:typeof entry.citations,enginesLength:r.engines?.length,engine0mentionRate:r.engines?.[0]?.mentionRate,engine1mentionRate:r.engines?.[1]?.mentionRate,engine0citationRate:r.engines?.[0]?.citationRate,engine1citationRate:r.engines?.[1]?.citationRate,rOverall:r.overall}));
     setHistory(prev=>[...prev,entry]);
     setStep("dashboard");
 
