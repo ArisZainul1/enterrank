@@ -1507,7 +1507,7 @@ const NAV_ITEMS=[
     {id:"intent",label:"Intent Pathway",icon:"route"},
   ]},
   {group:"Strategy",items:[
-    {id:"playbook",label:"Brand Playbook",icon:"book",comingSoon:true},
+    {id:"playbook",label:"Brand Playbook",icon:"book"},
     {id:"channels",label:"AEO Channels",icon:"broadcast"},
     {id:"grid",label:"Content Grid",icon:"edit"},
     {id:"roadmap",label:"90-Day Roadmap",icon:"calendar"},
@@ -2799,52 +2799,287 @@ function IntentPage({r,goTo}){
 }
 
 /* ─── PAGE: BRAND PLAYBOOK ─── */
-function PlaybookPage({r,goTo}){
-  const[brandAssets,setBrandAssets]=useState({tagline:"",colors:"",tone:"",mission:"",positioning:""});
-  const[docs,setDocs]=useState([]);
-  const[saved,setSaved]=useState(false);
+function PlaybookPage({r,goTo,activeProject}){
+  const TABS=[{id:"voice",label:"Brand Voice"},{id:"taglines",label:"Taglines"},{id:"visual",label:"Visual CI"},{id:"assets",label:"Assets"},{id:"compliance",label:"Compliance"},{id:"products",label:"Products"},{id:"positioning",label:"Positioning"}];
+  const[activeTab,setActiveTab]=useState("voice");
+  const[loading,setLoading]=useState(false);
+  const[saving,setSaving]=useState(false);
+  const[saveStatus,setSaveStatus]=useState(null);
+  const[playbook,setPlaybook]=useState({brand_voice:{tone:"",personality:"",dos:[],donts:[],examples:[]},taglines:{primary:"",supporting:[]},visual_ci:{primaryColor:"#2563eb",secondaryColor:"#10b981",accentColor:"#d97706",fonts:[],logoUrl:""},compliance:{restrictions:[],notes:""},products:[],positioning:{statements:[]}});
+  const[assets,setAssets]=useState([]);
   const[expandG,setExpandG]=useState(null);
-  const addDoc=(type)=>{setDocs([...docs,{type,name:`${type}_${Date.now()}.pdf`,date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short"}),size:"2.4 MB"}]);};
-  const docTypes=[{type:"Brand Logo",icon:"🎨",desc:"Primary and secondary logos (SVG, PNG)"},{type:"Brand CI / Style Guide",icon:"📐",desc:"Colours, typography, spacing rules"},{type:"Messaging Framework",icon:"💬",desc:"Taglines, value props, tone of voice"},{type:"Media Kit",icon:"📦",desc:"Press photos, exec headshots, boilerplate"},{type:"Product Docs",icon:"📄",desc:"Feature sheets, technical documentation"},{type:"Case Studies",icon:"📊",desc:"Customer success stories and data"}];
+  const[uploading,setUploading]=useState(false);
+  const[editProduct,setEditProduct]=useState(null);
+  const[prodForm,setProdForm]=useState({name:"",description:"",features:[]});
+  const[featureInput,setFeatureInput]=useState("");
+
+  const projectId=activeProject?.id||null;
+
+  React.useEffect(()=>{
+    if(!projectId)return;
+    setLoading(true);
+    Promise.all([sbLoadPlaybook(projectId),sbLoadAssets(projectId)]).then(([pb,as])=>{
+      if(pb){
+        setPlaybook({
+          brand_voice:pb.brand_voice||{tone:"",personality:"",dos:[],donts:[],examples:[]},
+          taglines:pb.taglines||{primary:"",supporting:[]},
+          visual_ci:pb.visual_ci||{primaryColor:"#2563eb",secondaryColor:"#10b981",accentColor:"#d97706",fonts:[],logoUrl:""},
+          compliance:pb.compliance||{restrictions:[],notes:""},
+          products:pb.products||[],
+          positioning:pb.positioning||{statements:[]}
+        });
+      }
+      setAssets(as||[]);
+      setLoading(false);
+    });
+  },[projectId]);
+
+  const saveSection=async(section,value)=>{
+    if(!projectId)return;
+    setSaving(true);setSaveStatus(null);
+    const res=await sbSavePlaybook(projectId,section,value);
+    setSaving(false);
+    if(res){setSaveStatus("saved");setTimeout(()=>setSaveStatus(null),2500);}
+    else{setSaveStatus("error");setTimeout(()=>setSaveStatus(null),3000);}
+  };
+
+  const handleUpload=async(e)=>{
+    const file=e.target.files?.[0];
+    if(!file||!projectId)return;
+    if(file.size>10*1024*1024){alert("File must be under 10 MB");return;}
+    setUploading(true);
+    const result=await sbUploadAsset(projectId,file);
+    if(result)setAssets(prev=>[result,...prev]);
+    setUploading(false);
+    e.target.value="";
+  };
+
+  const handleDeleteAsset=async(asset)=>{
+    const ok=await sbDeleteAsset(asset.id,asset.storage_path);
+    if(ok)setAssets(prev=>prev.filter(a=>a.id!==asset.id));
+  };
+
+  const fmtSize=(bytes)=>{if(bytes<1024)return bytes+" B";if(bytes<1024*1024)return(bytes/1024).toFixed(1)+" KB";return(bytes/(1024*1024)).toFixed(1)+" MB";};
+
+  const inputStyle={width:"100%",padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,fontSize:12,color:C.text,outline:"none",fontFamily:"inherit"};
+  const labelStyle={fontSize:11,fontWeight:500,color:C.muted,display:"block",marginBottom:4};
+  const saveBtn=(onClick)=>(<div style={{marginTop:14,display:"flex",alignItems:"center",gap:10,justifyContent:"flex-end"}}>
+    {saveStatus==="saved"&&<span style={{fontSize:11,color:C.green,fontWeight:500}}>Saved</span>}
+    {saveStatus==="error"&&<span style={{fontSize:11,color:C.red,fontWeight:500}}>Save failed</span>}
+    <button onClick={onClick} disabled={saving} style={{padding:"8px 20px",background:C.accent,color:"#fff",border:"none",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",opacity:saving?.6:1}}>{saving?"Saving...":"Save"}</button>
+  </div>);
+
+  const addToList=(section,field,value)=>{
+    if(!value.trim())return;
+    const updated={...playbook[section],[field]:[...(playbook[section][field]||[]),value.trim()]};
+    setPlaybook({...playbook,[section]:updated});
+  };
+  const removeFromList=(section,field,idx)=>{
+    const updated={...playbook[section],[field]:(playbook[section][field]||[]).filter((_,i)=>i!==idx)};
+    setPlaybook({...playbook,[section]:updated});
+  };
+
+  const ListEditor=({section,field,label,placeholder,color})=>{
+    const[inp,setInp]=useState("");
+    const items=playbook[section]?.[field]||[];
+    const c=color||C.accent;
+    return(<div style={{marginBottom:10}}>
+      <label style={labelStyle}>{label}</label>
+      <div style={{display:"flex",gap:6,marginBottom:6}}>
+        <input value={inp} onChange={e=>setInp(e.target.value)} placeholder={placeholder} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addToList(section,field,inp);setInp("");}}} style={{...inputStyle,flex:1}}/>
+        <button onClick={()=>{addToList(section,field,inp);setInp("");}} style={{padding:"8px 14px",background:`${c}10`,color:c,border:`1px solid ${c}25`,borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",whiteSpace:"nowrap"}}>+ Add</button>
+      </div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+        {items.map((item,i)=>(<span key={i} style={{display:"inline-flex",alignItems:"center",gap:4,padding:"4px 10px",background:`${c}08`,color:c,borderRadius:100,fontSize:11,fontWeight:500}}>{item}<span onClick={()=>removeFromList(section,field,i)} style={{cursor:"pointer",opacity:.6,fontSize:13,lineHeight:1}}>×</span></span>))}
+      </div>
+    </div>);
+  };
+
+  const renderTab=()=>{
+    if(activeTab==="voice"){
+      const v=playbook.brand_voice;
+      return(<Card>
+        <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 14px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Voice & Tone</h3>
+        <div style={{marginBottom:10}}><label style={labelStyle}>Tone of Voice</label><input value={v.tone} onChange={e=>setPlaybook({...playbook,brand_voice:{...v,tone:e.target.value}})} placeholder="e.g. Authoritative, data-driven, approachable" style={inputStyle}/></div>
+        <div style={{marginBottom:10}}><label style={labelStyle}>Brand Personality</label><textarea value={v.personality} onChange={e=>setPlaybook({...playbook,brand_voice:{...v,personality:e.target.value}})} placeholder="Describe your brand personality in 2-3 sentences..." rows={3} style={{...inputStyle,resize:"vertical"}}/></div>
+        <ListEditor section="brand_voice" field="dos" label="Do's — Voice Guidelines" placeholder="e.g. Use active voice"/>
+        <ListEditor section="brand_voice" field="donts" label="Don'ts — What to Avoid" placeholder="e.g. Never use jargon without explanation" color={C.red}/>
+        <ListEditor section="brand_voice" field="examples" label="Example Phrases" placeholder="e.g. We believe in transparent AI"/>
+        {saveBtn(()=>saveSection("brand_voice",playbook.brand_voice))}
+      </Card>);
+    }
+    if(activeTab==="taglines"){
+      const t=playbook.taglines;
+      return(<Card>
+        <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 14px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Taglines & Messaging</h3>
+        <div style={{marginBottom:10}}><label style={labelStyle}>Primary Tagline</label><input value={t.primary} onChange={e=>setPlaybook({...playbook,taglines:{...t,primary:e.target.value}})} placeholder={`e.g. "${r.clientData.brand} — The future of ${r.clientData.industry}"`} style={inputStyle}/></div>
+        <ListEditor section="taglines" field="supporting" label="Supporting Messages" placeholder="e.g. Trusted by 500+ enterprises worldwide"/>
+        {saveBtn(()=>saveSection("taglines",playbook.taglines))}
+      </Card>);
+    }
+    if(activeTab==="visual"){
+      const vi=playbook.visual_ci;
+      const setVi=(k,val)=>setPlaybook({...playbook,visual_ci:{...vi,[k]:val}});
+      return(<Card>
+        <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 14px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Visual Corporate Identity</h3>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:14}}>
+          {[["primaryColor","Primary"],["secondaryColor","Secondary"],["accentColor","Accent"]].map(([key,lbl])=>(<div key={key}>
+            <label style={labelStyle}>{lbl} Colour</label>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <input type="color" value={vi[key]} onChange={e=>setVi(key,e.target.value)} style={{width:36,height:36,border:`1px solid ${C.border}`,borderRadius:6,padding:2,cursor:"pointer",background:"transparent"}}/>
+              <input value={vi[key]} onChange={e=>setVi(key,e.target.value)} style={{...inputStyle,flex:1,fontFamily:"monospace"}}/>
+            </div>
+          </div>))}
+        </div>
+        <div style={{display:"flex",gap:0,borderRadius:8,overflow:"hidden",height:32,marginBottom:14,border:`1px solid ${C.border}`}}>
+          <div style={{flex:1,background:vi.primaryColor}}/>
+          <div style={{flex:1,background:vi.secondaryColor}}/>
+          <div style={{flex:1,background:vi.accentColor}}/>
+        </div>
+        <ListEditor section="visual_ci" field="fonts" label="Brand Fonts" placeholder="e.g. Outfit, Plus Jakarta Sans"/>
+        <div style={{marginBottom:10}}>
+          <label style={labelStyle}>Logo URL</label>
+          <input value={vi.logoUrl} onChange={e=>setVi("logoUrl",e.target.value)} placeholder="https://example.com/logo.svg" style={inputStyle}/>
+          {vi.logoUrl&&<div style={{marginTop:8,padding:12,background:C.bg,borderRadius:C.rs,border:`1px solid ${C.border}`,textAlign:"center"}}><img src={vi.logoUrl} alt="Logo preview" style={{maxHeight:60,maxWidth:"100%",objectFit:"contain"}} onError={e=>{e.target.style.display="none";}}/></div>}
+        </div>
+        {saveBtn(()=>saveSection("visual_ci",playbook.visual_ci))}
+      </Card>);
+    }
+    if(activeTab==="assets"){
+      const images=assets.filter(a=>a.category==="image");
+      const docs=assets.filter(a=>a.category!=="image");
+      return(<Card>
+        <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 14px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Assets</h3>
+        <label style={{display:"block",padding:24,background:C.bg,border:`2px dashed ${C.border}`,borderRadius:C.rs,textAlign:"center",cursor:"pointer",marginBottom:14,transition:"border-color .15s"}} onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=C.accent;}} onDragLeave={e=>{e.currentTarget.style.borderColor=C.border;}} onDrop={e=>{e.preventDefault();e.currentTarget.style.borderColor=C.border;const f=e.dataTransfer.files[0];if(f)handleUpload({target:{files:[f],value:""}});}}>
+          <input type="file" onChange={handleUpload} style={{display:"none"}} accept="image/*,.pdf,.doc,.docx,.svg"/>
+          <div style={{fontSize:24,marginBottom:6}}>📁</div>
+          <div style={{fontSize:12,fontWeight:500,color:C.text}}>{uploading?"Uploading...":"Drop file here or click to upload"}</div>
+          <div style={{fontSize:10,color:C.muted,marginTop:4}}>Images, PDFs, docs — max 10 MB</div>
+        </label>
+        {images.length>0&&<div style={{marginBottom:14}}>
+          <div style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",marginBottom:8}}>Images ({images.length})</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120,1fr))",gap:8}}>
+            {images.map(a=>(<div key={a.id} style={{position:"relative",borderRadius:C.rs,overflow:"hidden",border:`1px solid ${C.border}`,background:C.bg}}>
+              <img src={a.public_url} alt={a.file_name} style={{width:"100%",height:90,objectFit:"cover"}}/>
+              <div style={{padding:"6px 8px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{fontSize:10,color:C.sub,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"70%"}}>{a.file_name}</div>
+                <span onClick={()=>handleDeleteAsset(a)} style={{fontSize:10,color:C.red,cursor:"pointer",fontWeight:600}}>×</span>
+              </div>
+            </div>))}
+          </div>
+        </div>}
+        {docs.length>0&&<div>
+          <div style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",marginBottom:8}}>Documents ({docs.length})</div>
+          {docs.map(a=>(<div key={a.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:C.surface,borderRadius:6,border:`1px solid ${C.borderSoft}`,marginBottom:4}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:14}}>📄</span>
+              <div><div style={{fontSize:11,fontWeight:500,color:C.text}}>{a.file_name}</div><div style={{fontSize:10,color:C.muted}}>{fmtSize(a.file_size)} · {new Date(a.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short"})}</div></div>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <a href={a.public_url} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:C.accent,fontWeight:500,textDecoration:"none"}}>View</a>
+              <span onClick={()=>handleDeleteAsset(a)} style={{fontSize:11,color:C.red,cursor:"pointer",fontWeight:500}}>Delete</span>
+            </div>
+          </div>))}
+        </div>}
+        {assets.length===0&&!uploading&&<div style={{textAlign:"center",padding:20,color:C.muted,fontSize:12}}>No assets uploaded yet</div>}
+      </Card>);
+    }
+    if(activeTab==="compliance"){
+      const co=playbook.compliance;
+      return(<Card>
+        <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 14px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Compliance & Restrictions</h3>
+        <ListEditor section="compliance" field="restrictions" label="Brand Restrictions" placeholder="e.g. Never compare directly with competitor X" color={C.red}/>
+        <div style={{marginBottom:10}}><label style={labelStyle}>Additional Notes</label><textarea value={co.notes} onChange={e=>setPlaybook({...playbook,compliance:{...co,notes:e.target.value}})} placeholder="Any additional compliance notes, legal disclaimers, or regulatory requirements..." rows={4} style={{...inputStyle,resize:"vertical"}}/></div>
+        {saveBtn(()=>saveSection("compliance",playbook.compliance))}
+      </Card>);
+    }
+    if(activeTab==="products"){
+      const prods=playbook.products||[];
+      const startEdit=(p,idx)=>{setEditProduct(idx);setProdForm(p?{...p}:{name:"",description:"",features:[]});setFeatureInput("");};
+      const saveProd=()=>{
+        if(!prodForm.name.trim())return;
+        let updated;
+        if(editProduct==="new"){updated=[...prods,{...prodForm}];}
+        else{updated=prods.map((p,i)=>i===editProduct?{...prodForm}:p);}
+        setPlaybook({...playbook,products:updated});
+        setEditProduct(null);setProdForm({name:"",description:"",features:[]});setFeatureInput("");
+      };
+      const deleteProd=(idx)=>{
+        const updated=prods.filter((_,i)=>i!==idx);
+        setPlaybook({...playbook,products:updated});
+      };
+      return(<Card>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Products & Services</h3>
+          <button onClick={()=>startEdit(null,"new")} style={{padding:"6px 14px",background:`${C.accent}10`,color:C.accent,border:`1px solid ${C.accent}25`,borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>+ Add Product</button>
+        </div>
+        {editProduct!==null&&<div style={{padding:14,background:C.bg,borderRadius:C.rs,border:`1px solid ${C.accent}25`,marginBottom:14}}>
+          <div style={{marginBottom:8}}><label style={labelStyle}>Product Name</label><input value={prodForm.name} onChange={e=>setProdForm({...prodForm,name:e.target.value})} placeholder="e.g. Enterprise Analytics Suite" style={inputStyle}/></div>
+          <div style={{marginBottom:8}}><label style={labelStyle}>Description</label><textarea value={prodForm.description} onChange={e=>setProdForm({...prodForm,description:e.target.value})} placeholder="Brief product description..." rows={2} style={{...inputStyle,resize:"vertical"}}/></div>
+          <div style={{marginBottom:8}}>
+            <label style={labelStyle}>Features (press Enter to add)</label>
+            <div style={{display:"flex",gap:6,marginBottom:6}}>
+              <input value={featureInput} onChange={e=>setFeatureInput(e.target.value)} placeholder="e.g. Real-time dashboards" onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();if(featureInput.trim()){setProdForm({...prodForm,features:[...prodForm.features,featureInput.trim()]});setFeatureInput("");}}}} style={{...inputStyle,flex:1}}/>
+              <button onClick={()=>{if(featureInput.trim()){setProdForm({...prodForm,features:[...prodForm.features,featureInput.trim()]});setFeatureInput("");}}} style={{padding:"8px 14px",background:`${C.accent}10`,color:C.accent,border:`1px solid ${C.accent}25`,borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>+ Add</button>
+            </div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:4}}>{prodForm.features.map((f,i)=>(<span key={i} style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 8px",background:`${C.accent}08`,color:C.accent,borderRadius:100,fontSize:11}}>{f}<span onClick={()=>setProdForm({...prodForm,features:prodForm.features.filter((_,j)=>j!==i)})} style={{cursor:"pointer",opacity:.6,fontSize:13}}>×</span></span>))}</div>
+          </div>
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+            <button onClick={()=>{setEditProduct(null);setProdForm({name:"",description:"",features:[]});setFeatureInput("");}} style={{padding:"6px 14px",background:C.bg,color:C.sub,border:`1px solid ${C.border}`,borderRadius:6,fontSize:11,fontWeight:500,cursor:"pointer",fontFamily:"'Outfit'"}}>Cancel</button>
+            <button onClick={saveProd} style={{padding:"6px 14px",background:C.accent,color:"#fff",border:"none",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>Save Product</button>
+          </div>
+        </div>}
+        {prods.length===0&&editProduct===null&&<div style={{textAlign:"center",padding:20,color:C.muted,fontSize:12}}>No products added yet. Click "+ Add Product" to get started.</div>}
+        {prods.map((p,i)=>(<div key={i} style={{padding:12,background:C.surface,borderRadius:C.rs,border:`1px solid ${C.borderSoft}`,marginBottom:8}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:500,color:C.text}}>{p.name}</div>
+              {p.description&&<div style={{fontSize:11,color:C.sub,marginTop:2}}>{p.description}</div>}
+              {p.features&&p.features.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:6}}>{p.features.map((f,j)=>(<Pill key={j} color={C.accent}>{f}</Pill>))}</div>}
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <span onClick={()=>startEdit(p,i)} style={{fontSize:11,color:C.accent,cursor:"pointer",fontWeight:500}}>Edit</span>
+              <span onClick={()=>deleteProd(i)} style={{fontSize:11,color:C.red,cursor:"pointer",fontWeight:500}}>Delete</span>
+            </div>
+          </div>
+        </div>))}
+        {saveBtn(()=>saveSection("products",playbook.products))}
+      </Card>);
+    }
+    if(activeTab==="positioning"){
+      const po=playbook.positioning;
+      return(<Card>
+        <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 14px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Competitive Positioning</h3>
+        <ListEditor section="positioning" field="statements" label="Positioning Statements" placeholder="e.g. Unlike [competitor], we focus on [differentiator]"/>
+        {saveBtn(()=>saveSection("positioning",playbook.positioning))}
+      </Card>);
+    }
+    return null;
+  };
+
   return(<div>
     <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Playbook</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Your AEO brand hub — identity, assets, and AI-optimised guidelines</p></div>
-    <SectionNote text="This is your central brand hub for AEO. Upload your brand assets so our system can reference them when generating content strategies. The guidelines below are tailored to how AI engines process and cite brand information."/>
+    <SectionNote text="This is your central brand hub for AEO. Define your brand voice, upload assets, and manage compliance. The guidelines below are tailored to how AI engines process and cite brand information."/>
 
-    {/* Brand Identity Form */}
-    <Card style={{marginBottom:16}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Identity</h3>{saved&&<Pill color={C.green} filled>✓ Saved</Pill>}</div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-        <div><label style={{fontSize:11,fontWeight:500,color:C.muted,display:"block",marginBottom:4}}>Brand Tagline</label><input value={brandAssets.tagline} onChange={e=>setBrandAssets({...brandAssets,tagline:e.target.value})} placeholder={`e.g. "${r.clientData.brand} — The future of ${r.clientData.industry}"`} style={{width:"100%",padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,fontSize:12,color:C.text,outline:"none",fontFamily:"inherit"}}/></div>
-        <div><label style={{fontSize:11,fontWeight:500,color:C.muted,display:"block",marginBottom:4}}>Brand Colours (hex codes)</label><input value={brandAssets.colors} onChange={e=>setBrandAssets({...brandAssets,colors:e.target.value})} placeholder="e.g. #0c4cfc, #10b981, #0c1222" style={{width:"100%",padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,fontSize:12,color:C.text,outline:"none",fontFamily:"inherit"}}/></div>
-        <div><label style={{fontSize:11,fontWeight:500,color:C.muted,display:"block",marginBottom:4}}>Tone of Voice</label><input value={brandAssets.tone} onChange={e=>setBrandAssets({...brandAssets,tone:e.target.value})} placeholder="e.g. Authoritative, data-driven, approachable" style={{width:"100%",padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,fontSize:12,color:C.text,outline:"none",fontFamily:"inherit"}}/></div>
-        <div><label style={{fontSize:11,fontWeight:500,color:C.muted,display:"block",marginBottom:4}}>Brand Positioning</label><input value={brandAssets.positioning} onChange={e=>setBrandAssets({...brandAssets,positioning:e.target.value})} placeholder={`e.g. "The most trusted ${r.clientData.industry} platform for enterprise"`} style={{width:"100%",padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,fontSize:12,color:C.text,outline:"none",fontFamily:"inherit"}}/></div>
-        <div style={{gridColumn:"1/-1"}}><label style={{fontSize:11,fontWeight:500,color:C.muted,display:"block",marginBottom:4}}>Mission Statement</label><textarea value={brandAssets.mission} onChange={e=>setBrandAssets({...brandAssets,mission:e.target.value})} placeholder={`e.g. "${r.clientData.brand} empowers organisations to harness ${r.clientData.industry} for measurable business outcomes..."`} rows={2} style={{width:"100%",padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,fontSize:12,color:C.text,outline:"none",fontFamily:"inherit",resize:"vertical"}}/></div>
-      </div>
-      <div style={{marginTop:12,display:"flex",justifyContent:"flex-end"}}><button onClick={()=>setSaved(true)} style={{padding:"8px 20px",background:C.accent,color:"#fff",border:"none",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>Save Brand Identity</button></div>
-    </Card>
+    {/* Tab Bar */}
+    <div style={{display:"flex",gap:0,marginBottom:16,borderBottom:`1px solid ${C.border}`,overflowX:"auto"}}>
+      {TABS.map(tab=>(<button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{padding:"10px 16px",background:"transparent",border:"none",borderBottom:activeTab===tab.id?`2px solid ${C.accent}`:"2px solid transparent",color:activeTab===tab.id?C.accent:C.muted,fontSize:12,fontWeight:activeTab===tab.id?600:500,cursor:"pointer",fontFamily:"'Outfit'",whiteSpace:"nowrap",transition:"all .15s"}}>{tab.label}</button>))}
+    </div>
 
-    {/* Document Upload Hub */}
-    <Card style={{marginBottom:16}}>
-      <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Asset Library</h3>
-      <p style={{fontSize:12,color:C.muted,margin:"0 0 14px"}}>Upload and store brand documents. These inform your AEO content strategy.</p>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
-        {docTypes.map((dt,i)=>{const uploaded=docs.filter(d=>d.type===dt.type);return(<div key={i} style={{padding:"14px",background:C.bg,borderRadius:C.rs,border:`1px dashed ${uploaded.length>0?C.green:C.border}`,textAlign:"center",cursor:"pointer",transition:"all .15s"}} onClick={()=>addDoc(dt.type)}>
-          <div style={{fontSize:20,marginBottom:4}}>{dt.icon}</div>
-          <div style={{fontSize:12,fontWeight:500,color:C.text}}>{dt.type}</div>
-          <div style={{fontSize:10,color:C.muted,marginTop:2}}>{dt.desc}</div>
-          {uploaded.length>0?<div style={{marginTop:6}}><Pill color={C.green} filled>{uploaded.length} uploaded</Pill></div>:<div style={{marginTop:6,fontSize:10,color:C.accent,fontWeight:500}}>+ Click to upload</div>}
-        </div>);})}
-      </div>
-      {docs.length>0&&<div>
-        <div style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",marginBottom:6}}>Uploaded Documents ({docs.length})</div>
-        {docs.map((d,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:C.surface,borderRadius:6,border:`1px solid ${C.borderSoft}`,marginBottom:4}}>
-          <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:14}}>📎</span><div><div style={{fontSize:11,fontWeight:500,color:C.text}}>{d.type}</div><div style={{fontSize:10,color:C.muted}}>{d.name} · {d.size} · {d.date}</div></div></div>
-          <span onClick={()=>setDocs(docs.filter((_,j)=>j!==i))} style={{fontSize:12,color:C.red,cursor:"pointer",fontWeight:500}}>Remove</span>
-        </div>))}
-      </div>}
-    </Card>
+    {/* Loading state */}
+    {loading&&<div style={{textAlign:"center",padding:40,color:C.muted,fontSize:13}}>Loading playbook...</div>}
 
-    {/* AEO Brand Guidelines - expandable */}
+    {/* No project guard */}
+    {!projectId&&!loading&&<Card style={{marginBottom:16,textAlign:"center",padding:32}}>
+      <div style={{fontSize:20,marginBottom:8}}>📋</div>
+      <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>No project linked yet</div>
+      <div style={{fontSize:12,color:C.muted}}>Save an audit first to start building your brand playbook.</div>
+    </Card>}
+
+    {/* Tab content */}
+    {!loading&&projectId&&<div style={{marginBottom:16}}>{renderTab()}</div>}
+
+    {/* AEO Brand Guidelines - expandable (always shown when results available) */}
     <Card style={{marginBottom:16}}>
       <h3 style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>AEO Brand Guidelines</h3>
       <p style={{fontSize:12,color:C.muted,margin:"0 0 14px"}}>{r.brandGuidelines.length} technical guidelines for maximising AI engine citation rate. Click to expand.</p>
@@ -3090,6 +3325,92 @@ async function sbDeleteProject(projectId) {
   return !error;
 }
 
+/* ─── SUPABASE: PLAYBOOK HELPERS ─── */
+async function sbLoadPlaybook(projectId) {
+  const { data, error } = await supabase
+    .from('playbooks')
+    .select('*')
+    .eq('project_id', projectId)
+    .single();
+  if (error) { if (error.code !== 'PGRST116') console.error('Error loading playbook:', error); return null; }
+  return data;
+}
+
+async function sbSavePlaybook(projectId, section, value) {
+  const { data: existing } = await supabase
+    .from('playbooks')
+    .select('id')
+    .eq('project_id', projectId)
+    .single();
+  if (existing) {
+    const { data, error } = await supabase
+      .from('playbooks')
+      .update({ [section]: value, updated_at: new Date().toISOString() })
+      .eq('project_id', projectId)
+      .select()
+      .single();
+    if (error) { console.error('Error updating playbook:', error); return null; }
+    return data;
+  } else {
+    const { data, error } = await supabase
+      .from('playbooks')
+      .insert({ project_id: projectId, [section]: value })
+      .select()
+      .single();
+    if (error) { console.error('Error inserting playbook:', error); return null; }
+    return data;
+  }
+}
+
+async function sbLoadAssets(projectId) {
+  const { data, error } = await supabase
+    .from('playbook_assets')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false });
+  if (error) { console.error('Error loading assets:', error); return []; }
+  return data || [];
+}
+
+async function sbUploadAsset(projectId, file) {
+  const path = `${projectId}/${Date.now()}_${file.name}`;
+  const { error: uploadErr } = await supabase.storage
+    .from('playbook-assets')
+    .upload(path, file);
+  if (uploadErr) { console.error('Error uploading asset:', uploadErr); return null; }
+  const { data: urlData } = supabase.storage
+    .from('playbook-assets')
+    .getPublicUrl(path);
+  const { data, error } = await supabase
+    .from('playbook_assets')
+    .insert({
+      project_id: projectId,
+      file_name: file.name,
+      file_type: file.type,
+      file_size: file.size,
+      storage_path: path,
+      public_url: urlData.publicUrl,
+      category: file.type.startsWith('image/') ? 'image' : 'document'
+    })
+    .select()
+    .single();
+  if (error) { console.error('Error saving asset record:', error); return null; }
+  return data;
+}
+
+async function sbDeleteAsset(assetId, storagePath) {
+  const { error: storageErr } = await supabase.storage
+    .from('playbook-assets')
+    .remove([storagePath]);
+  if (storageErr) console.error('Error removing file from storage:', storageErr);
+  const { error } = await supabase
+    .from('playbook_assets')
+    .delete()
+    .eq('id', assetId);
+  if (error) { console.error('Error deleting asset record:', error); return false; }
+  return true;
+}
+
 /* ─── PROJECT HUB ─── */
 function ProjectHub({onSelect,onNew,onLogout}){
   const[projects,setProjects]=useState(null);
@@ -3264,8 +3585,6 @@ export default function App(){
   const[loginError,setLoginError]=useState("");
   const[loggingIn,setLoggingIn]=useState(false);
 
-  // Redirect away from coming-soon pages
-  React.useEffect(()=>{if(step==="playbook")setStep("dashboard");},[step]);
 
   const handleLogin=async(email,password)=>{
     if(isLocal){setAuthed(true);return;}
@@ -3480,7 +3799,7 @@ export default function App(){
         {step==="dashboard"&&results&&<DashboardPage r={results} history={history} goTo={setStep}/>}
         {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep}/>}
         {step==="intent"&&results&&<IntentPage r={results} goTo={setStep}/>}
-        {step==="playbook"&&results&&<PlaybookPage r={results} goTo={setStep}/>}
+        {step==="playbook"&&results&&<PlaybookPage r={results} goTo={setStep} activeProject={activeProject}/>}
         {step==="channels"&&results&&<ChannelsPage r={results} goTo={setStep}/>}
         {step==="grid"&&results&&<GridPage r={results} goTo={setStep}/>}
         {step==="roadmap"&&results&&<RoadmapPage r={results}/>}
