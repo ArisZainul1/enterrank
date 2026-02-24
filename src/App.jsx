@@ -174,7 +174,7 @@ async function callGemini(prompt, systemPrompt="You are an expert AEO analyst.")
 async function callOpenAISearch(query, region){
   return callWithRetry(async()=>{
     const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),45000);
+    const timeout=setTimeout(()=>controller.abort(),60000);
     try{
       const r=await fetch("/api/openai-search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,region}),signal:controller.signal});
       clearTimeout(timeout);
@@ -3662,8 +3662,6 @@ async function sbSaveProject(projectData) {
 }
 
 async function sbSaveAudit(projectId, apiData, computedScores) {
-  console.log("AUDIT SCORES BEING SAVED:", computedScores);
-  console.log("SUPABASE INSERT VALUES:", JSON.stringify({overall_score:computedScores?.overall??null,mention_rate:computedScores?.mentions??null,citation_rate:computedScores?.citations??null,sentiment_score:computedScores?.sentiment??null,overallType:typeof(computedScores?.overall),mentionsType:typeof(computedScores?.mentions)}));
   const { data, error } = await supabase
     .from('audits')
     .insert({
@@ -3726,9 +3724,9 @@ async function sbLoadPlaybook(projectId) {
     .from('brand_playbook')
     .select('*')
     .eq('project_id', projectId)
-    .single();
-  if (error) { if (error.code !== 'PGRST116') console.error('Error loading playbook:', error); return null; }
-  return data;
+    .maybeSingle();
+  if (error) { console.error('Error loading playbook:', error); return null; }
+  return data || null;
 }
 
 async function sbSavePlaybook(projectId, section, value) {
@@ -4181,7 +4179,6 @@ export default function App(){
     }
     const r=generateAll(data, apiData);setResults(r);
     const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
-    console.log("ENTRY DEBUG:", JSON.stringify({overall:entry.overall,mentions:entry.mentions,citations:entry.citations,sentimentAvg:entry.sentimentAvg,overallType:typeof entry.overall,mentionsType:typeof entry.mentions,citationsType:typeof entry.citations,enginesLength:r.engines?.length,engine0mentionRate:r.engines?.[0]?.mentionRate,engine1mentionRate:r.engines?.[1]?.mentionRate,engine0citationRate:r.engines?.[0]?.citationRate,engine1citationRate:r.engines?.[1]?.citationRate,rOverall:r.overall}));
     setHistory(prev=>[...prev,entry]);
     setStep("dashboard");
 
