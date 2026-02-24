@@ -1877,7 +1877,6 @@ Return JSON only:
 
 /* ─── PAGE: DASHBOARD ─── */
 function DashboardPage({r,history,goTo}){
-  const[perfMetric,setPerfMetric]=useState("mentions");
   const[expandedComp,setExpandedComp]=useState(null);
 
   // ── Metric calculations ──
@@ -2049,63 +2048,68 @@ function DashboardPage({r,history,goTo}){
     <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"40px 0"}}/>
 
     {/* ═══ SECTION 3: HISTORICAL PERFORMANCE ═══ */}
+    <div style={{marginBottom:48}}>
+      <div style={{fontSize:18,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text,marginBottom:4}}>Historical Performance</div>
+      <div style={{fontSize:13,color:C.muted,marginBottom:16}}>Track {r.clientData.brand}'s AI visibility over time</div>
 
-    {/* 3a. Section header */}
-    <div style={{marginBottom:20}}>
-      <div style={{fontSize:18,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Historical Performance</div>
-      <div style={{fontSize:13,color:C.muted,marginTop:3}}>Track {r.clientData.brand}'s AI visibility over time</div>
+      {(()=>{
+        const chartData=(history||[]).map(h=>({
+          date:(typeof h.date==="string"?h.date:new Date(h.date).toLocaleDateString("en-GB",{day:"numeric",month:"short"})).replace(/\s\d{4}$/,""),
+          fullDate:typeof h.date==="string"?h.date:new Date(h.date).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}),
+          overall:h.overall||0,
+          mentions:h.mentions||0,
+          citations:h.citations||0
+        }));
+
+        if(chartData.length<2)return(
+          <div style={{padding:32,background:C.card,border:"1px solid "+C.border,borderRadius:14,textAlign:"center"}}>
+            <div style={{fontSize:32,marginBottom:8}}>&#x1F4CA;</div>
+            <div style={{fontSize:14,fontWeight:500,marginBottom:4}}>Not enough data yet</div>
+            <div style={{fontSize:12,color:C.muted}}>Run at least 2 audits to see historical trends. Each audit is saved automatically.</div>
+          </div>
+        );
+
+        const W=700,H=250,padL=40,padR=20,padT=10,padB=30;
+        const plotW=W-padL-padR,plotH=H-padT-padB;
+        const maxVal=100,n=chartData.length;
+        const getX=(i)=>padL+(i/(n-1))*plotW;
+        const getY=(val)=>padT+plotH-(val/maxVal)*plotH;
+        const makePath=(key)=>chartData.map((d,i)=>`${i===0?"M":"L"}${getX(i).toFixed(1)},${getY(d[key]).toFixed(1)}`).join(" ");
+        const lines=[{key:"overall",color:C.accent,width:2.5},{key:"mentions",color:"#22c55e",width:1.5},{key:"citations",color:"#f59e0b",width:1.5}];
+        const yTicks=[0,25,50,75,100];
+        const first=chartData[0],last=chartData[chartData.length-1];
+        const delta=last.overall-first.overall;
+
+        return(
+          <div style={{padding:24,background:C.card,border:"1px solid "+C.border,borderRadius:14}}>
+            {/* Legend */}
+            <div style={{display:"flex",gap:20,marginBottom:20,fontSize:12}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:3,borderRadius:2,background:C.accent}}/><span style={{color:C.muted}}>Overall Score</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:3,borderRadius:2,background:"#22c55e"}}/><span style={{color:C.muted}}>Mention Rate</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:3,borderRadius:2,background:"#f59e0b"}}/><span style={{color:C.muted}}>Citation Rate</span></div>
+            </div>
+
+            {/* SVG Chart */}
+            <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",overflow:"visible"}}>
+              {yTicks.map(tick=><g key={tick}><line x1={padL} x2={W-padR} y1={getY(tick)} y2={getY(tick)} stroke={C.border} strokeWidth={1} strokeDasharray={tick===0?"none":"4,4"}/><text x={padL-8} y={getY(tick)+4} textAnchor="end" fontSize={10} fill={C.muted}>{tick}%</text></g>)}
+              {lines.map(line=><path key={line.key} d={makePath(line.key)} fill="none" stroke={line.color} strokeWidth={line.width} strokeLinecap="round" strokeLinejoin="round"/>)}
+              {lines.map(line=>chartData.map((d,i)=><circle key={`${line.key}-${i}`} cx={getX(i)} cy={getY(d[line.key])} r={3} fill={line.color} stroke="#fff" strokeWidth={1.5}><title>{line.key}: {d[line.key]}% — {d.fullDate}</title></circle>))}
+              {chartData.map((d,i)=><text key={i} x={getX(i)} y={H-5} textAnchor="middle" fontSize={10} fill={C.muted}>{d.date}</text>)}
+              {lines.map(line=><text key={`lbl-${line.key}`} x={getX(n-1)+8} y={getY(last[line.key])+4} fontSize={10} fontWeight={500} fill={line.color}>{last[line.key]}%</text>)}
+            </svg>
+
+            {/* Delta summary */}
+            <div style={{marginTop:16,padding:"12px 16px",background:delta>=0?"rgba(220,252,231,0.06)":"rgba(254,226,226,0.06)",borderRadius:10,display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:18}}>{delta>=0?"\u{1F4C8}":"\u{1F4C9}"}</span>
+              <span style={{fontSize:13,color:C.text}}>
+                Overall score {delta>=0?"improved":"decreased"} by <span style={{fontWeight:600,color:delta>=0?"#166534":"#991b1b"}}>{Math.abs(delta)}%</span> since first audit
+                <span style={{color:C.muted}}> ({first.fullDate} → {last.fullDate})</span>
+              </span>
+            </div>
+          </div>
+        );
+      })()}
     </div>
-
-    {/* 3b. Performance chart card */}
-    {(()=>{
-      const chartData=history.map(h=>{
-        let gpt=0,gemini=0;
-        if(perfMetric==="mentions"){gpt=h.mentionsPerEngine?.gpt??h.mentions??0;gemini=h.mentionsPerEngine?.gemini??h.mentions??0;}
-        else if(perfMetric==="citations"){gpt=h.citationsPerEngine?.gpt??h.citations??0;gemini=h.citationsPerEngine?.gemini??h.citations??0;}
-        else{gpt=h.sentimentPerEngine?.gpt??50;gemini=h.sentimentPerEngine?.gemini??50;}
-        const dateLabel=typeof h.date==="string"?h.date.slice(0,10):new Date(h.date).toLocaleDateString("en-GB",{day:"2-digit",month:"short"});
-        return{date:dateLabel,gpt,gemini};
-      });
-      const padL=45,padR=15,padT=15,padB=35;
-      const chartW=620-padL-padR,chartH=220-padT-padB;
-      const yToSvg=(val)=>padT+chartH-(val/100)*chartH;
-      const xToSvg=(i)=>padL+(chartData.length>1?(i/(chartData.length-1))*chartW:chartW/2);
-      const polyStr=(arr,key)=>arr.map((d,i)=>`${xToSvg(i)},${yToSvg(d[key])}`).join(" ");
-      const areaStr=(arr,key)=>`${xToSvg(0)},${padT+chartH} ${polyStr(arr,key)} ${xToSvg(arr.length-1)},${padT+chartH}`;
-      const gridYs=[0,25,50,75,100];
-      return(
-        <Card>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-            <span style={{fontSize:14,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Performance Tracker</span>
-            <select value={perfMetric} onChange={e=>setPerfMetric(e.target.value)} style={{padding:"7px 14px",paddingRight:28,borderRadius:8,border:`1px solid ${C.border}`,fontSize:12,fontWeight:500,color:C.text,background:"#fff",fontFamily:"inherit",cursor:"pointer",outline:"none",appearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 10px center"}}>
-              <option value="mentions">Mentions</option>
-              <option value="citations">Citations</option>
-              <option value="sentiments">Sentiments</option>
-            </select>
-          </div>
-          <svg viewBox="0 0 620 220" style={{width:"100%"}} preserveAspectRatio="xMidYMid meet">
-            <defs>
-              <linearGradient id="gptGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10A37F" stopOpacity="0.12"/><stop offset="100%" stopColor="#10A37F" stopOpacity="0.01"/></linearGradient>
-              <linearGradient id="gemGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4285F4" stopOpacity="0.12"/><stop offset="100%" stopColor="#4285F4" stopOpacity="0.01"/></linearGradient>
-            </defs>
-            {gridYs.map(v=>{const y=yToSvg(v);return <g key={v}><line x1={padL} y1={y} x2={padL+chartW} y2={y} stroke={C.borderSoft} strokeDasharray="3,3" strokeWidth="1"/><text x={padL-8} y={y+4} textAnchor="end" fontSize="10" fill={C.muted} fontFamily="'Plus Jakarta Sans'">{v}</text></g>;})}
-            {chartData.map((d,i)=><text key={"xl"+i} x={xToSvg(i)} y={212} textAnchor="middle" fontSize="9" fill={C.muted}>{d.date}</text>)}
-            {chartData.length>=2&&<>
-              <polygon points={areaStr(chartData,"gpt")} fill="url(#gptGrad)"/>
-              <polygon points={areaStr(chartData,"gemini")} fill="url(#gemGrad)"/>
-              <polyline points={polyStr(chartData,"gpt")} fill="none" stroke="#10A37F" strokeWidth="2" strokeLinejoin="round"/>
-              <polyline points={polyStr(chartData,"gemini")} fill="none" stroke="#4285F4" strokeWidth="2" strokeLinejoin="round"/>
-            </>}
-            {chartData.length<2&&<text x="310" y="110" textAnchor="middle" fontSize="13" fill={C.muted}>Run more audits to track trends</text>}
-            {chartData.map((d,i)=><g key={"pt"+i}><circle cx={xToSvg(i)} cy={yToSvg(d.gpt)} r="4" fill="#fff" stroke="#10A37F" strokeWidth="2"><title>ChatGPT: {d.gpt}% — {d.date}</title></circle><circle cx={xToSvg(i)} cy={yToSvg(d.gemini)} r="4" fill="#fff" stroke="#4285F4" strokeWidth="2"><title>Gemini: {d.gemini}% — {d.date}</title></circle></g>)}
-          </svg>
-          <div style={{display:"flex",justifyContent:"center",gap:24,marginTop:12}}>
-            <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}><div style={{width:8,height:8,borderRadius:"50%",background:"#10A37F"}}/>ChatGPT</div>
-            <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}><div style={{width:8,height:8,borderRadius:"50%",background:"#4285F4"}}/>Gemini</div>
-          </div>
-        </Card>
-      );
-    })()}
 
     {/* Section divider */}
     <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"40px 0"}}/>
