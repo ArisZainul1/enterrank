@@ -3937,8 +3937,9 @@ function ProjectHub({onSelect,onNew,onLogout}){
     {/* Top nav */}
     <div style={{padding:"14px 32px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <Logo/>
-      <div style={{display:"flex",alignItems:"center",gap:16}}>
-      </div>
+      <button onClick={onLogout} style={{padding:"7px 16px",fontSize:12,fontWeight:500,background:"transparent",color:C.muted,border:`1px solid ${C.border}`,borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"'Outfit'",transition:"all .15s"}}
+        onMouseEnter={e=>{e.currentTarget.style.color=C.text;e.currentTarget.style.borderColor=C.sub;}}
+        onMouseLeave={e=>{e.currentTarget.style.color=C.muted;e.currentTarget.style.borderColor=C.border;}}>Log Out</button>
     </div>
 
     <div style={{maxWidth:960,margin:"0 auto",padding:"40px 32px",animation:"fadeIn .5s ease-out"}}>
@@ -3982,12 +3983,11 @@ function ProjectHub({onSelect,onNew,onLogout}){
                 <div>
                   <div style={{fontSize:14,fontWeight:500,color:C.text}}>{p.brand}</div>
                   <div style={{fontSize:12,color:C.muted,marginTop:1}}>
-                    {(()=>{const ac=p.audits?.length||p.auditCount||0;const ls=p.audits?.[0]?.overall_score||p.lastScore||null;return ac===0?"No audits yet":`${ac} audit${ac>1?"s":""}${ls!=null?` \u00B7 Score: ${ls}%`:""}`;})()}
+                    {(()=>{const la=p.audits?.[0]||null;const d=la?.created_at?new Date(la.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):null;const s=la?.overall_score??null;return d?`Last audit: ${d}${s!=null?` \u00B7 Score: ${s}%`:""}`:"No audits yet";})()}
                   </div>
                 </div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:12}}>
-                {p.lastAudit&&<span style={{fontSize:12,color:C.muted}}>{Math.ceil((Date.now()-new Date(p.lastAudit))/(1000*60*60*24))}d ago</span>}
                 <button onClick={(e)=>{e.stopPropagation();onSelect(p);}} style={{padding:"6px 16px",background:"#fff",color:C.text,border:`1px solid ${C.border}`,borderRadius:7,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",transition:"all .15s"}}
                   onMouseEnter={e=>{e.currentTarget.style.background=C.text;e.currentTarget.style.color="#fff";e.currentTarget.style.borderColor=C.text;}}
                   onMouseLeave={e=>{e.currentTarget.style.background="#fff";e.currentTarget.style.color=C.text;e.currentTarget.style.borderColor=C.border;}}>
