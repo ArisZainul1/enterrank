@@ -2333,6 +2333,13 @@ function DashboardPage({r,history,goTo}){
         }));
         const dayMap=new Map();
         rawData.forEach(d=>{const key=d.date;if(!dayMap.has(key)||d._ts>dayMap.get(key)._ts)dayMap.set(key,d);});
+        // Ensure current audit is represented even if history hasn't refreshed yet
+        if(r&&r.overall){
+          const todayKey=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"}).replace(/\s\d{4}$/,"");
+          const currentMentions=Math.round(((r.engines?.[0]?.mentionRate||0)+(r.engines?.[1]?.mentionRate||0))/2);
+          const currentCitations=Math.round(((r.engines?.[0]?.citationRate||0)+(r.engines?.[1]?.citationRate||0))/2);
+          dayMap.set(todayKey,{date:todayKey,fullDate:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}),overall:r.overall||0,mentions:currentMentions,citations:currentCitations,_ts:Date.now()});
+        }
         const chartData=[...dayMap.values()].map(({_ts,...rest})=>rest);
 
         if(chartData.length<2)return(
@@ -3310,10 +3317,12 @@ function SentimentPage({r}){
       <div style={{display:"grid",gap:10}}>
         {signals.competitorSentiment.map((comp,i)=>{
           const sentColor=comp.sentiment==="positive"?"#22c55e":comp.sentiment==="negative"?"#dc2626":"#d97706";
+          const configuredComps=(r?.clientData?.competitors||[]).map(c=>(c.name||c||"").toLowerCase());
+          const isConfigured=configuredComps.some(cc=>cc===(comp.name||"").toLowerCase());
           return(<div key={i} style={{padding:"14px 18px",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:12,display:"flex",alignItems:"center",gap:14}}>
             <div style={{width:8,height:8,borderRadius:"50%",background:sentColor,flexShrink:0}}/>
             <div style={{flex:1}}>
-              <div style={{fontSize:13,fontWeight:500,color:C.text}}>{comp.name}</div>
+              <div style={{fontSize:13,fontWeight:500,color:"#111827",display:"flex",alignItems:"center",gap:8}}>{comp.name}{!isConfigured&&(<span style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:"#f3f4f6",color:"#9ca3af",fontWeight:500}}>Discovered</span>)}</div>
               <div style={{fontSize:12,color:C.muted,marginTop:2}}>{comp.summary}</div>
             </div>
             <span style={{fontSize:10,fontWeight:500,padding:"3px 8px",borderRadius:4,background:comp.sentiment==="positive"?"#dcfce7":comp.sentiment==="negative"?"#fee2e2":"#fef3c7",color:comp.sentiment==="positive"?"#166534":comp.sentiment==="negative"?"#991b1b":"#92400e",textTransform:"capitalize"}}>{comp.sentiment}</span>
@@ -4458,6 +4467,14 @@ export default function App(){
         await sbSaveAudit(project.id,apiData,{overall:entry.overall,mentions:entry.mentions,citations:entry.citations,sentiment:entry.sentimentAvg});
         console.log('Audit saved to Supabase:',project.id);
         setActiveProject({...project,_supabase:true});
+        // Refresh audit history so the chart updates
+        try{
+          const freshAudits=await sbLoadProjectAudits(project.id);
+          if(freshAudits&&freshAudits.length>0){
+            const freshHistory=freshAudits.map(a=>({date:new Date(a.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),overall:a.overall_score,mentions:a.mention_rate,citations:a.citation_rate,sentimentAvg:a.sentiment_score,mentionsPerEngine:{gpt:a.mention_rate,gemini:a.mention_rate},citationsPerEngine:{gpt:a.citation_rate,gemini:a.citation_rate},sentimentPerEngine:{gpt:a.sentiment_score||50,gemini:a.sentiment_score||50},apiData:null})).reverse();
+            setHistory(freshHistory);
+          }
+        }catch(he){console.error('Failed to refresh history:',he);}
       }
     }catch(e){
       console.error('Failed to save to Supabase:',e);
