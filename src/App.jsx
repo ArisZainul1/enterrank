@@ -2201,7 +2201,7 @@ function DashboardPage({r,history,goTo}){
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:32}}>
       <div>
         <div style={{fontSize:22,fontWeight:600,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Hello, Aris</div>
-        <div style={{fontSize:13,color:C.muted,marginTop:2}}>Dashboard for {r.clientData.brand}</div>
+        <div style={{fontSize:13,color:"#6b7280",marginTop:2}}>Dashboard for {r.clientData.brand}</div>
       </div>
       <button onClick={()=>exportPDF(r)} style={{padding:"8px 16px",fontSize:12,fontWeight:500,background:C.accent,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"'Outfit'",whiteSpace:"nowrap"}}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -2672,7 +2672,7 @@ Return JSON only.`;
     </div>
   </div>);
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>User Archetypes</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Who is searching — grouped by stakeholder type</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>User Archetypes</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Who is searching — grouped by stakeholder type</p></div>
     <SectionNote text="Select a stakeholder group to see customer segments within it. 'Visibility' shows how often AI engines mention your brand for this segment's queries."/>
     <div style={{display:"flex",gap:8,marginBottom:20}}>
       {r.stakeholders.map((sg,i)=>(<div key={i} onClick={()=>{setSelGroup(i);setSelArch(null);}} style={{flex:1,padding:"14px 16px",background:selGroup===i?`${C.accent}06`:C.surface,border:`1px solid ${selGroup===i?`${C.accent}30`:C.border}`,borderRadius:C.rs,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
@@ -2797,7 +2797,7 @@ function IntentPage({r,goTo}){
     {/* Header */}
     <div style={{marginBottom:32}}>
       <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Intent Pathway</h2>
-      <p style={{color:C.muted,fontSize:13,marginTop:4}}>Audit query results across ChatGPT and Gemini for {r.clientData.brand}</p>
+      <p style={{color:"#6b7280",fontSize:13,marginTop:4}}>Audit query results across ChatGPT and Gemini for {r.clientData.brand}</p>
     </div>
 
     {/* Overall summary */}
@@ -3157,7 +3157,7 @@ function PlaybookPage({r,goTo,activeProject}){
   };
 
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Playbook</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Your brand hub — identity, voice, and AI-optimised guidelines</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Playbook</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Your brand hub — identity, voice, and AI-optimised guidelines</p></div>
     <SectionNote text="This is your central brand hub. Define your brand voice, manage compliance, and set guidelines. Everything here powers your content generation and AI engine strategy."/>
 
     {/* Tab Bar */}
@@ -3221,7 +3221,7 @@ function SentimentPage({r}){
   return(<div>
     <div style={{marginBottom:32}}>
       <h2 style={{fontSize:22,fontWeight:600,color:C.text,letterSpacing:"-.02em",margin:0,fontFamily:"'Outfit'"}}>Sentiment Analysis</h2>
-      <p style={{fontSize:13,color:C.sub,marginTop:4}}>How AI engines perceive and portray {r?.clientData?.brand||"your brand"}</p>
+      <p style={{fontSize:13,color:"#6b7280",marginTop:4}}>How AI engines perceive and portray {r?.clientData?.brand||"your brand"}</p>
     </div>
 
     {/* Score overview + competitor comparison */}
@@ -3346,7 +3346,7 @@ Return JSON only:
   </div>);
   const hasAnyFindings=r.aeoChannels.some(ch=>ch.finding);
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Target Channels</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Channels ranked by impact on AI engine visibility {hasAnyFindings&&<span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>✓ Verified via Web Search</span>}</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Target Channels</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Channels ranked by impact on AI engine visibility {hasAnyFindings&&<span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>✓ Verified via Web Search</span>}</p></div>
     <SectionNote text="These channels directly influence whether AI engines cite your brand. Each channel has been verified through real web searches — URLs confirmed, not estimated. Channels with ▼ include specific sites to target."/>
     <Card>
       {r.aeoChannels.sort((a,b)=>b.impact-a.impact).map((ch,i)=>{const isOpen=expandCh===i;const hasSites=ch.sites&&ch.sites.length>0;const canExpand=hasSites||ch.finding;return(<div key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
@@ -3737,7 +3737,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
   };
 
   if(!projectId)return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Generate content powered by your brand playbook and audit insights.</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Generate content powered by your brand playbook and audit insights.</p></div>
     <Card style={{textAlign:"center",padding:32}}>
       <div style={{fontSize:20,marginBottom:8}}>📋</div>
       <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>No project linked yet</div>
@@ -3751,7 +3751,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
   </div>);
 
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Generate content powered by your brand playbook and audit insights.</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Generate content powered by your brand playbook and audit insights.</p></div>
 
     <div style={{display:"flex",gap:0,marginBottom:20,borderBottom:`1px solid ${C.border}`,overflowX:"auto"}}>
       {TABS.map(tab=>(<button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{padding:"10px 16px",background:"transparent",border:"none",borderBottom:activeTab===tab.id?`2px solid ${C.accent}`:"2px solid transparent",color:activeTab===tab.id?C.accent:C.muted,fontSize:12,fontWeight:activeTab===tab.id?600:500,cursor:"pointer",fontFamily:"'Outfit'",whiteSpace:"nowrap",transition:"all .15s",display:"flex",alignItems:"center",gap:6}}>
@@ -3826,7 +3826,7 @@ Return JSON only:
 
   return(<div>
     <div style={{marginBottom:24}}>
-      <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>90-Day Transformation Roadmap</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Department-by-department plan for <strong>{r.clientData.brand}</strong></p>
+      <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>90-Day Transformation Roadmap</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Department-by-department plan for <strong>{r.clientData.brand}</strong></p>
     </div>
     <SectionNote text="This roadmap assigns tasks to every department involved. The PDF export includes all 8 stages of your audit in a professional format with cover page and table of contents."/>
 
