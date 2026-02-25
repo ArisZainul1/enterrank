@@ -1110,21 +1110,6 @@ Rules:
 
   if(realChannels&&realChannels.channels&&realChannels.channels.length>0){
     chData.channels=realChannels.channels;
-    onProgress("Checking podcast & academic presence...",83);
-    const gapPrompt=`For "${brand}" in ${industry} (${region}), assess ONLY these 2 channels:
-1. Podcast Appearances
-2. Academic/Research Citations
-
-Return JSON:
-{"channels":[
-  {"channel":"Podcast Appearances","status":"Active"|"Needs Work"|"Not Present","finding":"<detail>","priority":"High"|"Medium"|"Low","action":"<recommendation>"},
-  {"channel":"Academic/Research Citations","status":"Active"|"Needs Work"|"Not Present","finding":"<detail>","priority":"High"|"Medium"|"Low","action":"<recommendation>"}
-]}
-
-Be accurate for the ${region} market. Only "Active" if ${brand} has verifiable presence on these channels in ${region}. Recommendations should be specific to ${region}. Respond in English only.`;
-    const gapRaw=await callGemini(gapPrompt, engineSystemPrompt);
-    const gapData=safeJSON(gapRaw);
-    if(gapData&&gapData.channels)chData.channels=[...chData.channels,...gapData.channels];
   }else{
     const channelPrompt=`For "${brand}" (website: ${cd.website||"unknown"}) in ${industry} (${region}):
 Website crawl: ${crawlSummary}
@@ -1145,6 +1130,75 @@ Determine channel presence. Return JSON:
     const chRaw=await callGemini(channelPrompt, engineSystemPrompt);
     chData=safeJSON(chRaw)||{channels:[]};
   }
+
+  // ── Step 7b: Web search verification pass for unconfirmed channels ──
+  const channelResults=chData.channels||[];
+  const unverifiedChannels=channelResults.filter(ch=>{
+    const s=(ch.status||"").toLowerCase();
+    return s!=="active"&&s!=="found";
+  });
+  const blogMissing=!channelResults.find(ch=>{
+    const n=(ch.name||ch.channel||"").toLowerCase();
+    return n.includes("blog")||n.includes("knowledge base");
+  });
+
+  // Direct blog detection from crawl data
+  const hasBlogPath=crawlSummary.match(/\/(blog|news|resources|knowledge|help|faq|articles|insights|learn)/i);
+  if(hasBlogPath){
+    let blogCh=channelResults.find(ch=>{const n=(ch.name||ch.channel||"").toLowerCase();return n.includes("blog")||n.includes("knowledge");});
+    if(blogCh){if(blogCh.status!=="Active"){blogCh.status="Active";blogCh.finding="Blog/knowledge base detected at "+hasBlogPath[0];blogCh.url=(cd.website||"")+hasBlogPath[0];blogCh.verifiedBy="crawl";}}
+    else{channelResults.push({channel:"Company Blog / Knowledge Base",status:"Active",finding:"Blog/knowledge base detected at "+hasBlogPath[0],url:(cd.website||"")+hasBlogPath[0],priority:"High",action:"Keep blog content fresh and optimised for AI indexing.",verifiedBy:"crawl"});}
+  }
+
+  if(unverifiedChannels.length>0||blogMissing){
+    onProgress("Verifying channel presence...",83);
+    try{
+      const channelsToVerify=unverifiedChannels.map(ch=>ch.name||ch.channel).join(", ");
+      const verifyQuery=`Verify whether the brand "${brand}" (website: ${cd.website||"unknown"}) has an active official presence on these channels: ${channelsToVerify}${blogMissing&&!hasBlogPath?", Company Blog/Knowledge Base":""}.
+
+For EACH channel, search the web and determine:
+1. Does the brand have an active, official presence there?
+2. If yes, what is the URL?
+3. Status: "Active" (confirmed presence), "Not Present" (confirmed no presence), or "Needs Work" (partial/outdated).
+
+Return JSON only:
+{"verifiedChannels":[{"channel":"LinkedIn","status":"Active","url":"https://linkedin.com/company/example","finding":"Official LinkedIn page found"}]}
+
+Be thorough — search for "${brand} [channel]" directly. Don't guess. Actually search to find real pages.`;
+      const verifyResult=await callOpenAISearch(verifyQuery, region);
+      const verifyText=verifyResult?.text||"";
+      let verifiedData={verifiedChannels:[]};
+      try{
+        const jsonMatch=verifyText.match(/\{[\s\S]*\}/);
+        if(jsonMatch)verifiedData=JSON.parse(jsonMatch[0]);
+      }catch(pe){
+        const parsed=safeJSON(verifyText);
+        if(parsed)verifiedData=parsed;
+      }
+      if(verifiedData.verifiedChannels&&verifiedData.verifiedChannels.length>0){
+        verifiedData.verifiedChannels.forEach(v=>{
+          const vName=(v.channel||"").toLowerCase();
+          const existing=channelResults.find(ch=>{
+            const cn=(ch.name||ch.channel||"").toLowerCase();
+            return cn.includes(vName)||vName.includes(cn)||(vName.includes("blog")&&cn.includes("blog"))||(vName.includes("twitter")&&cn.includes("twitter"))||(vName.includes("podcast")&&cn.includes("podcast"))||(vName.includes("academic")&&cn.includes("academic"));
+          });
+          if(existing){
+            const es=(existing.status||"").toLowerCase();
+            const ns=(v.status||"").toLowerCase();
+            if(es!=="active"&&ns.includes("active")){existing.status="Active";existing.url=v.url||existing.url;existing.finding=v.finding||existing.finding;existing.verifiedBy="web_search";}
+            else if(es==="not verified"&&ns.includes("not present")){existing.status="Not Present";existing.finding=v.finding||"Not found via web search";existing.verifiedBy="web_search";}
+            else if(es==="not verified"&&ns.includes("needs work")){existing.status="Needs Work";existing.finding=v.finding||existing.finding;existing.verifiedBy="web_search";}
+          }else if(vName.includes("blog")||vName.includes("knowledge")){
+            channelResults.push({channel:"Company Blog / Knowledge Base",status:v.status||"Not Present",url:v.url||null,finding:v.finding||null,priority:"High",action:"Start a company blog for AI indexing.",verifiedBy:"web_search"});
+          }
+        });
+      }
+      chData.channels=channelResults;
+    }catch(ve){
+      console.error("Channel web search verification failed:",ve);
+    }
+  }
+
   }catch(stepError){
     console.error("Channel verification failed:",stepError.message);
     onProgress("Warning: channel verification had an issue, continuing...",85);
@@ -3487,7 +3541,10 @@ function ChannelsPage({r}){
               <div style={{fontSize:13,fontWeight:500,color:"#111827"}}>{ch.name||ch.channel}</div>
               {(ch.url||ch.finding)&&<div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{ch.url||ch.finding}</div>}
             </div>
-            <span style={{fontSize:11,fontWeight:500,padding:"4px 10px",borderRadius:6,background:statusConfig.bg,color:statusConfig.text}}>{statusConfig.label}</span>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:11,fontWeight:500,padding:"4px 10px",borderRadius:6,background:statusConfig.bg,color:statusConfig.text}}>{statusConfig.label}</span>
+              {ch.verifiedBy==="web_search"&&<span style={{fontSize:9,color:"#9ca3af"}}>{"✓ web verified"}</span>}
+            </div>
           </div>);
         })}
       </div>)}
