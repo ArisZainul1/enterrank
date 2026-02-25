@@ -2732,14 +2732,6 @@ function IntentPage({r,goTo}){
     return <span style={{fontSize:11,fontWeight:500,padding:"4px 10px",borderRadius:6,display:"inline-block",background:bg,color:cl}}>{icon} {status}</span>;
   };
 
-  // Overall stats
-  let totalCited=0,totalMentionedOnly=0,totalAbsent=0;
-  combinedQueries.forEach(q=>{
-    const gs=(q.gptStatus||"").toLowerCase(),gm=(q.gemStatus||"").toLowerCase();
-    if(gs==="cited"||gm==="cited")totalCited++;
-    else if(gs==="mentioned"||gm==="mentioned")totalMentionedOnly++;
-    else totalAbsent++;
-  });
 
   // Brand classification helper (mirrors runRealAudit's classifyResponse)
   function classifyText(responseText,brandName,website,citationUrls){
@@ -2809,16 +2801,9 @@ function IntentPage({r,goTo}){
     </div>
 
     {/* Overall summary */}
-    <div style={{padding:"20px 24px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:14,marginBottom:32,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-      <div>
-        <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Outfit'"}}>Query Visibility Summary</div>
-        <div style={{fontSize:12,color:C.muted,marginTop:2}}>{combinedQueries.length} prompts tested across both engines</div>
-      </div>
-      <div style={{display:"flex",gap:8}}>
-        <span style={{fontSize:12,fontWeight:500,padding:"5px 12px",borderRadius:8,background:"#dcfce7",color:"#166534"}}>{totalCited} cited</span>
-        <span style={{fontSize:12,fontWeight:500,padding:"5px 12px",borderRadius:8,background:"#dbeafe",color:"#1e40af"}}>{totalMentionedOnly} mentioned only</span>
-        <span style={{fontSize:12,fontWeight:500,padding:"5px 12px",borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{totalAbsent} absent</span>
-      </div>
+    <div style={{padding:"20px 24px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:14,marginBottom:32}}>
+      <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Outfit'"}}>Query Visibility Summary</div>
+      <div style={{fontSize:12,color:C.muted,marginTop:2}}>{combinedQueries.length} prompts tested across both engines</div>
     </div>
 
     {/* Audit Query Results — flat table */}
