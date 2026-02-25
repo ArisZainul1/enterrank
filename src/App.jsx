@@ -127,7 +127,7 @@ function validateResponse(raw,minLength=10){
 async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst."){
   return callWithRetry(async()=>{
     const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),30000);
+    const timeout=setTimeout(()=>controller.abort(),45000);
     try{
       const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt}),signal:controller.signal});
       clearTimeout(timeout);
@@ -142,7 +142,7 @@ async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst.")
 async function callOpenAI4o(prompt, systemPrompt="You are an expert AEO analyst."){
   return callWithRetry(async()=>{
     const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),30000);
+    const timeout=setTimeout(()=>controller.abort(),45000);
     try{
       const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt,model:"gpt-4o"}),signal:controller.signal});
       clearTimeout(timeout);
@@ -157,7 +157,7 @@ async function callOpenAI4o(prompt, systemPrompt="You are an expert AEO analyst.
 async function callGemini(prompt, systemPrompt="You are an expert AEO analyst."){
   return callWithRetry(async()=>{
     const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),30000);
+    const timeout=setTimeout(()=>controller.abort(),45000);
     try{
       const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt}),signal:controller.signal});
       clearTimeout(timeout);
@@ -174,7 +174,7 @@ async function callGemini(prompt, systemPrompt="You are an expert AEO analyst.")
 async function callOpenAISearch(query, region){
   return callWithRetry(async()=>{
     const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),60000);
+    const timeout=setTimeout(()=>controller.abort(),75000);
     try{
       const r=await fetch("/api/openai-search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,region}),signal:controller.signal});
       clearTimeout(timeout);
@@ -2546,10 +2546,33 @@ function DashboardPage({r,history,goTo}){
 }
 
 /* ─── PAGE: ARCHETYPES (stakeholder-grouped) ─── */
-function ArchetypesPage({r,goTo}){
+function ArchetypesPage({r,goTo,onUpdate}){
   const[selGroup,setSelGroup]=useState(0);
   const[selArch,setSelArch]=useState(null);
-  if(!r.stakeholders||r.stakeholders.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>User Archetypes</h2></div><div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>Data unavailable for this section. Try running a new audit.</div></div>);
+  const[regenArch,setRegenArch]=useState(false);
+  const regenerateArchetypes=async()=>{
+    setRegenArch(true);
+    try{
+      const brand=r.clientData?.brand||"Brand",industry=r.clientData?.industry||"Technology",region=r.clientData?.region||"Global",topics=(r.clientData?.topics||[]).join(", ");
+      const prompt=`For "${brand}" in ${industry} (${region}), topics: ${topics}.
+Generate 2-3 stakeholder groups with 2-3 archetypes each. Each archetype needs a 4-stage customer journey with 2-3 prompts per stage.
+Return JSON:
+{"stakeholders":[{"group":"<name>","icon":"<emoji>","desc":"<1 sentence>","archetypes":[{"name":"<name>","icon":"<emoji>","demo":"<demographics>","behavior":"<search behavior>","intent":"<intent>","size":25,"brandVisibility":30,"opportunity":"medium","prompts":["p1","p2"],"journey":[{"stage":"Awareness","color":"#6366f1","prompts":[{"query":"<prompt>","status":"Absent","engines":{"gpt":"Absent","gemini":"Absent"}}]},{"stage":"Consideration","color":"#8b5cf6","prompts":[...]},{"stage":"Transaction","color":"#ec4899","prompts":[...]},{"stage":"Retention","color":"#f59e0b","prompts":[...]}]}]}]}
+Return JSON only.`;
+      const raw=await callOpenAI(prompt,"You are an AEO analyst. Return ONLY valid JSON.");
+      const parsed=safeJSON(raw);
+      if(parsed?.stakeholders?.length>0&&onUpdate)onUpdate(prev=>({...prev,stakeholders:parsed.stakeholders}));
+    }catch(e){console.error("Archetype regeneration failed:",e);}
+    setRegenArch(false);
+  };
+  if(!r.stakeholders||r.stakeholders.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>User Archetypes</h2></div>
+    <div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
+      <div style={{fontSize:28,marginBottom:8}}>👥</div>
+      <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Archetypes not generated</div>
+      <div style={{fontSize:12,color:"#9ca3af",marginBottom:16}}>This can happen if the AI service timed out during the audit.</div>
+      <button onClick={regenerateArchetypes} disabled={regenArch} style={{padding:"8px 18px",fontSize:12,fontWeight:500,background:regenArch?"#e5e7eb":C.accent,color:regenArch?"#999":"#fff",border:"none",borderRadius:8,cursor:regenArch?"default":"pointer",fontFamily:"'Outfit'"}}>{regenArch?"Generating...":"Generate Archetypes"}</button>
+    </div>
+  </div>);
   return(<div>
     <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>User Archetypes</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Who is searching — grouped by stakeholder type</p></div>
     <SectionNote text="Select a stakeholder group to see customer segments within it. 'Visibility' shows how often AI engines mention your brand for this segment's queries."/>
@@ -3098,9 +3121,30 @@ function PlaybookPage({r,goTo,activeProject}){
 }
 
 /* ─── PAGE: TARGET CHANNELS (Step 06 with drill-down) ─── */
-function ChannelsPage({r,goTo}){
+function ChannelsPage({r,goTo,onUpdate}){
   const[expandCh,setExpandCh]=useState(null);
-  if(!r.aeoChannels||r.aeoChannels.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Target Channels</h2></div><div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>Data unavailable for this section. Try running a new audit.</div></div>);
+  const[regenCh,setRegenCh]=useState(false);
+  const regenerateChannels=async()=>{
+    setRegenCh(true);
+    try{
+      const brand=r.clientData?.brand||"Brand",industry=r.clientData?.industry||"Technology",region=r.clientData?.region||"Global";
+      const prompt=`For "${brand}" in ${industry} (${region}), list the top 10 channels that directly influence AI engine visibility (where ChatGPT and Gemini pull data from). For each channel provide: name, type, impact score (1-10), current status ("Active"|"Missing"|"Weak"), and actionable recommendation.
+Return JSON only:
+[{"name":"Wikipedia","type":"Knowledge Base","impact":9,"status":"Missing","recommendation":"Create a Wikipedia page for ${brand}","finding":"","url":"","sites":[]}]`;
+      const raw=await callGemini(prompt,"You are an AEO analyst. Return ONLY valid JSON array.");
+      const parsed=safeJSON(raw);
+      if(Array.isArray(parsed)&&parsed.length>0&&onUpdate)onUpdate(prev=>({...prev,aeoChannels:parsed}));
+    }catch(e){console.error("Channel regeneration failed:",e);}
+    setRegenCh(false);
+  };
+  if(!r.aeoChannels||r.aeoChannels.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Target Channels</h2></div>
+    <div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
+      <div style={{fontSize:28,marginBottom:8}}>📡</div>
+      <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Channels not generated</div>
+      <div style={{fontSize:12,color:"#9ca3af",marginBottom:16}}>This can happen if the AI service timed out during the audit.</div>
+      <button onClick={regenerateChannels} disabled={regenCh} style={{padding:"8px 18px",fontSize:12,fontWeight:500,background:regenCh?"#e5e7eb":C.accent,color:regenCh?"#999":"#fff",border:"none",borderRadius:8,cursor:regenCh?"default":"pointer",fontFamily:"'Outfit'"}}>{regenCh?"Generating...":"Generate Channels"}</button>
+    </div>
+  </div>);
   const hasAnyFindings=r.aeoChannels.some(ch=>ch.finding);
   return(<div>
     <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Target Channels</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Channels ranked by impact on AI engine visibility {hasAnyFindings&&<span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>✓ Verified via Web Search</span>}</p></div>
@@ -3136,12 +3180,13 @@ function ChannelsPage({r,goTo}){
 }
 
 /* ─── PAGE: CONTENT HUB ─── */
-function ContentHubPage({r,goTo,activeProject}){
+function ContentHubPage({r,goTo,activeProject,onUpdate}){
   const TABS=[{id:"grid",label:"Grid",icon:"📊"},{id:"suggested",label:"Suggested",icon:"💡"},{id:"create",label:"Create",icon:"✍️"},{id:"library",label:"Library",icon:"📚"}];
   const[activeTab,setActiveTab]=useState("grid");
   const[contentLibrary,setContentLibrary]=useState([]);
   const[loading,setLoading]=useState(true);
   const[generating,setGenerating]=useState(false);
+  const[regenGrid,setRegenGrid]=useState(false);
   const[editingContent,setEditingContent]=useState(null);
   const[filterType,setFilterType]=useState("all");
   const[filterStatus,setFilterStatus]=useState("all");
@@ -3245,7 +3290,26 @@ function ContentHubPage({r,goTo,activeProject}){
   /* ── Grid Tab (moved from standalone Content Grid page) ── */
   const renderGrid=()=>{
     const ct=Array.isArray(r?.contentTypes)?r.contentTypes:[];
-    if(ct.length===0)return(<div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>Content grid data unavailable. Try running a new audit.</div>);
+    if(ct.length===0){
+      const regenerateGrid=async()=>{
+        setRegenGrid(true);
+        try{
+          const brand=r.clientData?.brand||"Brand",industry=r.clientData?.industry||"Technology";
+          const prompt=`For "${brand}" in ${industry}, create a content strategy grid with 8-10 content types. For each provide: type name, target channels (array), publishing frequency, priority (P0/P1/P2), suggested owner/department, and a rationale.
+Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","owner":"Marketing","rationale":"..."}]`;
+          const raw=await callGemini(prompt,"You are a content strategist. Return ONLY valid JSON array.");
+          const parsed=safeJSON(raw);
+          if(Array.isArray(parsed)&&parsed.length>0&&onUpdate)onUpdate(prev=>({...prev,contentTypes:parsed}));
+        }catch(e){console.error("Grid regeneration failed:",e);}
+        setRegenGrid(false);
+      };
+      return(<div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
+        <div style={{fontSize:28,marginBottom:8}}>📊</div>
+        <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Content grid not generated</div>
+        <div style={{fontSize:12,color:"#9ca3af",marginBottom:16}}>This can happen if the AI service timed out during the audit.</div>
+        <button onClick={regenerateGrid} disabled={regenGrid} style={{padding:"8px 18px",fontSize:12,fontWeight:500,background:regenGrid?"#e5e7eb":C.accent,color:regenGrid?"#999":"#fff",border:"none",borderRadius:8,cursor:regenGrid?"default":"pointer",fontFamily:"'Outfit'"}}>{regenGrid?"Generating...":"Generate Content Grid"}</button>
+      </div>);
+    }
     return(<div>
       <SectionNote text={`This content grid is tailored to ${r.clientData?.brand||"your brand"}'s specific gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
       <Card style={{marginBottom:20,overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
@@ -3506,7 +3570,13 @@ function ContentHubPage({r,goTo,activeProject}){
 
 /* ─── PAGE: CONTENT GRID (Step 07) ─── */
 function GridPage({r,goTo}){
-  if(!r.contentTypes||r.contentTypes.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Grid</h2></div><div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>Data unavailable for this section. Try running a new audit.</div></div>);
+  if(!r.contentTypes||r.contentTypes.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Grid</h2></div>
+    <div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
+      <div style={{fontSize:28,marginBottom:8}}>📊</div>
+      <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Content grid not generated</div>
+      <div style={{fontSize:12,color:"#9ca3af"}}>This can happen if the AI service timed out during the audit.</div>
+    </div>
+  </div>);
   return(<div>
     <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content-Channel Grid</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Personalised content strategy based on {r.clientData.brand}'s audit findings.</p></div>
     <SectionNote text={`This content grid is tailored to ${r.clientData.brand}'s specific gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
@@ -3529,8 +3599,29 @@ function GridPage({r,goTo}){
 }
 
 /* ─── PAGE: 90-DAY ROADMAP (Step 08 with premium PDF) ─── */
-function RoadmapPage({r}){
-  if(!r.roadmap||!r.roadmap.day30)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>90-Day Roadmap</h2></div><div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>Data unavailable for this section. Try running a new audit.</div></div>);
+function RoadmapPage({r,onUpdate}){
+  const[regenRoad,setRegenRoad]=useState(false);
+  const regenerateRoadmap=async()=>{
+    setRegenRoad(true);
+    try{
+      const brand=r.clientData?.brand||"Brand",industry=r.clientData?.industry||"Technology",region=r.clientData?.region||"Global";
+      const prompt=`Create a 90-day AI visibility transformation roadmap for "${brand}" in ${industry} (${region}). Split into 3 phases (Day 1-30, Day 31-60, Day 61-90). Each phase should have a title and 4-6 tasks. Each task needs: title, department (Marketing/Content/SEO/Product/PR), priority (P0/P1/P2), and description.
+Return JSON only:
+{"day30":{"title":"Foundation","tasks":[{"title":"...","dept":"Marketing","priority":"P0","desc":"..."}]},"day60":{"title":"Growth","tasks":[...]},"day90":{"title":"Scale","tasks":[...]}}`;
+      const raw=await callGemini(prompt,"You are a digital strategy consultant. Return ONLY valid JSON.");
+      const parsed=safeJSON(raw);
+      if(parsed?.day30&&onUpdate)onUpdate(prev=>({...prev,roadmap:parsed}));
+    }catch(e){console.error("Roadmap regeneration failed:",e);}
+    setRegenRoad(false);
+  };
+  if(!r.roadmap||!r.roadmap.day30)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>90-Day Roadmap</h2></div>
+    <div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
+      <div style={{fontSize:28,marginBottom:8}}>🗺️</div>
+      <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Roadmap not generated</div>
+      <div style={{fontSize:12,color:"#9ca3af",marginBottom:16}}>This can happen if the AI service timed out during the audit.</div>
+      <button onClick={regenerateRoadmap} disabled={regenRoad} style={{padding:"8px 18px",fontSize:12,fontWeight:500,background:regenRoad?"#e5e7eb":C.accent,color:regenRoad?"#999":"#fff",border:"none",borderRadius:8,cursor:regenRoad?"default":"pointer",fontFamily:"'Outfit'"}}>{regenRoad?"Generating...":"Generate Roadmap"}</button>
+    </div>
+  </div>);
   const phases=[r.roadmap.day30,r.roadmap.day60,r.roadmap.day90];
 
 
@@ -4203,12 +4294,12 @@ export default function App(){
       <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto"}}>
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={run} history={history}/>}
         {step==="dashboard"&&results&&<DashboardPage r={results} history={history} goTo={setStep}/>}
-        {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep}/>}
+        {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep} onUpdate={setResults}/>}
         {step==="intent"&&results&&<IntentPage r={results} goTo={setStep}/>}
         {step==="playbook"&&results&&<PlaybookPage r={results} goTo={setStep} activeProject={activeProject}/>}
-        {step==="channels"&&results&&<ChannelsPage r={results} goTo={setStep}/>}
-        {step==="contenthub"&&results&&<ContentHubPage r={results} goTo={setStep} activeProject={activeProject}/>}
-        {step==="roadmap"&&results&&<RoadmapPage r={results}/>}
+        {step==="channels"&&results&&<ChannelsPage r={results} goTo={setStep} onUpdate={setResults}/>}
+        {step==="contenthub"&&results&&<ContentHubPage r={results} goTo={setStep} activeProject={activeProject} onUpdate={setResults}/>}
+        {step==="roadmap"&&results&&<RoadmapPage r={results} onUpdate={setResults}/>}
       </div>
     </div>
   </div>);

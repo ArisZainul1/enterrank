@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     if (!query) return res.status(400).json({ error: "Missing query" });
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 55000);
+    const timeout = setTimeout(() => controller.abort(), 58000); // 58s safety (Vercel 60s limit)
 
     // Map region to country code for location bias
     const regionMap = {

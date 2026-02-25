@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     const { prompt, systemPrompt, model } = req.body;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 55000); // 55s safety
+    const timeout = setTimeout(() => controller.abort(), 58000); // 58s safety (Vercel 60s limit)
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
