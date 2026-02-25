@@ -467,7 +467,7 @@ Return JSON only:
     const results = [];
     for (let i = 0; i < queries.length; i += batchSize) {
       const batch = queries.slice(i, i + batchSize);
-      onProgress(`Testing on ${engineLabel}... (${Math.min(i + batchSize, queries.length)}/${queries.length})`, 14 + Math.round((i / queries.length) * 12));
+      onProgress(`Testing on ${engineLabel}...`, 14 + Math.round((i / queries.length) * 12));
       const batchResults = await Promise.all(
         batch.map(async (query) => {
           const response = await callFn(query, "You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.");
@@ -487,7 +487,7 @@ Return JSON only:
     const results = [];
     for (let i = 0; i < queries.length; i += batchSize) {
       const batch = queries.slice(i, i + batchSize);
-      onProgress(`Testing on ChatGPT with web search... (${Math.min(i + batchSize, queries.length)}/${queries.length})`, 14 + Math.round((i / queries.length) * 12));
+      onProgress(`Testing on ChatGPT...`, 14 + Math.round((i / queries.length) * 12));
       const batchResults = await Promise.all(
         batch.map(async (query) => {
           const result = await callOpenAISearch(query, searchRegion);
@@ -1648,6 +1648,83 @@ function ShareOfVoiceSection({title,rankTitle,brands,metricKey}){
   </div>);
 }
 
+/* ─── CLEAN STATUS MESSAGE ─── */
+function cleanStatusMessage(msg){
+  if(!msg||typeof msg!=="string")return null;
+  const m=msg.toLowerCase();
+  if(m.includes("generating")&&m.includes("quer"))return"Scanning search landscape...";
+  if(m.includes("testing")&&m.includes("chatgpt"))return"Querying AI platforms...";
+  if(m.includes("testing")&&m.includes("gemini"))return"Querying AI platforms...";
+  if(m.includes("gpt")&&m.includes("batch"))return"Analyzing brand signals...";
+  if(m.includes("gemini")&&m.includes("batch"))return"Analyzing brand signals...";
+  if(m.includes("visib"))return"Processing visibility data...";
+  if(m.includes("strength")||m.includes("weakness"))return"Evaluating content signals...";
+  if(m.includes("sentiment"))return"Assessing sentiment patterns...";
+  if(m.includes("competitor"))return"Mapping competitor presence...";
+  if(m.includes("crawl"))return"Scanning channel coverage...";
+  if(m.includes("archetype"))return"Building audience profiles...";
+  if(m.includes("intent"))return"Analyzing intent patterns...";
+  if(m.includes("channel"))return"Scanning channel coverage...";
+  if(m.includes("content")&&m.includes("grid"))return"Building content strategy...";
+  if(m.includes("roadmap"))return"Generating roadmap...";
+  if(m.includes("reclassif"))return"Detecting citation patterns...";
+  if(m.includes("complet")||m.includes("done")||m.includes("final"))return"Finalizing report...";
+  if(m.includes("warning"))return null;
+  return null;
+}
+
+/* ─── AUDIT LOADING SCREEN ─── */
+function AuditLoadingScreen({progress,statusMessage,C}){
+  const statusMessages=["Initializing audit engine...","Scanning search landscape...","Analyzing brand signals...","Querying AI platforms...","Mapping competitor presence...","Evaluating content signals...","Processing visibility data...","Detecting citation patterns...","Assessing brand authority...","Analyzing sentiment patterns...","Scanning channel coverage...","Building strategic insights...","Compiling recommendations...","Generating roadmap...","Finalizing report..."];
+  const[displayMessage,setDisplayMessage]=useState(statusMessages[0]);
+  const[messageIndex,setMessageIndex]=useState(0);
+  useEffect(()=>{
+    const interval=setInterval(()=>{
+      setMessageIndex(prev=>{
+        const progressIndex=Math.floor((progress/100)*statusMessages.length);
+        const next=Math.max(prev+1,progressIndex);
+        const clamped=Math.min(next,statusMessages.length-1);
+        setDisplayMessage(statusMessages[clamped]);
+        return clamped;
+      });
+    },4000);
+    return()=>clearInterval(interval);
+  },[progress]);
+  useEffect(()=>{
+    if(statusMessage){
+      const clean=cleanStatusMessage(statusMessage);
+      if(clean)setDisplayMessage(clean);
+    }
+  },[statusMessage]);
+  const[smoothProgress,setSmoothProgress]=useState(0);
+  useEffect(()=>{
+    const target=Math.max(progress,0);
+    const interval=setInterval(()=>{
+      setSmoothProgress(prev=>{
+        if(prev>=target)return target;
+        return prev+Math.max(0.5,(target-prev)*0.1);
+      });
+    },50);
+    return()=>clearInterval(interval);
+  },[progress]);
+  return(
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"80vh",gap:32}}>
+      <div style={{position:"relative",width:80,height:80}}>
+        <div style={{position:"absolute",inset:0,border:"2px solid #e5e7eb",borderTopColor:C.accent,borderRadius:"50%",animation:"spin 2s linear infinite"}}/>
+        <div style={{position:"absolute",inset:12,border:"2px solid #e5e7eb",borderBottomColor:C.accent,borderRadius:"50%",animation:"spin 1.5s linear infinite reverse"}}/>
+        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:600,color:"#111827"}}>{Math.round(smoothProgress)}%</div>
+      </div>
+      <div style={{textAlign:"center"}}>
+        <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:6,minHeight:20}}>{displayMessage}</div>
+        <div style={{fontSize:12,color:"#9ca3af"}}>This usually takes 2-3 minutes</div>
+      </div>
+      <div style={{width:280,height:3,background:"#e5e7eb",borderRadius:2,overflow:"hidden"}}>
+        <div style={{height:"100%",background:C.accent,borderRadius:2,width:smoothProgress+"%",transition:"width 0.3s ease"}}/>
+      </div>
+    </div>
+  );
+}
+
 /* ─── PAGE: NEW AUDIT ─── */
 function NewAuditPage({data,setData,onRun,history=[]}){
   const[running,setRunning]=useState(false);const[stage,setStage]=useState("");const[error,setError]=useState(null);
@@ -1658,8 +1735,6 @@ function NewAuditPage({data,setData,onRun,history=[]}){
   const[newTopic,setNewTopic]=useState("");
   const inputOk=data.brand&&data.industry&&data.website;
   const topicsOk=data.topics.length>=3;
-  const[logLines,setLogLines]=useState([]);
-  const addLog=(msg)=>setLogLines(prev=>[...prev.slice(-14),{msg,t:Date.now()}]);
   const[autoFilling,setAutoFilling]=useState(false);
   const[autoFilled,setAutoFilled]=useState(false);
   const[generatingTopics,setGeneratingTopics]=useState(false);
@@ -1833,85 +1908,23 @@ Return JSON only:
   const displayRef=React.useRef(0);
   const[displayProgress,setDisplayProgress]=useState(0);
   const intervalRef=React.useRef(null);
-  const logIntervalRef=React.useRef(null);
 
-  // All log messages grouped by phase
-  const allLogs=React.useRef([
-    {at:0,msg:"Crawling "+data.website+" for optimization signals..."},
-    {at:1,msg:"Extracting schema markup, meta tags, heading structure..."},
-    {at:2,msg:"Checking for blog, FAQ, about, and product pages..."},
-    {at:3,msg:"Crawling competitor websites for comparison data..."},
-    {at:5,msg:"Analysing content depth, E-E-A-T signals, trust factors..."},
-    {at:6,msg:"Website crawl complete — feeding data to engines..."},
-    {at:7,msg:"Establishing secure API connections..."},
-    {at:2,msg:"Loading NLP entity recognition models..."},
-    {at:4,msg:"Configuring multi-engine query pipeline..."},
-    {at:6,msg:"Connecting to OpenAI API → gpt-4o..."},
-    {at:9,msg:"Sending 8 query probes to ChatGPT..."},
-    {at:12,msg:"Querying AI engines for visibility data..."},
-    {at:15,msg:"Sending 8 query probes to Gemini..."},
-    {at:18,msg:"Connecting to Google AI API → gemini-2.0-flash..."},
-    {at:21,msg:"Sending 8 query probes to Gemini..."},
-    {at:24,msg:"Extracting mention rates from ChatGPT response..."},
-    {at:27,msg:"Extracting citation data from Gemini response..."},
-    {at:29,msg:"Cross-referencing entity signals across engines..."},
-    {at:31,msg:"Scoring Structured Data / Schema..."},
-    {at:33,msg:"Scoring Content Authority & E-E-A-T..."},
-    {at:35,msg:"Running competitor signal analysis..."},
-    {at:38,msg:`Cross-referencing citation networks for ${(data.competitors||[]).filter(c=>c.name).map(c=>c.name).slice(0,3).join(", ")||"competitors"}...`},
-    {at:41,msg:"Calculating category-level differentials..."},
-    {at:44,msg:"Mapping authority distribution curves..."},
-    {at:47,msg:"Generating user archetypes from crawl data..."},
-    {at:50,msg:"Testing archetype prompts across ChatGPT and Gemini..."},
-    {at:52,msg:"Calculating real visibility for each user segment..."},
-    {at:55,msg:"Archetype verification complete — real engine data applied..."},
-    {at:58,msg:`Testing intent pathway prompts for ${data.brand}...`},
-    {at:60,msg:"Calibrating status against actual engine mention rates..."},
-    {at:63,msg:`Scoring ${data.brand} presence in AI responses...`},
-    {at:65,msg:"Intent pathway complete..."},
-    {at:68,msg:"Starting channel verification via web search..."},
-    {at:70,msg:"Searching Wikipedia, LinkedIn, YouTube, G2, Crunchbase..."},
-    {at:73,msg:`Verifying ${data.brand} presence on 10 channels...`},
-    {at:76,msg:"Checking review platforms and press coverage..."},
-    {at:78,msg:"Verifying social media and directory listings..."},
-    {at:80,msg:`All 10 channels verified with real URLs...`},
-    {at:82,msg:"Generating industry-specific site recommendations..."},
-    {at:84,msg:"Building personalised content strategy from audit data..."},
-    {at:86,msg:"Matching content types to "+data.brand+"'s specific gaps..."},
-    {at:88,msg:"Creating personalised 90-day roadmap..."},
-    {at:89,msg:"Tailoring tasks to "+data.brand+"'s crawl findings..."},
-    {at:90,msg:"Mapping competitor advantages into action items..."},
-    {at:92,msg:"Building department-level task breakdowns..."},
-    {at:93,msg:"Calculating monthly output requirements..."},
-    {at:95,msg:"Compiling final report..."},
-    {at:96,msg:"All engines responded ✓"},
-    {at:98,msg:"Data validation complete ✓"},
-  ]);
-  const lastLogIndex=React.useRef(0);
 
   const startSmooth=()=>{
-    displayRef.current=0;targetRef.current=0;lastLogIndex.current=0;
+    displayRef.current=0;targetRef.current=0;
     // Smooth tick every 80ms
     intervalRef.current=setInterval(()=>{
       const target=targetRef.current;
       const current=displayRef.current;
       if(current<target){
-        // Move toward target — faster when far away, slower when close (easing)
         const gap=target-current;
         const step=Math.max(0.15, gap*0.08);
         displayRef.current=Math.min(target, current+step);
       }else if(current<95&&target>0){
-        // Slow creep even when waiting for next API call (never fully stalls)
         const nextTarget=Math.min(target+3, 99);
         displayRef.current=Math.min(nextTarget, current+0.05);
       }
       setDisplayProgress(Math.round(displayRef.current));
-      // Check if any new log lines should show
-      const logs=allLogs.current;
-      while(lastLogIndex.current<logs.length&&logs[lastLogIndex.current].at<=displayRef.current){
-        addLog(logs[lastLogIndex.current].msg);
-        lastLogIndex.current++;
-      }
     },80);
   };
   const stopSmooth=()=>{if(intervalRef.current){clearInterval(intervalRef.current);intervalRef.current=null;}};
@@ -1920,8 +1933,8 @@ Return JSON only:
     // Normalize all URLs before running
     const normalizedData={...data,website:normalizeUrl(data.website),competitors:(data.competitors||[]).map(c=>({...c,website:normalizeUrl(c.website||"")}))};
     setData(normalizedData);
-    setRunning(true);setError(null);setLogLines([]);setDisplayProgress(0);
-    targetRef.current=0;displayRef.current=0;lastLogIndex.current=0;
+    setRunning(true);setError(null);setDisplayProgress(0);
+    targetRef.current=0;displayRef.current=0;
     startSmooth();
     try{
       const apiData=await runRealAudit(normalizedData,(msg,pct)=>{
@@ -1934,7 +1947,7 @@ Return JSON only:
       await new Promise(r=>setTimeout(r,400));
       setRunning(false);onRun(apiData);
     }catch(e){
-      console.error("Audit error:",e);setError("API call failed — falling back to simulated data.");addLog("API error — using fallback engine...");
+      console.error("Audit error:",e);setError("API call failed — falling back to simulated data.");
       targetRef.current=100;
       await new Promise(r=>setTimeout(r,1500));
       stopSmooth();setRunning(false);onRun(null);
@@ -1945,35 +1958,7 @@ Return JSON only:
   React.useEffect(()=>()=>{stopSmooth();},[]);
 
   const progress=displayProgress;
-  if(running)return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"70vh",gap:20,maxWidth:520,margin:"0 auto"}}>
-    {/* Main progress ring */}
-    <div style={{position:"relative",width:130,height:130}}>
-      <svg width="130" height="130"><circle cx="65" cy="65" r="56" fill="none" stroke={C.borderSoft} strokeWidth="3"/><circle cx="65" cy="65" r="56" fill="none" stroke={C.accent} strokeWidth="4" strokeDasharray={352} strokeDashoffset={352-(progress/100)*352} strokeLinecap="round" transform="rotate(-90 65 65)" style={{transition:"stroke-dashoffset .15s linear"}}/></svg>
-      <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:30,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{progress}%</span></div>
-    </div>
-    {/* Title */}
-    <div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Running Full Audit</div></div>
-    {/* Scrolling techy text — single line that changes */}
-    <div style={{height:20,overflow:"hidden",textAlign:"center"}}>
-      {logLines.length>0&&<div key={logLines[logLines.length-1].t} style={{fontSize:12,color:C.accent,fontWeight:500,fontFamily:"'Outfit'",animation:"fadeInUp .3s ease-out"}}>{logLines[logLines.length-1].msg.replace(/^\[.*?\]\s*/,"")}</div>}
-    </div>
-    {/* Engine status row */}
-    <div style={{display:"flex",gap:16}}>
-      {[{L:ChatGPTLogo,n:"ChatGPT",a:progress>=8,done:progress>=26},{L:GeminiLogo,n:"Gemini",a:progress>=14,done:progress>=26}].map(e=>(<div key={e.n} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:8,background:e.done?`${C.green}08`:e.a?`${C.accent}06`:C.bg,border:`1px solid ${e.done?`${C.green}20`:e.a?`${C.accent}15`:C.border}`,transition:"all .3s"}}>
-        <e.L size={18}/><span style={{fontSize:11,fontWeight:600,color:e.done?C.green:e.a?C.text:C.muted}}>{e.n}</span>
-        {e.done?<span style={{fontSize:10,color:C.green}}>✓</span>:e.a?<span style={{width:4,height:4,borderRadius:"50%",background:C.accent,animation:"pulse 1s infinite"}}/>:null}
-      </div>))}
-    </div>
-    {/* Step progress bars */}
-    <div style={{width:"100%",display:"flex",flexDirection:"column",gap:6}}>
-      {[{l:"ChatGPT (gpt-4o)",p:Math.min(100,progress*100/14),c:"#10A37F"},{l:"Gemini (Flash)",p:Math.max(0,Math.min(100,(progress-8)*100/12)),c:"#4285F4"},{l:"Competitor Analysis",p:Math.max(0,Math.min(100,(progress-30)*100/15)),c:"#8b5cf6"},{l:"Archetype Generation",p:Math.max(0,Math.min(100,(progress-45)*100/17)),c:"#ec4899"},{l:"Intent Pathway",p:Math.max(0,Math.min(100,(progress-62)*100/10)),c:"#f59e0b"},{l:"Channel Verification",p:Math.max(0,Math.min(100,(progress-72)*100/18)),c:"#059669"},{l:"Report Compilation",p:Math.max(0,Math.min(100,(progress-90)*100/10)),c:C.accent}].map(s=>(<div key={s.l} style={{display:"flex",alignItems:"center",gap:8}}>
-        <span style={{fontSize:10,color:s.p>=100?C.green:s.p>0?C.text:C.muted,minWidth:120,fontWeight:s.p>0&&s.p<100?600:400,fontFamily:"'Outfit'"}}>{s.p>=100?"✓ ":s.p>0?"◉ ":"○ "}{s.l}</span>
-        <div style={{flex:1,height:3,background:C.borderSoft,borderRadius:2}}><div style={{width:`${Math.max(0,s.p)}%`,height:"100%",background:s.p>=100?C.green:s.c,borderRadius:2,transition:"width .15s linear"}}/></div>
-      </div>))}
-    </div>
-    <div style={{padding:"6px 14px",background:`${C.accent}08`,borderRadius:100,fontSize:11,color:C.accent,fontWeight:500}}>⚡ Powered by live AI analysis</div>
-    {error&&<div style={{padding:"10px 16px",background:`${C.red}08`,border:`1px solid ${C.red}20`,borderRadius:8,fontSize:12,color:C.red}}>{error}</div>}
-    </div>);
+  if(running)return(<AuditLoadingScreen progress={progress} statusMessage={stage} C={C}/>);
 
   /* ─── STEP 2: Topics Review ─── */
   if(auditStep==="topics")return(<div style={{maxWidth:620,margin:"0 auto"}}>
