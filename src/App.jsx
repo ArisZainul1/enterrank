@@ -1678,7 +1678,7 @@ function AuditLoadingScreen({progress,statusMessage,C}){
   const statusMessages=["Initializing audit engine...","Scanning search landscape...","Analyzing brand signals...","Querying AI platforms...","Mapping competitor presence...","Evaluating content signals...","Processing visibility data...","Detecting citation patterns...","Assessing brand authority...","Analyzing sentiment patterns...","Scanning channel coverage...","Building strategic insights...","Compiling recommendations...","Generating roadmap...","Finalizing report..."];
   const[displayMessage,setDisplayMessage]=useState(statusMessages[0]);
   const[messageIndex,setMessageIndex]=useState(0);
-  useEffect(()=>{
+  React.useEffect(()=>{
     const interval=setInterval(()=>{
       setMessageIndex(prev=>{
         const progressIndex=Math.floor((progress/100)*statusMessages.length);
@@ -1690,14 +1690,14 @@ function AuditLoadingScreen({progress,statusMessage,C}){
     },4000);
     return()=>clearInterval(interval);
   },[progress]);
-  useEffect(()=>{
+  React.useEffect(()=>{
     if(statusMessage){
       const clean=cleanStatusMessage(statusMessage);
       if(clean)setDisplayMessage(clean);
     }
   },[statusMessage]);
   const[smoothProgress,setSmoothProgress]=useState(0);
-  useEffect(()=>{
+  React.useEffect(()=>{
     const target=Math.max(progress,0);
     const interval=setInterval(()=>{
       setSmoothProgress(prev=>{
