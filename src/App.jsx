@@ -275,7 +275,7 @@ async function runRealAudit(cd, onProgress){
   try{brandCrawl=await crawlWebsite(cd.website);}catch(e){console.error("Crawl failed:",e);}
   const crawlSummary=brandCrawl?summariseCrawl(brandCrawl):"No crawl data available.";
 
-  onProgress("Crawling competitor websites...",8);
+  onProgress("Crawling competitor websites...",6);
   const compCrawls={};
   const compCrawlsRaw={};
   for(let i=0;i<compUrls.length&&i<5;i++){
@@ -467,7 +467,7 @@ Return JSON only:
     const results = [];
     for (let i = 0; i < queries.length; i += batchSize) {
       const batch = queries.slice(i, i + batchSize);
-      onProgress(`Testing on ${engineLabel}...`, 14 + Math.round((i / queries.length) * 12));
+      onProgress(`Testing on ${engineLabel}...`, 15 + Math.round((i / queries.length) * 25));
       const batchResults = await Promise.all(
         batch.map(async (query) => {
           const response = await callFn(query, "You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.");
@@ -487,7 +487,7 @@ Return JSON only:
     const results = [];
     for (let i = 0; i < queries.length; i += batchSize) {
       const batch = queries.slice(i, i + batchSize);
-      onProgress(`Testing on ChatGPT...`, 14 + Math.round((i / queries.length) * 12));
+      onProgress(`Testing on ChatGPT...`, 15 + Math.round((i / queries.length) * 25));
       const batchResults = await Promise.all(
         batch.map(async (query) => {
           const result = await callOpenAISearch(query, searchRegion);
@@ -510,16 +510,16 @@ Return JSON only:
       runQueryBatches(callGemini, searchQueries, 2, 5000, "Gemini").catch(e=>{console.error("Gemini testing failed:",e.message);return[];})
     ]);
     gptResponses=gR||[];gemResponses=gmR||[];
-    if(gptResponses.length===0&&gemResponses.length===0)onProgress("Warning: both engine tests failed, continuing with limited data...",26);
-    else if(gptResponses.length===0)onProgress("Warning: ChatGPT testing failed, continuing with Gemini data...",26);
-    else if(gemResponses.length===0)onProgress("Warning: Gemini testing failed, continuing with ChatGPT data...",26);
+    if(gptResponses.length===0&&gemResponses.length===0)onProgress("Warning: both engine tests failed, continuing with limited data...",42);
+    else if(gptResponses.length===0)onProgress("Warning: ChatGPT testing failed, continuing with Gemini data...",42);
+    else if(gemResponses.length===0)onProgress("Warning: Gemini testing failed, continuing with ChatGPT data...",42);
   }catch(stepError){
     console.error("Engine testing failed:",stepError.message);
-    onProgress("Warning: engine testing encountered an issue, continuing...",26);
+    onProgress("Warning: engine testing encountered an issue, continuing...",42);
   }
 
   // ── Step 4: Classify responses — scan real text for brand names and URLs ──
-  onProgress("Analyzing responses for brand visibility...", 28);
+  onProgress("Analyzing responses for brand visibility...", 45);
   let gptVisibility={},gemVisibility={};
   const emptyVis={mentionRate:0,citationRate:0,queries:searchQueries.map(q=>({query:q,status:"Absent",confidence:"fallback"}))};
   try{
@@ -594,16 +594,16 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
   }
 
   if (gptVisRaw.ambiguousCases.length > 0) {
-    onProgress("Verifying ChatGPT citations...", 26);
+    onProgress("Verifying ChatGPT citations...", 47);
     await batchReclassify(gptVisRaw.ambiguousCases, callOpenAI, gptVisibility);
   }
   if (gemVisRaw.ambiguousCases.length > 0) {
-    onProgress("Verifying Gemini citations...", 27);
+    onProgress("Verifying Gemini citations...", 49);
     await batchReclassify(gemVisRaw.ambiguousCases, callGemini, gemVisibility);
   }
   }catch(stepError){
     console.error("Visibility computation failed:",stepError.message);
-    onProgress("Warning: visibility analysis had an issue, continuing...",28);
+    onProgress("Warning: visibility analysis had an issue, continuing...",50);
     const fallbackBrands=[brand,...compNames.filter(n=>n)];
     fallbackBrands.forEach(n=>{if(!gptVisibility[n])gptVisibility[n]=emptyVis;if(!gemVisibility[n])gemVisibility[n]=emptyVis;});
   }
@@ -623,7 +623,7 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
   });
 
   // ── Step 5: Build engine data objects ──
-  onProgress("Analyzing strengths and weaknesses...", 30);
+  onProgress("Analyzing strengths and weaknesses...", 52);
 
   const brandGptVis = gptVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
   const brandGemVis = gemVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
@@ -649,7 +649,7 @@ Return JSON only:
   swGem = safeJSON(swGemRaw) || {};
   }catch(stepError){
     console.error("Strengths/weaknesses analysis failed:",stepError.message);
-    onProgress("Warning: strengths analysis had an issue, continuing...",32);
+    onProgress("Warning: strengths analysis had an issue, continuing...",55);
   }
 
   const gptData = {
@@ -671,7 +671,7 @@ Return JSON only:
   };
 
   // ── Step 5b: Sentiment Analysis ──
-  onProgress("Analyzing brand sentiment across AI engines...",24);
+  onProgress("Analyzing brand sentiment across AI engines...",56);
   let sentimentData={brand:{gpt:50,gemini:50,avg:50,summary:"Sentiment analysis unavailable"},competitors:compNames.map(n=>({name:n,gpt:50,gemini:50,avg:50,summary:""}))};
   try{
   const sentimentPrompt=`Analyze the general public and industry sentiment around "${brand}" in the ${industry} industry, specifically in ${region}.
@@ -720,11 +720,11 @@ Be accurate. Base this on real market perception in ${region}, not global specul
   };
   }catch(stepError){
     console.error("Sentiment analysis failed:",stepError.message);
-    onProgress("Warning: sentiment analysis had an issue, continuing...",26);
+    onProgress("Warning: sentiment analysis had an issue, continuing...",59);
   }
 
   // ── Step 4: Competitor analysis — BOTH engines + crawl data ──
-  onProgress("Analysing competitors across both engines...",30);
+  onProgress("Analysing competitors across both engines...",60);
   let compData={competitors:[]};
   let mergedComps=[];
   try{
@@ -783,11 +783,11 @@ Use the crawl data to give accurate scores. If a competitor has better schema ma
   compData={competitors:mergedComps.length>0?mergedComps:(compGem.competitors||[])};
   }catch(stepError){
     console.error("Competitor analysis failed:",stepError.message);
-    onProgress("Warning: competitor analysis had an issue, continuing...",35);
+    onProgress("Warning: competitor analysis had an issue, continuing...",64);
   }
 
   // ── Step 5: Pain points — BOTH engines + crawl data ──
-  onProgress("Scoring categories across both engines...",40);
+  onProgress("Scoring categories across both engines...",66);
   const painCatLabels=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
   let mergedPainPoints=painCatLabels.map(l=>({label:l,score:0,severity:"critical"}));
   try{
@@ -825,11 +825,11 @@ Use severity: "critical" if <30, "warning" if 30-60, "good" if >60. Base scores 
   });
   }catch(stepError){
     console.error("Pain points analysis failed:",stepError.message);
-    onProgress("Warning: Category scoring had an issue, continuing...",42);
+    onProgress("Warning: Category scoring had an issue, continuing...",68);
   }
 
   // ── Step 6: User archetypes + journeys — OpenAI generates, Gemini verifies engine statuses ──
-  onProgress("Generating user archetypes...",48);
+  onProgress("Generating user archetypes...",70);
   let archData={stakeholders:[]};
   try{
   const archPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}, competitors: ${compNames.join(", ")||"none"}.
@@ -878,7 +878,7 @@ Be accurate for ${region}. All demographics, behaviors, and prompts must reflect
   archData=safeJSON(archRaw)||{stakeholders:[]};
 
   // Now ask Gemini to verify/correct the engine statuses
-  onProgress("Verifying archetype journeys with Gemini...",54);
+  onProgress("Verifying archetype journeys...",74);
   if(archData.stakeholders&&archData.stakeholders.length>0){
     const allPrompts=[];
     archData.stakeholders.forEach(sg=>(sg.archetypes||[]).forEach(a=>(a.journey||[]).forEach(j=>(j.prompts||[]).forEach(p=>allPrompts.push(p.query)))));
@@ -905,11 +905,11 @@ Be accurate. "Cited" = you would link to their website. "Mentioned" = you'd name
   }
   }catch(stepError){
     console.error("Archetypes generation failed:",stepError.message);
-    onProgress("Warning: archetypes generation had an issue, continuing...",56);
+    onProgress("Warning: archetypes generation had an issue, continuing...",76);
   }
 
   // ── Step 6b: Intent Pathway — real data from BOTH engines ──
-  onProgress("Testing intent pathway prompts...",58);
+  onProgress("Testing intent pathway prompts...",77);
   let intentData=[];
   try{
   const intentPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}.
@@ -978,11 +978,11 @@ Rules:
   });
   }catch(stepError){
     console.error("Intent pathway analysis failed:",stepError.message);
-    onProgress("Warning: intent pathway had an issue, continuing...",62);
+    onProgress("Warning: intent pathway had an issue, continuing...",80);
   }
 
   // ── Step 7: AEO Channel verification via REAL web crawling ──
-  onProgress("Verifying channels via web search...",65);
+  onProgress("Verifying channels via web search...",81);
   let chData={channels:[]};
   try{
   let realChannels=null;
@@ -990,7 +990,7 @@ Rules:
 
   if(realChannels&&realChannels.channels&&realChannels.channels.length>0){
     chData.channels=realChannels.channels;
-    onProgress("Checking podcast & academic presence...",70);
+    onProgress("Checking podcast & academic presence...",83);
     const gapPrompt=`For "${brand}" in ${industry} (${region}), assess ONLY these 2 channels:
 1. Podcast Appearances
 2. Academic/Research Citations
@@ -1027,11 +1027,11 @@ Determine channel presence. Return JSON:
   }
   }catch(stepError){
     console.error("Channel verification failed:",stepError.message);
-    onProgress("Warning: channel verification had an issue, continuing...",68);
+    onProgress("Warning: channel verification had an issue, continuing...",85);
   }
 
   // ── Step 8: Content recommendations — BOTH engines, using ALL audit data ──
-  onProgress("Building content recommendations from both engines...",78);
+  onProgress("Building content recommendations...",87);
   let contentData={contentTypes:[]};
   try{
   const critCats=(mergedPainPoints||[]).filter(p=>p.severity==="critical").map(p=>`${p.label} (${p.score}%)`).join(", ");
@@ -1079,11 +1079,11 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
   contentData={contentTypes:allContentTypes.slice(0,10)};
   }catch(stepError){
     console.error("Content recommendations failed:",stepError.message);
-    onProgress("Warning: content recommendations had an issue, continuing...",82);
+    onProgress("Warning: content recommendations had an issue, continuing...",90);
   }
 
   // ── Step 9: 90-Day Roadmap — using ALL previous data ──
-  onProgress("Creating 90-day roadmap from audit data...",88);
+  onProgress("Creating 90-day roadmap from audit data...",92);
   let roadData=null;
   try{
   const overallScore=Math.round(((gptData.score||0)+(gemData.score||0))/2);
@@ -1144,10 +1144,10 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
   roadData=safeJSON(roadRaw)||null;
   }catch(stepError){
     console.error("Roadmap generation failed:",stepError.message);
-    onProgress("Warning: roadmap generation had an issue, continuing...",92);
+    onProgress("Warning: roadmap generation had an issue, continuing...",95);
   }
 
-  onProgress("Compiling final report...",95);
+  onProgress("Compiling final report...",96);
 
   return {
     engineData:{
@@ -1648,65 +1648,43 @@ function ShareOfVoiceSection({title,rankTitle,brands,metricKey}){
   </div>);
 }
 
-/* ─── CLEAN STATUS MESSAGE ─── */
-function cleanStatusMessage(msg){
-  if(!msg||typeof msg!=="string")return null;
-  const m=msg.toLowerCase();
-  if(m.includes("generating")&&m.includes("quer"))return"Scanning search landscape...";
-  if(m.includes("testing")&&m.includes("chatgpt"))return"Querying AI platforms...";
-  if(m.includes("testing")&&m.includes("gemini"))return"Querying AI platforms...";
-  if(m.includes("gpt")&&m.includes("batch"))return"Analyzing brand signals...";
-  if(m.includes("gemini")&&m.includes("batch"))return"Analyzing brand signals...";
-  if(m.includes("visib"))return"Processing visibility data...";
-  if(m.includes("strength")||m.includes("weakness"))return"Evaluating content signals...";
-  if(m.includes("sentiment"))return"Assessing sentiment patterns...";
-  if(m.includes("competitor"))return"Mapping competitor presence...";
-  if(m.includes("crawl"))return"Scanning channel coverage...";
-  if(m.includes("archetype"))return"Building audience profiles...";
-  if(m.includes("intent"))return"Analyzing intent patterns...";
-  if(m.includes("channel"))return"Scanning channel coverage...";
-  if(m.includes("content")&&m.includes("grid"))return"Building content strategy...";
-  if(m.includes("roadmap"))return"Generating roadmap...";
-  if(m.includes("reclassif"))return"Detecting citation patterns...";
-  if(m.includes("complet")||m.includes("done")||m.includes("final"))return"Finalizing report...";
-  if(m.includes("warning"))return null;
-  return null;
-}
-
 /* ─── AUDIT LOADING SCREEN ─── */
 function AuditLoadingScreen({progress,statusMessage,C}){
-  const statusMessages=["Initializing audit engine...","Scanning search landscape...","Analyzing brand signals...","Querying AI platforms...","Mapping competitor presence...","Evaluating content signals...","Processing visibility data...","Detecting citation patterns...","Assessing brand authority...","Analyzing sentiment patterns...","Scanning channel coverage...","Building strategic insights...","Compiling recommendations...","Generating roadmap...","Finalizing report..."];
-  const[displayMessage,setDisplayMessage]=useState(statusMessages[0]);
-  const[messageIndex,setMessageIndex]=useState(0);
-  React.useEffect(()=>{
-    const interval=setInterval(()=>{
-      setMessageIndex(prev=>{
-        const progressIndex=Math.floor((progress/100)*statusMessages.length);
-        const next=Math.max(prev+1,progressIndex);
-        const clamped=Math.min(next,statusMessages.length-1);
-        setDisplayMessage(statusMessages[clamped]);
-        return clamped;
-      });
-    },4000);
-    return()=>clearInterval(interval);
-  },[progress]);
-  React.useEffect(()=>{
-    if(statusMessage){
-      const clean=cleanStatusMessage(statusMessage);
-      if(clean)setDisplayMessage(clean);
-    }
-  },[statusMessage]);
+  const progressStages=[
+    {min:0,max:8,msg:"Initializing audit engine..."},
+    {min:8,max:15,msg:"Generating search queries..."},
+    {min:15,max:25,msg:"Scanning search landscape..."},
+    {min:25,max:35,msg:"Querying AI platforms..."},
+    {min:35,max:45,msg:"Analyzing brand signals..."},
+    {min:45,max:52,msg:"Detecting citation patterns..."},
+    {min:52,max:58,msg:"Processing visibility data..."},
+    {min:58,max:64,msg:"Evaluating content signals..."},
+    {min:64,max:70,msg:"Assessing sentiment patterns..."},
+    {min:70,max:76,msg:"Mapping competitor presence..."},
+    {min:76,max:82,msg:"Scanning channel coverage..."},
+    {min:82,max:87,msg:"Building audience profiles..."},
+    {min:87,max:92,msg:"Compiling recommendations..."},
+    {min:92,max:96,msg:"Generating roadmap..."},
+    {min:96,max:100,msg:"Finalizing report..."}
+  ];
+  const currentStage=progressStages.find(s=>progress>=s.min&&progress<s.max)||progressStages[progressStages.length-1];
   const[smoothProgress,setSmoothProgress]=useState(0);
   React.useEffect(()=>{
     const target=Math.max(progress,0);
     const interval=setInterval(()=>{
       setSmoothProgress(prev=>{
         if(prev>=target)return target;
-        return prev+Math.max(0.5,(target-prev)*0.1);
+        return prev+Math.max(0.3,(target-prev)*0.08);
       });
     },50);
     return()=>clearInterval(interval);
   },[progress]);
+  const[dots,setDots]=useState("");
+  React.useEffect(()=>{
+    const interval=setInterval(()=>{setDots(prev=>prev.length>=3?"":prev+".");},500);
+    return()=>clearInterval(interval);
+  },[]);
+  const baseMessage=currentStage.msg.replace(/\.+$/,"");
   return(
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"80vh",gap:32}}>
       <div style={{position:"relative",width:80,height:80}}>
@@ -1715,8 +1693,8 @@ function AuditLoadingScreen({progress,statusMessage,C}){
         <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:600,color:"#111827"}}>{Math.round(smoothProgress)}%</div>
       </div>
       <div style={{textAlign:"center"}}>
-        <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:6,minHeight:20}}>{displayMessage}</div>
-        <div style={{fontSize:12,color:"#9ca3af"}}>This usually takes 2-3 minutes</div>
+        <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:6,minHeight:20,minWidth:250}}>{baseMessage}{dots}</div>
+        <div style={{fontSize:12,color:"#9ca3af"}}>Audit incoming. This usually takes 5-6 minutes.</div>
       </div>
       <div style={{width:280,height:3,background:"#e5e7eb",borderRadius:2,overflow:"hidden"}}>
         <div style={{height:"100%",background:C.accent,borderRadius:2,width:smoothProgress+"%",transition:"width 0.3s ease"}}/>
@@ -1958,7 +1936,7 @@ Return JSON only:
   React.useEffect(()=>()=>{stopSmooth();},[]);
 
   const progress=displayProgress;
-  if(running)return(<AuditLoadingScreen progress={progress} statusMessage={stage} C={C}/>);
+  if(running)return(<AuditLoadingScreen progress={progress} C={C}/>);
 
   /* ─── STEP 2: Topics Review ─── */
   if(auditStep==="topics")return(<div style={{maxWidth:620,margin:"0 auto"}}>
