@@ -723,8 +723,57 @@ Be accurate. Base this on real market perception in ${region}, not global specul
     onProgress("Warning: sentiment analysis had an issue, continuing...",59);
   }
 
-  // ── Step 4: Competitor analysis — BOTH engines + crawl data ──
-  onProgress("Analysing competitors across both engines...",60);
+  // ── Step 4b: Extract detailed sentiment signals ──
+  onProgress("Extracting sentiment signals...",60);
+  let sentimentSignals={positive:[],negative:[],quotes:[],competitorSentiment:[],rawSnippets:[]};
+  try{
+    const responseSnippets=[];
+    (gptResponses||[]).forEach((resp,i)=>{
+      const text=typeof resp==="string"?resp:resp?.response||resp?.text||resp?.result||"";
+      if(text.length>20)responseSnippets.push({engine:"ChatGPT",query:searchQueries[i]||"",snippet:text.slice(0,800)});
+    });
+    (gemResponses||[]).forEach((resp,i)=>{
+      const text=typeof resp==="string"?resp:resp?.response||resp?.text||resp?.result||"";
+      if(text.length>20)responseSnippets.push({engine:"Gemini",query:searchQueries[i]||"",snippet:text.slice(0,800)});
+    });
+    let snippetBlock=responseSnippets.map(s=>`[${s.engine}] Q: ${s.query}\nA: ${s.snippet}`).join("\n\n");
+    if(snippetBlock.length>6000)snippetBlock=snippetBlock.slice(0,6000);
+    if(snippetBlock.length>100){
+      const sigPrompt=`Analyze the following AI engine responses about "${brand}" in the ${industry} industry in ${region}.
+
+RESPONSES:
+${snippetBlock}
+
+Extract:
+1. positive: Array of 4-6 positive signals — specific themes or qualities AI engines portray favorably about ${brand}. Each a short phrase (3-8 words).
+2. negative: Array of 3-5 negative signals — specific concerns or weaknesses AI engines mention about ${brand}. Each a short phrase.
+3. quotes: Array of 4-6 notable direct quotes from the AI responses about ${brand}. Each: {"text":"<under 40 words>","engine":"ChatGPT"|"Gemini","sentiment":"positive"|"negative"|"neutral"}
+4. competitorSentiment: Array for each competitor mentioned: {"name":"...","sentiment":"positive"|"negative"|"mixed","summary":"one sentence comparing to ${brand}"}
+
+Competitors to look for: ${compNames.join(", ")}
+
+Return ONLY valid JSON:
+{"positive":["..."],"negative":["..."],"quotes":[{"text":"...","engine":"...","sentiment":"..."}],"competitorSentiment":[{"name":"...","sentiment":"...","summary":"..."}]}`;
+      const [gptSig,gemSig]=await Promise.all([
+        callOpenAI(sigPrompt,engineSystemPrompt).catch(()=>null),
+        callGemini(sigPrompt,engineSystemPrompt).catch(()=>null)
+      ]);
+      const gptP=safeJSON(gptSig),gemP=safeJSON(gemSig);
+      const mergeArr=(a1,a2)=>{const combined=[...(a1||[]),...(a2||[])];const seen=new Set();return combined.filter(item=>{const key=(typeof item==="string"?item:item.text||item.name||"").toLowerCase().trim();if(seen.has(key)||key.length<3)return false;seen.add(key);return true;});};
+      sentimentSignals={
+        positive:mergeArr(gptP?.positive,gemP?.positive).slice(0,8),
+        negative:mergeArr(gptP?.negative,gemP?.negative).slice(0,6),
+        quotes:mergeArr(gptP?.quotes,gemP?.quotes).slice(0,8),
+        competitorSentiment:mergeArr(gptP?.competitorSentiment,gemP?.competitorSentiment),
+        rawSnippets:responseSnippets.slice(0,10)
+      };
+    }
+  }catch(stepError){
+    console.error("Sentiment signal extraction failed:",stepError.message);
+  }
+
+  // ── Step 5: Competitor analysis — BOTH engines + crawl data ──
+  onProgress("Analysing competitors across both engines...",63);
   let compData={competitors:[]};
   let mergedComps=[];
   try{
@@ -1165,6 +1214,7 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
     roadmapData:roadData,
     contentData:(contentData.contentTypes||[]).slice(0,10),
     sentimentData:sentimentData,
+    sentimentSignals:sentimentSignals,
     brandCrawlData: brandCrawl?.mainPage || null,
     compCrawlData: compCrawlsRaw,
     compVisibilityData: compScoresMap,
@@ -1356,6 +1406,40 @@ function exportPDF(r){
     });y=doc.lastAutoTable.finalY+10;
   }
 
+  // ── SENTIMENT SIGNALS ──
+  if(r.sentimentSignals){
+    checkPage(30);sectionHeader("Sentiment Analysis");
+    if(r.sentimentSignals.positive?.length){
+      doc.setFontSize(10);doc.setFont("helvetica","bold");doc.setTextColor(...green);
+      doc.text("Positive Signals:",margin,y);y+=5;
+      doc.setFont("helvetica","normal");doc.setTextColor(...dark);
+      r.sentimentSignals.positive.forEach(s=>{
+        checkPage(6);const text=typeof s==="string"?s:s.text||s;
+        const lines=doc.splitTextToSize("+ "+text,contentW-10);doc.text(lines,margin+4,y);y+=lines.length*3.5+1;
+      });y+=4;
+    }
+    if(r.sentimentSignals.negative?.length){
+      doc.setFontSize(10);doc.setFont("helvetica","bold");doc.setTextColor(...red);
+      doc.text("Negative Signals:",margin,y);y+=5;
+      doc.setFont("helvetica","normal");doc.setTextColor(...dark);
+      r.sentimentSignals.negative.forEach(s=>{
+        checkPage(6);const text=typeof s==="string"?s:s.text||s;
+        const lines=doc.splitTextToSize("\u2212 "+text,contentW-10);doc.text(lines,margin+4,y);y+=lines.length*3.5+1;
+      });y+=4;
+    }
+    if(r.sentimentSignals.quotes?.length){
+      doc.setFontSize(10);doc.setFont("helvetica","bold");doc.setTextColor(...dark);
+      doc.text("AI Engine Quotes:",margin,y);y+=5;
+      doc.setFont("helvetica","normal");
+      r.sentimentSignals.quotes.forEach(q=>{
+        checkPage(8);const qt=typeof q==="string"?q:q.text||q;
+        doc.setTextColor(...muted);const lines=doc.splitTextToSize('"'+qt+'"',contentW-10);
+        doc.text(lines,margin+4,y);y+=lines.length*3.5+2;
+      });
+    }
+    y+=6;
+  }
+
   // ── CONTENT-CHANNEL GRID ──
   checkPage(30);sectionHeader("Content-Channel Grid");
   const ct=r.contentTypes||[];
@@ -1468,10 +1552,11 @@ function generateAll(cd, apiData){
   const roadmap=(hasApi&&apiData.roadmapData&&apiData.roadmapData.day30)?apiData.roadmapData:null;
   const outputReqs=contentTypes.slice(0,6).map(ct=>({n:ct.freq||"Monthly",u:"",l:ct.type,d:ct.rationale||""}));
   const sentiment=(hasApi&&apiData.sentimentData)?apiData.sentimentData:{brand:{gpt:50,gemini:50,avg:50,summary:"Not assessed"},competitors:[]};
+  const sentimentSignals=(hasApi&&apiData.sentimentSignals)?apiData.sentimentSignals:{positive:[],negative:[],quotes:[],competitorSentiment:[],rawSnippets:[]};
   const brandCrawl=(hasApi&&apiData.brandCrawlData)?apiData.brandCrawlData:null;
   const compCrawlData=(hasApi&&apiData.compCrawlData)?apiData.compCrawlData:{};
   const searchQueries=(hasApi&&apiData.searchQueries)?apiData.searchQueries:[];
-  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,brandCrawl,compCrawlData,searchQueries,clientData:cd};
+  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,clientData:cd};
 }
 
 /* ─── LOGIN FORM ─── */
@@ -1502,6 +1587,7 @@ const NAV_ITEMS=[
   {group:"Analysis",items:[
     {id:"dashboard",label:"Dashboard",icon:"grid"},
     {id:"archetypes",label:"User Archetypes",icon:"users"},
+    {id:"sentiment",label:"Sentiment",icon:"heart"},
     {id:"intent",label:"Intent Pathway",icon:"route"},
   ]},
   {group:"Strategy",items:[
@@ -1524,6 +1610,7 @@ const SidebarIcon=({name,size=18,color="#9ca3af"})=>{
     edit:<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke={color} strokeWidth="1.5" fill="none"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke={color} strokeWidth="1.5" fill="none"/></>,
     calendar:<><rect x="3" y="4" width="18" height="18" rx="2" stroke={color} strokeWidth="1.5" fill="none"/><line x1="16" y1="2" x2="16" y2="6" stroke={color} strokeWidth="1.5"/><line x1="8" y1="2" x2="8" y2="6" stroke={color} strokeWidth="1.5"/><line x1="3" y1="10" x2="21" y2="10" stroke={color} strokeWidth="1.5"/></>,
     book:<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke={color} strokeWidth="1.5" fill="none"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke={color} strokeWidth="1.5" fill="none"/></>,
+    heart:<><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" stroke={color} strokeWidth="1.5" fill="none" strokeLinejoin="round"/></>,
     activity:<><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>,
     filetext:<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke={color} strokeWidth="1.5" fill="none"/><polyline points="14 2 14 8 20 8" stroke={color} strokeWidth="1.5" fill="none"/><line x1="16" y1="13" x2="8" y2="13" stroke={color} strokeWidth="1.5"/><line x1="16" y1="17" x2="8" y2="17" stroke={color} strokeWidth="1.5"/><line x1="10" y1="9" x2="8" y2="9" stroke={color} strokeWidth="1.5"/></>};
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none">{p[name]||null}</svg>;
@@ -1658,8 +1745,9 @@ function AuditLoadingScreen({progress,statusMessage,C}){
     {min:35,max:45,msg:"Analyzing brand signals..."},
     {min:45,max:52,msg:"Detecting citation patterns..."},
     {min:52,max:58,msg:"Processing visibility data..."},
-    {min:58,max:64,msg:"Evaluating content signals..."},
-    {min:64,max:70,msg:"Assessing sentiment patterns..."},
+    {min:58,max:62,msg:"Evaluating content signals..."},
+    {min:62,max:66,msg:"Extracting sentiment signals..."},
+    {min:66,max:70,msg:"Assessing competitor landscape..."},
     {min:70,max:76,msg:"Mapping competitor presence..."},
     {min:76,max:82,msg:"Scanning channel coverage..."},
     {min:82,max:87,msg:"Building audience profiles..."},
@@ -3120,6 +3208,134 @@ function PlaybookPage({r,goTo,activeProject}){
   </div>);
 }
 
+/* ─── PAGE: SENTIMENT ANALYSIS ─── */
+function SentimentPage({r}){
+  const signals=r?.sentimentSignals||{positive:[],negative:[],quotes:[],competitorSentiment:[],rawSnippets:[]};
+  const sentimentScore=r?.sentiment?.brand?.avg||50;
+  const compSentiment=r?.sentiment?.competitors||[];
+  const getScoreLabel=(score)=>{
+    if(score>=80)return{label:"Very Positive",color:"#16a34a"};
+    if(score>=60)return{label:"Positive",color:"#22c55e"};
+    if(score>=45)return{label:"Neutral",color:"#d97706"};
+    if(score>=30)return{label:"Negative",color:"#ea580c"};
+    return{label:"Very Negative",color:"#dc2626"};
+  };
+  const scoreInfo=getScoreLabel(sentimentScore);
+  const brandNameLower=(r?.clientData?.brand||"").toLowerCase();
+  return(<div>
+    <div style={{marginBottom:32}}>
+      <h2 style={{fontSize:22,fontWeight:600,color:C.text,letterSpacing:"-.02em",margin:0,fontFamily:"'Outfit'"}}>Sentiment Analysis</h2>
+      <p style={{fontSize:13,color:C.sub,marginTop:4}}>How AI engines perceive and portray {r?.clientData?.brand||"your brand"}</p>
+    </div>
+
+    {/* Score overview + competitor comparison */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:32}}>
+      <Card>
+        <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:12}}>Brand Sentiment</div>
+        <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+          <span style={{fontSize:36,fontWeight:600,color:scoreInfo.color,fontFamily:"'Outfit'"}}>{sentimentScore}</span>
+          <span style={{fontSize:13,color:scoreInfo.color,fontWeight:500}}>{scoreInfo.label}</span>
+        </div>
+        <div style={{fontSize:12,color:C.muted,marginTop:8}}>Based on analysis of AI engine responses across all tested queries</div>
+      </Card>
+      <Card>
+        <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:12}}>Competitor Comparison</div>
+        {compSentiment.length>0?(<div>
+          {compSentiment.filter(c=>c.name?.toLowerCase()!==brandNameLower).map((comp,i)=>{
+            const cInfo=getScoreLabel(comp.avg||50);
+            return(<div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:i<compSentiment.filter(c=>c.name?.toLowerCase()!==brandNameLower).length-1?`1px solid ${C.borderSoft}`:"none"}}>
+              <span style={{fontSize:13,color:C.text}}>{comp.name}</span>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{width:60,height:4,background:"#e5e7eb",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:(comp.avg||50)+"%",background:cInfo.color,borderRadius:2}}/></div>
+                <span style={{fontSize:12,fontWeight:500,color:cInfo.color,minWidth:24,textAlign:"right"}}>{comp.avg||50}</span>
+              </div>
+            </div>);
+          })}
+        </div>):(<div style={{fontSize:12,color:C.muted}}>No competitor sentiment data available</div>)}
+      </Card>
+    </div>
+
+    {/* Positive and Negative signals */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:32}}>
+      <Card>
+        <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,display:"flex",alignItems:"center",gap:8,fontFamily:"'Outfit'"}}>
+          <span style={{fontSize:16}}>✅</span> Positive Signals
+        </div>
+        {signals.positive.length>0?signals.positive.map((signal,i)=>(
+          <div key={i} style={{padding:"8px 12px",background:"#f0fdf4",borderRadius:8,marginBottom:6,fontSize:13,color:"#166534",display:"flex",alignItems:"center",gap:8}}>
+            <span style={{color:"#22c55e",fontSize:10}}>●</span>
+            {typeof signal==="string"?signal:signal.text||signal}
+          </div>
+        )):(<div style={{fontSize:12,color:C.muted}}>No positive signals detected</div>)}
+      </Card>
+      <Card>
+        <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,display:"flex",alignItems:"center",gap:8,fontFamily:"'Outfit'"}}>
+          <span style={{fontSize:16}}>⚠️</span> Negative Signals
+        </div>
+        {signals.negative.length>0?signals.negative.map((signal,i)=>(
+          <div key={i} style={{padding:"8px 12px",background:"#fef2f2",borderRadius:8,marginBottom:6,fontSize:13,color:"#991b1b",display:"flex",alignItems:"center",gap:8}}>
+            <span style={{color:"#dc2626",fontSize:10}}>●</span>
+            {typeof signal==="string"?signal:signal.text||signal}
+          </div>
+        )):(<div style={{fontSize:12,color:C.muted}}>No negative signals detected</div>)}
+      </Card>
+    </div>
+
+    {/* AI Engine Quotes */}
+    <div style={{marginBottom:32}}>
+      <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,fontFamily:"'Outfit'"}}>What AI Engines Are Saying</div>
+      {signals.quotes.length>0?(<div style={{display:"grid",gap:10}}>
+        {signals.quotes.map((quote,i)=>{
+          const q=typeof quote==="string"?{text:quote,engine:"Unknown",sentiment:"neutral"}:quote;
+          const sentColors={positive:{border:"#dcfce7",bg:"#f0fdf450"},negative:{border:"#fee2e2",bg:"#fef2f250"},neutral:{border:C.border,bg:"transparent"}};
+          const sc=sentColors[q.sentiment]||sentColors.neutral;
+          return(<div key={i} style={{padding:"16px 20px",background:sc.bg,border:"1px solid "+sc.border,borderRadius:12,borderLeft:"3px solid "+(q.sentiment==="positive"?"#22c55e":q.sentiment==="negative"?"#dc2626":"#9ca3af")}}>
+            <div style={{fontSize:13,color:C.text,lineHeight:1.6,fontStyle:"italic"}}>"{q.text}"</div>
+            <div style={{fontSize:11,color:C.muted,marginTop:8,display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontWeight:500}}>{q.engine}</span>
+              <span style={{fontSize:10,padding:"2px 6px",borderRadius:4,background:q.sentiment==="positive"?"#dcfce7":q.sentiment==="negative"?"#fee2e2":"#f3f4f6",color:q.sentiment==="positive"?"#166534":q.sentiment==="negative"?"#991b1b":"#6b7280"}}>{q.sentiment}</span>
+            </div>
+          </div>);
+        })}
+      </div>):(<div style={{padding:24,textAlign:"center",color:C.muted,fontSize:12,background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>No quotes extracted</div>)}
+    </div>
+
+    {/* Competitor Sentiment Details */}
+    {signals.competitorSentiment?.length>0&&(<div style={{marginBottom:32}}>
+      <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,fontFamily:"'Outfit'"}}>Competitor Sentiment Breakdown</div>
+      <div style={{display:"grid",gap:10}}>
+        {signals.competitorSentiment.map((comp,i)=>{
+          const sentColor=comp.sentiment==="positive"?"#22c55e":comp.sentiment==="negative"?"#dc2626":"#d97706";
+          return(<div key={i} style={{padding:"14px 18px",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:12,display:"flex",alignItems:"center",gap:14}}>
+            <div style={{width:8,height:8,borderRadius:"50%",background:sentColor,flexShrink:0}}/>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:500,color:C.text}}>{comp.name}</div>
+              <div style={{fontSize:12,color:C.muted,marginTop:2}}>{comp.summary}</div>
+            </div>
+            <span style={{fontSize:10,fontWeight:500,padding:"3px 8px",borderRadius:4,background:comp.sentiment==="positive"?"#dcfce7":comp.sentiment==="negative"?"#fee2e2":"#fef3c7",color:comp.sentiment==="positive"?"#166534":comp.sentiment==="negative"?"#991b1b":"#92400e",textTransform:"capitalize"}}>{comp.sentiment}</span>
+          </div>);
+        })}
+      </div>
+    </div>)}
+
+    {/* Raw Response Snippets */}
+    {signals.rawSnippets?.length>0&&(<div>
+      <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,fontFamily:"'Outfit'"}}>Raw AI Responses</div>
+      <div style={{display:"grid",gap:8}}>
+        {signals.rawSnippets.map((snippet,i)=>(
+          <details key={i} style={{background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
+            <summary style={{padding:"12px 16px",cursor:"pointer",fontSize:12,color:C.text,display:"flex",alignItems:"center",gap:8,userSelect:"none"}}>
+              <span style={{fontSize:10,padding:"2px 6px",borderRadius:4,background:snippet.engine==="ChatGPT"?"#e0e7ff":"#fce7f3",color:snippet.engine==="ChatGPT"?"#3730a3":"#9d174d",fontWeight:500}}>{snippet.engine}</span>
+              <span style={{flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{snippet.query}</span>
+            </summary>
+            <div style={{padding:"12px 16px",borderTop:`1px solid ${C.borderSoft}`,fontSize:12,lineHeight:1.7,color:C.sub,maxHeight:200,overflow:"auto",whiteSpace:"pre-wrap"}}>{snippet.snippet}</div>
+          </details>
+        ))}
+      </div>
+    </div>)}
+  </div>);
+}
+
 /* ─── PAGE: TARGET CHANNELS (Step 06 with drill-down) ─── */
 function ChannelsPage({r,goTo,onUpdate}){
   const[expandCh,setExpandCh]=useState(null);
@@ -4295,6 +4511,7 @@ export default function App(){
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={run} history={history}/>}
         {step==="dashboard"&&results&&<DashboardPage r={results} history={history} goTo={setStep}/>}
         {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep} onUpdate={setResults}/>}
+        {step==="sentiment"&&results&&<SentimentPage r={results}/>}
         {step==="intent"&&results&&<IntentPage r={results} goTo={setStep}/>}
         {step==="playbook"&&results&&<PlaybookPage r={results} goTo={setStep} activeProject={activeProject}/>}
         {step==="channels"&&results&&<ChannelsPage r={results} goTo={setStep} onUpdate={setResults}/>}
