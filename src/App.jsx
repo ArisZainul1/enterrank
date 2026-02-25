@@ -3981,7 +3981,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
                 <div>
                   <div style={{fontSize:14,fontWeight:500,color:C.text}}>{p.brand}</div>
                   <div style={{fontSize:12,color:C.muted,marginTop:1}}>
-                    {(()=>{const la=p.audits?.[0]||null;const d=la?.created_at?new Date(la.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):null;const s=la?.overall_score??null;return d?`Last audit: ${d}${s!=null?` \u00B7 Score: ${s}%`:""}`:"No audits yet";})()}
+                    {p.lastAudit&&p.auditCount>0?`Last audit: ${new Date(p.lastAudit).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}${p.lastScore!=null?` \u00B7 Score: ${p.lastScore}%`:""}`:"No audits yet"}
                   </div>
                 </div>
               </div>
