@@ -736,7 +736,12 @@ Be accurate. Base this on real market perception in ${region}, not global specul
       const text=typeof resp==="string"?resp:resp?.response||resp?.text||resp?.result||"";
       if(text.length>20)responseSnippets.push({engine:"Gemini",query:searchQueries[i]||"",snippet:text.slice(0,800)});
     });
-    let snippetBlock=responseSnippets.map(s=>`[${s.engine}] Q: ${s.query}\nA: ${s.snippet}`).join("\n\n");
+    const gptSnippets=responseSnippets.filter(s=>s.engine==="ChatGPT");
+    const gemSnippets=responseSnippets.filter(s=>s.engine==="Gemini");
+    const interleaved=[];
+    const maxLen=Math.max(gptSnippets.length,gemSnippets.length);
+    for(let i=0;i<maxLen;i++){if(gptSnippets[i])interleaved.push(gptSnippets[i]);if(gemSnippets[i])interleaved.push(gemSnippets[i]);}
+    let snippetBlock=interleaved.map(s=>`[${s.engine}] Q: ${s.query}\nA: ${s.snippet}`).join("\n\n");
     if(snippetBlock.length>6000)snippetBlock=snippetBlock.slice(0,6000);
     if(snippetBlock.length>100){
       const sigPrompt=`Analyze the following AI engine responses about "${brand}" in the ${industry} industry in ${region}.
@@ -1767,12 +1772,6 @@ function AuditLoadingScreen({progress,statusMessage,C}){
     },50);
     return()=>clearInterval(interval);
   },[progress]);
-  const[dots,setDots]=useState("");
-  React.useEffect(()=>{
-    const interval=setInterval(()=>{setDots(prev=>prev.length>=3?"":prev+".");},500);
-    return()=>clearInterval(interval);
-  },[]);
-  const baseMessage=currentStage.msg.replace(/\.+$/,"");
   return(
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"80vh",gap:32}}>
       <div style={{position:"relative",width:80,height:80}}>
@@ -1781,7 +1780,7 @@ function AuditLoadingScreen({progress,statusMessage,C}){
         <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:600,color:"#111827"}}>{Math.round(smoothProgress)}%</div>
       </div>
       <div style={{textAlign:"center"}}>
-        <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:6,minHeight:20,minWidth:250}}>{baseMessage}{dots}</div>
+        <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:6,minHeight:20,minWidth:250}}>{currentStage.msg}</div>
         <div style={{fontSize:12,color:"#9ca3af"}}>Audit incoming. This usually takes 5-6 minutes.</div>
       </div>
       <div style={{width:280,height:3,background:"#e5e7eb",borderRadius:2,overflow:"hidden"}}>
@@ -2324,13 +2323,17 @@ function DashboardPage({r,history,goTo}){
       <div style={{fontSize:13,color:C.muted,marginBottom:16}}>Track {r.clientData.brand}'s AI visibility over time</div>
 
       {(()=>{
-        const chartData=(history||[]).filter(h=>h.overall!=null&&h.overall>0).map(h=>({
+        const rawData=(history||[]).filter(h=>h.overall!=null&&h.overall>0).map(h=>({
           date:(typeof h.date==="string"?h.date:new Date(h.date).toLocaleDateString("en-GB",{day:"numeric",month:"short"})).replace(/\s\d{4}$/,""),
           fullDate:typeof h.date==="string"?h.date:new Date(h.date).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}),
           overall:h.overall||0,
           mentions:h.mentions||0,
-          citations:h.citations||0
+          citations:h.citations||0,
+          _ts:typeof h.date==="string"?new Date(h.date).getTime():new Date(h.date).getTime()
         }));
+        const dayMap=new Map();
+        rawData.forEach(d=>{const key=d.date;if(!dayMap.has(key)||d._ts>dayMap.get(key)._ts)dayMap.set(key,d);});
+        const chartData=[...dayMap.values()].map(({_ts,...rest})=>rest);
 
         if(chartData.length<2)return(
           <div style={{padding:32,background:C.card,border:"1px solid "+C.border,borderRadius:14,textAlign:"center"}}>
@@ -2725,8 +2728,9 @@ function IntentPage({r,goTo}){
   // Overall stats
   let totalCited=0,totalMentionedOnly=0,totalAbsent=0;
   combinedQueries.forEach(q=>{
-    if(q.gptStatus==="Cited"||q.gemStatus==="Cited")totalCited++;
-    else if(q.gptStatus==="Mentioned"||q.gemStatus==="Mentioned")totalMentionedOnly++;
+    const gs=(q.gptStatus||"").toLowerCase(),gm=(q.gemStatus||"").toLowerCase();
+    if(gs==="cited"||gm==="cited")totalCited++;
+    else if(gs==="mentioned"||gm==="mentioned")totalMentionedOnly++;
     else totalAbsent++;
   });
 
@@ -3318,21 +3322,6 @@ function SentimentPage({r}){
       </div>
     </div>)}
 
-    {/* Raw Response Snippets */}
-    {signals.rawSnippets?.length>0&&(<div>
-      <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,fontFamily:"'Outfit'"}}>Raw AI Responses</div>
-      <div style={{display:"grid",gap:8}}>
-        {signals.rawSnippets.map((snippet,i)=>(
-          <details key={i} style={{background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-            <summary style={{padding:"12px 16px",cursor:"pointer",fontSize:12,color:C.text,display:"flex",alignItems:"center",gap:8,userSelect:"none"}}>
-              <span style={{fontSize:10,padding:"2px 6px",borderRadius:4,background:snippet.engine==="ChatGPT"?"#e0e7ff":"#fce7f3",color:snippet.engine==="ChatGPT"?"#3730a3":"#9d174d",fontWeight:500}}>{snippet.engine}</span>
-              <span style={{flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{snippet.query}</span>
-            </summary>
-            <div style={{padding:"12px 16px",borderTop:`1px solid ${C.borderSoft}`,fontSize:12,lineHeight:1.7,color:C.sub,maxHeight:200,overflow:"auto",whiteSpace:"pre-wrap"}}>{snippet.snippet}</div>
-          </details>
-        ))}
-      </div>
-    </div>)}
   </div>);
 }
 
