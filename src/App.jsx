@@ -777,6 +777,72 @@ Return ONLY valid JSON:
     console.error("Sentiment signal extraction failed:",stepError.message);
   }
 
+  // ── Step 4c: Extract source channel data from AI responses ──
+  onProgress("Analyzing source channels...",62);
+  let channelSourceData={sourceChannels:[],opportunities:[]};
+  try{
+    const srcSnippets=[];
+    (gptResponses||[]).forEach((resp,i)=>{
+      const text=typeof resp==="string"?resp:resp?.response||resp?.text||resp?.result||"";
+      if(text.length>20)srcSnippets.push(`[ChatGPT Q${i+1}] ${text.slice(0,500)}`);
+    });
+    (gemResponses||[]).forEach((resp,i)=>{
+      const text=typeof resp==="string"?resp:resp?.response||resp?.text||resp?.result||"";
+      if(text.length>20)srcSnippets.push(`[Gemini Q${i+1}] ${text.slice(0,500)}`);
+    });
+    let srcBlock=srcSnippets.join("\n\n");
+    if(srcBlock.length>6000)srcBlock=srcBlock.slice(0,6000);
+    if(srcBlock.length>100){
+      const sourcePrompt=`Analyze these AI engine responses about "${brand}" and extract which sources, websites, and channels the AI engines are referencing or pulling information from.
+
+BRAND: ${brand}
+WEBSITE: ${cd.website||"unknown"}
+CONFIGURED COMPETITORS: ${compNames.join(", ")||"none"}
+
+RESPONSES:
+${srcBlock}
+
+Return a JSON object with:
+{
+  "sourceChannels": [
+    {
+      "channel": "Company Website/Blog",
+      "type": "owned",
+      "referenceCount": 12,
+      "description": "Brand's official website was referenced in 12 out of 40 responses",
+      "specificUrls": ["example.com", "example.com/blog"],
+      "queries": ["what is brand", "brand vs competitor"]
+    }
+  ],
+  "opportunities": [
+    {
+      "channel": "Reddit",
+      "reason": "AI engines referenced Reddit discussions in 6 responses but your brand was absent from those threads",
+      "action": "Create or participate in Reddit discussions about your industry in relevant subreddits",
+      "impact": "high"
+    }
+  ]
+}
+
+RULES:
+- "sourceChannels" = channels where the brand IS being sourced from (found in responses)
+- "opportunities" = channels where competitors or generic content is being sourced but the brand is NOT present
+- Sort sourceChannels by referenceCount descending
+- For each channel, count how many of the ${srcSnippets.length} responses referenced that type of source
+- Common channel types: Company Website, Wikipedia, News/Press, YouTube, Reddit, Review Sites, Academic/Research, LinkedIn, Industry Directories, Government/Regulatory, Forums, Social Media
+- "type" should be "owned" (brand controls it), "earned" (media/press), or "third-party" (platforms)
+- Be specific — don't list channels that weren't actually referenced in any response
+- Maximum 8 source channels, maximum 5 opportunities
+- Only include channels you can genuinely identify from the response text
+Return JSON only. No markdown, no explanation.`;
+      const srcRaw=await callOpenAI(sourcePrompt,"Return valid JSON only. No markdown, no explanation.");
+      const srcParsed=safeJSON(srcRaw);
+      if(srcParsed)channelSourceData=srcParsed;
+    }
+  }catch(stepError){
+    console.error("Source channel extraction failed:",stepError.message);
+  }
+
   // ── Step 5: Competitor analysis — BOTH engines + crawl data ──
   onProgress("Analysing competitors across both engines...",63);
   let compData={competitors:[]};
@@ -1223,7 +1289,8 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
     brandCrawlData: brandCrawl?.mainPage || null,
     compCrawlData: compCrawlsRaw,
     compVisibilityData: compScoresMap,
-    searchQueries: searchQueries
+    searchQueries: searchQueries,
+    channelSourceData: channelSourceData
   };
  }catch(fatalError){
     console.error("Audit failed:",fatalError);
@@ -1391,23 +1458,29 @@ function exportPDF(r){
     });
   });
 
-  // ── AEO CHANNELS ──
+  // ── TARGET CHANNELS ──
   checkPage(30);sectionHeader("Target Channels");
-  const chSorted=[...(r.aeoChannels||[])].sort((a,b)=>b.impact-a.impact);
-  if(chSorted.length>0){
-    doc.autoTable({startY:y,head:[["Channel","Impact","Status","Finding"]],
-      body:chSorted.map(ch=>[ch.channel||"",String(ch.impact||""),ch.status||"Unknown",ch.finding||""]),
+  const srcCh=r.channelSourceData?.sourceChannels||[];
+  const srcOpp=r.channelSourceData?.opportunities||[];
+  if(srcCh.length>0){
+    doc.setFontSize(9);doc.setFont("helvetica","bold");doc.setTextColor(...dark);
+    doc.text("Where AI Sources You",margin,y);y+=5;
+    doc.autoTable({startY:y,head:[["Channel","Type","References","Description"]],
+      body:srcCh.map(s=>[s.channel||"",s.type||"",String(s.referenceCount||0),s.description||""]),
       margin:{left:margin,right:margin},styles:{fontSize:7,cellPadding:3},
       headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold",fontSize:8},
-      columnStyles:{0:{cellWidth:50},1:{cellWidth:15,halign:"center"},2:{cellWidth:25,halign:"center"},3:{cellWidth:contentW-90}},
-      didParseCell:function(data){
-        if(data.section==="body"&&data.column.index===2){
-          const val=(data.cell.raw||"").toLowerCase();
-          if(val.includes("active")||val.includes("verified")||val.includes("found"))data.cell.styles.textColor=green;
-          else if(val.includes("not")||val.includes("missing"))data.cell.styles.textColor=red;
-          else data.cell.styles.textColor=amber;
-        }
-      }
+      columnStyles:{0:{cellWidth:40},1:{cellWidth:22,halign:"center"},2:{cellWidth:18,halign:"center"},3:{cellWidth:contentW-80}}
+    });y=doc.lastAutoTable.finalY+6;
+  }
+  if(srcOpp.length>0){
+    checkPage(20);
+    doc.setFontSize(9);doc.setFont("helvetica","bold");doc.setTextColor(...dark);
+    doc.text("High-Impact Opportunities",margin,y);y+=5;
+    doc.autoTable({startY:y,head:[["Channel","Impact","Action"]],
+      body:srcOpp.map(o=>[o.channel||"",o.impact||"medium",o.action||""]),
+      margin:{left:margin,right:margin},styles:{fontSize:7,cellPadding:3},
+      headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold",fontSize:8},
+      columnStyles:{0:{cellWidth:35},1:{cellWidth:20,halign:"center"},2:{cellWidth:contentW-55}}
     });y=doc.lastAutoTable.finalY+10;
   }
 
@@ -1561,7 +1634,8 @@ function generateAll(cd, apiData){
   const brandCrawl=(hasApi&&apiData.brandCrawlData)?apiData.brandCrawlData:null;
   const compCrawlData=(hasApi&&apiData.compCrawlData)?apiData.compCrawlData:{};
   const searchQueries=(hasApi&&apiData.searchQueries)?apiData.searchQueries:[];
-  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,clientData:cd};
+  const channelSourceData=(hasApi&&apiData.channelSourceData)?apiData.channelSourceData:{sourceChannels:[],opportunities:[]};
+  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,channelSourceData,clientData:cd};
 }
 
 /* ─── LOGIN FORM ─── */
@@ -3319,62 +3393,105 @@ function SentimentPage({r}){
   </div>);
 }
 
-/* ─── PAGE: TARGET CHANNELS (Step 06 with drill-down) ─── */
-function ChannelsPage({r,goTo,onUpdate}){
-  const[expandCh,setExpandCh]=useState(null);
-  const[regenCh,setRegenCh]=useState(false);
-  const regenerateChannels=async()=>{
-    setRegenCh(true);
-    try{
-      const brand=r.clientData?.brand||"Brand",industry=r.clientData?.industry||"Technology",region=r.clientData?.region||"Global";
-      const prompt=`For "${brand}" in ${industry} (${region}), list the top 10 channels that directly influence AI engine visibility (where ChatGPT and Gemini pull data from). For each channel provide: name, type, impact score (1-10), current status ("Active"|"Missing"|"Weak"), and actionable recommendation.
-Return JSON only:
-[{"name":"Wikipedia","type":"Knowledge Base","impact":9,"status":"Missing","recommendation":"Create a Wikipedia page for ${brand}","finding":"","url":"","sites":[]}]`;
-      const raw=await callGemini(prompt,"You are an AEO analyst. Return ONLY valid JSON array.");
-      const parsed=safeJSON(raw);
-      if(Array.isArray(parsed)&&parsed.length>0&&onUpdate)onUpdate(prev=>({...prev,aeoChannels:parsed}));
-    }catch(e){console.error("Channel regeneration failed:",e);}
-    setRegenCh(false);
-  };
-  if(!r.aeoChannels||r.aeoChannels.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Target Channels</h2></div>
-    <div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
-      <div style={{fontSize:28,marginBottom:8}}>📡</div>
-      <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Channels not generated</div>
-      <div style={{fontSize:12,color:"#9ca3af",marginBottom:16}}>This can happen if the AI service timed out during the audit.</div>
-      <button onClick={regenerateChannels} disabled={regenCh} style={{padding:"8px 18px",fontSize:12,fontWeight:500,background:regenCh?"#e5e7eb":C.accent,color:regenCh?"#999":"#fff",border:"none",borderRadius:8,cursor:regenCh?"default":"pointer",fontFamily:"'Outfit'"}}>{regenCh?"Generating...":"Generate Channels"}</button>
-    </div>
-  </div>);
-  const hasAnyFindings=r.aeoChannels.some(ch=>ch.finding);
+/* ─── PAGE: TARGET CHANNELS (3-tab layout) ─── */
+function ChannelsPage({r}){
+  const[activeTab,setActiveTab]=useState("sources");
+  const tabs=[{id:"sources",label:"Where AI Sources You"},{id:"opportunities",label:"High-Impact Opportunities"},{id:"status",label:"Channel Status"}];
+
+  const sourceChannels=r?.channelSourceData?.sourceChannels||[];
+  const opportunities=r?.channelSourceData?.opportunities||[];
+  const channels=r?.aeoChannels||[];
+  const maxCount=Math.max(...sourceChannels.map(s=>s.referenceCount||0),1);
+  const totalResponses=(r?.searchQueries?.length||20)*2;
+
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Target Channels</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Channels ranked by impact on AI engine visibility {hasAnyFindings&&<span style={{padding:"2px 8px",background:`${C.green}10`,borderRadius:100,fontSize:10,fontWeight:600,color:C.green,marginLeft:6}}>✓ Verified via Web Search</span>}</p></div>
-    <SectionNote text="These channels directly influence whether AI engines cite your brand. Each channel has been verified through real web searches — URLs confirmed, not estimated. Channels with ▼ include specific sites to target."/>
-    <Card>
-      {r.aeoChannels.sort((a,b)=>b.impact-a.impact).map((ch,i)=>{const isOpen=expandCh===i;const hasSites=ch.sites&&ch.sites.length>0;const canExpand=hasSites||ch.finding;return(<div key={i} style={{borderBottom:`1px solid ${C.borderSoft}`}}>
-        <div onClick={()=>{if(canExpand)setExpandCh(isOpen?null:i);}} style={{display:"grid",gridTemplateColumns:"30px 1fr 100px 90px 20px",gap:8,padding:"12px 8px",alignItems:"center",cursor:canExpand?"pointer":"default",background:isOpen?`${C.accent}03`:"transparent"}}>
-          <span style={{fontWeight:600,color:C.muted,fontSize:12}}>{i+1}</span>
-          <div><div style={{fontWeight:500,color:C.text,fontSize:12}}>{ch.channel}</div><div style={{fontSize:10,color:C.muted}}>{ch.desc}</div></div>
-          <div style={{display:"flex",alignItems:"center",gap:6}}><Bar value={ch.impact} color={ch.impact>=85?C.green:C.amber} h={4}/><span style={{fontWeight:600,fontSize:11}}>{ch.impact}</span></div>
-          <span style={{textAlign:"center"}}><Pill color={ch.status==="Active"?C.green:ch.status==="Needs Work"?C.amber:C.red}>{ch.status}</Pill></span>
-          <span style={{fontSize:10,color:canExpand?C.accent:C.borderSoft}}>{canExpand?(isOpen?"▲":"▼"):"—"}</span>
-        </div>
-        {isOpen&&<div style={{padding:"0 8px 14px 38px"}}>
-          {ch.finding&&<div style={{padding:"8px 12px",background:ch.status==="Active"?`${C.green}05`:ch.status==="Not Present"?`${C.red}05`:`${C.amber}05`,borderRadius:6,borderLeft:`3px solid ${ch.status==="Active"?C.green:ch.status==="Not Present"?C.red:C.amber}`,marginBottom:10}}>
-            <div style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",marginBottom:2}}>Verification Finding</div>
-            <div style={{fontSize:11,color:C.sub,lineHeight:1.5}}>{ch.finding}</div>
-          </div>}
-          {hasSites&&<div>
-            <div style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",marginBottom:6}}>Top {ch.sites.length} sites & publishers to target</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
-              {ch.sites.map((s,si)=>(<div key={si} style={{padding:"8px 10px",background:C.bg,borderRadius:6}}>
-                <div style={{fontSize:11,fontWeight:500,color:C.text}}>{s.name}</div>
-                <div style={{fontSize:10,color:C.accent}}>{s.url}</div>
-                <div style={{fontSize:10,color:C.muted,marginTop:2}}>{s.focus}</div>
-              </div>))}
+    <div style={{marginBottom:24}}>
+      <h2 style={{fontSize:22,fontWeight:600,color:"#111827",letterSpacing:"-.02em",margin:0,fontFamily:"'Outfit'"}}>Target Channels</h2>
+      <p style={{fontSize:13,color:"#6b7280",marginTop:4}}>Channels ranked by real AI engine source data from your audit</p>
+    </div>
+    <div style={{display:"flex",gap:0,marginBottom:24,borderBottom:"1px solid "+C.border,overflowX:"auto"}}>
+      {tabs.map(tab=>(<button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{padding:"10px 16px",fontSize:12,fontWeight:activeTab===tab.id?600:500,color:activeTab===tab.id?C.accent:"#9ca3af",background:"none",border:"none",borderBottom:activeTab===tab.id?"2px solid "+C.accent:"2px solid transparent",cursor:"pointer",fontFamily:"'Outfit'",whiteSpace:"nowrap",transition:"all .15s"}}>{tab.label}</button>))}
+    </div>
+
+    {/* TAB 1: Where AI Sources You */}
+    {activeTab==="sources"&&(<div>
+      {sourceChannels.length===0?(<div style={{padding:40,textAlign:"center",background:C.card,border:"1px solid "+C.border,borderRadius:14}}>
+        <div style={{fontSize:14,fontWeight:500,color:"#111827"}}>No source data available</div>
+        <div style={{fontSize:12,color:"#9ca3af",marginTop:4}}>Run a new audit to extract source channel data from AI engine responses.</div>
+      </div>):(<div>
+        <div style={{fontSize:12,color:"#6b7280",marginBottom:16}}>Sources identified from {r?.searchQueries?.length||20} queries tested across ChatGPT and Gemini</div>
+        {sourceChannels.map((source,i)=>{
+          const pct=Math.round(((source.referenceCount||0)/totalResponses)*100);
+          const barWidth=Math.round(((source.referenceCount||0)/maxCount)*100);
+          const typeColors={owned:{bg:"#dcfce7",text:"#166534",label:"Owned"},earned:{bg:"#dbeafe",text:"#1e40af",label:"Earned"},"third-party":{bg:"#fef3c7",text:"#92400e",label:"Third Party"}};
+          const typeColor=typeColors[source.type]||typeColors["third-party"];
+          return(<div key={i} style={{padding:"18px 20px",background:C.card,border:"1px solid "+C.border,borderRadius:14,marginBottom:10}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:16,fontWeight:600,color:"#9ca3af",width:24}}>{i+1}</span>
+                <div>
+                  <div style={{fontSize:14,fontWeight:500,color:"#111827"}}>{source.channel}</div>
+                  <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{source.description}</div>
+                </div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:typeColor.bg,color:typeColor.text,fontWeight:500}}>{typeColor.label}</span>
+                <span style={{fontSize:14,fontWeight:600,color:"#111827"}}>{source.referenceCount}/{totalResponses}</span>
+              </div>
             </div>
-          </div>}
-        </div>}
-      </div>);})}
-    </Card>
+            <div style={{height:4,background:"#e5e7eb",borderRadius:2,overflow:"hidden",marginBottom:8}}>
+              <div style={{height:"100%",width:barWidth+"%",background:pct>=50?"#22c55e":pct>=25?"#f59e0b":"#ef4444",borderRadius:2,transition:"width 0.3s ease"}}/>
+            </div>
+            {source.specificUrls&&source.specificUrls.length>0&&(<div style={{fontSize:11,color:"#9ca3af",display:"flex",gap:6,flexWrap:"wrap"}}>
+              {source.specificUrls.map((url,ui)=>(<span key={ui} style={{padding:"2px 6px",background:"#f3f4f6",borderRadius:4}}>{url}</span>))}
+            </div>)}
+          </div>);
+        })}
+      </div>)}
+    </div>)}
+
+    {/* TAB 2: High-Impact Opportunities */}
+    {activeTab==="opportunities"&&(<div>
+      {opportunities.length===0?(<div style={{padding:40,textAlign:"center",background:C.card,border:"1px solid "+C.border,borderRadius:14}}>
+        <div style={{fontSize:14,fontWeight:500,color:"#111827"}}>No opportunities identified</div>
+        <div style={{fontSize:12,color:"#9ca3af",marginTop:4}}>Your brand appears well-covered across channels. Run another audit to check.</div>
+      </div>):(<div>
+        <div style={{fontSize:12,color:"#6b7280",marginBottom:16}}>Channels where investing content would likely improve your AI engine visibility</div>
+        {opportunities.map((opp,i)=>{
+          const impactColors={high:{bg:"#fee2e2",text:"#991b1b",label:"High Impact"},medium:{bg:"#fef3c7",text:"#92400e",label:"Medium Impact"},low:{bg:"#f0fdf4",text:"#166534",label:"Low Impact"}};
+          const impact=impactColors[opp.impact]||impactColors.medium;
+          return(<div key={i} style={{padding:"18px 20px",background:C.card,border:"1px solid "+C.border,borderRadius:14,marginBottom:10}}>
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:6}}>
+              <div style={{fontSize:14,fontWeight:500,color:"#111827"}}>{opp.channel}</div>
+              <span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:impact.bg,color:impact.text,fontWeight:500}}>{impact.label}</span>
+            </div>
+            <div style={{fontSize:12,color:"#6b7280",marginBottom:8,lineHeight:1.5}}>{opp.reason}</div>
+            <div style={{fontSize:12,color:C.accent,fontWeight:500}}>{"\u2192"} {opp.action}</div>
+          </div>);
+        })}
+      </div>)}
+    </div>)}
+
+    {/* TAB 3: Channel Status */}
+    {activeTab==="status"&&(<div>
+      {channels.length===0?(<div style={{padding:40,textAlign:"center",background:C.card,border:"1px solid "+C.border,borderRadius:14}}>
+        <div style={{fontSize:14,fontWeight:500,color:"#111827"}}>No channel verification data</div>
+        <div style={{fontSize:12,color:"#9ca3af",marginTop:4}}>Channel status is populated during the audit.</div>
+      </div>):(<div>
+        <div style={{fontSize:12,color:"#6b7280",marginBottom:16}}>Verified presence across key platforms</div>
+        {channels.slice(0,10).map((ch,i)=>{
+          const status=(ch.status||ch.verified||"Unknown").toLowerCase();
+          const statusConfig=status.includes("active")||status.includes("verified")||status.includes("found")?{bg:"#dcfce7",text:"#166534",label:"Active"}:status.includes("not present")||status.includes("not found")||status.includes("missing")?{bg:"#fee2e2",text:"#991b1b",label:"Not Present"}:status.includes("needs work")?{bg:"#fef3c7",text:"#92400e",label:"Needs Work"}:{bg:"#f3f4f6",text:"#6b7280",label:"Not Verified"};
+          return(<div key={i} style={{padding:"14px 20px",background:C.card,border:"1px solid "+C.border,borderRadius:14,marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:500,color:"#111827"}}>{ch.name||ch.channel}</div>
+              {(ch.url||ch.finding)&&<div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{ch.url||ch.finding}</div>}
+            </div>
+            <span style={{fontSize:11,fontWeight:500,padding:"4px 10px",borderRadius:6,background:statusConfig.bg,color:statusConfig.text}}>{statusConfig.label}</span>
+          </div>);
+        })}
+      </div>)}
+    </div>)}
   </div>);
 }
 
@@ -4505,7 +4622,7 @@ export default function App(){
         {step==="sentiment"&&results&&<SentimentPage r={results}/>}
         {step==="intent"&&results&&<IntentPage r={results} goTo={setStep}/>}
         {step==="playbook"&&results&&<PlaybookPage r={results} goTo={setStep} activeProject={activeProject}/>}
-        {step==="channels"&&results&&<ChannelsPage r={results} goTo={setStep} onUpdate={setResults}/>}
+        {step==="channels"&&results&&<ChannelsPage r={results}/>}
         {step==="contenthub"&&results&&<ContentHubPage r={results} goTo={setStep} activeProject={activeProject} onUpdate={setResults}/>}
         {step==="roadmap"&&results&&<RoadmapPage r={results} onUpdate={setResults}/>}
       </div>
