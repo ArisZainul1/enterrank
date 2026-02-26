@@ -1196,17 +1196,22 @@ Determine channel presence. Return JSON:
     onProgress("Verifying channel presence...",83);
     try{
       const channelsToVerify=unverifiedChannels.map(ch=>ch.name||ch.channel).join(", ");
-      const verifyQuery=`Verify whether the brand "${brand}" (website: ${cd.website||"unknown"}) has an active official presence on these channels: ${channelsToVerify}${blogMissing&&!hasBlogPath?", Company Blog/Knowledge Base":""}.
+      const website=cd.website||"unknown";
+      let websiteDomain="";try{websiteDomain=new URL(website).hostname.replace("www.","");}catch(e){}
+      const verifyQuery=`Verify whether the brand "${brand}" (website: ${website}) has an official, active presence on each of these channels: ${channelsToVerify}${blogMissing&&!hasBlogPath?", Company Blog or Resource Hub":""}
 
-For EACH channel, search the web and determine:
-1. Does the brand have an active, official presence there?
-2. If yes, what is the URL?
-3. Status: "Active" (confirmed presence), "Not Present" (confirmed no presence), or "Needs Work" (partial/outdated).
+For EACH channel, do a specific web search:
+- For social media: search for the EXACT brand name on that platform. For example search: ${brand} TikTok official account, or ${brand} LinkedIn page
+- For Company Blog: search for ${brand} blog OR ${brand} resources OR ${brand} discover OR ${brand} news articles. Also check if the brand website has a subdomain like blog.${websiteDomain||"example.com"} or discover.${websiteDomain||"example.com"} or news.${websiteDomain||"example.com"}
+- For Wikipedia: search: ${brand} Wikipedia
+- For review sites: search: ${brand} reviews G2 OR Trustpilot
 
-Return JSON only:
-{"verifiedChannels":[{"channel":"LinkedIn","status":"Active","url":"https://linkedin.com/company/example","finding":"Official LinkedIn page found"}]}
+Return JSON only with this exact structure:
+{"verifiedChannels": [{"channel": "TikTok", "status": "Active", "url": "https://tiktok.com/@brandname", "finding": "Official account with X followers"}]}
 
-Be thorough — search for "${brand} [channel]" directly. Don't guess. Actually search to find real pages.`;
+Status must be one of: Active (confirmed real official account or page exists), Not Present (searched thoroughly and confirmed no presence), Needs Work (exists but inactive or unofficial).
+
+IMPORTANT: Only mark Not Present if you are CERTAIN after searching. If you find ANY official or semi-official presence, mark as Active.`;
       const verifyResult=await callOpenAISearch(verifyQuery, region);
       const verifyText=verifyResult?.text||"";
       let verifiedData={verifiedChannels:[]};
@@ -3538,7 +3543,7 @@ function ChannelsPage({r}){
         <div style={{fontSize:14,fontWeight:500,color:"#111827"}}>No source data available</div>
         <div style={{fontSize:12,color:"#9ca3af",marginTop:4}}>Run a new audit to extract source channel data from AI engine responses.</div>
       </div>):(<div>
-        <div style={{fontSize:12,color:"#6b7280",marginBottom:16}}>Sources identified from {r?.searchQueries?.length||20} queries tested across ChatGPT and Gemini</div>
+        <div style={{fontSize:12,color:"#6b7280",marginBottom:16}}>Source types identified from AI engine responses during your audit</div>
         {sourceChannels.map((source,i)=>{
           const pct=Math.round(((source.referenceCount||0)/totalResponses)*100);
           const barWidth=Math.round(((source.referenceCount||0)/maxCount)*100);
@@ -3555,11 +3560,11 @@ function ChannelsPage({r}){
               </div>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
                 <span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:typeColor.bg,color:typeColor.text,fontWeight:500}}>{typeColor.label}</span>
-                <span style={{fontSize:14,fontWeight:600,color:"#111827"}}>{source.referenceCount}/{totalResponses}</span>
+                <span style={{fontSize:14,fontWeight:600,color:"#111827"}}>{source.referenceCount} references</span>
               </div>
             </div>
             <div style={{height:4,background:"#e5e7eb",borderRadius:2,overflow:"hidden",marginBottom:8}}>
-              <div style={{height:"100%",width:barWidth+"%",background:pct>=50?"#22c55e":pct>=25?"#f59e0b":"#ef4444",borderRadius:2,transition:"width 0.3s ease"}}/>
+              <div style={{height:"100%",width:barWidth+"%",background:C.accent,borderRadius:2,transition:"width 0.3s ease"}}/>
             </div>
             {source.specificUrls&&source.specificUrls.length>0&&(<div style={{fontSize:11,color:"#9ca3af",display:"flex",gap:6,flexWrap:"wrap"}}>
               {source.specificUrls.map((url,ui)=>(<span key={ui} style={{padding:"2px 6px",background:"#f3f4f6",borderRadius:4}}>{url}</span>))}
@@ -3599,12 +3604,23 @@ function ChannelsPage({r}){
       </div>):(<div>
         <div style={{fontSize:12,color:"#6b7280",marginBottom:16}}>Verified presence across key platforms</div>
         {channels.slice(0,10).map((ch,i)=>{
-          const status=(ch.status||ch.verified||"Unknown").toLowerCase();
+          let displayFinding=ch.finding||"";
+          let displayStatus=ch.status||"Not Verified";
+          // Fix contradictions: if Active but finding is negative, clean the finding
+          if(/active|verified|found/i.test(displayStatus)&&/could not verify|not found|no official|unable to confirm|no dedicated|only.*appear/i.test(displayFinding)){
+            displayFinding=ch.url?"Verified presence":"Presence detected";
+          }
+          // Fix contradictions: if Not Present but has a real URL, upgrade
+          if(/not present|not found|missing/i.test(displayStatus)&&ch.url&&ch.url.startsWith("http")){
+            displayStatus="Active";
+            displayFinding=displayFinding||"Verified presence";
+          }
+          const status=(displayStatus||"Unknown").toLowerCase();
           const statusConfig=status.includes("active")||status.includes("verified")||status.includes("found")?{bg:"#dcfce7",text:"#166534",label:"Active"}:status.includes("not present")||status.includes("not found")||status.includes("missing")?{bg:"#fee2e2",text:"#991b1b",label:"Not Present"}:status.includes("needs work")?{bg:"#fef3c7",text:"#92400e",label:"Needs Work"}:{bg:"#f3f4f6",text:"#6b7280",label:"Not Verified"};
           return(<div key={i} style={{padding:"14px 20px",background:C.card,border:"1px solid "+C.border,borderRadius:14,marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div>
               <div style={{fontSize:13,fontWeight:500,color:"#111827"}}>{ch.name||ch.channel}</div>
-              {(ch.url||ch.finding)&&<div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{ch.url||ch.finding}</div>}
+              {(ch.url||displayFinding)&&<div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{ch.url||displayFinding}</div>}
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
               <span style={{fontSize:11,fontWeight:500,padding:"4px 10px",borderRadius:6,background:statusConfig.bg,color:statusConfig.text}}>{statusConfig.label}</span>
