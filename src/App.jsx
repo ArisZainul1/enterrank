@@ -1980,29 +1980,36 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     setGeneratingTopics(true);
     try{
       const compNamesStr=(competitorNames||[]).filter(n=>n&&n.trim().length>1).map(n=>n.trim()).join(", ");
-      const prompt=`Generate exactly 5 search queries that someone would type into ChatGPT or Gemini when they are ACTIVELY LOOKING TO BUY or CHOOSE a product/service in the ${industry} industry in ${region||"Global"}.
+      let crawlSummary="";try{const cr=await crawlWebsite(data.website||"");if(cr)crawlSummary=summariseCrawl(cr);}catch(e){}
+      const prompt=`You are generating search topics for an AI visibility audit of ${data.brand||"Brand"} in ${region||"Global"}.
 
-These are people who ALREADY KNOW they want this type of product. They are comparing options, checking prices, reading reviews, or deciding which one to buy. They have NOT chosen a brand yet.
+BRAND: ${data.brand||"Brand"}
+INDUSTRY: ${industry}
+WEBSITE: ${data.website||""}
+COMPETITORS: ${compNamesStr||"None specified"}
 
-Generate queries for these 5 specific angles:
-1. COMPARISON: "Compare the top [products] by [2-3 specific features like price, battery life, flavors, quality]"
-2. BEST-OF: "What are the best [products] for [specific use case] in ${region||"Global"}?"
-3. WHERE TO BUY: "Where to buy authentic [products] online in ${region||"Global"}?" or "Who offers the best deals on [products] in [city in ${region||"Global"}]?"
-4. BEGINNER: "What is the best [product] for someone who is new to [category] in ${region||"Global"}?"
-5. FEATURE-SPECIFIC: "Which [products] offer the best [specific feature like flavor variety, device reliability, value for money] in ${region||"Global"}?"
+${crawlSummary?"BRAND WEBSITE CONTENT (this tells you what the brand ACTUALLY sells):\n"+crawlSummary:""}
 
-${compNamesStr?"Do NOT mention these names: "+compNamesStr:""}
-Do NOT include any brand or company names.
-Use the specific product category terminology (e.g. "heated tobacco devices" not "tobacco industry products").
+Generate exactly 10 search queries that a REAL CONSUMER would type into ChatGPT or Google when looking for products or services that ${data.brand||"Brand"} actually provides.
+
+STRICT RULES:
+1. Every query MUST be for a product or service that ${data.brand||"Brand"} actually sells or offers. Check the website content above.
+2. For telecommunications brands: focus heavily on mobile data plans, postpaid plans, prepaid plans, 5G coverage, roaming packages, device bundles, number porting, network coverage, broadband/fibre ONLY if they offer it.
+3. Do NOT generate queries about products the brand does not sell. Examples of what to EXCLUDE for a telco: satellite phones, satellite dishes, home security systems, wireless earbuds, noise cancelling headphones, smartphones (unless the brand sells devices), wireless routers (unless the brand sells them), cordless phones, walkie talkies, smart home devices.
+4. Queries should be diverse across the brand's ACTUAL service categories. Mix comparison queries, best-of queries, how-to queries, and recommendation queries.
+5. Include the region naturally where relevant (e.g. 'in ${region||"Global"}' or '${region||"Global"} 2026').
+6. Each query should be 10-25 words, natural language, like a real person asking ChatGPT.
+7. At least 6 out of 10 queries should be about the brand's PRIMARY product category.
+8. Do NOT mention ${data.brand||"Brand"} by name in any query — these should be generic category queries where ${data.brand||"Brand"} SHOULD appear in the answer.
+${compNamesStr?"9. Do NOT mention these competitor names: "+compNamesStr:""}
 All queries must be in English.
-Each query should be 12-25 words.
 
 Return JSON only:
-{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5"]}`;
-      const raw=await callOpenAI4o(prompt,"You generate purchase-intent search queries for people actively shopping for a product. Every query must be from a buyer comparing options. Never include any brand or company names. Return ONLY valid JSON.");
+{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5", "query 6", "query 7", "query 8", "query 9", "query 10"]}`;
+      const raw=await callOpenAI4o(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.");
       const result=safeJSON(raw);
       if(result&&result.topics&&Array.isArray(result.topics)){
-        const validTopics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,5);
+        const validTopics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,10);
         if(validTopics.length>0){
           setData(prev=>{
             const hasExisting=(prev.topics||[]).some(t=>(typeof t==="string"?t:"").trim().length>3);
@@ -2054,37 +2061,44 @@ Return JSON only:
     setAutoFilling(false);
   };
 
-  // Generate topics via gpt-4o — NO brand name passed to AI
+  // Generate topics via gpt-4o — crawl website first for context
   const generateTopics=async()=>{
     setGenTopics(true);setError(null);
     const nw=normalizeUrl(data.website);const nc=(data.competitors||[]).map(c=>({...c,website:normalizeUrl(c.website||"")}));
     if(nw!==data.website||JSON.stringify(nc)!==JSON.stringify(data.competitors))setData(d=>({...d,website:nw,competitors:nc}));
     try{
       const compNamesStr=nc.filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
-      const prompt=`Generate exactly 5 search queries that someone would type into ChatGPT or Gemini when they are ACTIVELY LOOKING TO BUY or CHOOSE a product/service in the ${data.industry||"Technology"} industry in ${data.region||"Global"}.
+      let crawlSummary="";try{const cr=await crawlWebsite(nw||"");if(cr)crawlSummary=summariseCrawl(cr);}catch(e){}
+      const prompt=`You are generating search topics for an AI visibility audit of ${data.brand||"Brand"} in ${data.region||"Global"}.
 
-These are people who ALREADY KNOW they want this type of product. They are comparing options, checking prices, reading reviews, or deciding which one to buy. They have NOT chosen a brand yet.
+BRAND: ${data.brand||"Brand"}
+INDUSTRY: ${data.industry||"Technology"}
+WEBSITE: ${data.website||""}
+COMPETITORS: ${compNamesStr||"None specified"}
 
-Generate queries for these 5 specific angles:
-1. COMPARISON: "Compare the top [products] by [2-3 specific features like price, battery life, flavors, quality]"
-2. BEST-OF: "What are the best [products] for [specific use case] in ${data.region||"Global"}?"
-3. WHERE TO BUY: "Where to buy authentic [products] online in ${data.region||"Global"}?" or "Who offers the best deals on [products] in [city in ${data.region||"Global"}]?"
-4. BEGINNER: "What is the best [product] for someone who is new to [category] in ${data.region||"Global"}?"
-5. FEATURE-SPECIFIC: "Which [products] offer the best [specific feature like flavor variety, device reliability, value for money] in ${data.region||"Global"}?"
+${crawlSummary?"BRAND WEBSITE CONTENT (this tells you what the brand ACTUALLY sells):\n"+crawlSummary:""}
 
-${compNamesStr?"Do NOT mention these names: "+compNamesStr:""}
-Do NOT include any brand or company names.
-Use the specific product category terminology (e.g. "heated tobacco devices" not "tobacco industry products").
+Generate exactly 10 search queries that a REAL CONSUMER would type into ChatGPT or Google when looking for products or services that ${data.brand||"Brand"} actually provides.
+
+STRICT RULES:
+1. Every query MUST be for a product or service that ${data.brand||"Brand"} actually sells or offers. Check the website content above.
+2. For telecommunications brands: focus heavily on mobile data plans, postpaid plans, prepaid plans, 5G coverage, roaming packages, device bundles, number porting, network coverage, broadband/fibre ONLY if they offer it.
+3. Do NOT generate queries about products the brand does not sell. Examples of what to EXCLUDE for a telco: satellite phones, satellite dishes, home security systems, wireless earbuds, noise cancelling headphones, smartphones (unless the brand sells devices), wireless routers (unless the brand sells them), cordless phones, walkie talkies, smart home devices.
+4. Queries should be diverse across the brand's ACTUAL service categories. Mix comparison queries, best-of queries, how-to queries, and recommendation queries.
+5. Include the region naturally where relevant (e.g. 'in ${data.region||"Global"}' or '${data.region||"Global"} 2026').
+6. Each query should be 10-25 words, natural language, like a real person asking ChatGPT.
+7. At least 6 out of 10 queries should be about the brand's PRIMARY product category.
+8. Do NOT mention ${data.brand||"Brand"} by name in any query — these should be generic category queries where ${data.brand||"Brand"} SHOULD appear in the answer.
+${compNamesStr?"9. Do NOT mention these competitor names: "+compNamesStr:""}
 All queries must be in English.
-Each query should be 12-25 words.
 
 Return JSON only:
-{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5"]}`;
-      const raw=await callOpenAI4o(prompt,"You generate purchase-intent search queries for people actively shopping for a product. Every query must be from a buyer comparing options. Never include any brand or company names. Return ONLY valid JSON.");
+{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5", "query 6", "query 7", "query 8", "query 9", "query 10"]}`;
+      const raw=await callOpenAI4o(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.");
       const parsed=safeJSON(raw);
       const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(topics&&Array.isArray(topics)&&topics.length>0){
-        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,5)}));
+        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,10)}));
         setAuditStep("topics");
       }else{
         setError("Failed to generate topics. Please try again.");
@@ -2101,28 +2115,34 @@ Return JSON only:
     try{
       const existing=data.topics.join("; ");
       const compNamesStr=(data.competitors||[]).filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
-      const prompt=`Generate exactly 5 search queries that someone would type into ChatGPT or Gemini when they are ACTIVELY LOOKING TO BUY or CHOOSE a product/service in the ${data.industry||"Technology"} industry in ${data.region||"Global"}.
+      let crawlSummary="";try{const cr=await crawlWebsite(data.website||"");if(cr)crawlSummary=summariseCrawl(cr);}catch(e){}
+      const prompt=`You are generating additional search topics for an AI visibility audit of ${data.brand||"Brand"} in ${data.region||"Global"}.
 
-These are people who ALREADY KNOW they want this type of product. They are comparing options, checking prices, reading reviews, or deciding which one to buy. They have NOT chosen a brand yet.
+BRAND: ${data.brand||"Brand"}
+INDUSTRY: ${data.industry||"Technology"}
+WEBSITE: ${data.website||""}
+COMPETITORS: ${compNamesStr||"None specified"}
+
+${crawlSummary?"BRAND WEBSITE CONTENT (this tells you what the brand ACTUALLY sells):\n"+crawlSummary:""}
 
 I already have these queries (do NOT duplicate them): ${existing}
 
-Generate queries for these 5 specific angles:
-1. COMPARISON: "Compare the top [products] by [2-3 specific features like price, battery life, flavors, quality]"
-2. BEST-OF: "What are the best [products] for [specific use case] in ${data.region||"Global"}?"
-3. WHERE TO BUY: "Where to buy authentic [products] online in ${data.region||"Global"}?" or "Who offers the best deals on [products] in [city in ${data.region||"Global"}]?"
-4. BEGINNER: "What is the best [product] for someone who is new to [category] in ${data.region||"Global"}?"
-5. FEATURE-SPECIFIC: "Which [products] offer the best [specific feature like flavor variety, device reliability, value for money] in ${data.region||"Global"}?"
+Generate exactly 5 NEW and DIFFERENT search queries that a REAL CONSUMER would type into ChatGPT or Google when looking for products or services that ${data.brand||"Brand"} actually provides.
 
-${compNamesStr?"Do NOT mention these names: "+compNamesStr:""}
-Do NOT include any brand or company names.
-Use the specific product category terminology (e.g. "heated tobacco devices" not "tobacco industry products").
+STRICT RULES:
+1. Every query MUST be for a product or service that ${data.brand||"Brand"} actually sells or offers. Check the website content above.
+2. For telecommunications brands: focus heavily on mobile data plans, postpaid plans, prepaid plans, 5G coverage, roaming packages, device bundles, number porting, network coverage, broadband/fibre ONLY if they offer it.
+3. Do NOT generate queries about products the brand does not sell. Examples of what to EXCLUDE for a telco: satellite phones, satellite dishes, home security systems, wireless earbuds, noise cancelling headphones, smartphones (unless the brand sells devices), wireless routers (unless the brand sells them), cordless phones, walkie talkies, smart home devices.
+4. Queries should be diverse across the brand's ACTUAL service categories. Mix comparison queries, best-of queries, how-to queries, and recommendation queries.
+5. Include the region naturally where relevant (e.g. 'in ${data.region||"Global"}' or '${data.region||"Global"} 2026').
+6. Each query should be 10-25 words, natural language, like a real person asking ChatGPT.
+7. Do NOT mention ${data.brand||"Brand"} by name in any query — these should be generic category queries where ${data.brand||"Brand"} SHOULD appear in the answer.
+${compNamesStr?"8. Do NOT mention these competitor names: "+compNamesStr:""}
 All queries must be in English.
-Each query should be 12-25 words.
 
 Return JSON only:
 {"topics": ["query 1", "query 2", "query 3", "query 4", "query 5"]}`;
-      const raw=await callOpenAI4o(prompt,"You generate purchase-intent search queries for people actively shopping for a product. Every query must be from a buyer comparing options. Never include any brand or company names. Return ONLY valid JSON.");
+      const raw=await callOpenAI4o(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.");
       const parsed=safeJSON(raw);
       const newTopics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(newTopics&&Array.isArray(newTopics)&&newTopics.length>0){
