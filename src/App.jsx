@@ -302,6 +302,18 @@ I need exactly 2 search queries for each of these topics. Each query must approa
 
 Industry: ${industry}
 Region: ${region}
+
+BRAND WEBSITE CONTEXT (use this to understand what the brand actually offers):
+${crawlSummary || "No crawl data available"}
+
+IMPORTANT RULES FOR QUERY GENERATION:
+- Queries MUST reflect what the brand actually sells based on their website content above
+- For a mobile telecommunications brand, queries should be HEAVILY weighted toward mobile plans, data packages, prepaid and postpaid, 5G coverage, roaming, device plans, mobile apps, network coverage
+- Fibre and broadband queries are fine IF the brand offers them, but should NOT be the majority
+- Do NOT include generic technology topics that no mobile provider sells such as satellite dishes, cordless phones, wifi router systems, walkie talkies
+- Each query should be something a real consumer would search for when considering this brand
+- Queries should map to the actual service categories visible on the brand website
+
 Topics:
 ${topicsToUse.map((t, i) => `${i + 1}. ${t}`).join("\n")}
 
@@ -749,11 +761,26 @@ Be accurate. Base this on real market perception in ${region}, not global specul
 RESPONSES:
 ${snippetBlock}
 
+Known competitors to EXCLUDE from brand sentiments: ${compNames.join(", ")}
+
 Extract:
-1. positive: Array of 4-6 positive signals — specific themes or qualities AI engines portray favorably about ${brand}. Each a short phrase (3-8 words).
-2. negative: Array of 3-5 negative signals — specific concerns or weaknesses AI engines mention about ${brand}. Each a short phrase.
-3. quotes: Array of 4-6 notable direct quotes from the AI responses about ${brand}. Each: {"text":"<under 40 words>","engine":"ChatGPT"|"Gemini","sentiment":"positive"|"negative"|"neutral"}
+1. positive: Array of up to 4 positive signals — specific themes or qualities AI engines portray favorably about ${brand}. Each a short phrase (3-8 words).
+2. negative: Array of up to 4 negative signals — specific concerns or weaknesses AI engines mention about ${brand}. Each a short phrase.
+3. quotes: Array of up to 6 notable direct quotes from the AI responses about ${brand}. Each: {"text":"<under 40 words>","engine":"ChatGPT"|"Gemini","sentiment":"positive"|"negative"|"neutral"}
 4. competitorSentiment: Array for each competitor mentioned: {"name":"...","sentiment":"positive"|"negative"|"mixed","summary":"one sentence comparing to ${brand}"}
+
+CRITICAL FILTERING RULES:
+- ONLY extract sentiments and quotes that are SPECIFICALLY about ${brand}
+- Do NOT include sentiments about competitors even if they appear in the same response
+- If a quote mentions a competitor by name, it is NOT a brand sentiment and must be excluded
+- Every quote MUST be directly about ${brand} products, services, pricing, network, or reputation
+- Test each quote by asking: Is this statement describing ${brand} specifically? If no, exclude it
+
+DEDUPLICATION RULES:
+- Each positive signal must describe a DIFFERENT strength — no two should convey the same point
+- Each negative signal must describe a DIFFERENT concern — no repeats
+- Each quote must express a UNIQUE perspective — if two quotes say the same thing, keep only the more specific one
+- Maximum 4 positive signals, 4 negative signals, 6 quotes
 
 Competitors to look for: ${compNames.join(", ")}
 
@@ -772,6 +799,21 @@ Return ONLY valid JSON:
         competitorSentiment:mergeArr(gptP?.competitorSentiment,gemP?.competitorSentiment),
         rawSnippets:responseSnippets.slice(0,10)
       };
+      // Post-processing: deduplicate quotes
+      if(sentimentSignals&&sentimentSignals.quotes){
+        const seenQuotes=new Set();
+        sentimentSignals.quotes=sentimentSignals.quotes.filter(q=>{const key=(q.text||q.quote||"").toLowerCase().trim().slice(0,50);if(seenQuotes.has(key))return false;seenQuotes.add(key);return true;});
+      }
+      // Post-processing: deduplicate positive signals
+      if(sentimentSignals&&sentimentSignals.positive){
+        const seenPos=new Set();
+        sentimentSignals.positive=sentimentSignals.positive.filter(s=>{const key=(typeof s==="string"?s:s.theme||s.title||JSON.stringify(s)).toLowerCase().trim().slice(0,40);if(seenPos.has(key))return false;seenPos.add(key);return true;});
+      }
+      // Post-processing: deduplicate negative signals
+      if(sentimentSignals&&sentimentSignals.negative){
+        const seenNeg=new Set();
+        sentimentSignals.negative=sentimentSignals.negative.filter(s=>{const key=(typeof s==="string"?s:s.theme||s.title||JSON.stringify(s)).toLowerCase().trim().slice(0,40);if(seenNeg.has(key))return false;seenNeg.add(key);return true;});
+      }
     }
   }catch(stepError){
     console.error("Sentiment signal extraction failed:",stepError.message);
@@ -1978,7 +2020,7 @@ Return JSON only:
     if(!brandName||brandName.trim().length<2||autoFilling)return;
     setAutoFilling(true);
     try{
-      const prompt=`I need information about the company or brand called "${brandName.trim()}".\n\nReturn JSON only:\n{\n  "website": "https://example.com",\n  "industry": "the primary industry (1-3 words, e.g. Telecommunications, SaaS, E-commerce)",\n  "region": "primary operating region (e.g. Malaysia, United States, Global, Southeast Asia)",\n  "competitors": [\n    {"name": "Competitor 1", "website": "https://competitor1.com"},\n    {"name": "Competitor 2", "website": "https://competitor2.com"},\n    {"name": "Competitor 3", "website": "https://competitor3.com"}\n  ]\n}\n\nRules:\n- Website must be the MAIN company website, not Wikipedia or social\n- Return the top 3 direct competitors that actively compete with this brand in their primary operating region. Competitors must actually operate and be available in that region — do not list globally known brands that have no presence in the brand's market\n- All output must be in English. Do not translate to local languages\n- If unsure about the brand, make your best guess based on the name`;
+      const prompt=`I need information about the company or brand called "${brandName.trim()}".\n\nReturn JSON only:\n{\n  "website": "https://example.com",\n  "industry": "the primary industry (1-3 words, e.g. Telecommunications, SaaS, E-commerce)",\n  "region": "primary operating region (e.g. Malaysia, United States, Global, Southeast Asia)",\n  "competitors": [\n    {"name": "Competitor 1", "website": "https://competitor1.com"},\n    {"name": "Competitor 2", "website": "https://competitor2.com"},\n    {"name": "Competitor 3", "website": "https://competitor3.com"}\n  ]\n}\n\nRules:\n- Website must be the MAIN company website, not Wikipedia or social\n- Return the top 3 direct competitors that actively compete with this brand in their primary operating region. Competitors must actually operate and be available in that region — do not list globally known brands that have no presence in the brand's market\n- All output must be in English. Do not translate to local languages\n- If unsure about the brand, make your best guess based on the name\n- CRITICAL: Return the CONSUMER-FACING brand name, NOT the parent/holding company name. If the competitor website is yes.my, the brand is YES or YES 5G, NOT YTL Communications. If the website is unifi.com.my, the brand is Unifi, NOT Telekom Malaysia Berhad. Use the brand name as it appears on the website itself (logo, header, title tag). The domain name is a strong hint: yes.my = YES, celcomdigi.com = CelcomDigi. NEVER return a holding company, parent company, or corporate entity name. Return the name a regular consumer would search for.`;
       const raw=await callGemini(prompt,"You are a business intelligence assistant. Return ONLY valid JSON, no markdown fences.");
       const result=safeJSON(raw);
       if(result){
@@ -1991,7 +2033,10 @@ Return JSON only:
           if(!prev.region||!prev.region.trim())updates.region=result.region||"";
           const hasComps=(prev.competitors||[]).some(c=>c.name&&c.name.trim());
           if(!hasComps&&result.competitors&&Array.isArray(result.competitors)){
-            updates.competitors=result.competitors.filter(c=>c.name&&c.name.toLowerCase()!==brandName.trim().toLowerCase()).slice(0,3).map(c=>({name:c.name||"",website:normalizeUrl(c.website||"")}));
+            const corporateWords=/\b(communications|berhad|corporation|holdings|group|inc|ltd|limited|telecom|telekom|enterprises|company|co\b|corp)\b/i;
+            let compsCleaned=result.competitors.filter(c=>c.name&&c.name.toLowerCase()!==brandName.trim().toLowerCase()).slice(0,3).map(c=>({name:c.name||"",website:normalizeUrl(c.website||"")}));
+            compsCleaned=compsCleaned.map(comp=>{const url=comp.website||"";const name=comp.name||"";try{const domain=new URL(url).hostname.replace("www.","").split(".")[0];if(corporateWords.test(name)&&domain.length<=15){comp.name=domain.charAt(0).toUpperCase()+domain.slice(1);}}catch(e){}return comp;});
+            updates.competitors=compsCleaned;
           }
           if(Object.keys(updates).length>0){didFill=true;filledIndustry=updates.industry||prev.industry||"";filledRegion=updates.region||prev.region||"";filledCompNames=(updates.competitors||prev.competitors||[]).map(c=>c.name).filter(Boolean);return{...prev,...updates};}
           return prev;
