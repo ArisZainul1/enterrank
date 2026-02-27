@@ -4220,12 +4220,38 @@ async function sbLoadProjectAudits(projectId) {
 }
 
 async function sbDeleteProject(projectId) {
-  const { error } = await supabase
-    .from('projects')
-    .delete()
-    .eq('id', projectId);
-  if (error) console.error('Error deleting project:', error);
-  return !error;
+  // Delete child records first (order matters for FK constraints)
+  try {
+    // Delete generated content for this project
+    await supabase.from('generated_content').delete().eq('project_id', projectId);
+
+    // Delete playbook assets - also remove from storage
+    const { data: assets } = await supabase.from('playbook_assets').select('storage_path').eq('project_id', projectId);
+    if (assets && assets.length > 0) {
+      const paths = assets.map(a => a.storage_path).filter(Boolean);
+      if (paths.length > 0) {
+        await supabase.storage.from('playbook-assets').remove(paths);
+      }
+    }
+    await supabase.from('playbook_assets').delete().eq('project_id', projectId);
+
+    // Delete brand playbook
+    await supabase.from('brand_playbook').delete().eq('project_id', projectId);
+
+    // Delete audits
+    await supabase.from('audits').delete().eq('project_id', projectId);
+
+    // Finally delete the project itself
+    const { error } = await supabase.from('projects').delete().eq('id', projectId);
+    if (error) {
+      console.error('Error deleting project:', error);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('Error in sbDeleteProject cascade:', e);
+    return false;
+  }
 }
 
 /* ─── SUPABASE: PLAYBOOK HELPERS ─── */
