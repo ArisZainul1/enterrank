@@ -4452,11 +4452,29 @@ function ProjectHub({onSelect,onNew,onLogout}){
       await sbDeleteProject(id);
       try{await fetch(`/api/projects?id=${id}`,{method:"DELETE"});}catch(e){}
       lsDeleteProject(id);
+      // Also remove from localStorage by brand name in case IDs don't match
+      const deletedProject = projects.find(p => p.id === id);
+      if (deletedProject && deletedProject.brand) {
+        try {
+          const all = JSON.parse(localStorage.getItem('enterrank_projects') || '[]');
+          const filtered = all.filter(p => p.id !== id && p.brand !== deletedProject.brand);
+          localStorage.setItem('enterrank_projects', JSON.stringify(filtered));
+        } catch(e) {}
+      }
       setProjects(projects.filter(p=>p.id!==id));
     }catch(e){
       // Fallback: try old API delete
       try{await fetch(`/api/projects?id=${id}`,{method:"DELETE"});}catch(e2){}
       lsDeleteProject(id);
+      // Also remove from localStorage by brand name in case IDs don't match
+      const deletedProject = projects.find(p => p.id === id);
+      if (deletedProject && deletedProject.brand) {
+        try {
+          const all = JSON.parse(localStorage.getItem('enterrank_projects') || '[]');
+          const filtered = all.filter(p => p.id !== id && p.brand !== deletedProject.brand);
+          localStorage.setItem('enterrank_projects', JSON.stringify(filtered));
+        } catch(e3) {}
+      }
       setProjects(projects.filter(p=>p.id!==id));
     }
     setDeleting(null);
