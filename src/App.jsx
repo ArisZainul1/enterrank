@@ -279,17 +279,17 @@ async function runRealAudit(cd, onProgress){
   onProgress("Crawling competitor websites...",6);
   const compCrawls={};
   const compCrawlsRaw={};
-  for(let i=0;i<compUrls.length&&i<5;i++){
-    if(compUrls[i]){
-      try{
-        const cc=await crawlWebsite(compUrls[i]);
-        if(cc){
-          compCrawls[compNames[i]||`Competitor ${i+1}`]=summariseCrawl(cc);
-          compCrawlsRaw[compNames[i]||`Competitor ${i+1}`]={url:compUrls[i], ...cc.mainPage};
-        }
-      }catch(e){}
-    }
-  }
+  await Promise.all(compUrls.slice(0,5).map(async(url,i)=>{
+    if(!url)return;
+    try{
+      const cc=await crawlWebsite(url);
+      if(cc){
+        const cname=compNames[i]||`Competitor ${i+1}`;
+        compCrawls[cname]=summariseCrawl(cc);
+        compCrawlsRaw[cname]={url,...cc.mainPage};
+      }
+    }catch(e){}
+  }));
   const compCrawlSummary=Object.entries(compCrawls).map(([name,data])=>`\n--- ${name} ---\n${data}`).join("\n")||"No competitor crawl data.";
 
   // ── Step 2: Generate high-quality search queries from key topics ──
@@ -694,10 +694,19 @@ Return JSON only:
   accumulated.compVisibilityData = compScoresMap || {};
   onProgress("Engine data ready — analyzing sentiment...", null, {...accumulated});
 
-  // ── Step 5b: Sentiment Analysis ──
-  onProgress("Analyzing brand sentiment across AI engines...",56);
+  // ── Parallel Group: Sentiment + Signals + Source Channels + Competitors + Pain Points ──
+  onProgress("Analyzing sentiment, competitors, and categories...", 55);
+  const painCatLabels=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
   let sentimentData={brand:{gpt:50,gemini:50,avg:50,summary:"Sentiment analysis unavailable"},competitors:compNames.map(n=>({name:n,gpt:50,gemini:50,avg:50,summary:""}))};
-  try{
+  let sentimentSignals={positive:[],negative:[],quotes:[],competitorSentiment:[],rawSnippets:[]};
+  let channelSourceData={sourceChannels:[],opportunities:[]};
+  let compData={competitors:[]};
+  let mergedComps=[];
+  let mergedPainPoints=painCatLabels.map(l=>({label:l,score:0,severity:"critical"}));
+
+  await Promise.all([
+  // ── Sentiment Analysis ──
+  (async()=>{try{
   const sentimentPrompt=`Analyze the general public and industry sentiment around "${brand}" in the ${industry} industry, specifically in ${region}.
 
 CRITICAL: Rate sentiment specifically in ${region}, not globally. Consider local customer reviews, local news coverage, local social media perception, and regional reputation. A brand loved globally but unknown or unavailable in ${region} should score 40-50 (neutral). A brand with strong local presence and positive regional reputation should score higher than a global brand with no ${region} footprint.
@@ -744,13 +753,9 @@ Be accurate. Base this on real market perception in ${region}, not global specul
   };
   }catch(stepError){
     console.error("Sentiment analysis failed:",stepError.message);
-    onProgress("Warning: sentiment analysis had an issue, continuing...",59);
-  }
-
-  // ── Step 4b: Extract detailed sentiment signals ──
-  onProgress("Extracting sentiment signals...",60);
-  let sentimentSignals={positive:[],negative:[],quotes:[],competitorSentiment:[],rawSnippets:[]};
-  try{
+  }})(),
+  // ── Sentiment Signals ──
+  (async()=>{try{
     const responseSnippets=[];
     (gptResponses||[]).forEach((resp,i)=>{
       const text=typeof resp==="string"?resp:resp?.response||resp?.text||resp?.result||"";
@@ -829,16 +834,9 @@ Return ONLY valid JSON:
     }
   }catch(stepError){
     console.error("Sentiment signal extraction failed:",stepError.message);
-  }
-
-  accumulated.sentimentData = sentimentData || null;
-  accumulated.sentimentSignals = sentimentSignals || null;
-  onProgress("Sentiment analysis ready...", null, {...accumulated});
-
-  // ── Step 4c: Extract source channel data from AI responses ──
-  onProgress("Analyzing source channels...",62);
-  let channelSourceData={sourceChannels:[],opportunities:[]};
-  try{
+  }})(),
+  // ── Source Channels ──
+  (async()=>{try{
     const srcSnippets=[];
     (gptResponses||[]).forEach((resp,i)=>{
       const text=typeof resp==="string"?resp:resp?.response||resp?.text||resp?.result||"";
@@ -899,13 +897,9 @@ Return JSON only. No markdown, no explanation.`;
     }
   }catch(stepError){
     console.error("Source channel extraction failed:",stepError.message);
-  }
-
-  // ── Step 5: Competitor analysis — BOTH engines + crawl data ──
-  onProgress("Analysing competitors across both engines...",63);
-  let compData={competitors:[]};
-  let mergedComps=[];
-  try{
+  }})(),
+  // ── Competitor Analysis ──
+  (async()=>{try{
   const compPromptBase=`Analyse these competitors against "${brand}" in ${industry} (${region}) for AI engine visibility.
 
 Brand website crawl data:
@@ -961,14 +955,9 @@ Use the crawl data to give accurate scores. If a competitor has better schema ma
   compData={competitors:mergedComps.length>0?mergedComps:(compGem.competitors||[])};
   }catch(stepError){
     console.error("Competitor analysis failed:",stepError.message);
-    onProgress("Warning: competitor analysis had an issue, continuing...",64);
-  }
-
-  // ── Step 5: Pain points — BOTH engines + crawl data ──
-  onProgress("Scoring categories across both engines...",66);
-  const painCatLabels=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
-  let mergedPainPoints=painCatLabels.map(l=>({label:l,score:0,severity:"critical"}));
-  try{
+  }})(),
+  // ── Pain Points ──
+  (async()=>{try{
   const catPrompt=`Based on this website analysis for "${brand}" (${industry}, ${region}):
 
 ${crawlSummary}
@@ -1003,9 +992,13 @@ Use severity: "critical" if <30, "warning" if 30-60, "good" if >60. Base scores 
   });
   }catch(stepError){
     console.error("Pain points analysis failed:",stepError.message);
-    onProgress("Warning: Category scoring had an issue, continuing...",68);
-  }
+  }})()
+  ]);
 
+  // Emit combined partial data after parallel group completes
+  accumulated.sentimentData = sentimentData || null;
+  accumulated.sentimentSignals = sentimentSignals || null;
+  accumulated.channelSourceData = channelSourceData || { sourceChannels:[], opportunities:[] };
   accumulated.engineData = { engines: [
     {id:"chatgpt", ...gptData, queries:(gptData.queries||[]).slice(0,8)},
     {id:"gemini", ...gemData, queries:(gemData.queries||[]).slice(0,8)}
@@ -1015,11 +1008,17 @@ Use severity: "critical" if <30, "warning" if 30-60, "good" if >60. Base scores 
   accumulated.searchQueries = searchQueries || [];
   accumulated.brandCrawlData = brandCrawl || null;
   accumulated.compCrawlData = compCrawlsRaw || {};
-  onProgress("Dashboard ready — loading remaining sections...", null, {...accumulated});
+  onProgress("Dashboard ready — loading remaining sections...", 68, {...accumulated});
 
-  // ── Step 6: User archetypes + journeys — OpenAI generates, Gemini verifies engine statuses ──
-  onProgress("Generating user archetypes...",70);
+  // ── Parallel Group: Archetypes + Intent + Channels ──
   let archData={stakeholders:[]};
+  let intentData=[];
+  let chData={channels:[]};
+
+  await Promise.all([
+  // ── Archetypes ──
+  (async()=>{
+  onProgress("Generating user archetypes...",70);
   try{
   const archPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}, competitors: ${compNames.join(", ")||"none"}.
 
@@ -1094,15 +1093,10 @@ Be accurate. "Cited" = you would link to their website. "Mentioned" = you'd name
   }
   }catch(stepError){
     console.error("Archetypes generation failed:",stepError.message);
-    onProgress("Warning: archetypes generation had an issue, continuing...",76);
-  }
-
-  accumulated.archData = (archData && archData.stakeholders) ? archData.stakeholders : [];
-  onProgress("Archetypes ready...", null, {...accumulated});
-
-  // ── Step 6b: Intent Pathway — real data from BOTH engines ──
-  onProgress("Testing intent pathway prompts...",77);
-  let intentData=[];
+  }})(),
+  // ── Intent Pathway ──
+  (async()=>{
+  onProgress("Testing intent pathway prompts...",72);
   try{
   const intentPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}.
 Competitors: ${compNames.join(", ")}.
@@ -1171,15 +1165,10 @@ Rules:
   });
   }catch(stepError){
     console.error("Intent pathway analysis failed:",stepError.message);
-    onProgress("Warning: intent pathway had an issue, continuing...",80);
-  }
-
-  accumulated.intentData = intentData && intentData.length > 0 ? intentData : null;
-  onProgress("Intent mapping ready...", null, {...accumulated});
-
-  // ── Step 7: AEO Channel verification via REAL web crawling ──
-  onProgress("Verifying channels via web search...",81);
-  let chData={channels:[]};
+  }})(),
+  // ── Channel Verification ──
+  (async()=>{
+  onProgress("Verifying channels via web search...",74);
   try{
   let realChannels=null;
   try{realChannels=await verifyChannels(brand, cd.website, industry, region);}catch(e){console.error("Channel verify failed:",e);}
@@ -1282,12 +1271,23 @@ IMPORTANT: Only mark Not Present if you are CERTAIN after searching. If you find
 
   }catch(stepError){
     console.error("Channel verification failed:",stepError.message);
-    onProgress("Warning: channel verification had an issue, continuing...",85);
-  }
+  }})()
+  ]);
 
-  // ── Step 8: Content recommendations — BOTH engines, using ALL audit data ──
-  onProgress("Building content recommendations...",87);
+  // Emit partial data after archetypes + intent + channels complete
+  accumulated.archData = (archData && archData.stakeholders) ? archData.stakeholders : [];
+  accumulated.intentData = intentData && intentData.length > 0 ? intentData : null;
+  accumulated.channelData = chData ? { channels: (chData.channels||[]).slice(0,12) } : { channels: [] };
+  onProgress("Building final recommendations...", 85, {...accumulated});
+
+  // ── Parallel Group: Content + Roadmap ──
   let contentData={contentTypes:[]};
+  let roadData=null;
+
+  await Promise.all([
+  // ── Content Recommendations ──
+  (async()=>{
+  onProgress("Building content recommendations...",87);
   try{
   const critCats=(mergedPainPoints||[]).filter(p=>p.severity==="critical").map(p=>`${p.label} (${p.score}%)`).join(", ");
   const warnCats=(mergedPainPoints||[]).filter(p=>p.severity==="warning").map(p=>`${p.label} (${p.score}%)`).join(", ");
@@ -1334,12 +1334,10 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
   contentData={contentTypes:allContentTypes.slice(0,10)};
   }catch(stepError){
     console.error("Content recommendations failed:",stepError.message);
-    onProgress("Warning: content recommendations had an issue, continuing...",90);
-  }
-
-  // ── Step 9: 90-Day Roadmap — using ALL previous data ──
-  onProgress("Creating 90-day roadmap from audit data...",92);
-  let roadData=null;
+  }})(),
+  // ── Roadmap ──
+  (async()=>{
+  onProgress("Creating 90-day roadmap from audit data...",89);
   try{
   const overallScore=Math.round(((gptData.score||0)+(gemData.score||0))/2);
   const criticalCats=(mergedPainPoints||[]).filter(p=>p.severity==="critical").map(p=>p.label).join(", ");
@@ -1399,15 +1397,13 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
   roadData=safeJSON(roadRaw)||null;
   }catch(stepError){
     console.error("Roadmap generation failed:",stepError.message);
-    onProgress("Warning: roadmap generation had an issue, continuing...",95);
-  }
+  }})()
+  ]);
 
   onProgress("Compiling final report...",96);
 
   accumulated.contentGridData = (contentData && contentData.contentTypes) ? contentData.contentTypes.slice(0,10) : [];
   accumulated.roadmapData = roadData || null;
-  accumulated.channelData = chData ? { channels: (chData.channels||[]).slice(0,12) } : { channels: [] };
-  accumulated.channelSourceData = channelSourceData || { sourceChannels:[], opportunities:[] };
   accumulated.guidelineData = null;
   onProgress("All sections ready...", null, {...accumulated});
 
