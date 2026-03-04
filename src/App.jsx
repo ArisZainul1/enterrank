@@ -1849,7 +1849,9 @@ const SidebarIcon=({name,size=18,color="#9ca3af"})=>{
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none">{p[name]||null}</svg>;
 };
 
-function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,setCollapsed}){
+function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,setCollapsed,sectionReady={},auditInProgress=false}){
+  const [hoveredNav, setHoveredNav] = useState(null);
+  const sectionMap = { dashboard:"dashboard", archetypes:"archetypes", sentiment:"sentiment", intent:"intent", playbook:"playbook", channels:"channels", contenthub:"contenthub", roadmap:"roadmap" };
   const sideW=collapsed?60:220;
   return(<div style={{position:"fixed",left:0,top:0,bottom:0,width:sideW,background:"#fff",borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",transition:"width .2s ease",zIndex:100,overflow:"hidden"}}>
     {/* Logo area */}
@@ -1877,14 +1879,20 @@ function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,s
         {!collapsed&&<div style={{fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:".08em",padding:"8px 8px 6px",userSelect:"none"}}>{g.group}</div>}
         {g.items.map(item=>{
           const active=step===item.id;
-          const dis=!results||item.comingSoon;
+          const isLocked=auditInProgress&&sectionMap[item.id]&&!sectionReady[sectionMap[item.id]];
+          const dis=(!results&&!auditInProgress)||item.comingSoon||isLocked;
           return(<div key={item.id} onClick={()=>{if(!dis)setStep(item.id);}}
-            style={{display:"flex",alignItems:"center",gap:10,padding:collapsed?"10px 12px":"8px 10px",borderRadius:8,cursor:dis?"default":"pointer",background:active?"#111827":"transparent",color:active?"#fff":dis?"#d1d5db":C.sub,fontSize:13,fontWeight:500,marginBottom:2,transition:"all .12s",opacity:item.comingSoon?.5:1,justifyContent:collapsed?"center":"flex-start"}}
-            onMouseEnter={e=>{if(!dis&&!active)e.currentTarget.style.background=C.bg;}}
-            onMouseLeave={e=>{if(!active)e.currentTarget.style.background="transparent";}}>
+            style={{display:"flex",alignItems:"center",gap:10,padding:collapsed?"10px 12px":"8px 10px",borderRadius:8,cursor:dis?"default":"pointer",background:active?"#111827":"transparent",color:active?"#fff":dis?"#d1d5db":C.sub,fontSize:13,fontWeight:500,marginBottom:2,transition:"opacity 0.5s ease, background 0.15s",opacity:isLocked?0.35:item.comingSoon?.5:1,justifyContent:collapsed?"center":"flex-start",position:"relative"}}
+            onMouseEnter={e=>{setHoveredNav(item.id);if(!dis&&!active)e.currentTarget.style.background=C.bg;}}
+            onMouseLeave={e=>{setHoveredNav(null);if(!active)e.currentTarget.style.background="transparent";}}>
             <SidebarIcon name={item.icon} size={18} color={active?"#fff":dis?"#d1d5db":"#6b7280"}/>
             {!collapsed&&<span>{item.label}</span>}
             {!collapsed&&item.comingSoon&&<span style={{fontSize:9,background:"#f1f1f1",color:"#999",padding:"2px 6px",borderRadius:4,marginLeft:6,fontWeight:500}}>Soon</span>}
+            {isLocked&&hoveredNav===item.id&&!collapsed&&(
+              <div style={{position:"absolute",left:"100%",top:"50%",transform:"translateY(-50%)",marginLeft:8,padding:"5px 10px",background:"#1f2937",color:"#fff",borderRadius:6,fontSize:11,fontWeight:500,whiteSpace:"nowrap",zIndex:100,pointerEvents:"none"}}>
+                Still loading...
+              </div>
+            )}
           </div>);
         })}
       </div>))}
@@ -4970,7 +4978,7 @@ export default function App(){
     <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}`}</style>
 
     {/* Sidebar */}
-    <Sidebar step={step} setStep={setStep} results={results} brand={results?.clientData?.brand||data.brand} onBack={handleBackToHub} isLocal={isLocal} onLogout={handleLogout} collapsed={sideCollapsed} setCollapsed={setSideCollapsed}/>
+    <Sidebar step={step} setStep={setStep} results={results} brand={results?.clientData?.brand||data.brand} onBack={handleBackToHub} isLocal={isLocal} onLogout={handleLogout} collapsed={sideCollapsed} setCollapsed={setSideCollapsed} sectionReady={sectionReady} auditInProgress={auditInProgress}/>
 
     {/* Main content */}
     <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",marginLeft:sideCollapsed?60:220,transition:"margin-left .2s ease"}}>
