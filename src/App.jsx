@@ -1882,7 +1882,7 @@ function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,s
           const isLocked=auditInProgress&&sectionMap[item.id]&&!sectionReady[sectionMap[item.id]];
           const dis=(!results&&!auditInProgress)||item.comingSoon||isLocked;
           return(<div key={item.id} onClick={()=>{if(!dis)setStep(item.id);}}
-            style={{display:"flex",alignItems:"center",gap:10,padding:collapsed?"10px 12px":"8px 10px",borderRadius:8,cursor:dis?"default":"pointer",background:active?"#111827":"transparent",color:active?"#fff":dis?"#d1d5db":C.sub,fontSize:13,fontWeight:500,marginBottom:2,transition:"opacity 0.5s ease, background 0.15s",opacity:isLocked?0.35:item.comingSoon?.5:1,justifyContent:collapsed?"center":"flex-start",position:"relative"}}
+            style={{display:"flex",alignItems:"center",gap:10,padding:collapsed?"10px 12px":"8px 10px",borderRadius:8,cursor:dis?"default":"pointer",background:active?"#111827":"transparent",color:active?"#fff":dis?"#d1d5db":C.sub,fontSize:13,fontWeight:500,marginBottom:2,transition:"opacity 0.5s ease, background 0.15s",opacity:isLocked?0.35:item.comingSoon?.5:1,justifyContent:collapsed?"center":"flex-start",position:"relative",overflow:"hidden"}}
             onMouseEnter={e=>{setHoveredNav(item.id);if(!dis&&!active)e.currentTarget.style.background=C.bg;}}
             onMouseLeave={e=>{setHoveredNav(null);if(!active)e.currentTarget.style.background="transparent";}}>
             <SidebarIcon name={item.icon} size={18} color={active?"#fff":dis?"#d1d5db":"#6b7280"}/>
@@ -1891,6 +1891,11 @@ function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,s
             {isLocked&&hoveredNav===item.id&&!collapsed&&(
               <div style={{position:"absolute",left:"100%",top:"50%",transform:"translateY(-50%)",marginLeft:8,padding:"5px 10px",background:"#1f2937",color:"#fff",borderRadius:6,fontSize:11,fontWeight:500,whiteSpace:"nowrap",zIndex:100,pointerEvents:"none"}}>
                 Still loading...
+              </div>
+            )}
+            {isLocked&&(
+              <div style={{position:"absolute",bottom:0,left:12,right:12,height:2,borderRadius:1,background:C.borderSoft,overflow:"hidden"}}>
+                <div style={{width:"40%",height:"100%",borderRadius:1,background:C.accent,animation:"loadingSlide 1.5s ease-in-out infinite"}}/>
               </div>
             )}
           </div>);
@@ -5043,7 +5048,7 @@ export default function App(){
 
   return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",color:C.text,display:"flex"}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}`}</style>
+    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes loadingSlide{0%{transform:translateX(-100%)}50%{transform:translateX(250%)}100%{transform:translateX(-100%)}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}`}</style>
 
     {/* Sidebar */}
     <Sidebar step={step} setStep={setStep} results={results} brand={results?.clientData?.brand||data.brand} onBack={handleBackToHub} isLocal={isLocal} onLogout={handleLogout} collapsed={sideCollapsed} setCollapsed={setSideCollapsed} sectionReady={sectionReady} auditInProgress={auditInProgress}/>
