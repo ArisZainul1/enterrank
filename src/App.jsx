@@ -2041,13 +2041,7 @@ function AuditLoadingScreen({progress,statusMessage,C}){
 
 /* ─── AUDIT LOADING INLINE (progressive) ─── */
 function AuditLoadingInline({ progress, stage }) {
-  const [elapsed, setElapsed] = useState(0);
   const [activeStep, setActiveStep] = useState(0);
-
-  React.useEffect(() => {
-    const i = setInterval(() => setElapsed(e => e + 1), 1000);
-    return () => clearInterval(i);
-  }, []);
 
   const steps = [
     { label: "Crawling websites", icon: "🌐", threshold: 8 },
@@ -2065,14 +2059,13 @@ function AuditLoadingInline({ progress, stage }) {
   }, [progress]);
 
   const p = Math.min(progress || 0, 99);
-  const mins = Math.floor(elapsed / 60);
-  const secs = elapsed % 60;
 
   return (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"55vh", gap:28, maxWidth:480, margin:"0 auto", padding:"40px 20px" }}>
 
       {/* Animated progress ring */}
       <div style={{ position:"relative", width:100, height:100 }}>
+        <div style={{ position:"absolute", inset:-4, border:"2.5px solid transparent", borderTopColor:C.accent+"50", borderRightColor:C.accent+"20", borderRadius:"50%", animation:"spin 2s linear infinite" }}/>
         <svg width="100" height="100" style={{ transform:"rotate(-90deg)" }}>
           <circle cx="50" cy="50" r="42" fill="none" stroke={C.bg} strokeWidth="6"/>
           <circle cx="50" cy="50" r="42" fill="none" stroke={C.accent} strokeWidth="6"
@@ -2091,7 +2084,7 @@ function AuditLoadingInline({ progress, stage }) {
           Analyzing your brand
         </div>
         <div style={{ fontSize:12, color:C.muted }}>
-          {stage || "Warming up the engines..."} · {mins > 0 ? `${mins}m ` : ""}{secs}s
+          {stage || "Warming up the engines..."}
         </div>
       </div>
 
