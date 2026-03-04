@@ -2146,13 +2146,29 @@ function NewAuditPage({data,setData,onRun,history=[]}){
   const[autoFilled,setAutoFilled]=useState(false);
   const[generatingTopics,setGeneratingTopics]=useState(false);
   const[topicsAutoFilled,setTopicsAutoFilled]=useState(false);
+  const crawlCacheRef = React.useRef({ url: null, result: null });
+
+  React.useEffect(() => {
+    const brand = (data.brand || "").trim();
+    const region = (data.region || "").trim();
+    if (brand.length >= 2 && region.length >= 2 && !autoFilled && !autoFilling) {
+      const timer = setTimeout(() => {
+        const currentBrand = (data.brand || "").trim();
+        const currentRegion = (data.region || "").trim();
+        if (currentBrand.length >= 2 && currentRegion.length >= 2 && !autoFilled && !autoFilling) {
+          autoFillFromBrand(currentBrand);
+        }
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [data.brand, data.region]);
 
   const generateTopicsFromIndustry=async(industry,region,competitorNames)=>{
     if(!industry||industry.trim().length<2)return;
     setGeneratingTopics(true);
     try{
       const compNamesStr=(competitorNames||[]).filter(n=>n&&n.trim().length>1).map(n=>n.trim()).join(", ");
-      let crawlSummary="";try{const cr=await crawlWebsite(data.website||"");if(cr)crawlSummary=summariseCrawl(cr);}catch(e){}
+      let crawlSummary="";try{if(crawlCacheRef.current.url===data.website&&crawlCacheRef.current.result){crawlSummary=summariseCrawl(crawlCacheRef.current.result);}else{const cr=await crawlWebsite(data.website||"");if(cr){crawlCacheRef.current={url:data.website,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
       const prompt=`You are generating search topics for an AI visibility audit of ${data.brand||"Brand"} in ${region||"Global"}.
 
 BRAND: ${data.brand||"Brand"}
@@ -2197,21 +2213,21 @@ Return JSON only:
 
   const autoFillFromBrand=async(brandName)=>{
     if(!brandName||brandName.trim().length<2||autoFilling)return;
+    const userRegion=(data.region||"").trim();
     setAutoFilling(true);
     try{
       let crawlSummary="";
-      if(data.website&&data.website.trim().length>5){try{const cr=await crawlWebsite(data.website);if(cr)crawlSummary=summariseCrawl(cr);}catch(e){}}
-      const prompt=`I need information about the company or brand called "${brandName.trim()}".\n\n${crawlSummary?"BRAND WEBSITE CONTENT (read this to understand what the brand primarily sells):\n"+crawlSummary+"\n\n":""}Return JSON only:\n{\n  "website": "https://example.com",\n  "industry": "the primary industry (1-3 words, e.g. Telecommunications, SaaS, E-commerce)",\n  "region": "primary operating region (e.g. Malaysia, United States, Global, Southeast Asia)",\n  "competitors": [\n    {"name": "Competitor 1", "website": "https://competitor1.com"},\n    {"name": "Competitor 2", "website": "https://competitor2.com"},\n    {"name": "Competitor 3", "website": "https://competitor3.com"}\n  ]\n}\n\nRules:\n- Website must be the MAIN company website, not Wikipedia or social\n- Return the top 3 direct competitors that actively compete with this brand in their primary operating region. Competitors must actually operate and be available in that region — do not list globally known brands that have no presence in the brand's market\n- All output must be in English. Do not translate to local languages\n- If unsure about the brand, make your best guess based on the name\n- CRITICAL: Return the CONSUMER-FACING brand name, NOT the parent/holding company name. If the competitor website is yes.my, the brand is YES or YES 5G, NOT YTL Communications. If the website is unifi.com.my, the brand is Unifi, NOT Telekom Malaysia Berhad. Use the brand name as it appears on the website itself (logo, header, title tag). The domain name is a strong hint: yes.my = YES, celcomdigi.com = CelcomDigi. NEVER return a holding company, parent company, or corporate entity name. Return the name a regular consumer would search for.\n\nCRITICAL COMPETITOR MATCHING RULES:\n- Competitors must be in the SAME primary business category as the brand\n- Match the brand's CORE product: if the brand is primarily a MOBILE telecommunications provider, competitors must also be MOBILE telecommunications providers\n- Do NOT suggest broadband-only or fibre-only providers as competitors to a mobile telco\n- Do NOT suggest companies from adjacent but different categories (e.g. an ISP is NOT a competitor to a mobile carrier unless that ISP also offers mobile services)\n- Check: does this competitor offer the same PRIMARY product as the brand? If the brand sells mobile plans and the competitor only sells home internet, they are NOT competitors\n- For Malaysian telcos specifically: Maxis, U Mobile, YES 5G, and Digi are mobile competitors. Unifi is a broadband/fibre provider and is NOT a primary competitor to a mobile telco unless the audit brand also primarily sells broadband\n\nEXAMPLES:\n- CelcomDigi (mobile telco) competitors: Maxis, U Mobile, YES 5G — NOT Unifi, NOT TIME dotCom\n- Unifi (broadband ISP) competitors: TIME dotCom, Maxis Fibre, CelcomDigi Fibre — NOT U Mobile\n- The brand's WEBSITE CONTENT tells you what their primary business is. Read it carefully before suggesting competitors.`;
+      if(data.website&&data.website.trim().length>5){try{const cr=await crawlWebsite(data.website);if(cr){crawlCacheRef.current={url:data.website,result:cr};crawlSummary=summariseCrawl(cr);}}catch(e){}}
+      const prompt=`I need information about the company or brand called "${brandName.trim()}".\n\nThe brand operates in "${userRegion||"Global"}". Use this region to determine localised competitors.\n\n${crawlSummary?"BRAND WEBSITE CONTENT (read this to understand what the brand primarily sells):\n"+crawlSummary+"\n\n":""}Return JSON only:\n{\n  "website": "https://example.com",\n  "industry": "the primary industry (1-3 words, e.g. Telecommunications, SaaS, E-commerce)",\n  "competitors": [\n    {"name": "Competitor 1", "website": "https://competitor1.com"},\n    {"name": "Competitor 2", "website": "https://competitor2.com"},\n    {"name": "Competitor 3", "website": "https://competitor3.com"}\n  ]\n}\n\nRules:\n- Website must be the MAIN company website, not Wikipedia or social\n- List the top 3-4 direct competitors of ${brandName.trim()} specifically in the ${userRegion||"Global"} market. Competitors must actually operate and be available in ${userRegion||"that region"} — do not list globally known brands that have no presence in ${userRegion||"the brand's market"}\n- All output must be in English. Do not translate to local languages\n- If unsure about the brand, make your best guess based on the name\n- CRITICAL: Return the CONSUMER-FACING brand name, NOT the parent/holding company name. If the competitor website is yes.my, the brand is YES or YES 5G, NOT YTL Communications. If the website is unifi.com.my, the brand is Unifi, NOT Telekom Malaysia Berhad. Use the brand name as it appears on the website itself (logo, header, title tag). The domain name is a strong hint: yes.my = YES, celcomdigi.com = CelcomDigi. NEVER return a holding company, parent company, or corporate entity name. Return the name a regular consumer would search for.\n\nCRITICAL COMPETITOR MATCHING RULES:\n- Competitors must be in the SAME primary business category as the brand\n- Match the brand's CORE product: if the brand is primarily a MOBILE telecommunications provider, competitors must also be MOBILE telecommunications providers\n- Do NOT suggest broadband-only or fibre-only providers as competitors to a mobile telco\n- Do NOT suggest companies from adjacent but different categories (e.g. an ISP is NOT a competitor to a mobile carrier unless that ISP also offers mobile services)\n- Check: does this competitor offer the same PRIMARY product as the brand? If the brand sells mobile plans and the competitor only sells home internet, they are NOT competitors\n- For Malaysian telcos specifically: Maxis, U Mobile, YES 5G, and Digi are mobile competitors. Unifi is a broadband/fibre provider and is NOT a primary competitor to a mobile telco unless the audit brand also primarily sells broadband\n\nEXAMPLES:\n- CelcomDigi (mobile telco) competitors: Maxis, U Mobile, YES 5G — NOT Unifi, NOT TIME dotCom\n- Unifi (broadband ISP) competitors: TIME dotCom, Maxis Fibre, CelcomDigi Fibre — NOT U Mobile\n- The brand's WEBSITE CONTENT tells you what their primary business is. Read it carefully before suggesting competitors.`;
       const raw=await callGemini(prompt,"You are a business intelligence assistant. Return ONLY valid JSON, no markdown fences.");
       const result=safeJSON(raw);
       if(result){
         let didFill=false;
-        let filledIndustry="";let filledRegion="";let filledCompNames=[];
+        let filledIndustry="";let filledCompNames=[];
         setData(prev=>{
           const updates={};
           if(!prev.website||!prev.website.trim())updates.website=normalizeUrl(result.website||"");
           if(!prev.industry||!prev.industry.trim())updates.industry=result.industry||"";
-          if(!prev.region||!prev.region.trim())updates.region=result.region||"";
           const hasComps=(prev.competitors||[]).some(c=>c.name&&c.name.trim());
           if(!hasComps&&result.competitors&&Array.isArray(result.competitors)){
             const corporateWords=/\b(communications|berhad|corporation|holdings|group|inc|ltd|limited|telecom|telekom|enterprises|company|co\b|corp)\b/i;
@@ -2219,14 +2235,13 @@ Return JSON only:
             compsCleaned=compsCleaned.map(comp=>{const url=comp.website||"";const name=comp.name||"";try{const domain=new URL(url).hostname.replace("www.","").split(".")[0];if(corporateWords.test(name)&&domain.length<=15){comp.name=domain.charAt(0).toUpperCase()+domain.slice(1);}}catch(e){}return comp;});
             updates.competitors=compsCleaned;
           }
-          if(Object.keys(updates).length>0){didFill=true;filledIndustry=updates.industry||prev.industry||"";filledRegion=updates.region||prev.region||"";filledCompNames=(updates.competitors||prev.competitors||[]).map(c=>c.name).filter(Boolean);return{...prev,...updates};}
+          if(Object.keys(updates).length>0){didFill=true;filledIndustry=updates.industry||prev.industry||"";filledCompNames=(updates.competitors||prev.competitors||[]).map(c=>c.name).filter(Boolean);return{...prev,...updates};}
           return prev;
         });
         if(didFill){
           setAutoFilled(true);
-          // Generate topics separately — brand name is NOT passed to the AI
           const topicIndustry=filledIndustry||result.industry||"";
-          const topicRegion=filledRegion||result.region||"";
+          const topicRegion=userRegion||"Global";
           const topicCompNames=(result.competitors||[]).map(c=>c.name).filter(Boolean);
           if(topicIndustry)setTimeout(()=>generateTopicsFromIndustry(topicIndustry,topicRegion,topicCompNames),100);
         }
@@ -2242,7 +2257,7 @@ Return JSON only:
     if(nw!==data.website||JSON.stringify(nc)!==JSON.stringify(data.competitors))setData(d=>({...d,website:nw,competitors:nc}));
     try{
       const compNamesStr=nc.filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
-      let crawlSummary="";try{const cr=await crawlWebsite(nw||"");if(cr)crawlSummary=summariseCrawl(cr);}catch(e){}
+      let crawlSummary="";try{if(crawlCacheRef.current.url===nw&&crawlCacheRef.current.result){crawlSummary=summariseCrawl(crawlCacheRef.current.result);}else{const cr=await crawlWebsite(nw||"");if(cr){crawlCacheRef.current={url:nw,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
       const prompt=`You are generating search topics for an AI visibility audit of ${data.brand||"Brand"} in ${data.region||"Global"}.
 
 BRAND: ${data.brand||"Brand"}
@@ -2289,7 +2304,7 @@ Return JSON only:
     try{
       const existing=data.topics.join("; ");
       const compNamesStr=(data.competitors||[]).filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
-      let crawlSummary="";try{const cr=await crawlWebsite(data.website||"");if(cr)crawlSummary=summariseCrawl(cr);}catch(e){}
+      let crawlSummary="";try{if(crawlCacheRef.current.url===data.website&&crawlCacheRef.current.result){crawlSummary=summariseCrawl(crawlCacheRef.current.result);}else{const cr=await crawlWebsite(data.website||"");if(cr){crawlCacheRef.current={url:data.website,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
       const prompt=`You are generating additional search topics for an AI visibility audit of ${data.brand||"Brand"} in ${data.region||"Global"}.
 
 BRAND: ${data.brand||"Brand"}
@@ -2452,7 +2467,7 @@ Return JSON only:
     )}
     <Card><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       <div style={{display:"flex",flexDirection:"column",gap:6}}>
-        <Field label="Brand Name" value={data.brand} onChange={v=>{setData({...data,brand:v});if(autoFilled)setAutoFilled(false);if(topicsAutoFilled){setTopicsAutoFilled(false);setData(d=>({...d,topics:[]}));}}} placeholder="Acme Corp" onBlur={e=>{const val=e.target.value.trim();if(val.length>=2&&!autoFilled)autoFillFromBrand(val);}}/>
+        <Field label="Brand Name" value={data.brand} onChange={v=>{setData({...data,brand:v});if(autoFilled)setAutoFilled(false);if(topicsAutoFilled){setTopicsAutoFilled(false);setData(d=>({...d,topics:[]}));}}} placeholder="Acme Corp"/>
         {autoFilling&&(
           <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.accent}}>
             <div style={{width:12,height:12,border:`2px solid ${C.accent}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
@@ -2466,9 +2481,9 @@ Return JSON only:
           </div>
         )}
       </div>
+      <Field label="Region" value={data.region} onChange={v=>setData({...data,region:v})} placeholder="e.g. Malaysia"/>
       <Field label="Industry" value={data.industry} onChange={v=>setData({...data,industry:v})} placeholder="e.g. Technology"/>
       <Field label="Website" value={data.website} onChange={v=>setData({...data,website:v})} placeholder="acme.com"/>
-      <Field label="Region" value={data.region} onChange={v=>setData({...data,region:v})} placeholder="e.g. Malaysia"/>
       <div style={{gridColumn:"1/-1"}}>
         <label style={{fontSize:12,fontWeight:500,color:C.sub,display:"block",marginBottom:8}}>Competitors</label>
         {(data.competitors||[]).map((comp,i)=>(<div key={i} style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
