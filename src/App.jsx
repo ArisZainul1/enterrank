@@ -2042,14 +2042,27 @@ function AuditLoadingScreen({progress,statusMessage,C}){
 /* ─── AUDIT LOADING INLINE (progressive) ─── */
 function AuditLoadingInline({ progress, stage }) {
   const [activeStep, setActiveStep] = useState(0);
+  const [smoothP, setSmoothP] = useState(0);
+
+  React.useEffect(() => {
+    const target = progress || 0;
+    const interval = setInterval(() => {
+      setSmoothP(prev => {
+        if (prev >= target) return target;
+        const gap = target - prev;
+        return prev + Math.max(0.3, gap * 0.08);
+      });
+    }, 50);
+    return () => clearInterval(interval);
+  }, [progress]);
 
   const steps = [
-    { label: "Crawling websites", icon: "🌐", threshold: 8 },
-    { label: "Testing AI engines", icon: "🤖", threshold: 25 },
-    { label: "Analyzing visibility", icon: "📊", threshold: 50 },
+    { label: "Crawling websites", icon: "🌐", threshold: 5 },
+    { label: "Testing AI engines", icon: "🤖", threshold: 20 },
+    { label: "Analyzing visibility", icon: "📊", threshold: 45 },
     { label: "Scoring categories", icon: "🏷️", threshold: 65 },
-    { label: "Building insights", icon: "💡", threshold: 80 },
-    { label: "Compiling report", icon: "📋", threshold: 92 }
+    { label: "Building insights", icon: "💡", threshold: 85 },
+    { label: "Preparing dashboard", icon: "📋", threshold: 95 }
   ];
 
   React.useEffect(() => {
@@ -2058,7 +2071,7 @@ function AuditLoadingInline({ progress, stage }) {
     setActiveStep(idx);
   }, [progress]);
 
-  const p = Math.min(progress || 0, 99);
+  const p = Math.min(smoothP, 99);
 
   return (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"55vh", gap:28, maxWidth:480, margin:"0 auto", padding:"40px 20px" }}>
@@ -4754,6 +4767,7 @@ export default function App(){
   const [sectionReady, setSectionReady] = useState({ dashboard:true, archetypes:true, sentiment:true, intent:true, playbook:true, channels:true, contenthub:true, roadmap:true });
   const [auditInProgress, setAuditInProgress] = useState(false);
   const [auditProgress, setAuditProgress] = useState(0);
+  const [dashboardLoadProgress, setDashboardLoadProgress] = useState(0);
   const [auditStage, setAuditStage] = useState("");
 
   const[sideCollapsed,setSideCollapsed]=useState(false);
@@ -4906,6 +4920,7 @@ export default function App(){
     let auditComplete = false;
     setAuditInProgress(true);
     setAuditProgress(0);
+    setDashboardLoadProgress(0);
     setAuditStage("Preparing audit...");
     setStep("dashboard");
     setResults(null);
@@ -4914,7 +4929,10 @@ export default function App(){
     try {
       const apiData = await runRealAudit(auditData, (msg, pct, partialData) => {
         if(auditComplete) return;
-        if(pct != null) setAuditProgress(pct);
+        if(pct != null) {
+          setAuditProgress(pct);
+          setDashboardLoadProgress(Math.min(100, Math.round((pct / 55) * 100)));
+        }
         if(msg) setAuditStage(msg);
         if(partialData) {
           const partialR = generatePartial(auditData, partialData);
@@ -5083,7 +5101,7 @@ export default function App(){
     <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",marginLeft:sideCollapsed?60:220,transition:"margin-left .2s ease"}}>
       <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto"}}>
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={runAuditProgressive} history={history}/>}
-        {step==="dashboard"&&!results&&auditInProgress&&<AuditLoadingInline progress={auditProgress} stage={auditStage}/>}
+        {step==="dashboard"&&!results&&auditInProgress&&<AuditLoadingInline progress={dashboardLoadProgress} stage={auditStage}/>}
         {step==="dashboard"&&results&&<DashboardPage r={results} history={history} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }}/>}
         {step==="archetypes"&&results&&(sectionReady.archetypes||!auditInProgress)&&<ArchetypesPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} onUpdate={setResults}/>}
         {step==="sentiment"&&results&&(sectionReady.sentiment||!auditInProgress)&&<SentimentPage r={results}/>}
@@ -5093,7 +5111,7 @@ export default function App(){
         {step==="contenthub"&&results&&(sectionReady.contenthub||!auditInProgress)&&<ContentHubPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject} onUpdate={setResults}/>}
         {step==="roadmap"&&results&&(sectionReady.roadmap||!auditInProgress)&&<RoadmapPage r={results} onUpdate={setResults}/>}
         {step!=="input"&&step!=="dashboard"&&auditInProgress&&!(sectionReady[step])&&results&&(
-          <AuditLoadingInline progress={auditProgress} stage={auditStage}/>
+          <AuditLoadingInline progress={dashboardLoadProgress} stage={auditStage}/>
         )}
       </div>
     </div>
