@@ -2476,25 +2476,24 @@ Return JSON only:
       </div>
     )}
     <Card><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-      <div style={{display:"flex",flexDirection:"column",gap:6}}>
-        <Field label="Brand Name" value={data.brand} onChange={v=>{setData({...data,brand:v});if(autoFilled)setAutoFilled(false);if(topicsAutoFilled){setTopicsAutoFilled(false);setData(d=>({...d,topics:[]}));}}} placeholder="Acme Corp"/>
-        {autoFilling&&(
-          <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.accent}}>
-            <div style={{width:12,height:12,border:`2px solid ${C.accent}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
-            Scanning brand details...
-          </div>
-        )}
-        {generatingTopics&&!autoFilling&&(
-          <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.accent}}>
-            <div style={{width:12,height:12,border:`2px solid ${C.accent}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
-            Generating search topics...
-          </div>
-        )}
-      </div>
+      <Field label="Brand Name" value={data.brand} onChange={v=>{setData({...data,brand:v});if(autoFilled)setAutoFilled(false);if(topicsAutoFilled){setTopicsAutoFilled(false);setData(d=>({...d,topics:[]}));}}} placeholder="Acme Corp"/>
       <Field label="Region" value={data.region} onChange={v=>setData({...data,region:v})} placeholder="e.g. Malaysia"/>
       <Field label="Industry" value={data.industry} onChange={v=>setData({...data,industry:v})} placeholder="e.g. Technology"/>
       <Field label="Website" value={data.website} onChange={v=>setData({...data,website:v})} placeholder="acme.com"/>
-      <div style={{gridColumn:"1/-1"}}>
+    </div>
+    {autoFilling&&(
+      <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.accent,marginTop:12}}>
+        <div style={{width:12,height:12,border:"2px solid "+C.accent,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+        Scanning brand details...
+      </div>
+    )}
+    {generatingTopics&&!autoFilling&&(
+      <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.accent,marginTop:12}}>
+        <div style={{width:12,height:12,border:"2px solid "+C.accent,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+        Generating search topics...
+      </div>
+    )}
+      <div style={{marginTop:16}}>
         <label style={{fontSize:12,fontWeight:500,color:C.sub,display:"block",marginBottom:8}}>Competitors</label>
         {(data.competitors||[]).map((comp,i)=>(<div key={i} style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
           <input value={comp.name} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],name:e.target.value};setData({...data,competitors:c});}} placeholder={`Competitor ${i+1}`} style={{flex:1,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit"}}/>
@@ -2503,7 +2502,6 @@ Return JSON only:
         </div>))}
         {(data.competitors||[]).length<8&&<button onClick={()=>setData({...data,competitors:[...(data.competitors||[]),{name:"",website:""}]})} style={{padding:"6px 14px",background:"none",border:`1px dashed ${C.border}`,borderRadius:8,fontSize:12,color:C.muted,cursor:"pointer",fontFamily:"inherit"}}>+ Add competitor</button>}
       </div>
-    </div>
     <div style={{marginTop:20,paddingTop:18,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div style={{display:"flex",gap:12,alignItems:"center"}}><span style={{fontSize:11,color:C.muted}}>Engines:</span><ChatGPTLogo size={18}/><GeminiLogo size={18}/></div>
       <button onClick={generateTopics} disabled={!inputOk||genTopics} style={{padding:"10px 24px",background:inputOk&&!genTopics?C.accent:"#dde1e7",color:inputOk&&!genTopics?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:inputOk&&!genTopics?"pointer":"not-allowed",fontFamily:"'Outfit'"}}>{genTopics?"Generating Topics...":"Generate Topics →"}</button>
