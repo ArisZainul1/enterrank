@@ -22,7 +22,7 @@ function TagInput({label,tags,setTags,placeholder}){const[input,setInput]=useSta
 function normalizeUrl(url){if(!url||typeof url!=="string")return "";url=url.trim();if(!url)return "";if(url.startsWith("https://"))return url;if(url.startsWith("http://"))return url.replace("http://","https://");return "https://"+url;}
 function Field({label,value,onChange,placeholder,onBlur:onBlurCb}){return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label}</label><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,color:C.text,fontSize:14,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>{e.target.style.borderColor=C.border;if(onBlurCb)onBlurCb(e);}}/></div>);}
 function InfoTip({text}){const[show,setShow]=useState(false);return(<span style={{position:"relative",display:"inline-flex",marginLeft:4,cursor:"help"}} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}><span style={{width:14,height:14,borderRadius:"50%",background:C.bg,border:`1px solid ${C.border}`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.muted,fontWeight:600}}>?</span>{show&&<div style={{position:"absolute",bottom:"calc(100% + 6px)",left:"50%",transform:"translateX(-50%)",width:240,padding:"10px 12px",background:C.text,color:"#fff",borderRadius:8,fontSize:11,lineHeight:1.5,zIndex:999,boxShadow:"0 8px 24px rgba(0,0,0,.2)",pointerEvents:"none"}}><div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%) rotate(45deg)",width:8,height:8,background:C.text}}/>{text}</div>}</span>);}
-function SectionNote({text}){return <div style={{padding:"10px 14px",background:`${C.accent}04`,border:`1px solid ${C.accent}10`,borderRadius:C.rs,marginBottom:16,display:"flex",gap:8,alignItems:"flex-start"}}><span style={{fontSize:14,lineHeight:1}}>💡</span><span style={{fontSize:12,color:C.sub,lineHeight:1.6}}>{text}</span></div>;}
+function SectionNote({text}){return <div style={{padding:"10px 14px",background:`${C.accent}04`,border:`1px solid ${C.accent}10`,borderRadius:C.rs,marginBottom:16,display:"flex",gap:8,alignItems:"flex-start"}}><span style={{fontSize:12,color:C.sub,lineHeight:1.6}}>{text}</span></div>;}
 function NavBtn({onClick,label}){return <div style={{display:"flex",justifyContent:"flex-end",marginTop:20}}><button onClick={onClick} style={{padding:"10px 22px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>{label}</button></div>;}
 function Logo(){return(<div style={{display:"flex",alignItems:"center",gap:9}}><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg><div><span style={{fontWeight:800,fontSize:16,color:C.text,letterSpacing:"-.03em",fontFamily:"'Outfit'"}}>EnterRank</span><span style={{fontSize:9,color:C.muted,marginLeft:6,fontWeight:500,textTransform:"uppercase",letterSpacing:".08em"}}>by Entermind</span></div></div>);}
 function BRow({name,score,color,bold,diff}){return(<div style={{display:"flex",alignItems:"center",gap:12}}><span style={{minWidth:120,fontSize:12,fontWeight:bold?600:400,color:bold?C.accent:C.sub}}>{name}</span><div style={{flex:1}}><Bar value={score} color={color} h={8}/></div><span style={{minWidth:26,textAlign:"right",fontSize:13,fontWeight:700,color:bold?C.text:C.sub}}>{score}</span>{diff!==undefined&&<span style={{fontSize:11,fontWeight:600,color:diff>0?C.red:C.green,minWidth:32,textAlign:"right"}}>{diff>0?`+${diff}`:diff}</span>}</div>);}
@@ -2057,12 +2057,12 @@ function AuditLoadingInline({ progress, stage }) {
   }, [progress]);
 
   const steps = [
-    { label: "Crawling websites", icon: "🌐", threshold: 5 },
-    { label: "Testing AI engines", icon: "🤖", threshold: 20 },
-    { label: "Analyzing visibility", icon: "📊", threshold: 45 },
-    { label: "Scoring categories", icon: "🏷️", threshold: 65 },
-    { label: "Building insights", icon: "💡", threshold: 85 },
-    { label: "Preparing dashboard", icon: "📋", threshold: 95 }
+    { label: "Crawling websites", threshold: 5 },
+    { label: "Testing AI engines", threshold: 20 },
+    { label: "Analyzing visibility", threshold: 45 },
+    { label: "Scoring categories", threshold: 65 },
+    { label: "Building insights", threshold: 85 },
+    { label: "Preparing dashboard", threshold: 95 }
   ];
 
   React.useEffect(() => {
@@ -2116,7 +2116,7 @@ function AuditLoadingInline({ progress, stage }) {
                 background: isDone ? C.accent + "12" : isActive ? C.accent + "08" : C.bg,
                 fontSize:13, transition:"all 0.3s ease"
               }}>
-                {isDone ? <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> : s.icon}
+                {isDone ? <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> : <span style={{fontSize:12,fontWeight:500,color:isActive?C.accent:C.muted}}>{i+1}</span>}
               </div>
               <span style={{
                 fontSize:13, fontWeight: isActive ? 500 : 400,
@@ -2418,7 +2418,6 @@ Return JSON only:
     <Card>
       {/* Topic guidance */}
       <div style={{display:"flex",alignItems:"flex-start",gap:8,padding:"10px 14px",background:"#fffbeb",border:"1px solid #fef3c7",borderRadius:10,marginBottom:12,fontSize:11,lineHeight:1.6,color:"#92400e"}}>
-        <span style={{fontSize:14,flexShrink:0,marginTop:1}}>💡</span>
         <div>
           <span style={{fontWeight:500}}>Tip:</span> Enter topics as real search queries — the way someone would actually ask ChatGPT or Gemini. For example, "best credit cards with rewards in UAE" instead of just "credit cards". We test whether AI engines mention your brand in response to these queries <em>without</em> naming any brand.
         </div>
@@ -3052,7 +3051,6 @@ Return JSON only.`;
   };
   if(!r.stakeholders||r.stakeholders.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>User Archetypes</h2></div>
     <div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
-      <div style={{fontSize:28,marginBottom:8}}>👥</div>
       <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Archetypes not generated</div>
       <div style={{fontSize:12,color:"#9ca3af",marginBottom:16}}>This can happen if the AI service timed out during the audit.</div>
       <button onClick={regenerateArchetypes} disabled={regenArch} style={{padding:"8px 18px",fontSize:12,fontWeight:500,background:regenArch?"#e5e7eb":C.accent,color:regenArch?"#999":"#fff",border:"none",borderRadius:8,cursor:regenArch?"default":"pointer",fontFamily:"'Outfit'"}}>{regenArch?"Generating...":"Generate Archetypes"}</button>
@@ -3313,7 +3311,7 @@ function PlaybookPage({r,goTo,activeProject}){
     <button onClick={onClick} disabled={saving} style={{padding:"8px 20px",background:C.accent,color:"#fff",border:"none",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",opacity:saving?.6:1}}>{saving?"Saving...":"Save"}</button>
   </div>);
 
-  const aiLink=(onClick)=>(<span onClick={generating?undefined:onClick} style={{fontSize:12,fontWeight:500,color:generating?C.muted:C.accent,cursor:generating?"default":"pointer",marginLeft:8,display:"inline-flex",alignItems:"center",gap:4}}>{generating?"Generating...":"✨ AI Generate"}</span>);
+  const aiLink=(onClick)=>(<span onClick={generating?undefined:onClick} style={{fontSize:12,fontWeight:500,color:generating?C.muted:C.accent,cursor:generating?"default":"pointer",marginLeft:8,display:"inline-flex",alignItems:"center",gap:4}}>{generating?"Generating...":"AI Generate"}</span>);
 
   const addToList=(section,field,value)=>{
     if(!value.trim())return;
@@ -3557,7 +3555,6 @@ function PlaybookPage({r,goTo,activeProject}){
 
     {/* No project guard */}
     {!projectId&&!loading&&<Card style={{marginBottom:16,textAlign:"center",padding:32}}>
-      <div style={{fontSize:20,marginBottom:8}}>📋</div>
       <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>No project linked yet</div>
       <div style={{fontSize:12,color:C.muted}}>Save an audit first to start building your brand playbook.</div>
     </Card>}
@@ -3642,7 +3639,7 @@ function SentimentPage({r}){
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:32}}>
       <Card>
         <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,display:"flex",alignItems:"center",gap:8,fontFamily:"'Outfit'"}}>
-          <span style={{fontSize:16}}>✅</span> Positive Signals
+          Positive Signals
         </div>
         {signals.positive.length>0?signals.positive.map((signal,i)=>(
           <div key={i} style={{padding:"8px 12px",background:"#f0fdf4",borderRadius:8,marginBottom:6,fontSize:13,color:"#166534",display:"flex",alignItems:"center",gap:8}}>
@@ -3653,7 +3650,7 @@ function SentimentPage({r}){
       </Card>
       <Card>
         <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,display:"flex",alignItems:"center",gap:8,fontFamily:"'Outfit'"}}>
-          <span style={{fontSize:16}}>⚠️</span> Negative Signals
+          Negative Signals
         </div>
         {signals.negative.length>0?signals.negative.map((signal,i)=>(
           <div key={i} style={{padding:"8px 12px",background:"#fef2f2",borderRadius:8,marginBottom:6,fontSize:13,color:"#991b1b",display:"flex",alignItems:"center",gap:8}}>
@@ -3824,7 +3821,7 @@ function ChannelsPage({r}){
 
 /* ─── PAGE: CONTENT HUB ─── */
 function ContentHubPage({r,goTo,activeProject,onUpdate}){
-  const TABS=[{id:"grid",label:"Grid",icon:"📊"},{id:"suggested",label:"Suggested",icon:"💡"},{id:"create",label:"Create",icon:"✍️"},{id:"library",label:"Library",icon:"📚"}];
+  const TABS=[{id:"grid",label:"Grid"},{id:"suggested",label:"Suggested"},{id:"create",label:"Create"},{id:"library",label:"Library"}];
   const[activeTab,setActiveTab]=useState("grid");
   const[contentLibrary,setContentLibrary]=useState([]);
   const[loading,setLoading]=useState(true);
@@ -3860,13 +3857,13 @@ function ContentHubPage({r,goTo,activeProject,onUpdate}){
   },[editingContent?.id]);
 
   const contentTypes=[
-    {id:"blog",label:"Blog Article",icon:"📝",desc:"Long-form SEO-optimized article (800-1500 words)"},
-    {id:"faq",label:"FAQ Page",icon:"❓",desc:"Schema-optimized Q&A content (8-12 questions)"},
-    {id:"social",label:"Social Post",icon:"📱",desc:"Platform-specific social media content"},
-    {id:"email",label:"Email Newsletter",icon:"📧",desc:"Email content with subject line and CTA"},
-    {id:"video",label:"Video Script",icon:"🎬",desc:"Script with scenes, narration, and visual notes"},
-    {id:"landing",label:"Landing Page",icon:"🖥",desc:"Hero copy, benefits, and conversion-focused content"},
-    {id:"schema",label:"Schema Markup",icon:"🔧",desc:"JSON-LD structured data snippets"}
+    {id:"blog",label:"Blog Article",desc:"Long-form SEO-optimized article (800-1500 words)"},
+    {id:"faq",label:"FAQ Page",desc:"Schema-optimized Q&A content (8-12 questions)"},
+    {id:"social",label:"Social Post",desc:"Platform-specific social media content"},
+    {id:"email",label:"Email Newsletter",desc:"Email content with subject line and CTA"},
+    {id:"video",label:"Video Script",desc:"Script with scenes, narration, and visual notes"},
+    {id:"landing",label:"Landing Page",desc:"Hero copy, benefits, and conversion-focused content"},
+    {id:"schema",label:"Schema Markup",desc:"JSON-LD structured data snippets"}
   ];
 
   function buildBrandContext(){
@@ -3947,7 +3944,6 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
         setRegenGrid(false);
       };
       return(<div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
-        <div style={{fontSize:28,marginBottom:8}}>📊</div>
         <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Content grid not generated</div>
         <div style={{fontSize:12,color:"#9ca3af",marginBottom:16}}>This can happen if the AI service timed out during the audit.</div>
         <button onClick={regenerateGrid} disabled={regenGrid} style={{padding:"8px 18px",fontSize:12,fontWeight:500,background:regenGrid?"#e5e7eb":C.accent,color:regenGrid?"#999":"#fff",border:"none",borderRadius:8,cursor:regenGrid?"default":"pointer",fontFamily:"'Outfit'"}}>{regenGrid?"Generating...":"Generate Content Grid"}</button>
@@ -4022,7 +4018,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
 
     const priorityColors={high:{bg:"#fee2e2",text:"#991b1b",label:"High Priority"},medium:{bg:"#fef3c7",text:"#92400e",label:"Medium"},low:{bg:"#f0fdf4",text:"#166534",label:"Low"}};
 
-    if(suggestions.length===0)return(<div style={{padding:40,textAlign:"center"}}><div style={{fontSize:32,marginBottom:8}}>✨</div><div style={{fontSize:14,fontWeight:500,color:C.text}}>No suggestions yet</div><div style={{fontSize:12,color:C.muted,marginTop:4}}>Run an audit first to get content recommendations based on your visibility gaps.</div></div>);
+    if(suggestions.length===0)return(<div style={{padding:40,textAlign:"center"}}><div style={{fontSize:14,fontWeight:500,color:C.text}}>No suggestions yet</div><div style={{fontSize:12,color:C.muted,marginTop:4}}>Run an audit first to get content recommendations based on your visibility gaps.</div></div>);
 
     return(<div>
       <div style={{fontSize:12,color:C.muted,marginBottom:16}}>{suggestions.length} content suggestions based on your audit data</div>
@@ -4030,7 +4026,6 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
         const typeInfo=contentTypes.find(ct=>ct.id===s.type)||contentTypes[0];
         const pColor=priorityColors[s.priority]||priorityColors.medium;
         return(<div key={i} style={{padding:"16px 20px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,marginBottom:10,display:"flex",alignItems:"flex-start",gap:14}}>
-          <span style={{fontSize:22}}>{typeInfo.icon}</span>
           <div style={{flex:1}}>
             <div style={{fontSize:13,fontWeight:500,color:C.text,lineHeight:1.4}}>{s.topic}</div>
             <div style={{fontSize:11,color:C.muted,marginTop:4}}>{s.reason}</div>
@@ -4058,7 +4053,6 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
       <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".05em",marginBottom:12}}>Content Type</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8,marginBottom:24}}>
         {contentTypes.map(ct=>(<button key={ct.id} onClick={()=>setSelectedType(ct.id)} style={{padding:"14px 12px",background:selectedType===ct.id?`${C.accent}10`:C.surface,border:selectedType===ct.id?`2px solid ${C.accent}`:`1px solid ${C.border}`,borderRadius:10,cursor:"pointer",textAlign:"left"}}>
-          <div style={{fontSize:18,marginBottom:4}}>{ct.icon}</div>
           <div style={{fontSize:12,fontWeight:500,color:selectedType===ct.id?C.accent:C.text}}>{ct.label}</div>
           <div style={{fontSize:10,color:C.muted,marginTop:2}}>{ct.desc}</div>
         </button>))}
@@ -4077,11 +4071,11 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
       </div>
 
       <button onClick={()=>{if(topic.trim())generateContent(selectedType,topic.trim(),channel||null);}} disabled={!topic.trim()||generating} style={{padding:"12px 28px",fontSize:13,fontWeight:500,background:topic.trim()&&!generating?C.accent:"#e5e7eb",color:topic.trim()&&!generating?"#fff":"#999",border:"none",borderRadius:10,cursor:topic.trim()&&!generating?"pointer":"default",display:"flex",alignItems:"center",gap:8,fontFamily:"'Outfit'"}}>
-        {generating?(<><div style={{width:14,height:14,border:"2px solid #fff",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>Generating {selectedTypeInfo?.label}...</>):(<>✨ Generate {selectedTypeInfo?.label}</>)}
+        {generating?(<><div style={{width:14,height:14,border:"2px solid #fff",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>Generating {selectedTypeInfo?.label}...</>):(<>Generate {selectedTypeInfo?.label}</>)}
       </button>
 
       <div style={{marginTop:20,padding:"12px 16px",background:C.bg,borderRadius:8,fontSize:11,color:C.muted}}>
-        {playbook?.brand_voice?.tone?(<>✓ Brand Playbook connected — content will use your brand voice, compliance rules, and product details.</>):(<>⚠ Brand Playbook is empty — content will use a neutral professional tone. <span onClick={()=>goTo("playbook")} style={{color:C.accent,cursor:"pointer"}}>Set up your Brand Playbook</span> for better results.</>)}
+        {playbook?.brand_voice?.tone?(<>Brand Playbook connected — content will use your brand voice, compliance rules, and product details.</>):(<>Brand Playbook is empty — content will use a neutral professional tone. <span onClick={()=>goTo("playbook")} style={{color:C.accent,cursor:"pointer"}}>Set up your Brand Playbook</span> for better results.</>)}
       </div>
     </div>);
   };
@@ -4137,12 +4131,11 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
 
         {filtered.length===0?(<div style={{padding:24,textAlign:"center",color:C.muted,fontSize:12}}>{contentLibrary.length===0?"No content generated yet. Use the Suggested or Create tab to get started.":"No content matches filters"}</div>):(
           filtered.map(c=>{
-            const typeInfo=contentTypes.find(ct=>ct.id===c.type)||{icon:"📄",label:c.type};
+            const typeInfo=contentTypes.find(ct=>ct.id===c.type)||{label:c.type};
             const sColor=statusColors[c.status]||statusColors.draft;
             const isActive=editingContent?.id===c.id;
             return(<div key={c.id} onClick={()=>setEditingContent(c)} style={{padding:"12px 14px",background:isActive?`${C.accent}08`:C.surface,border:isActive?`1px solid ${C.accent}40`:`1px solid ${C.border}`,borderRadius:10,marginBottom:6,cursor:"pointer",transition:"all .1s"}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:14}}>{typeInfo.icon}</span>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:12,fontWeight:500,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.title||"Untitled"}</div>
                   <div style={{fontSize:10,color:C.muted,marginTop:2}}>{new Date(c.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</div>
@@ -4158,9 +4151,9 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,gap:8}}>
           <input value={editTitle} onChange={e=>setEditTitle(e.target.value)} style={{fontSize:16,fontWeight:500,border:"none",outline:"none",background:"transparent",flex:1,padding:0,color:C.text,fontFamily:"'Outfit'"}} placeholder="Content title..."/>
           <div style={{display:"flex",gap:6,flexShrink:0}}>
-            <button onClick={copyContent} style={{padding:"5px 10px",fontSize:11,background:"#f1f5f9",border:"none",borderRadius:6,cursor:"pointer",color:C.text,fontFamily:"inherit"}}>{copied?"Copied!":"📋 Copy"}</button>
+            <button onClick={copyContent} style={{padding:"5px 10px",fontSize:11,background:"#f1f5f9",border:"none",borderRadius:6,cursor:"pointer",color:C.text,fontFamily:"inherit"}}>{copied?"Copied!":"Copy"}</button>
             <button onClick={()=>updateStatus(editingContent.id,editingContent.status==="draft"?"published":"draft")} style={{padding:"5px 10px",fontSize:11,background:editingContent.status==="draft"?"#dcfce7":"#f3f4f6",color:editingContent.status==="draft"?"#166534":"#6b7280",border:"none",borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>{editingContent.status==="draft"?"✓ Publish":"↩ Draft"}</button>
-            <button onClick={()=>deleteContent(editingContent.id)} style={{padding:"5px 10px",fontSize:11,background:"#fee2e2",color:"#991b1b",border:"none",borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
+            <button onClick={()=>deleteContent(editingContent.id)} style={{padding:"5px 10px",fontSize:11,background:"#fee2e2",color:"#991b1b",border:"none",borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>Delete</button>
           </div>
         </div>
 
@@ -4183,7 +4176,6 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
   if(!projectId)return(<div>
     <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Generate content powered by your brand playbook and audit insights.</p></div>
     <Card style={{textAlign:"center",padding:32}}>
-      <div style={{fontSize:20,marginBottom:8}}>📋</div>
       <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>No project linked yet</div>
       <div style={{fontSize:12,color:C.muted}}>Save an audit first to start generating content.</div>
     </Card>
@@ -4199,7 +4191,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
 
     <div style={{display:"flex",gap:0,marginBottom:20,borderBottom:`1px solid ${C.border}`,overflowX:"auto"}}>
       {TABS.map(tab=>(<button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{padding:"10px 16px",background:"transparent",border:"none",borderBottom:activeTab===tab.id?`2px solid ${C.accent}`:"2px solid transparent",color:activeTab===tab.id?C.accent:C.muted,fontSize:12,fontWeight:activeTab===tab.id?600:500,cursor:"pointer",fontFamily:"'Outfit'",whiteSpace:"nowrap",transition:"all .15s",display:"flex",alignItems:"center",gap:6}}>
-        <span>{tab.icon}</span>{tab.label}
+        {tab.label}
         {tab.id==="library"&&contentLibrary.length>0&&<span style={{fontSize:10,background:C.border,color:C.text,padding:"2px 6px",borderRadius:10}}>{contentLibrary.length}</span>}
       </button>))}
     </div>
@@ -4215,7 +4207,6 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
 function GridPage({r,goTo}){
   if(!r.contentTypes||r.contentTypes.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Grid</h2></div>
     <div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
-      <div style={{fontSize:28,marginBottom:8}}>📊</div>
       <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Content grid not generated</div>
       <div style={{fontSize:12,color:"#9ca3af"}}>This can happen if the AI service timed out during the audit.</div>
     </div>
@@ -4259,7 +4250,6 @@ Return JSON only:
   };
   if(!r.roadmap||!r.roadmap.day30)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>90-Day Roadmap</h2></div>
     <div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
-      <div style={{fontSize:28,marginBottom:8}}>🗺️</div>
       <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Roadmap not generated</div>
       <div style={{fontSize:12,color:"#9ca3af",marginBottom:16}}>This can happen if the AI service timed out during the audit.</div>
       <button onClick={regenerateRoadmap} disabled={regenRoad} style={{padding:"8px 18px",fontSize:12,fontWeight:500,background:regenRoad?"#e5e7eb":C.accent,color:regenRoad?"#999":"#fff",border:"none",borderRadius:8,cursor:regenRoad?"default":"pointer",fontFamily:"'Outfit'"}}>{regenRoad?"Generating...":"Generate Roadmap"}</button>
