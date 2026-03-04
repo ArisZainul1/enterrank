@@ -268,6 +268,7 @@ async function runRealAudit(cd, onProgress){
   const compUrls=compNamesRaw.map((n,i)=>compUrlsRaw[i]||"").filter((_,i)=>compNamesRaw[i]?.toLowerCase()!==brandLower);
   const topicList=topics.join(", ");
   const engineSystemPrompt=`You are an AEO (Answer Engine Optimization) analyst. Respond ONLY with valid JSON, no markdown fences, no explanations.`;
+  const accumulated = {};
 
   // ── Step 1: Crawl brand website AND competitor websites ──
   onProgress("Crawling brand website...",3);
@@ -819,6 +820,10 @@ Return ONLY valid JSON:
     console.error("Sentiment signal extraction failed:",stepError.message);
   }
 
+  accumulated.sentimentData = sentimentData || null;
+  accumulated.sentimentSignals = sentimentSignals || null;
+  onProgress("Sentiment analysis ready...", null, {...accumulated});
+
   // ── Step 4c: Extract source channel data from AI responses ──
   onProgress("Analyzing source channels...",62);
   let channelSourceData={sourceChannels:[],opportunities:[]};
@@ -990,6 +995,17 @@ Use severity: "critical" if <30, "warning" if 30-60, "good" if >60. Base scores 
     onProgress("Warning: Category scoring had an issue, continuing...",68);
   }
 
+  accumulated.engineData = { engines: [
+    {id:"chatgpt", ...gptData, queries:(gptData.queries||[]).slice(0,8)},
+    {id:"gemini", ...gemData, queries:(gemData.queries||[]).slice(0,8)}
+  ], painPoints: mergedPainPoints.length > 0 ? mergedPainPoints.slice(0,6) : null };
+  accumulated.competitorData = compData || { competitors: [] };
+  accumulated.compVisibilityData = compScoresMap || {};
+  accumulated.searchQueries = searchQueries || [];
+  accumulated.brandCrawlData = brandCrawl || null;
+  accumulated.compCrawlData = compCrawlsRaw || {};
+  onProgress("Dashboard ready — loading remaining sections...", null, {...accumulated});
+
   // ── Step 6: User archetypes + journeys — OpenAI generates, Gemini verifies engine statuses ──
   onProgress("Generating user archetypes...",70);
   let archData={stakeholders:[]};
@@ -1070,6 +1086,9 @@ Be accurate. "Cited" = you would link to their website. "Mentioned" = you'd name
     onProgress("Warning: archetypes generation had an issue, continuing...",76);
   }
 
+  accumulated.archData = (archData && archData.stakeholders) ? archData.stakeholders : [];
+  onProgress("Archetypes ready...", null, {...accumulated});
+
   // ── Step 6b: Intent Pathway — real data from BOTH engines ──
   onProgress("Testing intent pathway prompts...",77);
   let intentData=[];
@@ -1142,6 +1161,9 @@ Rules:
     console.error("Intent pathway analysis failed:",stepError.message);
     onProgress("Warning: intent pathway had an issue, continuing...",80);
   }
+
+  accumulated.intentData = intentData && intentData.length > 0 ? intentData : null;
+  onProgress("Intent mapping ready...", null, {...accumulated});
 
   // ── Step 7: AEO Channel verification via REAL web crawling ──
   onProgress("Verifying channels via web search...",81);
@@ -1369,6 +1391,13 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
   }
 
   onProgress("Compiling final report...",96);
+
+  accumulated.contentGridData = (contentData && contentData.contentTypes) ? contentData.contentTypes.slice(0,10) : [];
+  accumulated.roadmapData = roadData || null;
+  accumulated.channelData = chData ? { channels: (chData.channels||[]).slice(0,12) } : { channels: [] };
+  accumulated.channelSourceData = channelSourceData || { sourceChannels:[], opportunities:[] };
+  accumulated.guidelineData = null;
+  onProgress("All sections ready...", null, {...accumulated});
 
   return {
     engineData:{
