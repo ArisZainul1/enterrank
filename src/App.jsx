@@ -2446,7 +2446,7 @@ Return JSON only:
 
       {/* Generate more button */}
       <button onClick={regenerateTopics} disabled={genTopics||generatingTopics||data.topics.length>=10} style={{width:"100%",padding:"10px 16px",background:"none",border:`1px dashed ${C.accent}40`,borderRadius:8,fontSize:12,fontWeight:600,color:data.topics.length>=10?C.muted:C.accent,cursor:genTopics||generatingTopics||data.topics.length>=10?"not-allowed":"pointer",fontFamily:"'Outfit'",marginBottom:8,opacity:genTopics||generatingTopics||data.topics.length>=10?.5:1}}>
-        {genTopics?"Generating more topics...":data.topics.length>=10?"Maximum 10 topics":"+ Generate More Topics"}
+        {genTopics?"Generating more topics...":"+ Generate More Topics"}
       </button>
       {data.topics.length>0&&!genTopics&&!generatingTopics&&(
         <div style={{display:"flex",justifyContent:"flex-end",marginBottom:16}}>
