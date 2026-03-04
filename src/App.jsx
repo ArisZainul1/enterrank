@@ -2028,35 +2028,100 @@ function AuditLoadingScreen({progress,statusMessage,C}){
 
 /* ─── AUDIT LOADING INLINE (progressive) ─── */
 function AuditLoadingInline({ progress, stage }) {
-  const [dots, setDots] = useState("");
+  const [elapsed, setElapsed] = useState(0);
+  const [activeStep, setActiveStep] = useState(0);
+
   React.useEffect(() => {
-    const i = setInterval(() => setDots(d => d.length >= 3 ? "" : d + "."), 500);
+    const i = setInterval(() => setElapsed(e => e + 1), 1000);
     return () => clearInterval(i);
   }, []);
+
+  const steps = [
+    { label: "Crawling websites", icon: "🌐", threshold: 8 },
+    { label: "Testing AI engines", icon: "🤖", threshold: 25 },
+    { label: "Analyzing visibility", icon: "📊", threshold: 50 },
+    { label: "Scoring categories", icon: "🏷️", threshold: 65 },
+    { label: "Building insights", icon: "💡", threshold: 80 },
+    { label: "Compiling report", icon: "📋", threshold: 92 }
+  ];
+
+  React.useEffect(() => {
+    const p = progress || 0;
+    const idx = steps.reduce((acc, s, i) => p >= s.threshold ? i : acc, 0);
+    setActiveStep(idx);
+  }, [progress]);
+
+  const p = Math.min(progress || 0, 99);
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+
   return (
-    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"60vh", gap:24 }}>
-      <div style={{ position:"relative", width:72, height:72 }}>
-        <svg width="72" height="72">
-          <circle cx="36" cy="36" r="30" fill="none" stroke="#e5e7eb" strokeWidth="3"/>
-          <circle cx="36" cy="36" r="30" fill="none" stroke={C.accent} strokeWidth="3.5"
-            strokeDasharray={188} strokeDashoffset={188 - (Math.min(progress || 0, 99) / 100) * 188}
-            strokeLinecap="round" transform="rotate(-90 36 36)"
-            style={{ transition:"stroke-dashoffset .3s ease" }}/>
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"55vh", gap:28, maxWidth:480, margin:"0 auto", padding:"40px 20px" }}>
+
+      {/* Animated progress ring */}
+      <div style={{ position:"relative", width:100, height:100 }}>
+        <svg width="100" height="100" style={{ transform:"rotate(-90deg)" }}>
+          <circle cx="50" cy="50" r="42" fill="none" stroke={C.bg} strokeWidth="6"/>
+          <circle cx="50" cy="50" r="42" fill="none" stroke={C.accent} strokeWidth="6"
+            strokeDasharray={264} strokeDashoffset={264 - (p / 100) * 264}
+            strokeLinecap="round"
+            style={{ transition:"stroke-dashoffset 0.6s ease" }}/>
         </svg>
-        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, fontWeight:500, color:C.accent }}>
-          {Math.round(progress || 0)}%
+        <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
+          <span style={{ fontSize:24, fontWeight:500, color:C.text, fontFamily:"'Outfit'", letterSpacing:"-.02em" }}>{Math.round(p)}%</span>
         </div>
       </div>
+
+      {/* Status text */}
       <div style={{ textAlign:"center" }}>
-        <div style={{ fontSize:15, fontWeight:500, color:C.text, marginBottom:4 }}>
-          Running audit{dots}
+        <div style={{ fontSize:16, fontWeight:500, color:C.text, fontFamily:"'Outfit'", letterSpacing:"-.02em", marginBottom:6 }}>
+          Analyzing your brand
         </div>
-        <div style={{ fontSize:12, color:C.muted, maxWidth:320 }}>
-          {stage || "Preparing audit pipeline..."}
+        <div style={{ fontSize:12, color:C.muted }}>
+          {stage || "Warming up the engines..."} · {mins > 0 ? `${mins}m ` : ""}{secs}s
         </div>
-        <div style={{ fontSize:11, color:C.muted, marginTop:12, opacity:0.7 }}>
-          The dashboard will appear as soon as data arrives
-        </div>
+      </div>
+
+      {/* Step indicators */}
+      <div style={{ width:"100%", display:"flex", flexDirection:"column", gap:0 }}>
+        {steps.map((s, i) => {
+          const isDone = p >= (steps[i + 1]?.threshold || 100);
+          const isActive = i === activeStep && !isDone;
+          return (
+            <div key={i} style={{
+              display:"flex", alignItems:"center", gap:12, padding:"10px 16px",
+              borderRadius:10,
+              background: isActive ? C.accent + "06" : "transparent",
+              transition:"all 0.4s ease"
+            }}>
+              <div style={{
+                width:28, height:28, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center",
+                background: isDone ? C.accent + "12" : isActive ? C.accent + "08" : C.bg,
+                fontSize:13, transition:"all 0.3s ease"
+              }}>
+                {isDone ? <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> : s.icon}
+              </div>
+              <span style={{
+                fontSize:13, fontWeight: isActive ? 500 : 400,
+                color: isDone ? C.accent : isActive ? C.text : C.muted,
+                transition:"all 0.3s ease"
+              }}>
+                {s.label}
+              </span>
+              {isActive && (
+                <div style={{ marginLeft:"auto", width:16, height:16, border:"2px solid " + C.accent + "40", borderTopColor:C.accent, borderRadius:"50%", animation:"spin 1s linear infinite" }}/>
+              )}
+              {isDone && (
+                <span style={{ marginLeft:"auto", fontSize:11, color:C.accent, fontWeight:500 }}>Done</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Subtle hint */}
+      <div style={{ fontSize:11, color:C.muted, textAlign:"center", opacity:0.7, marginTop:4 }}>
+        Dashboard sections will unlock as data arrives
       </div>
     </div>
   );
