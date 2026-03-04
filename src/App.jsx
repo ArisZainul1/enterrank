@@ -1989,6 +1989,42 @@ function AuditLoadingScreen({progress,statusMessage,C}){
   );
 }
 
+/* ─── AUDIT LOADING INLINE (progressive) ─── */
+function AuditLoadingInline({ progress, stage }) {
+  const [dots, setDots] = useState("");
+  React.useEffect(() => {
+    const i = setInterval(() => setDots(d => d.length >= 3 ? "" : d + "."), 500);
+    return () => clearInterval(i);
+  }, []);
+  return (
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"60vh", gap:24 }}>
+      <div style={{ position:"relative", width:72, height:72 }}>
+        <svg width="72" height="72">
+          <circle cx="36" cy="36" r="30" fill="none" stroke="#e5e7eb" strokeWidth="3"/>
+          <circle cx="36" cy="36" r="30" fill="none" stroke={C.accent} strokeWidth="3.5"
+            strokeDasharray={188} strokeDashoffset={188 - (Math.min(progress || 0, 99) / 100) * 188}
+            strokeLinecap="round" transform="rotate(-90 36 36)"
+            style={{ transition:"stroke-dashoffset .3s ease" }}/>
+        </svg>
+        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, fontWeight:500, color:C.accent }}>
+          {Math.round(progress || 0)}%
+        </div>
+      </div>
+      <div style={{ textAlign:"center" }}>
+        <div style={{ fontSize:15, fontWeight:500, color:C.text, marginBottom:4 }}>
+          Running audit{dots}
+        </div>
+        <div style={{ fontSize:12, color:C.muted, maxWidth:320 }}>
+          {stage || "Preparing audit pipeline..."}
+        </div>
+        <div style={{ fontSize:11, color:C.muted, marginTop:12, opacity:0.7 }}>
+          The dashboard will appear as soon as data arrives
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── PAGE: NEW AUDIT ─── */
 function NewAuditPage({data,setData,onRun,history=[]}){
   const[running,setRunning]=useState(false);const[stage,setStage]=useState("");const[error,setError]=useState(null);
