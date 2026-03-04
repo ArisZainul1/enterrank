@@ -1739,6 +1739,30 @@ function generateAll(cd, apiData){
   return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,channelSourceData,clientData:cd};
 }
 
+function generatePartial(cd, partial) {
+  const hasEngine = partial.engineData && partial.engineData.engines;
+  if (!hasEngine) return null;
+  const safeApiData = {
+    engineData: partial.engineData || null,
+    competitorData: partial.competitorData || { competitors: [] },
+    compVisibilityData: partial.compVisibilityData || {},
+    archData: partial.archData || [],
+    intentData: partial.intentData || null,
+    channelData: partial.channelData || { channels: [] },
+    contentGridData: partial.contentGridData || [],
+    roadmapData: partial.roadmapData || null,
+    contentData: partial.contentGridData || [],
+    guidelineData: partial.guidelineData || null,
+    sentimentData: partial.sentimentData || null,
+    sentimentSignals: partial.sentimentSignals || null,
+    brandCrawlData: partial.brandCrawlData || null,
+    compCrawlData: partial.compCrawlData || {},
+    searchQueries: partial.searchQueries || [],
+    channelSourceData: partial.channelSourceData || { sourceChannels: [], opportunities: [] }
+  };
+  try { return generateAll(cd, safeApiData); } catch(e) { console.error("generatePartial error:", e); return null; }
+}
+
 /* ─── LOGIN FORM ─── */
 function LoginForm({onSubmit,error,loading}){
   const[email,setEmail]=useState("");const[pw,setPw]=useState("");const[showPw,setShowPw]=useState(false);
@@ -4577,6 +4601,10 @@ export default function App(){
   const[data,setData]=useState({brand:"",industry:"",website:"",region:"",topics:[],competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
   const[results,setResults]=useState(null);
   const[history,setHistory]=useState([]);
+  const [sectionReady, setSectionReady] = useState({ dashboard:true, archetypes:true, sentiment:true, intent:true, playbook:true, channels:true, contenthub:true, roadmap:true });
+  const [auditInProgress, setAuditInProgress] = useState(false);
+  const [auditProgress, setAuditProgress] = useState(0);
+  const [auditStage, setAuditStage] = useState("");
 
   const[sideCollapsed,setSideCollapsed]=useState(false);
   const[loginError,setLoginError]=useState("");
