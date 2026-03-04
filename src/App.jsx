@@ -327,7 +327,7 @@ For each topic, generate 2 queries using DIFFERENT angles from this list:
 - Price/value: "Who offers the best deals/pricing on X in [region]?"
 - Beginner/newcomer: "Best X for beginners/first-time users in [region]?"
 - Authenticity/trust: "Where to find authentic/genuine X in [region]?"
-- Trends/current: "What are the top-rated X in [region] in 2026?"
+- Trends/current: "What are the top-rated X in [region] in ${new Date().getFullYear()}?"
 - Trade-in/switching: "Best X for people switching from [alternative]?"
 
 Rules:
@@ -339,6 +339,7 @@ Rules:
 - All queries must be in English
 - Each query should be 15-25 words long — detailed enough to get a substantive AI response
 - The 2 queries per topic MUST use different angles — never repeat the same structure
+- When including a year in any query, ALWAYS use ${new Date().getFullYear()}. NEVER use 2023, 2024, or any past year.
 
 BAD examples (too generic):
 - "What are the best credit cards in UAE?"
@@ -1146,7 +1147,8 @@ Rules:
 - Each stage MUST have at least 6 prompts.
 - Weight must reflect real-world impact — not all prompts are equal.
 - triggerWords should only include words actually present in the query.
-- optimisedPrompt should be a version ${brand} can create content around.`;
+- optimisedPrompt should be a version ${brand} can create content around.
+- IMPORTANT: When any prompt includes a year, use ${new Date().getFullYear()} — NEVER use 2023, 2024, or any past year. All prompts must feel current.`;
 
   const[intentGptRaw,intentGemRaw]=await Promise.all([
     callOpenAI(intentPrompt, engineSystemPrompt),
@@ -2195,7 +2197,7 @@ STRICT RULES:
 2. For telecommunications brands: focus heavily on mobile data plans, postpaid plans, prepaid plans, 5G coverage, roaming packages, device bundles, number porting, network coverage, broadband/fibre ONLY if they offer it.
 3. Do NOT generate queries about products the brand does not sell. Examples of what to EXCLUDE for a telco: satellite phones, satellite dishes, home security systems, wireless earbuds, noise cancelling headphones, smartphones (unless the brand sells devices), wireless routers (unless the brand sells them), cordless phones, walkie talkies, smart home devices.
 4. Queries should be diverse across the brand's ACTUAL service categories. Mix comparison queries, best-of queries, how-to queries, and recommendation queries.
-5. Include the region naturally where relevant (e.g. 'in ${region||"Global"}' or '${region||"Global"} 2026').
+5. Include the region naturally where relevant (e.g. 'in ${region||"Global"}' or '${region||"Global"} ${new Date().getFullYear()}').
 6. Each query should be 10-25 words, natural language, like a real person asking ChatGPT.
 7. At least 6 out of 10 queries should be about the brand's PRIMARY product category.
 8. Do NOT mention ${data.brand||"Brand"} by name in any query — these should be generic category queries where ${data.brand||"Brand"} SHOULD appear in the answer.
@@ -2284,11 +2286,12 @@ STRICT RULES:
 2. For telecommunications brands: focus heavily on mobile data plans, postpaid plans, prepaid plans, 5G coverage, roaming packages, device bundles, number porting, network coverage, broadband/fibre ONLY if they offer it.
 3. Do NOT generate queries about products the brand does not sell. Examples of what to EXCLUDE for a telco: satellite phones, satellite dishes, home security systems, wireless earbuds, noise cancelling headphones, smartphones (unless the brand sells devices), wireless routers (unless the brand sells them), cordless phones, walkie talkies, smart home devices.
 4. Queries should be diverse across the brand's ACTUAL service categories. Mix comparison queries, best-of queries, how-to queries, and recommendation queries.
-5. Include the region naturally where relevant (e.g. 'in ${data.region||"Global"}' or '${data.region||"Global"} 2026').
-6. Each query should be 10-25 words, natural language, like a real person asking ChatGPT.
-7. At least 6 out of 10 queries should be about the brand's PRIMARY product category.
-8. Do NOT mention ${data.brand||"Brand"} by name in any query — these should be generic category queries where ${data.brand||"Brand"} SHOULD appear in the answer.
-${compNamesStr?"9. Do NOT mention these competitor names: "+compNamesStr:""}
+5. Include the region naturally where relevant (e.g. 'in ${data.region||"Global"}' or '${data.region||"Global"} ${new Date().getFullYear()}').
+6. When including a year in any query, ALWAYS use ${new Date().getFullYear()}. NEVER use 2023, 2024, or any past year.
+7. Each query should be 10-25 words, natural language, like a real person asking ChatGPT.
+8. At least 6 out of 10 queries should be about the brand's PRIMARY product category.
+9. Do NOT mention ${data.brand||"Brand"} by name in any query — these should be generic category queries where ${data.brand||"Brand"} SHOULD appear in the answer.
+${compNamesStr?"10. Do NOT mention these competitor names: "+compNamesStr:""}
 All queries must be in English.
 
 Return JSON only:
@@ -2333,10 +2336,11 @@ STRICT RULES:
 2. For telecommunications brands: focus heavily on mobile data plans, postpaid plans, prepaid plans, 5G coverage, roaming packages, device bundles, number porting, network coverage, broadband/fibre ONLY if they offer it.
 3. Do NOT generate queries about products the brand does not sell. Examples of what to EXCLUDE for a telco: satellite phones, satellite dishes, home security systems, wireless earbuds, noise cancelling headphones, smartphones (unless the brand sells devices), wireless routers (unless the brand sells them), cordless phones, walkie talkies, smart home devices.
 4. Queries should be diverse across the brand's ACTUAL service categories. Mix comparison queries, best-of queries, how-to queries, and recommendation queries.
-5. Include the region naturally where relevant (e.g. 'in ${data.region||"Global"}' or '${data.region||"Global"} 2026').
-6. Each query should be 10-25 words, natural language, like a real person asking ChatGPT.
-7. Do NOT mention ${data.brand||"Brand"} by name in any query — these should be generic category queries where ${data.brand||"Brand"} SHOULD appear in the answer.
-${compNamesStr?"8. Do NOT mention these competitor names: "+compNamesStr:""}
+5. Include the region naturally where relevant (e.g. 'in ${data.region||"Global"}' or '${data.region||"Global"} ${new Date().getFullYear()}').
+6. When including a year in any query, ALWAYS use ${new Date().getFullYear()}. NEVER use 2023, 2024, or any past year.
+7. Each query should be 10-25 words, natural language, like a real person asking ChatGPT.
+8. Do NOT mention ${data.brand||"Brand"} by name in any query — these should be generic category queries where ${data.brand||"Brand"} SHOULD appear in the answer.
+${compNamesStr?"9. Do NOT mention these competitor names: "+compNamesStr:""}
 All queries must be in English.
 
 Return JSON only:
