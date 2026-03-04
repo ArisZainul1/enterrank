@@ -1903,9 +1903,9 @@ function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,s
                 Still loading...
               </div>
             )}
-            {isLocked&&(
+            {isLocked&&item.id!=="dashboard"&&(
               <div style={{position:"absolute",bottom:0,left:12,right:12,height:2,borderRadius:1,background:C.borderSoft,overflow:"hidden"}}>
-                <div style={{width:"40%",height:"100%",borderRadius:1,background:C.accent,animation:"loadingSlide 1.5s ease-in-out infinite"}}/>
+                <div style={{width:"40%",height:"100%",borderRadius:1,background:C.accent,animation:"loadingSlide 2s ease-in-out infinite"}}/>
               </div>
             )}
           </div>);
@@ -5073,7 +5073,7 @@ export default function App(){
 
   return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",color:C.text,display:"flex"}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes loadingSlide{0%{transform:translateX(-100%)}50%{transform:translateX(250%)}100%{transform:translateX(-100%)}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}`}</style>
+    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes loadingSlide{0%{transform:translateX(-100%);opacity:0.5}30%{opacity:1}100%{transform:translateX(350%);opacity:0.3}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}`}</style>
 
     {/* Sidebar */}
     <Sidebar step={step} setStep={setStep} results={results} brand={results?.clientData?.brand||data.brand} onBack={handleBackToHub} isLocal={isLocal} onLogout={handleLogout} collapsed={sideCollapsed} setCollapsed={setSideCollapsed} sectionReady={sectionReady} auditInProgress={auditInProgress}/>
