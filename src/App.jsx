@@ -4807,6 +4807,7 @@ export default function App(){
   </>);
 
   const runAuditProgressive = async (auditData) => {
+    let auditComplete = false;
     setAuditInProgress(true);
     setAuditProgress(0);
     setAuditStage("Preparing audit...");
@@ -4816,6 +4817,7 @@ export default function App(){
 
     try {
       const apiData = await runRealAudit(auditData, (msg, pct, partialData) => {
+        if(auditComplete) return;
         if(pct != null) setAuditProgress(pct);
         if(msg) setAuditStage(msg);
         if(partialData) {
@@ -4841,11 +4843,12 @@ export default function App(){
       });
 
       // Full audit complete — generate final results
+      auditComplete = true;
       setAuditInProgress(false);
       setAuditProgress(100);
       setAuditStage("");
       const r = generateAll(auditData, apiData);
-      setResults(r);
+      setResults(() => r);
       setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, playbook:true, channels:true, contenthub:true, roadmap:true });
 
       const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:auditData.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
