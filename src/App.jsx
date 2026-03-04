@@ -2063,17 +2063,15 @@ function AuditLoadingInline({ progress, stage }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"55vh", gap:28, maxWidth:480, margin:"0 auto", padding:"40px 20px" }}>
 
-      {/* Animated progress ring */}
+      {/* Spinning circle with percentage */}
       <div style={{ position:"relative", width:100, height:100 }}>
-        <div style={{ position:"absolute", inset:-4, border:"2.5px solid transparent", borderTopColor:C.accent+"50", borderRightColor:C.accent+"20", borderRadius:"50%", animation:"spin 2s linear infinite" }}/>
-        <svg width="100" height="100" style={{ transform:"rotate(-90deg)" }}>
-          <circle cx="50" cy="50" r="42" fill="none" stroke={C.bg} strokeWidth="6"/>
-          <circle cx="50" cy="50" r="42" fill="none" stroke={C.accent} strokeWidth="6"
-            strokeDasharray={264} strokeDashoffset={264 - (p / 100) * 264}
-            strokeLinecap="round"
-            style={{ transition:"stroke-dashoffset 0.6s ease" }}/>
+        <svg width="100" height="100" style={{ animation:"spin 2s linear infinite" }}>
+          <circle cx="50" cy="50" r="42" fill="none" stroke={C.bg} strokeWidth="5"/>
+          <circle cx="50" cy="50" r="42" fill="none" stroke={C.accent} strokeWidth="5"
+            strokeDasharray="80 184"
+            strokeLinecap="round"/>
         </svg>
-        <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
+        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
           <span style={{ fontSize:24, fontWeight:500, color:C.text, fontFamily:"'Outfit'", letterSpacing:"-.02em" }}>{Math.round(p)}%</span>
         </div>
       </div>
