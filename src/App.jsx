@@ -2284,28 +2284,9 @@ Return JSON only:
   const stopSmooth=()=>{if(intervalRef.current){clearInterval(intervalRef.current);intervalRef.current=null;}};
 
   const go=async()=>{
-    // Normalize all URLs before running
     const normalizedData={...data,website:normalizeUrl(data.website),competitors:(data.competitors||[]).map(c=>({...c,website:normalizeUrl(c.website||"")}))};
     setData(normalizedData);
-    setRunning(true);setError(null);setDisplayProgress(0);
-    targetRef.current=0;displayRef.current=0;
-    startSmooth();
-    try{
-      const apiData=await runRealAudit(normalizedData,(msg,pct)=>{
-        setStage(msg);
-        targetRef.current=Math.max(targetRef.current, pct);
-      });
-      targetRef.current=100;
-      await new Promise(r=>setTimeout(r,800));
-      stopSmooth();setDisplayProgress(100);
-      await new Promise(r=>setTimeout(r,400));
-      setRunning(false);onRun(apiData);
-    }catch(e){
-      console.error("Audit error:",e);setError("API call failed — falling back to simulated data.");
-      targetRef.current=100;
-      await new Promise(r=>setTimeout(r,1500));
-      stopSmooth();setRunning(false);onRun(null);
-    }
+    onRun(normalizedData);
   };
 
   // Cleanup on unmount
@@ -4817,6 +4798,107 @@ export default function App(){
     </div>)}
   </>);
 
+  const runAuditProgressive = async (auditData) => {
+    setAuditInProgress(true);
+    setAuditProgress(0);
+    setAuditStage("Preparing audit...");
+    setStep("dashboard");
+    setResults(null);
+    setSectionReady({ dashboard:false, archetypes:false, sentiment:false, intent:false, playbook:false, channels:false, contenthub:false, roadmap:false });
+
+    try {
+      const apiData = await runRealAudit(auditData, (msg, pct, partialData) => {
+        if(pct != null) setAuditProgress(pct);
+        if(msg) setAuditStage(msg);
+        if(partialData) {
+          const partialR = generatePartial(auditData, partialData);
+          if(partialR) {
+            setResults(prev => {
+              if(!prev) return partialR;
+              return partialR;
+            });
+            setSectionReady(prev => ({
+              ...prev,
+              dashboard: !!(partialData.engineData && partialData.competitorData),
+              sentiment: !!(partialData.sentimentData && partialData.sentimentSignals),
+              archetypes: !!(partialData.archData && partialData.archData.length > 0),
+              intent: !!(partialData.intentData && partialData.intentData.length > 0),
+              channels: !!(partialData.channelData && partialData.channelData.channels && partialData.channelData.channels.length > 0),
+              contenthub: !!(partialData.contentGridData && partialData.contentGridData.length > 0),
+              roadmap: !!(partialData.roadmapData && partialData.roadmapData.day30),
+              playbook: !!(partialData.guidelineData)
+            }));
+          }
+        }
+      });
+
+      // Full audit complete — generate final results
+      setAuditInProgress(false);
+      setAuditProgress(100);
+      setAuditStage("");
+      const r = generateAll(auditData, apiData);
+      setResults(r);
+      setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, playbook:true, channels:true, contenthub:true, roadmap:true });
+
+      const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:auditData.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
+      setHistory(prev=>[...prev,entry]);
+
+      try{localStorage.setItem('enterrank_lastAudit',JSON.stringify(apiData));}catch(e){}
+
+      try{
+        const project=await sbSaveProject({
+          brand:auditData.brand,
+          website:auditData.website,
+          industry:auditData.industry,
+          region:auditData.region,
+          competitors:auditData.competitors,
+          topics:auditData.topics
+        });
+        if(project){
+          await sbSaveAudit(project.id,apiData,{overall:entry.overall,mentions:entry.mentions,citations:entry.citations,sentiment:entry.sentimentAvg});
+          setActiveProject({...project,_supabase:true});
+          try{
+            const freshAudits=await sbLoadProjectAudits(project.id);
+            if(freshAudits&&freshAudits.length>0){
+              const freshHistory=freshAudits.map(a=>({date:new Date(a.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),overall:a.overall_score,mentions:a.mention_rate,citations:a.citation_rate,sentimentAvg:a.sentiment_score,mentionsPerEngine:{gpt:a.mention_rate,gemini:a.mention_rate},citationsPerEngine:{gpt:a.citation_rate,gemini:a.citation_rate},sentimentPerEngine:{gpt:a.sentiment_score||50,gemini:a.sentiment_score||50},apiData:null})).reverse();
+              setHistory(freshHistory);
+            }
+          }catch(he){console.error('Failed to refresh history:',he);}
+        }
+      }catch(e){
+        console.error('Failed to save to Supabase:',e);
+      }
+
+      // Also save to old API + localStorage as fallback
+      if(!isLocal){try{
+        if(activeProject&&!activeProject._supabase){
+          const res=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:activeProject.id,auditEntry:entry})});
+          const updated=await res.json();
+          if(!updated.error){lsSaveProject(updated);}
+          else{const lp=lsGetProject(activeProject.id);if(lp){lp.history=[...(lp.history||[]),{...entry,timestamp:new Date().toISOString()}];lp.lastAudit=new Date().toISOString();lp.lastScore=entry.overall;lsSaveProject(lp);}}
+        }else if(!activeProject){
+          const res=await fetch("/api/projects",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({brand:auditData.brand,industry:auditData.industry,website:auditData.website,region:auditData.region,topics:auditData.topics,competitors:auditData.competitors})});
+          const created=await res.json();
+          if(!created.error){
+            const res2=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:created.id,auditEntry:entry})});
+            const updated2=await res2.json();
+            if(!updated2.error){lsSaveProject(updated2);}else{lsSaveProject(created);}
+          }else{
+            const localId=auditData.brand.toLowerCase().replace(/[^a-z0-9]+/g,"-")+"-"+Date.now().toString(36);
+            const localProject={id:localId,brand:auditData.brand,industry:auditData.industry,website:auditData.website,region:auditData.region,topics:auditData.topics,competitors:auditData.competitors,history:[{...entry,timestamp:new Date().toISOString()}],lastAudit:new Date().toISOString(),lastScore:entry.overall,createdAt:new Date().toISOString()};
+            lsSaveProject(localProject);
+          }
+        }
+      }catch(legacyErr){console.error('Legacy save failed:',legacyErr);}}
+
+    } catch(e) {
+      console.error("Progressive audit error:", e);
+      setAuditInProgress(false);
+      setAuditStage("");
+      setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, playbook:true, channels:true, contenthub:true, roadmap:true });
+    }
+  };
+
   const run=async(apiData)=>{
     if(apiData&&apiData.error){
       // Fatal error — still generate with whatever partial data we have
@@ -4893,7 +4975,7 @@ export default function App(){
     {/* Main content */}
     <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",marginLeft:sideCollapsed?60:220,transition:"margin-left .2s ease"}}>
       <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto"}}>
-        {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={run} history={history}/>}
+        {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={runAuditProgressive} history={history}/>}
         {step==="dashboard"&&results&&<DashboardPage r={results} history={history} goTo={setStep}/>}
         {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep} onUpdate={setResults}/>}
         {step==="sentiment"&&results&&<SentimentPage r={results}/>}
