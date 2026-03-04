@@ -259,6 +259,42 @@ function summariseCrawl(crawlResult){
   return signals.join("\n");
 }
 
+function analyzeSentimentFromResponses(responses,brandName){
+  if(!responses||responses.length===0)return{score:50,positive:0,negative:0,neutral:0,posWords:[],negWords:[]};
+  const escaped=brandName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const nameRegex=new RegExp('\\b'+escaped+'\\b','i');
+  const posPatterns=[
+    /\b(?:recommend|excellent|outstanding|leading|top\s+choice|best|superior|innovative|reliable|trusted|popular|preferred|well[\s-]?known|reputable|impressive|comprehensive|competitive|affordable|seamless|award[\s-]?winning)\b/gi,
+    /\b(?:highly\s+rated|top[\s-]?rated|first\s+choice|market\s+leader|well[\s-]?established|user[\s-]?friendly|widely\s+(?:used|recognized|available))\b/gi,
+    new RegExp('(?:recommend|suggest|consider|try)\\s+(?:\\w+\\s+){0,3}'+escaped,'gi'),
+    new RegExp(escaped+'\\s+(?:is|are|has|offers?)\\s+(?:a\\s+)?(?:great|excellent|solid|strong|reliable|popular|leading|top|comprehensive|robust)','gi')
+  ];
+  const negPatterns=[
+    /\b(?:drawback|limitation|downside|however|lacks?|missing|weak|poor|expensive|overpriced|complaints?|issues?|problems?|concerns?|behind|inferior|outdated|inconsistent)\b/gi,
+    /\b(?:not\s+(?:the\s+)?(?:best|ideal|recommended)|could\s+(?:be\s+)?(?:better|improved)|room\s+for\s+improvement|falls?\s+short|doesn't\s+(?:offer|provide|support))\b/gi,
+    /\b(?:limited\s+(?:coverage|options|features|support)|higher\s+(?:prices?|costs?|rates?)|slower|fewer|lag(?:s|ging)?)\b/gi
+  ];
+  let posCount=0,negCount=0,neuCount=0;
+  const posWords=new Set(),negWords=new Set();
+  responses.forEach(r=>{
+    const text=typeof r==='string'?r:(r.response||r.text||'');
+    if(!nameRegex.test(text))return;
+    const sentences=text.split(/[.!?]+/).filter(s=>nameRegex.test(s));
+    sentences.forEach(sentence=>{
+      let foundPos=false,foundNeg=false;
+      posPatterns.forEach(p=>{const m=sentence.match(p);if(m){foundPos=true;m.forEach(w=>posWords.add(w.trim().toLowerCase()));}});
+      negPatterns.forEach(p=>{const m=sentence.match(p);if(m){foundNeg=true;m.forEach(w=>negWords.add(w.trim().toLowerCase()));}});
+      if(foundPos&&!foundNeg)posCount++;
+      else if(foundNeg&&!foundPos)negCount++;
+      else neuCount++;
+    });
+  });
+  const total=posCount+negCount+neuCount;
+  if(total===0)return{score:45,positive:0,negative:0,neutral:0,posWords:[],negWords:[]};
+  const score=Math.round(50+((posCount/total)*40)-((negCount/total)*40));
+  return{score:Math.max(10,Math.min(95,score)),positive:posCount,negative:negCount,neutral:neuCount,posWords:Array.from(posWords).slice(0,6),negWords:Array.from(negWords).slice(0,6)};
+}
+
 async function runRealAudit(cd, onProgress){
  try{
   const brand=cd.brand||"Brand",industry=cd.industry||"Technology",region=cd.region||"Global",topics=cd.topics||["tech"];
@@ -706,52 +742,23 @@ Return JSON only:
   let mergedPainPoints=painCatLabels.map(l=>({label:l,score:0,severity:"critical"}));
 
   await Promise.all([
-  // ── Sentiment Analysis ──
+  // ── Sentiment Analysis — derived from real response text ──
   (async()=>{try{
-  const sentimentPrompt=`Analyze the general public and industry sentiment around "${brand}" in the ${industry} industry, specifically in ${region}.
-
-CRITICAL: Rate sentiment specifically in ${region}, not globally. Consider local customer reviews, local news coverage, local social media perception, and regional reputation. A brand loved globally but unknown or unavailable in ${region} should score 40-50 (neutral). A brand with strong local presence and positive regional reputation should score higher than a global brand with no ${region} footprint.
-
-Rate sentiment on a scale of 0-100:
-- 0-20: Very negative (scandals, lawsuits, major complaints in ${region})
-- 21-40: Negative (frequent criticism, declining reputation in ${region})
-- 41-60: Neutral (not well known in ${region}, mixed local opinions)
-- 61-80: Positive (well regarded in ${region}, good local reputation)
-- 81-100: Very positive (market leader in ${region}, beloved by local customers)
-
-Also rate these competitors based on their reputation in ${region}: ${compNames.join(", ")}
-
-Return JSON only:
-{
-  "brand": {"score": <0-100>, "summary": "<1 sentence explaining the sentiment in ${region}>"},
-  "competitors": [{"name": "<competitor>", "score": <0-100>, "summary": "<1 sentence about their ${region} reputation>"}]
-}
-
-Respond in English only. The region context is for market relevance only, not for language.
-Be accurate. Base this on real market perception in ${region}, not global speculation. A brand nobody in ${region} has heard of should score 40-50 (neutral), not high.`;
-
-  const [sentGptRaw, sentGemRaw]=await Promise.all([
-    callOpenAI(sentimentPrompt, engineSystemPrompt),
-    callGemini(sentimentPrompt, engineSystemPrompt)
-  ]);
-  const sentGpt=safeJSON(sentGptRaw)||{brand:{score:50,summary:"Could not assess"},competitors:[]};
-  const sentGem=safeJSON(sentGemRaw)||{brand:{score:50,summary:"Could not assess"},competitors:[]};
-
-  sentimentData={
-    brand:{
-      gpt:sentGpt.brand?.score||50,
-      gemini:sentGem.brand?.score||50,
-      avg:Math.round(((sentGpt.brand?.score||50)+(sentGem.brand?.score||50))/2),
-      summary:sentGpt.brand?.summary||sentGem.brand?.summary||"Neutral sentiment"
-    },
-    competitors:compNames.map(name=>{
-      const gc=(sentGpt.competitors||[]).find(c=>c.name?.toLowerCase()===name.toLowerCase());
-      const gm=(sentGem.competitors||[]).find(c=>c.name?.toLowerCase()===name.toLowerCase());
-      const gScore=gc?.score||50;
-      const mScore=gm?.score||50;
-      return{name,gpt:gScore,gemini:mScore,avg:Math.round((gScore+mScore)/2),summary:gc?.summary||gm?.summary||""};
-    })
-  };
+    const brandGptSent=analyzeSentimentFromResponses(gptResponses,brand);
+    const brandGemSent=analyzeSentimentFromResponses(gemResponses,brand);
+    const brandAvg=Math.round((brandGptSent.score+brandGemSent.score)/2);
+    const compSentiments=compNames.filter(n=>n).map(cname=>{
+      const gs=analyzeSentimentFromResponses(gptResponses,cname);
+      const gm=analyzeSentimentFromResponses(gemResponses,cname);
+      const avg=Math.round((gs.score+gm.score)/2);
+      return{name:cname,gpt:gs.score,gemini:gm.score,avg,summary:`${avg>=55?"Positive":avg>=45?"Neutral":"Negative"} tone across ${gs.positive+gm.positive+gs.negative+gm.negative} sentiment signals in AI responses.`,sentiment:avg>=55?"positive":avg>=45?"neutral":"negative"};
+    });
+    const summaryLabel=brandAvg>=70?"predominantly positive":brandAvg>=55?"moderately positive":brandAvg>=45?"neutral":brandAvg>=30?"moderately negative":"predominantly negative";
+    const totalSignals=brandGptSent.positive+brandGemSent.positive+brandGptSent.negative+brandGemSent.negative;
+    sentimentData={
+      brand:{gpt:brandGptSent.score,gemini:brandGemSent.score,avg:brandAvg,summary:`AI engines portray ${brand} in a ${summaryLabel} light based on ${totalSignals} sentiment signals detected in actual response text.`},
+      competitors:compSentiments
+    };
   }catch(stepError){
     console.error("Sentiment analysis failed:",stepError.message);
   }})(),
