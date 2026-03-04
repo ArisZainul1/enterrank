@@ -259,6 +259,84 @@ function summariseCrawl(crawlResult){
   return signals.join("\n");
 }
 
+function scoreCrawlData(crawl){
+  // Handle both full crawl {mainPage,...} and flattened mainPage data {url,...fields}
+  const mp=crawl?.mainPage||crawl;
+  if(!mp||(!mp.domain&&!mp.url&&!mp.schemas))return null;
+  const schemas=mp.schemas||[];
+  const aeo=mp.aeoSignals||{};
+  const cs=mp.contentStructure||{};
+  const wc=mp.totalWordCount||mp.wordCount||mp.homepageWordCount||0;
+  const il=mp.internalLinks||0;
+  const h1c=cs.h1Count||mp.h1Count||0;
+  const h2c=cs.h2Count||mp.h2Count||0;
+  const h3c=cs.h3Count||mp.h3Count||0;
+  const hasBlog=aeo.hasBlog||(mp.subPages||[]).some(sp=>sp.url?.toLowerCase().includes("blog"));
+  const hasFaq=aeo.hasFaqPage||(mp.subPages||[]).some(sp=>sp.url?.toLowerCase().includes("faq")||sp.url?.toLowerCase().includes("help"));
+  const hasAbout=(mp.subPages||[]).some(sp=>sp.url?.toLowerCase().includes("about"));
+  const hasProducts=(mp.subPages||[]).some(sp=>/product|service|solution|pricing/i.test(sp.url||""));
+  const cats=[];
+  // 1. Structured Data / Schema
+  let s1=0;const e1=[];
+  if(schemas.length>0){s1+=25;e1.push(schemas.length+" schema types: "+schemas.join(", "));}
+  if(schemas.some(s=>s==="FAQPage"||s==="Question")){s1+=20;e1.push("FAQ schema present");}else e1.push("No FAQ schema");
+  if(schemas.some(s=>["Article","NewsArticle","BlogPosting","TechArticle"].includes(s))){s1+=15;e1.push("Article schema present");}else e1.push("No Article schema");
+  if(schemas.some(s=>["Organization","LocalBusiness","Corporation"].includes(s))){s1+=15;e1.push("Organization schema present");}else e1.push("No Organization schema");
+  if(schemas.some(s=>s==="Product")){s1+=10;e1.push("Product schema present");}
+  if(schemas.some(s=>s==="BreadcrumbList")){s1+=8;e1.push("Breadcrumb schema present");}
+  if(schemas.some(s=>s==="HowTo")){s1+=7;e1.push("HowTo schema present");}
+  if(schemas.length===0)e1.push("No schema markup detected");
+  cats.push({label:"Structured Data / Schema",score:Math.min(100,s1),evidence:e1});
+  // 2. Content Authority
+  let s2=0;const e2=[];
+  if(wc>=3000){s2+=30;e2.push(wc+" words (excellent depth)");}else if(wc>=1500){s2+=20;e2.push(wc+" words (good depth)");}else if(wc>=500){s2+=10;e2.push(wc+" words (thin content)");}else e2.push(wc+" words (very thin)");
+  if(hasBlog){s2+=25;e2.push("Blog/content hub found");}else e2.push("No blog detected");
+  if(hasFaq){s2+=15;e2.push("FAQ page found");}else e2.push("No FAQ page");
+  if(hasProducts){s2+=10;e2.push("Products/services page found");}
+  if(h2c>=5){s2+=10;e2.push(h2c+" H2 headings (good structure)");}else if(h2c>=2){s2+=5;e2.push(h2c+" H2 headings");}
+  if((cs.tableCount||mp.tableCount||0)>0||(cs.listCount||mp.listCount||0)>0){s2+=10;e2.push("Structured content (tables/lists) present");}
+  cats.push({label:"Content Authority",score:Math.min(100,s2),evidence:e2});
+  // 3. E-E-A-T Signals
+  let s3=0;const e3=[];
+  if(aeo.authorInfo||mp.hasAuthorInfo){s3+=25;e3.push("Author attribution detected");}else e3.push("No author info");
+  if(aeo.trustSignals||mp.hasTrustSignals){s3+=20;e3.push("Trust signals (awards/certs) detected");}else e3.push("No trust signals");
+  if(aeo.testimonials||mp.hasTestimonials){s3+=20;e3.push("Testimonials/reviews detected");}else e3.push("No testimonials");
+  if(hasAbout){s3+=15;e3.push("About page found");}else e3.push("No about page");
+  if(schemas.some(s=>["Organization","LocalBusiness","Corporation"].includes(s))){s3+=10;e3.push("Organization schema supports entity verification");}
+  if(aeo.video||mp.hasVideo){s3+=10;e3.push("Video content detected");}
+  cats.push({label:"E-E-A-T Signals",score:Math.min(100,s3),evidence:e3});
+  // 4. Technical SEO
+  let s4=0;const e4=[];
+  if(aeo.openGraph||mp.hasOpenGraph){s4+=15;e4.push("Open Graph tags present");}else e4.push("Missing Open Graph");
+  if(aeo.twitterCard||mp.hasTwitterCard){s4+=10;e4.push("Twitter Card present");}else e4.push("Missing Twitter Card");
+  if(aeo.canonical||mp.hasCanonical){s4+=15;e4.push("Canonical URL present");}else e4.push("Missing canonical URL");
+  if(h1c===1){s4+=15;e4.push("Single H1 (correct structure)");}else if(h1c>1){s4+=5;e4.push(h1c+" H1s (should be 1)");}else e4.push("No H1 tag");
+  if(h2c>0&&h3c>0){s4+=10;e4.push("Proper heading hierarchy (H1→H2→H3)");}
+  if(il>=20){s4+=15;e4.push(il+" internal links (strong linking)");}else if(il>=10){s4+=8;e4.push(il+" internal links");}else e4.push(il+" internal links (weak)");
+  if(aeo.hreflang||mp.hasHreflang){s4+=10;e4.push("Hreflang tags present");}
+  if((cs.imageCount||mp.imageCount||0)>0){s4+=10;e4.push((cs.imageCount||mp.imageCount)+" images");}
+  cats.push({label:"Technical SEO",score:Math.min(100,s4),evidence:e4});
+  // 5. Citation Network
+  let s5=0;const e5=[];
+  const el=mp.externalLinks||0;
+  if(el>=10){s5+=20;e5.push(el+" external links (strong outbound network)");}else if(el>=3){s5+=10;e5.push(el+" external links");}else e5.push(el+" external links (weak)");
+  if(il>=30){s5+=25;e5.push(il+" internal links (excellent cross-linking)");}else if(il>=15){s5+=15;e5.push(il+" internal links");}else{s5+=5;e5.push(il+" internal links (poor cross-linking)");}
+  if(schemas.some(s=>s==="BreadcrumbList")){s5+=15;e5.push("Breadcrumb navigation aids crawlability");}
+  if(hasBlog){s5+=15;e5.push("Blog creates inbound link opportunities");}
+  if(schemas.length>=3){s5+=10;e5.push("Rich schema aids knowledge graph inclusion");}
+  if(aeo.speakable||mp.hasSpeakable){s5+=15;e5.push("Speakable markup for voice citations");}
+  cats.push({label:"Citation Network",score:Math.min(100,s5),evidence:e5});
+  // 6. Content Freshness
+  let s6=40;const e6=["Baseline score — publish dates not detectable from crawl"];
+  if(hasBlog){s6+=20;e6.push("Blog presence suggests regular content updates");}
+  if(schemas.some(s=>["Article","NewsArticle","BlogPosting"].includes(s))){s6+=15;e6.push("Article schema suggests active publishing");}
+  if(wc>=2000){s6+=10;e6.push("Substantial content volume ("+wc+" words)");}
+  if(aeo.video||mp.hasVideo){s6+=10;e6.push("Video content indicates multimedia investment");}
+  if(hasProducts){s6+=5;e6.push("Active product/service pages");}
+  cats.push({label:"Content Freshness",score:Math.min(100,s6),evidence:e6});
+  return{categories:cats};
+}
+
 function analyzeSentimentFromResponses(responses,brandName){
   if(!responses||responses.length===0)return{score:50,positive:0,negative:0,neutral:0,posWords:[],negWords:[]};
   const escaped=brandName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
@@ -906,100 +984,53 @@ Return JSON only. No markdown, no explanation.`;
   }catch(stepError){
     console.error("Source channel extraction failed:",stepError.message);
   }})(),
-  // ── Competitor Analysis ──
+  // ── Competitor Analysis — pain points from REAL crawl data, topStrength from AI ──
   (async()=>{try{
-  const compPromptBase=`Analyse these competitors against "${brand}" in ${industry} (${region}) for AI engine visibility.
-
-Brand website crawl data:
-${crawlSummary}
-
-Competitor website crawl data:
-${compCrawlSummary}
-
-Competitors: ${compNames.map((n,i)=>`${n}${compUrls[i]?" ("+compUrls[i]+")":""}`).join(", ")||"none"}.
-
-CRITICAL: Score ALL competitors based ONLY on their presence, reputation, and market share in ${region}. A globally known brand that is not available or not popular in ${region} should score VERY LOW. If a competitor does not operate in ${region}, score them near 0. Regional availability and local market dominance matter more than global brand recognition.
-
-Evaluate each competitor's online presence targeting ${region}. Check if their website has ${region}-specific content, regional pricing, and local testimonials. Score based on their ${region} presence, not their global presence. Respond in English only.
-
-Based on the actual crawl data, score each competitor. Return JSON:
-{
-  "competitors": [
-    {
-      "name": "<competitor name>",
-      "score": <0-100 overall AEO visibility>,
-      "engineScores": [<chatgpt_score>, <gemini_score>],
-      "topStrength": "<their main AEO advantage based on crawl data>",
-      "painPoints": [
-        {"label":"Structured Data / Schema","score":<0-100>},
-        {"label":"Content Authority","score":<0-100>},
-        {"label":"E-E-A-T Signals","score":<0-100>},
-        {"label":"Technical SEO","score":<0-100>},
-        {"label":"Citation Network","score":<0-100>},
-        {"label":"Content Freshness","score":<0-100>}
-      ]
-    }
-  ]
-}
-
-Use the crawl data to give accurate scores. If a competitor has better schema markup, score them higher on Structured Data.`;
-
-  const[compGptRaw,compGemRaw]=await Promise.all([
-    callOpenAI(compPromptBase, engineSystemPrompt),
-    callGemini(compPromptBase, engineSystemPrompt)
-  ]);
-  const compGpt=safeJSON(compGptRaw)||{competitors:[]};
-  const compGem=safeJSON(compGemRaw)||{competitors:[]};
-  // Merge: average scores from both engines
-  mergedComps=(compGpt.competitors||[]).map(gc=>{
-    const gemMatch=(compGem.competitors||[]).find(g=>g.name&&gc.name&&g.name.toLowerCase()===gc.name.toLowerCase());
-    if(gemMatch){
-      return{...gc,score:Math.round((gc.score+gemMatch.score)/2),
-        engineScores:[gc.engineScores?gc.engineScores[0]:gc.score, gemMatch.engineScores?gemMatch.engineScores[1]:gemMatch.score],
-        painPoints:(gc.painPoints||[]).map((pp,j)=>{const gp=(gemMatch.painPoints||[])[j];return{label:pp.label,score:gp?Math.round((pp.score+gp.score)/2):pp.score};})};
-    }
-    return gc;
+  // Score each competitor from their crawl data
+  const mergedCompsResult=compNames.filter(n=>n).map(cname=>{
+    const rawCrawl=compCrawlsRaw[cname];
+    // compCrawlsRaw stores flattened mainPage data, wrap it so scoreCrawlData can find it
+    const scored=rawCrawl?scoreCrawlData({mainPage:rawCrawl}):null;
+    if(!scored)return{name:cname,score:0,engineScores:[0,0],topStrength:"No crawl data available",painPoints:painCatLabels.map(l=>({label:l,score:0}))};
+    const pp=scored.categories.map(c=>({label:c.label,score:c.score,evidence:c.evidence}));
+    const avg=Math.round(pp.reduce((a,p)=>a+p.score,0)/pp.length);
+    return{name:cname,score:avg,engineScores:[avg,avg],painPoints:pp,topStrength:""};
   });
-  compData={competitors:mergedComps.length>0?mergedComps:(compGem.competitors||[])};
+  // AI call for topStrength summaries only — no score guessing
+  try{
+    const strengthPrompt=`For each competitor, write a concise 1-sentence "topStrength" summarizing their main AEO advantage based on their website crawl data. Use the crawl data below.
+
+Competitors: ${compNames.filter(n=>n).join(", ")}
+
+Brand crawl: ${crawlSummary}
+Competitor crawls: ${compCrawlSummary}
+
+Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentence>"}]}`;
+    const strengthRaw=await callOpenAI(strengthPrompt,engineSystemPrompt);
+    const strengthParsed=safeJSON(strengthRaw);
+    if(strengthParsed&&strengthParsed.strengths){
+      strengthParsed.strengths.forEach(s=>{
+        const match=mergedCompsResult.find(c=>c.name.toLowerCase()===s.name?.toLowerCase());
+        if(match&&s.topStrength)match.topStrength=s.topStrength;
+      });
+    }
+  }catch(e){console.error("Competitor topStrength generation failed:",e);}
+  mergedComps=mergedCompsResult;
+  compData={competitors:mergedComps};
   }catch(stepError){
     console.error("Competitor analysis failed:",stepError.message);
   }})(),
-  // ── Pain Points ──
+  // ── Pain Points — scored from REAL crawl data ──
   (async()=>{try{
-  const catPrompt=`Based on this website analysis for "${brand}" (${industry}, ${region}):
-
-${crawlSummary}
-
-Evaluate each category based on how well "${brand}" targets the ${region} market. Consider whether the website has ${region}-specific content, regional pricing, and local testimonials. A website with no ${region}-specific presence should score lower on Content Authority and E-E-A-T even if it has strong global content. Respond in English only.
-
-Score each AEO category 0-100. Return JSON:
-{
-  "painPoints": [
-    {"label":"Structured Data / Schema","score":<0-100>,"severity":"critical"|"warning"|"good"},
-    {"label":"Content Authority","score":<0-100>,"severity":"critical"|"warning"|"good"},
-    {"label":"E-E-A-T Signals","score":<0-100>,"severity":"critical"|"warning"|"good"},
-    {"label":"Technical SEO","score":<0-100>,"severity":"critical"|"warning"|"good"},
-    {"label":"Citation Network","score":<0-100>,"severity":"critical"|"warning"|"good"},
-    {"label":"Content Freshness","score":<0-100>,"severity":"critical"|"warning"|"good"}
-  ]
-}
-
-Use severity: "critical" if <30, "warning" if 30-60, "good" if >60. Base scores strictly on the crawl data.`;
-
-  const[catGptRaw,catGemRaw]=await Promise.all([
-    callOpenAI(catPrompt, engineSystemPrompt),
-    callGemini(catPrompt, engineSystemPrompt)
-  ]);
-  const catGpt=safeJSON(catGptRaw)||{painPoints:[]};
-  const catGem=safeJSON(catGemRaw)||{painPoints:[]};
-  // Merge: average pain point scores from both engines
-  mergedPainPoints=(catGpt.painPoints&&catGpt.painPoints.length>0?catGpt.painPoints:catGem.painPoints||[]).map((pp,i)=>{
-    const gemPP=(catGem.painPoints||[])[i];
-    const avgScore=gemPP?Math.round((pp.score+gemPP.score)/2):pp.score;
-    return{label:pp.label,score:avgScore,severity:avgScore<30?"critical":avgScore<60?"warning":"good"};
-  });
-  }catch(stepError){
-    console.error("Pain points analysis failed:",stepError.message);
+    const scored=scoreCrawlData(brandCrawl);
+    if(scored&&scored.categories){
+      mergedPainPoints=scored.categories.map(c=>({label:c.label,score:c.score,severity:c.score<30?"critical":c.score<60?"warning":"good",evidence:c.evidence}));
+    }else{
+      mergedPainPoints=painCatLabels.map(l=>({label:l,score:0,severity:"critical",evidence:["No crawl data available"]}));
+    }
+  }catch(e){
+    console.error("Pain point scoring failed:",e);
+    mergedPainPoints=painCatLabels.map(l=>({label:l,score:0,severity:"critical",evidence:[]}));
   }})()
   ]);
 
