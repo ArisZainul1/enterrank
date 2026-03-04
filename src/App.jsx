@@ -20,6 +20,7 @@ function BrandLogo({name,website,size=22,color}){
 }
 function TagInput({label,tags,setTags,placeholder}){const[input,setInput]=useState("");const add=()=>{const v=input.trim();if(v&&!tags.includes(v)){setTags([...tags,v]);setInput("");}};return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label}</label><div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,minHeight:40,alignItems:"center"}}>{tags.map((tag,i)=>(<span key={i} style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",background:`${C.accent}15`,color:C.accent,borderRadius:100,fontSize:12,fontWeight:500}}>{tag}<span onClick={()=>setTags(tags.filter((_,j)=>j!==i))} style={{cursor:"pointer",opacity:.6,fontSize:14}}>×</span></span>))}<input value={input} onChange={e=>setInput(e.target.value)} placeholder={tags.length===0?placeholder:""} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}} style={{border:"none",background:"transparent",outline:"none",fontSize:13,color:C.text,flex:1,minWidth:80,fontFamily:"inherit"}}/></div><span style={{fontSize:10,color:C.muted}}>Press Enter to add</span></div>);}
 function normalizeUrl(url){if(!url||typeof url!=="string")return "";url=url.trim();if(!url)return "";if(url.startsWith("https://"))return url;if(url.startsWith("http://"))return url.replace("http://","https://");return "https://"+url;}
+const formatAuditDate=(d)=>{const date=d instanceof Date?d:new Date(d);return date.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});};
 function Field({label,value,onChange,placeholder,onBlur:onBlurCb}){return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label}</label><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,color:C.text,fontSize:14,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>{e.target.style.borderColor=C.border;if(onBlurCb)onBlurCb(e);}}/></div>);}
 function InfoTip({text}){const[show,setShow]=useState(false);return(<span style={{position:"relative",display:"inline-flex",marginLeft:4,cursor:"help"}} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}><span style={{width:14,height:14,borderRadius:"50%",background:C.bg,border:`1px solid ${C.border}`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.muted,fontWeight:600}}>?</span>{show&&<div style={{position:"absolute",bottom:"calc(100% + 6px)",left:"50%",transform:"translateX(-50%)",width:240,padding:"10px 12px",background:C.text,color:"#fff",borderRadius:8,fontSize:11,lineHeight:1.5,zIndex:999,boxShadow:"0 8px 24px rgba(0,0,0,.2)",pointerEvents:"none"}}><div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%) rotate(45deg)",width:8,height:8,background:C.text}}/>{text}</div>}</span>);}
 function SectionNote({text}){return <div style={{padding:"10px 14px",background:`${C.accent}04`,border:`1px solid ${C.accent}10`,borderRadius:C.rs,marginBottom:16,display:"flex",gap:8,alignItems:"flex-start"}}><span style={{fontSize:12,color:C.sub,lineHeight:1.6}}>{text}</span></div>;}
@@ -2709,28 +2710,30 @@ function DashboardPage({r,history,goTo}){
       <div style={{fontSize:13,color:C.muted,marginBottom:16}}>Track {r.clientData.brand}'s AI visibility over time</div>
 
       {(()=>{
-        const rawData=(history||[]).filter(h=>h.overall!=null&&h.overall>0).map(h=>({
-          date:(typeof h.date==="string"?h.date:new Date(h.date).toLocaleDateString("en-GB",{day:"numeric",month:"short"})).replace(/\s\d{4}$/,""),
-          fullDate:typeof h.date==="string"?h.date:new Date(h.date).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}),
+        // Deduplicate history entries by date
+        const deduped=[];const seen=new Set();
+        (history||[]).forEach(h=>{const key=h.date;if(!seen.has(key)){seen.add(key);deduped.push(h);}});
+        const rawData=deduped.filter(h=>h.overall!=null&&h.overall>0).map(h=>({
+          date:formatAuditDate(h.date).replace(/\s\d{4}$/,""),
+          fullDate:formatAuditDate(h.date),
           overall:h.overall||0,
           mentions:h.mentions||0,
           citations:h.citations||0,
-          _ts:typeof h.date==="string"?new Date(h.date).getTime():new Date(h.date).getTime()
+          _ts:new Date(h.date).getTime()
         }));
         const dayMap=new Map();
         rawData.forEach(d=>{const key=d.date;if(!dayMap.has(key)||d._ts>dayMap.get(key)._ts)dayMap.set(key,d);});
         // Ensure current audit is represented even if history hasn't refreshed yet
         if(r&&r.overall){
-          const todayKey=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"}).replace(/\s\d{4}$/,"");
+          const todayKey=formatAuditDate(new Date()).replace(/\s\d{4}$/,"");
           const currentMentions=Math.round(((r.engines?.[0]?.mentionRate||0)+(r.engines?.[1]?.mentionRate||0))/2);
           const currentCitations=Math.round(((r.engines?.[0]?.citationRate||0)+(r.engines?.[1]?.citationRate||0))/2);
-          dayMap.set(todayKey,{date:todayKey,fullDate:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}),overall:r.overall||0,mentions:currentMentions,citations:currentCitations,_ts:Date.now()});
+          dayMap.set(todayKey,{date:todayKey,fullDate:formatAuditDate(new Date()),overall:r.overall||0,mentions:currentMentions,citations:currentCitations,_ts:Date.now()});
         }
         const chartData=[...dayMap.values()].map(({_ts,...rest})=>rest);
 
         if(chartData.length<2)return(
           <div style={{padding:32,background:C.card,border:"1px solid "+C.border,borderRadius:14,textAlign:"center"}}>
-            <div style={{fontSize:32,marginBottom:8}}>&#x1F4CA;</div>
             <div style={{fontSize:14,fontWeight:500,marginBottom:4}}>Not enough data yet</div>
             <div style={{fontSize:12,color:C.muted}}>Run at least 2 audits to see historical trends. Each audit is saved automatically.</div>
           </div>
@@ -4792,7 +4795,7 @@ export default function App(){
           if(fullAudit&&fullAudit.results){
             // Build history from all audits for the performance chart
             const historyEntries=audits.map(a=>({
-              date:new Date(a.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),
+              date:formatAuditDate(a.created_at),
               overall:a.overall_score,
               mentions:a.mention_rate,
               citations:a.citation_rate,
@@ -4835,7 +4838,7 @@ export default function App(){
     setProjectPrompt(null);
     setActiveProject(project);
     setData({brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors&&project.competitors.length>0?project.competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
-    setHistory((project.history||[]).map(h=>({date:h.date||new Date(h.timestamp||h.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),...h})));
+    setHistory((project.history||[]).map(h=>({date:h.date||formatAuditDate(h.timestamp||h.created_at),...h})));
     setResults(null);
     setStep("input");
     setScreen("dashboard");
@@ -4845,7 +4848,7 @@ export default function App(){
     setProjectPrompt(null);
     setActiveProject(project);
     setData({brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors&&project.competitors.length>0?project.competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
-    setHistory((project.history||[]).map(h=>({date:h.date||new Date(h.timestamp||h.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),...h})));
+    setHistory((project.history||[]).map(h=>({date:h.date||formatAuditDate(h.timestamp||h.created_at),...h})));
     // Rebuild results from last audit
     const cd={brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors||[]};
     const r=generateAll(cd,lastAudit.apiData);
@@ -4955,8 +4958,7 @@ export default function App(){
       setResults(() => r);
       setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, playbook:true, channels:true, contenthub:true, roadmap:true });
 
-      const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:auditData.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
-      setHistory(prev=>[...prev,entry]);
+      const entry={date:formatAuditDate(new Date()),brand:auditData.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
 
       try{localStorage.setItem('enterrank_lastAudit',JSON.stringify(apiData));}catch(e){}
 
@@ -4975,13 +4977,16 @@ export default function App(){
           try{
             const freshAudits=await sbLoadProjectAudits(project.id);
             if(freshAudits&&freshAudits.length>0){
-              const freshHistory=freshAudits.map(a=>({date:new Date(a.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),overall:a.overall_score,mentions:a.mention_rate,citations:a.citation_rate,sentimentAvg:a.sentiment_score,mentionsPerEngine:{gpt:a.mention_rate,gemini:a.mention_rate},citationsPerEngine:{gpt:a.citation_rate,gemini:a.citation_rate},sentimentPerEngine:{gpt:a.sentiment_score||50,gemini:a.sentiment_score||50},apiData:null})).reverse();
+              const freshHistory=freshAudits.map(a=>({date:formatAuditDate(a.created_at),overall:a.overall_score,mentions:a.mention_rate,citations:a.citation_rate,sentimentAvg:a.sentiment_score,mentionsPerEngine:{gpt:a.mention_rate,gemini:a.mention_rate},citationsPerEngine:{gpt:a.citation_rate,gemini:a.citation_rate},sentimentPerEngine:{gpt:a.sentiment_score||50,gemini:a.sentiment_score||50},apiData:null})).reverse();
               setHistory(freshHistory);
+            }else{
+              setHistory(prev=>[...prev,entry]);
             }
-          }catch(he){console.error('Failed to refresh history:',he);}
+          }catch(he){console.error('Failed to refresh history:',he);setHistory(prev=>[...prev,entry]);}
         }
       }catch(e){
         console.error('Failed to save to Supabase:',e);
+        setHistory(prev=>[...prev,entry]);
       }
 
       // Also save to old API + localStorage as fallback
@@ -5022,8 +5027,7 @@ export default function App(){
       setResults(r);setStep("dashboard");return;
     }
     const r=generateAll(data, apiData);setResults(r);
-    const entry={date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
-    setHistory(prev=>[...prev,entry]);
+    const entry={date:formatAuditDate(new Date()),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
     setStep("dashboard");
 
     // Save to localStorage as backup
@@ -5047,13 +5051,16 @@ export default function App(){
         try{
           const freshAudits=await sbLoadProjectAudits(project.id);
           if(freshAudits&&freshAudits.length>0){
-            const freshHistory=freshAudits.map(a=>({date:new Date(a.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),overall:a.overall_score,mentions:a.mention_rate,citations:a.citation_rate,sentimentAvg:a.sentiment_score,mentionsPerEngine:{gpt:a.mention_rate,gemini:a.mention_rate},citationsPerEngine:{gpt:a.citation_rate,gemini:a.citation_rate},sentimentPerEngine:{gpt:a.sentiment_score||50,gemini:a.sentiment_score||50},apiData:null})).reverse();
+            const freshHistory=freshAudits.map(a=>({date:formatAuditDate(a.created_at),overall:a.overall_score,mentions:a.mention_rate,citations:a.citation_rate,sentimentAvg:a.sentiment_score,mentionsPerEngine:{gpt:a.mention_rate,gemini:a.mention_rate},citationsPerEngine:{gpt:a.citation_rate,gemini:a.citation_rate},sentimentPerEngine:{gpt:a.sentiment_score||50,gemini:a.sentiment_score||50},apiData:null})).reverse();
             setHistory(freshHistory);
+          }else{
+            setHistory(prev=>[...prev,entry]);
           }
-        }catch(he){console.error('Failed to refresh history:',he);}
+        }catch(he){console.error('Failed to refresh history:',he);setHistory(prev=>[...prev,entry]);}
       }
     }catch(e){
       console.error('Failed to save to Supabase:',e);
+      setHistory(prev=>[...prev,entry]);
     }
 
     // Also save to old API + localStorage as fallback
