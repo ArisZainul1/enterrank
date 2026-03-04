@@ -1523,7 +1523,7 @@ function exportPDF(r){
 
   // ── INTENT PATHWAY — QUERY RESULTS ──
   doc.addPage();y=margin;
-  sectionHeader("Intent Pathway \u2014 Query Results");
+  sectionHeader("Query Results");
   const gptQueries=gptE.queries||[];
   const gemQueries=gemE.queries||[];
   const searchQueries=r.searchQueries||gptQueries.map(q=>q.query||q);
@@ -1832,8 +1832,8 @@ const NAV_ITEMS=[
   {group:"Analysis",items:[
     {id:"dashboard",label:"Dashboard",icon:"grid"},
     {id:"archetypes",label:"User Archetypes",icon:"users"},
-    {id:"sentiment",label:"Sentiment",icon:"heart"},
-    {id:"intent",label:"Intent Pathway",icon:"route"},
+    {id:"sentiment",label:"Sentiment Analysis",icon:"heart"},
+    {id:"intent",label:"Query Results",icon:"route"},
   ]},
   {group:"Strategy",items:[
     {id:"channels",label:"Target Channels",icon:"broadcast"},
@@ -3176,7 +3176,7 @@ function IntentPage({r,goTo}){
   return(<div>
     {/* Header */}
     <div style={{marginBottom:32}}>
-      <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Intent Pathway</h2>
+      <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Query Results</h2>
       <p style={{color:"#6b7280",fontSize:13,marginTop:4}}>Audit query results across ChatGPT and Gemini for {r.clientData.brand}</p>
     </div>
 
