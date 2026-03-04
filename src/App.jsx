@@ -683,6 +683,16 @@ Return JSON only:
     weaknesses: swGem.weaknesses || ["Analysis unavailable"]
   };
 
+  accumulated.engineData = { engines: [
+    {id:"chatgpt", ...gptData, queries:(gptData.queries||[]).slice(0,8)},
+    {id:"gemini", ...gemData, queries:(gemData.queries||[]).slice(0,8)}
+  ], painPoints: null };
+  accumulated.searchQueries = searchQueries || [];
+  accumulated.brandCrawlData = brandCrawl || null;
+  accumulated.compCrawlData = compCrawlsRaw || {};
+  accumulated.compVisibilityData = compScoresMap || {};
+  onProgress("Engine data ready — analyzing sentiment...", null, {...accumulated});
+
   // ── Step 5b: Sentiment Analysis ──
   onProgress("Analyzing brand sentiment across AI engines...",56);
   let sentimentData={brand:{gpt:50,gemini:50,avg:50,summary:"Sentiment analysis unavailable"},competitors:compNames.map(n=>({name:n,gpt:50,gemini:50,avg:50,summary:""}))};
