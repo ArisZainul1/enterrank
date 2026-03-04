@@ -2148,6 +2148,12 @@ function NewAuditPage({data,setData,onRun,history=[]}){
   const[generatingTopics,setGeneratingTopics]=useState(false);
   const[topicsAutoFilled,setTopicsAutoFilled]=useState(false);
   const crawlCacheRef = React.useRef({ url: null, result: null });
+  const getCachedCrawl = (url) => {
+    if (!url || !crawlCacheRef.current.url || !crawlCacheRef.current.result) return null;
+    const normalize = (u) => (u || "").replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/+$/, "").toLowerCase();
+    if (normalize(crawlCacheRef.current.url) === normalize(url)) return crawlCacheRef.current.result;
+    return null;
+  };
 
   React.useEffect(() => {
     const brand = (data.brand || "").trim();
@@ -2169,7 +2175,7 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     setGeneratingTopics(true);
     try{
       const compNamesStr=(competitorNames||[]).filter(n=>n&&n.trim().length>1).map(n=>n.trim()).join(", ");
-      let crawlSummary="";try{const curUrl=data.website||"";const cacheUrl=crawlCacheRef.current.url||"";const stripUrl=u=>u.replace(/^https?:\/\/(www\.)?/,"").replace(/\/$/,"");const urlsMatch=cacheUrl&&(cacheUrl===curUrl||curUrl.includes(stripUrl(cacheUrl))||cacheUrl.includes(stripUrl(curUrl)));if(urlsMatch&&crawlCacheRef.current.result){crawlSummary=summariseCrawl(crawlCacheRef.current.result);}else if(curUrl){const cr=await crawlWebsite(curUrl);if(cr){crawlCacheRef.current={url:curUrl,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
+      let crawlSummary="";try{const cached=getCachedCrawl(data.website||"");if(cached){crawlSummary=summariseCrawl(cached);}else if(data.website){const cr=await crawlWebsite(data.website);if(cr){crawlCacheRef.current={url:data.website,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
       const prompt=`You are generating search topics for an AI visibility audit of ${data.brand||"Brand"} in ${region||"Global"}.
 
 BRAND: ${data.brand||"Brand"}
@@ -2219,7 +2225,7 @@ Return JSON only:
     try{
       let crawlSummary="";
       const urlToCrawl=data.website&&data.website.trim().length>5?data.website:"";
-      if(urlToCrawl){try{const cr=await crawlWebsite(urlToCrawl);if(cr){crawlCacheRef.current={url:urlToCrawl,result:cr};crawlSummary=summariseCrawl(cr);}}catch(e){}}
+      if(urlToCrawl){try{const cached=getCachedCrawl(urlToCrawl);if(cached){crawlSummary=summariseCrawl(cached);}else{const cr=await crawlWebsite(urlToCrawl);if(cr){crawlCacheRef.current={url:urlToCrawl,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}}
       const prompt=`I need information about the company or brand called "${brandName.trim()}".\n\nThe brand operates in "${userRegion||"Global"}". Use this region to determine localised competitors.\n\n${crawlSummary?"BRAND WEBSITE CONTENT (read this to understand what the brand primarily sells):\n"+crawlSummary+"\n\n":""}Return JSON only:\n{\n  "website": "https://example.com",\n  "industry": "the primary industry (1-3 words, e.g. Telecommunications, SaaS, E-commerce)",\n  "competitors": [\n    {"name": "Competitor 1", "website": "https://competitor1.com"},\n    {"name": "Competitor 2", "website": "https://competitor2.com"},\n    {"name": "Competitor 3", "website": "https://competitor3.com"}\n  ]\n}\n\nRules:\n- Website must be the MAIN company website, not Wikipedia or social\n- List the top 3-4 direct competitors of ${brandName.trim()} specifically in the ${userRegion||"Global"} market. Competitors must actually operate and be available in ${userRegion||"that region"} — do not list globally known brands that have no presence in ${userRegion||"the brand's market"}\n- All output must be in English. Do not translate to local languages\n- If unsure about the brand, make your best guess based on the name\n- CRITICAL: Return the CONSUMER-FACING brand name, NOT the parent/holding company name. If the competitor website is yes.my, the brand is YES or YES 5G, NOT YTL Communications. If the website is unifi.com.my, the brand is Unifi, NOT Telekom Malaysia Berhad. Use the brand name as it appears on the website itself (logo, header, title tag). The domain name is a strong hint: yes.my = YES, celcomdigi.com = CelcomDigi. NEVER return a holding company, parent company, or corporate entity name. Return the name a regular consumer would search for.\n\nCRITICAL COMPETITOR MATCHING RULES:\n- Competitors must be in the SAME primary business category as the brand\n- Match the brand's CORE product: if the brand is primarily a MOBILE telecommunications provider, competitors must also be MOBILE telecommunications providers\n- Do NOT suggest broadband-only or fibre-only providers as competitors to a mobile telco\n- Do NOT suggest companies from adjacent but different categories (e.g. an ISP is NOT a competitor to a mobile carrier unless that ISP also offers mobile services)\n- Check: does this competitor offer the same PRIMARY product as the brand? If the brand sells mobile plans and the competitor only sells home internet, they are NOT competitors\n- For Malaysian telcos specifically: Maxis, U Mobile, YES 5G, and Digi are mobile competitors. Unifi is a broadband/fibre provider and is NOT a primary competitor to a mobile telco unless the audit brand also primarily sells broadband\n\nEXAMPLES:\n- CelcomDigi (mobile telco) competitors: Maxis, U Mobile, YES 5G — NOT Unifi, NOT TIME dotCom\n- Unifi (broadband ISP) competitors: TIME dotCom, Maxis Fibre, CelcomDigi Fibre — NOT U Mobile\n- The brand's WEBSITE CONTENT tells you what their primary business is. Read it carefully before suggesting competitors.`;
       const raw=await callGemini(prompt,"You are a business intelligence assistant. Return ONLY valid JSON, no markdown fences.");
       const result=safeJSON(raw);
@@ -2259,7 +2265,7 @@ Return JSON only:
     if(nw!==data.website||JSON.stringify(nc)!==JSON.stringify(data.competitors))setData(d=>({...d,website:nw,competitors:nc}));
     try{
       const compNamesStr=nc.filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
-      let crawlSummary="";try{const cacheUrl=crawlCacheRef.current.url||"";const stripUrl=u=>u.replace(/^https?:\/\/(www\.)?/,"").replace(/\/$/,"");const urlsMatch=cacheUrl&&(cacheUrl===nw||nw.includes(stripUrl(cacheUrl))||cacheUrl.includes(stripUrl(nw)));if(urlsMatch&&crawlCacheRef.current.result){crawlSummary=summariseCrawl(crawlCacheRef.current.result);}else if(nw){const cr=await crawlWebsite(nw);if(cr){crawlCacheRef.current={url:nw,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
+      let crawlSummary="";try{const cached=getCachedCrawl(nw);if(cached){crawlSummary=summariseCrawl(cached);}else if(nw){const cr=await crawlWebsite(nw);if(cr){crawlCacheRef.current={url:nw,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
       const prompt=`You are generating search topics for an AI visibility audit of ${data.brand||"Brand"} in ${data.region||"Global"}.
 
 BRAND: ${data.brand||"Brand"}
@@ -2307,7 +2313,7 @@ Return JSON only:
     try{
       const existing=data.topics.join("; ");
       const compNamesStr=(data.competitors||[]).filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
-      let crawlSummary="";try{const curUrl=data.website||"";const cacheUrl=crawlCacheRef.current.url||"";const stripUrl=u=>u.replace(/^https?:\/\/(www\.)?/,"").replace(/\/$/,"");const urlsMatch=cacheUrl&&(cacheUrl===curUrl||curUrl.includes(stripUrl(cacheUrl))||cacheUrl.includes(stripUrl(curUrl)));if(urlsMatch&&crawlCacheRef.current.result){crawlSummary=summariseCrawl(crawlCacheRef.current.result);}else if(curUrl){const cr=await crawlWebsite(curUrl);if(cr){crawlCacheRef.current={url:curUrl,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
+      let crawlSummary="";try{const cached=getCachedCrawl(data.website||"");if(cached){crawlSummary=summariseCrawl(cached);}else if(data.website){const cr=await crawlWebsite(data.website);if(cr){crawlCacheRef.current={url:data.website,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
       const prompt=`You are generating additional search topics for an AI visibility audit of ${data.brand||"Brand"} in ${data.region||"Global"}.
 
 BRAND: ${data.brand||"Brand"}
