@@ -4984,14 +4984,18 @@ export default function App(){
     <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",marginLeft:sideCollapsed?60:220,transition:"margin-left .2s ease"}}>
       <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto"}}>
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={runAuditProgressive} history={history}/>}
-        {step==="dashboard"&&results&&<DashboardPage r={results} history={history} goTo={setStep}/>}
-        {step==="archetypes"&&results&&<ArchetypesPage r={results} goTo={setStep} onUpdate={setResults}/>}
-        {step==="sentiment"&&results&&<SentimentPage r={results}/>}
-        {step==="intent"&&results&&<IntentPage r={results} goTo={setStep}/>}
-        {step==="playbook"&&results&&<PlaybookPage r={results} goTo={setStep} activeProject={activeProject}/>}
-        {step==="channels"&&results&&<ChannelsPage r={results}/>}
-        {step==="contenthub"&&results&&<ContentHubPage r={results} goTo={setStep} activeProject={activeProject} onUpdate={setResults}/>}
-        {step==="roadmap"&&results&&<RoadmapPage r={results} onUpdate={setResults}/>}
+        {step==="dashboard"&&!results&&auditInProgress&&<AuditLoadingInline progress={auditProgress} stage={auditStage}/>}
+        {step==="dashboard"&&results&&<DashboardPage r={results} history={history} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }}/>}
+        {step==="archetypes"&&results&&(sectionReady.archetypes||!auditInProgress)&&<ArchetypesPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} onUpdate={setResults}/>}
+        {step==="sentiment"&&results&&(sectionReady.sentiment||!auditInProgress)&&<SentimentPage r={results}/>}
+        {step==="intent"&&results&&(sectionReady.intent||!auditInProgress)&&<IntentPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }}/>}
+        {step==="playbook"&&results&&(sectionReady.playbook||!auditInProgress)&&<PlaybookPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject}/>}
+        {step==="channels"&&results&&(sectionReady.channels||!auditInProgress)&&<ChannelsPage r={results}/>}
+        {step==="contenthub"&&results&&(sectionReady.contenthub||!auditInProgress)&&<ContentHubPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject} onUpdate={setResults}/>}
+        {step==="roadmap"&&results&&(sectionReady.roadmap||!auditInProgress)&&<RoadmapPage r={results} onUpdate={setResults}/>}
+        {step!=="input"&&step!=="dashboard"&&auditInProgress&&!(sectionReady[step])&&results&&(
+          <AuditLoadingInline progress={auditProgress} stage={auditStage}/>
+        )}
       </div>
     </div>
   </div>);
