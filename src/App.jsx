@@ -1383,6 +1383,48 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
   const weakCats=(mergedPainPoints||[]).filter(p=>p.severity==="warning").map(p=>p.label).join(", ");
   const channelGaps=(chData.channels||[]).filter(c=>c.status==="Not Present").map(c=>c.channel).join(", ");
 
+  // Specific query gaps for roadmap
+  const absentOnBoth=searchQueries.filter((_q,i)=>{
+    const gptStatus=(gptVisibility[brand]?.queries||[])[i]?.status||"Absent";
+    const gemStatus=(gemVisibility[brand]?.queries||[])[i]?.status||"Absent";
+    return gptStatus==="Absent"&&gemStatus==="Absent";
+  }).map(q=>typeof q==="string"?q:q.query).slice(0,5);
+
+  const absentOnOne=searchQueries.filter((_q,i)=>{
+    const gptStatus=(gptVisibility[brand]?.queries||[])[i]?.status||"Absent";
+    const gemStatus=(gemVisibility[brand]?.queries||[])[i]?.status||"Absent";
+    return(gptStatus==="Absent")!==(gemStatus==="Absent");
+  }).map(q=>typeof q==="string"?q:q.query).slice(0,3);
+
+  // Missing schema from crawl
+  const detectedSchemas=brandCrawl?.mainPage?.schemas||[];
+  const missingSchemaList=[];
+  if(!detectedSchemas.some(s=>s==="FAQPage"||s==="Question"))missingSchemaList.push("FAQ schema");
+  if(!detectedSchemas.some(s=>["Article","NewsArticle","BlogPosting","TechArticle"].includes(s)))missingSchemaList.push("Article schema");
+  if(!detectedSchemas.some(s=>["Organization","LocalBusiness","Corporation"].includes(s)))missingSchemaList.push("Organization schema");
+  if(!detectedSchemas.some(s=>s==="Product"))missingSchemaList.push("Product schema");
+  if(!detectedSchemas.some(s=>s==="HowTo"))missingSchemaList.push("HowTo schema");
+  if(!detectedSchemas.some(s=>s==="BreadcrumbList"))missingSchemaList.push("Breadcrumb schema");
+  if(!(brandCrawl?.mainPage?.hasSpeakable))missingSchemaList.push("Speakable schema");
+
+  // Competitor advantages
+  const compAdvantages=(compData.competitors||[]).slice(0,3).map(c=>{
+    const dominated=(c.painPoints||[]).filter((cp,j)=>{
+      const ours=mergedPainPoints[j]?.score||0;
+      return cp.score-ours>10;
+    }).map(cp=>cp.label.split("/")[0].trim());
+    return dominated.length>0?`${c.name} beats you on: ${dominated.join(", ")}`:null;
+  }).filter(Boolean);
+
+  // Missing EEAT signals from crawl
+  const missingEEAT=[];
+  if(!brandCrawl?.mainPage?.hasAuthorInfo)missingEEAT.push("Author attribution");
+  if(!brandCrawl?.mainPage?.hasTrustSignals)missingEEAT.push("Trust signals (awards/certs)");
+  if(!brandCrawl?.mainPage?.hasTestimonials)missingEEAT.push("Testimonials/social proof");
+  if(!brandCrawl?.subPages?.about)missingEEAT.push("About page");
+  if(!brandCrawl?.subPages?.blog)missingEEAT.push("Blog/content hub");
+  if(!brandCrawl?.subPages?.faq)missingEEAT.push("FAQ page");
+
   const roadmapPrompt=`Create a 90-day AEO roadmap for "${brand}" in ${industry}, specifically for improving visibility in ${region}.
 
 AUDIT FINDINGS TO ADDRESS:
@@ -1393,6 +1435,25 @@ AUDIT FINDINGS TO ADDRESS:
 - Missing channels: ${channelGaps||"none"}
 - Website issues from crawl: ${crawlSummary.slice(0,500)}
 - Top competitor advantages: ${(compData.competitors||[]).slice(0,3).map(c=>`${c.name} (${c.score}%): ${c.topStrength||"N/A"}`).join("; ")}
+
+SPECIFIC QUERY GAPS (content MUST target these):
+- Absent on BOTH engines: ${absentOnBoth.length>0?absentOnBoth.map(q=>`"${q}"`).join(", "):"None — good coverage"}
+- Absent on one engine: ${absentOnOne.length>0?absentOnOne.map(q=>`"${q}"`).join(", "):"None"}
+
+MISSING SCHEMA MARKUP (technical tasks):
+${missingSchemaList.length>0?missingSchemaList.map(s=>"- "+s).join("\n"):"- All key schemas detected"}
+
+MISSING E-E-A-T SIGNALS:
+${missingEEAT.length>0?missingEEAT.map(s=>"- "+s).join("\n"):"- All key EEAT signals present"}
+
+COMPETITOR ADVANTAGES TO COUNTER:
+${compAdvantages.length>0?compAdvantages.map(a=>"- "+a).join("\n"):"- No major competitor advantages detected"}
+
+CRITICAL: Every task in the roadmap MUST reference a specific finding from above. Format each task as "[Finding] → [Action]". For example:
+- "Missing FAQ schema → Implement FAQPage JSON-LD on top 5 service pages"
+- "Absent for 'best prepaid plans in Malaysia' → Create comparison guide targeting this query"
+- "Maxis beats you on Content Authority → Publish 2 long-form guides per week to close content gap"
+Do NOT include generic tasks like "optimize website" or "improve SEO" without tying them to a specific finding.
 
 Return JSON:
 {
