@@ -260,6 +260,7 @@ function summariseCrawl(crawlResult){
 }
 
 function scoreCrawlData(crawl){
+  console.log("CRAWL_DEBUG:",JSON.stringify({hasInput:!!crawl,topKeys:crawl?Object.keys(crawl).slice(0,10):[],hasMainPage:!!crawl?.mainPage,mainPageKeys:crawl?.mainPage?Object.keys(crawl.mainPage).slice(0,15):[],schemas:crawl?.mainPage?.schemas||crawl?.schemas||"NONE",hasFAQMarkup:crawl?.mainPage?.hasFAQMarkup??crawl?.hasFAQMarkup??"MISSING",hasArticleMarkup:crawl?.mainPage?.hasArticleMarkup??crawl?.hasArticleMarkup??"MISSING",wordCount:crawl?.mainPage?.wordCount??crawl?.wordCount??"MISSING"}));
   if(!crawl)return null;
   // Handle multiple data shapes
   let mp,sp;
@@ -1034,6 +1035,7 @@ Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentenc
   }})(),
   // ── Pain Points — scored from REAL crawl data ──
   (async()=>{try{
+    console.log("BRAND_CRAWL_DEBUG:",JSON.stringify({hasBrandCrawl:!!brandCrawl,brandCrawlKeys:brandCrawl?Object.keys(brandCrawl).slice(0,10):[]}));
     const scored=scoreCrawlData(brandCrawl);
     if(scored&&scored.categories){
       mergedPainPoints=scored.categories.map(c=>({label:c.label,score:c.score,severity:c.score<30?"critical":c.score<60?"warning":"good",evidence:c.evidence}));
