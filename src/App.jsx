@@ -2778,14 +2778,119 @@ function DashboardPage({r,history,goTo}){
               {r.competitors.filter(c=>c.name.toLowerCase()!==r.clientData.brand.toLowerCase()).map((c,i)=>{
                 const compScore=Math.round(((c.mentionRate||0)+(c.citationRate||0))/2);
                 const diff=compScore-Math.round((avgMentions+avgCitations)/2);
+                const isOpen=expandedComp===i;
+                const compWebsite=(r.clientData.competitors||[]).find(cc=>cc.name===c.name)?.website||"";
+                const compColor=["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5];
                 return(
-                  <tr key={i} style={{borderBottom:"1px solid "+C.borderSoft}}>
-                    <td style={{padding:"10px 14px",color:C.text}}><div style={{display:"flex",alignItems:"center",gap:8}}><BrandLogo name={c.name} website={(r.clientData.competitors||[]).find(cc=>cc.name===c.name)?.website||""} size={22} color={["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]}/>{c.name}</div></td>
-                    <td style={{padding:"10px 14px",textAlign:"center",fontWeight:500}}>{compScore}%</td>
-                    <td style={{padding:"10px 14px",textAlign:"center"}}>{c.mentionRate||0}%</td>
-                    <td style={{padding:"10px 14px",textAlign:"center"}}>{c.citationRate||0}%</td>
-                    <td style={{padding:"10px 14px",textAlign:"center"}}><span style={{fontSize:11,fontWeight:500,padding:"2px 8px",borderRadius:100,color:diff>0?"#991b1b":"#166534",background:diff>0?"#fee2e2":"#dcfce7"}}>{diff>0?"+":""}{diff}%</span></td>
-                  </tr>
+                  <React.Fragment key={i}>
+                    <tr onClick={()=>setExpandedComp(isOpen?null:i)} style={{borderBottom:isOpen?"none":"1px solid "+C.borderSoft,cursor:"pointer",transition:"background .15s",background:isOpen?C.bg+"80":"transparent"}} onMouseEnter={e=>{if(!isOpen)e.currentTarget.style.background=C.bg+"40"}} onMouseLeave={e=>{if(!isOpen)e.currentTarget.style.background=isOpen?C.bg+"80":"transparent"}}>
+                      <td style={{padding:"10px 14px",color:C.text}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <BrandLogo name={c.name} website={compWebsite} size={22} color={compColor}/>
+                          <span>{c.name}</span>
+                          <span style={{fontSize:10,color:C.muted,marginLeft:4}}>{isOpen?"\u25B2":"\u25BC"}</span>
+                        </div>
+                      </td>
+                      <td style={{padding:"10px 14px",textAlign:"center",fontWeight:500}}>{compScore}%</td>
+                      <td style={{padding:"10px 14px",textAlign:"center"}}>{c.mentionRate||0}%</td>
+                      <td style={{padding:"10px 14px",textAlign:"center"}}>{c.citationRate||0}%</td>
+                      <td style={{padding:"10px 14px",textAlign:"center"}}>
+                        <span style={{fontSize:11,fontWeight:500,padding:"2px 8px",borderRadius:100,color:diff>0?"#991b1b":"#166534",background:diff>0?"#fee2e2":"#dcfce7"}}>{diff>0?"+":""}{diff}%</span>
+                      </td>
+                    </tr>
+                    {isOpen&&(
+                      <tr><td colSpan={5} style={{padding:0,borderBottom:"1px solid "+C.borderSoft}}>
+                        <div style={{padding:"16px 20px",background:C.bg+"60"}}>
+                          {/* Pain point comparison bars */}
+                          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>
+                            {(c.painPoints||[]).map((cp,j)=>{
+                              const yours=r.painPoints[j]?.score||0;
+                              const theirs=cp.score||0;
+                              const catDiff=theirs-yours;
+                              return(
+                                <div key={j} style={{padding:"10px 12px",background:"#fff",borderRadius:8,border:"1px solid "+C.borderSoft}}>
+                                  <div style={{fontSize:10,color:C.muted,marginBottom:6}}>{cp.label.split("/")[0].trim()}</div>
+                                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                                    <span style={{fontSize:11,color:C.accent,fontWeight:500}}>You: {yours}%</span>
+                                    <span style={{fontSize:11,fontWeight:500,color:catDiff>0?C.red:catDiff<0?C.green:C.text}}>{c.name.split(" ")[0]}: {theirs}%</span>
+                                  </div>
+                                  <div><Bar value={yours} color={C.accent} h={3}/><div style={{marginTop:2}}><Bar value={theirs} color={catDiff>0?C.red:"#94a3b8"} h={3}/></div></div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Crawl signal comparison table */}
+                          {(()=>{
+                            const brandCrawlData=r.brandCrawl?.mainPage||r.brandCrawl||null;
+                            const compCrawlData=r.compCrawlData?.[c.name]||null;
+                            if(!brandCrawlData&&!compCrawlData) return <div style={{fontSize:11,color:C.muted,textAlign:"center",padding:8}}>No crawl data available for comparison</div>;
+
+                            const crawlSignals=[
+                              {label:"Schema Markup (JSON-LD)",check:d=>d?.hasFAQSchema||d?.hasArticleMarkup||(d?.schemas?.length||0)>0||(d?.aeoSignals?.schemaMarkup)},
+                              {label:"FAQ Schema",check:d=>d?.hasFAQMarkup||d?.hasFAQSchema||d?.aeoSignals?.faqSchema},
+                              {label:"Article / Blog Schema",check:d=>d?.hasArticleMarkup||d?.hasArticleSchema||d?.aeoSignals?.articleSchema},
+                              {label:"Organization Schema",check:d=>(d?.schemas||[]).some(s=>["Organization","LocalBusiness","Corporation"].includes(s))||d?.hasOrgSchema||d?.aeoSignals?.orgSchema},
+                              {label:"Author Attribution (E-E-A-T)",check:d=>d?.hasAuthorInfo||d?.aeoSignals?.authorInfo},
+                              {label:"Trust Signals",check:d=>d?.hasTrustSignals||d?.aeoSignals?.trustSignals},
+                              {label:"Testimonials / Reviews",check:d=>d?.hasTestimonials||d?.aeoSignals?.testimonials},
+                              {label:"Video Content",check:d=>d?.hasVideo||d?.aeoSignals?.video},
+                              {label:"Blog / Content Hub",check:d=>d?.aeoSignals?.hasBlog||(d?.subPages?.blog!=null)||(typeof d==="object"&&d?.url&&d?.url.includes("blog"))},
+                              {label:"Breadcrumb Navigation",check:d=>d?.hasBreadcrumb||d?.aeoSignals?.breadcrumbs||(d?.schemas||[]).includes("BreadcrumbList")},
+                              {label:"Open Graph Tags",check:d=>d?.hasOpenGraph||d?.aeoSignals?.openGraph},
+                              {label:"Canonical URL",check:d=>d?.hasCanonical||d?.aeoSignals?.canonical},
+                              {label:"Content Depth (1000+ words)",check:d=>(d?.wordCount||d?.totalWordCount||d?.homepageWordCount||0)>=1000},
+                              {label:"Internal Links (20+)",check:d=>(d?.internalLinks||0)>=20},
+                              {label:"Proper Heading Hierarchy",check:d=>(d?.headings?.h1s?.length>0||d?.h1Count>0)&&(d?.headings?.h2s?.length>0||d?.h2Count>0)}
+                            ];
+
+                            const brandCount=brandCrawlData?crawlSignals.filter(s=>s.check(brandCrawlData)).length:0;
+                            const compCount=compCrawlData?crawlSignals.filter(s=>s.check(compCrawlData)).length:0;
+
+                            return(
+                              <div>
+                                <div style={{fontSize:12,fontWeight:500,color:C.text,marginBottom:8}}>GEO Signal Comparison</div>
+                                <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px",gap:0,fontSize:11,background:"#fff",borderRadius:8,border:"1px solid "+C.borderSoft,overflow:"hidden"}}>
+                                  {/* Header */}
+                                  <div style={{padding:"8px 12px",fontWeight:500,color:C.muted,borderBottom:"1px solid "+C.borderSoft,background:C.bg}}>Signal</div>
+                                  <div style={{padding:"8px 6px",fontWeight:500,color:C.accent,borderBottom:"1px solid "+C.borderSoft,background:C.bg,textAlign:"center"}}>{r.clientData.brand}</div>
+                                  <div style={{padding:"8px 6px",fontWeight:500,color:compColor,borderBottom:"1px solid "+C.borderSoft,background:C.bg,textAlign:"center"}}>{c.name}</div>
+                                  {/* Rows */}
+                                  {crawlSignals.map((sig,si)=>{
+                                    const brandHas=brandCrawlData?sig.check(brandCrawlData):false;
+                                    const compHas=compCrawlData?sig.check(compCrawlData):false;
+                                    return(
+                                      <React.Fragment key={si}>
+                                        <div style={{padding:"6px 12px",borderBottom:si<crawlSignals.length-1?"1px solid "+C.borderSoft:"none",color:C.sub}}>{sig.label}</div>
+                                        <div style={{padding:"6px 0",textAlign:"center",borderBottom:si<crawlSignals.length-1?"1px solid "+C.borderSoft:"none",color:brandHas?C.green:C.red,fontWeight:500}}>{brandHas?"Yes":"No"}</div>
+                                        <div style={{padding:"6px 0",textAlign:"center",borderBottom:si<crawlSignals.length-1?"1px solid "+C.borderSoft:"none",color:compHas?C.green:C.red,fontWeight:500}}>{compHas?"Yes":"No"}</div>
+                                      </React.Fragment>
+                                    );
+                                  })}
+                                </div>
+                                <div style={{display:"flex",justifyContent:"space-between",marginTop:8,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid "+C.borderSoft,fontSize:11}}>
+                                  <span style={{color:C.sub}}><span style={{fontWeight:500,color:C.accent}}>{r.clientData.brand}</span>: {brandCount}/{crawlSignals.length} signals</span>
+                                  <span style={{color:C.sub}}><span style={{fontWeight:500,color:compColor}}>{c.name}</span>: {compCount}/{crawlSignals.length} signals</span>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Advantages / insights */}
+                          {c.advantages&&c.advantages.length>0&&(
+                            <div style={{marginTop:12}}>
+                              {c.advantages.slice(0,4).map((adv,ai)=>(
+                                <div key={ai} style={{padding:"8px 12px",background:adv.insight?.advantage==="them"?"#fef2f2":"#f0fdf4",borderRadius:8,borderLeft:"3px solid "+(adv.insight?.advantage==="them"?C.red:C.green),marginBottom:4}}>
+                                  <div style={{fontSize:11,fontWeight:500,color:C.text,marginBottom:1}}>{(adv.cat||adv.category||"").split("/")[0].trim()} <span style={{color:C.muted,fontWeight:400}}>-- You: {adv.yourScore}% vs {adv.theirScore}%</span></div>
+                                  <div style={{fontSize:11,color:C.sub,lineHeight:1.5}}>{adv.insight?.text||""}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </td></tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
