@@ -848,7 +848,7 @@ Return JSON only:
   accumulated.brandCrawlData = brandCrawl || null;
   accumulated.compCrawlData = compCrawlsRaw || {};
   accumulated.compVisibilityData = compScoresMap || {};
-  onProgress("Engine data ready — analyzing sentiment...", null, {...accumulated});
+  try{onProgress("Engine data ready — analyzing sentiment...", null, {...accumulated});}catch(emitErr){console.error("Emission 1 failed:",emitErr);}
 
   // ── Parallel Group: Sentiment + Signals + Source Channels + Competitors + Pain Points ──
   onProgress("Analyzing sentiment, competitors, and categories...", 55);
@@ -1075,6 +1075,31 @@ Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentenc
   }})()
   ]);
 
+  // Fallback: if AI-based signal extraction produced empty results, derive from response text
+  if((!sentimentSignals.positive||sentimentSignals.positive.length===0)&&(!sentimentSignals.negative||sentimentSignals.negative.length===0)&&(!sentimentSignals.quotes||sentimentSignals.quotes.length===0)){
+    try{
+      const fbGpt=analyzeSentimentFromResponses(gptResponses,brand);
+      const fbGem=analyzeSentimentFromResponses(gemResponses,brand);
+      const allPos=[...new Set([...fbGpt.posWords,...fbGem.posWords])];
+      const allNeg=[...new Set([...fbGpt.negWords,...fbGem.negWords])];
+      if(allPos.length>0)sentimentSignals.positive=allPos.map(w=>`AI engines describe ${brand} as "${w}"`).slice(0,5);
+      if(allNeg.length>0)sentimentSignals.negative=allNeg.map(w=>`AI engines note "${w}" regarding ${brand}`).slice(0,5);
+      // Extract basic quotes from raw responses
+      const brandEsc=brand.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      const brandRe=new RegExp('\\b'+brandEsc+'\\b','i');
+      const basicQuotes=[];
+      [...(gptResponses||[]).slice(0,8),...(gemResponses||[]).slice(0,8)].forEach(resp=>{
+        const text=typeof resp==='string'?resp:resp?.response||'';
+        const sentences=text.split(/[.!?]+/).filter(s=>brandRe.test(s)&&s.trim().length>20&&s.trim().length<200);
+        if(sentences.length>0){
+          const isGpt=(gptResponses||[]).includes(resp);
+          basicQuotes.push({text:sentences[0].trim(),engine:isGpt?'ChatGPT':'Gemini',sentiment:allPos.some(w=>sentences[0].toLowerCase().includes(w))?'positive':allNeg.some(w=>sentences[0].toLowerCase().includes(w))?'negative':'neutral'});
+        }
+      });
+      if(basicQuotes.length>0)sentimentSignals.quotes=basicQuotes.slice(0,5);
+    }catch(fbErr){console.error("Sentiment signal fallback failed:",fbErr);}
+  }
+
   // Emit combined partial data after parallel group completes
   accumulated.sentimentData = sentimentData || null;
   accumulated.sentimentSignals = sentimentSignals || null;
@@ -1088,7 +1113,7 @@ Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentenc
   accumulated.searchQueries = searchQueries || [];
   accumulated.brandCrawlData = brandCrawl || null;
   accumulated.compCrawlData = compCrawlsRaw || {};
-  onProgress("Dashboard ready — loading remaining sections...", 68, {...accumulated});
+  try{onProgress("Dashboard ready — loading remaining sections...", 68, {...accumulated});}catch(emitErr){console.error("Emission 2 failed:",emitErr);}
 
   // ── Parallel Group: Archetypes + Intent + Channels ──
   let archData={stakeholders:[]};
@@ -1358,7 +1383,7 @@ IMPORTANT: Only mark Not Present if you are CERTAIN after searching. If you find
   accumulated.archData = (archData && archData.stakeholders) ? archData.stakeholders : [];
   accumulated.intentData = intentData && intentData.length > 0 ? intentData : null;
   accumulated.channelData = chData ? { channels: (chData.channels||[]).slice(0,12) } : { channels: [] };
-  onProgress("Building final recommendations...", 85, {...accumulated});
+  try{onProgress("Building final recommendations...", 85, {...accumulated});}catch(emitErr){console.error("Emission 3 failed:",emitErr);}
 
   // ── Parallel Group: Content + Roadmap ──
   let contentData={contentTypes:[]};
@@ -1545,8 +1570,8 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
 
   accumulated.contentGridData = (contentData && contentData.contentTypes) ? contentData.contentTypes.slice(0,10) : [];
   accumulated.roadmapData = roadData || null;
-  accumulated.guidelineData = null;
-  onProgress("All sections ready...", null, {...accumulated});
+  accumulated.guidelineData = true;
+  try{onProgress("All sections ready...", null, {...accumulated});}catch(emitErr){console.error("Emission 4 failed:",emitErr);}
 
   return {
     engineData:{
