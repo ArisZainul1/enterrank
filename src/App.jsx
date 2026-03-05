@@ -2761,13 +2761,13 @@ function DashboardPage({r,history,goTo}){
         {[
           {label:"Mention Rate",value:avgMentions+"%",prev:prev?.mentions,color:C.accent},
           {label:"Citation Rate",value:avgCitations+"%",prev:prev?.citations,color:"#8b5cf6"},
-          {label:"Sentiment",value:sentimentReady?avgSentiment+"/100":"...",prev:sentimentReady?prevSentiment:null,color:sentimentReady?(avgSentiment>=55?C.green:avgSentiment>=45?C.amber:C.red):C.muted},
+          {label:"Sentiment Score",value:sentimentReady?(avgSentiment>=55?"Positive":avgSentiment>=45?"Neutral":"Negative"):"...",prev:null,color:sentimentReady?(avgSentiment>=55?C.green:avgSentiment>=45?C.amber:C.red):C.muted},
           {label:"Best Engine",value:bestEngine.name,sub:bestEngine.score+"%",color:bestEngine.name==="ChatGPT"?"#10A37F":"#4285F4"}
         ].map((kpi,i)=>(
-          <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 18px"}}>
+          <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 18px",textAlign:"center"}}>
             <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:8}}>{kpi.label}</div>
-            <div style={{display:"flex",alignItems:"baseline",gap:6}}>
-              <span style={{fontSize:22,fontWeight:500,fontFamily:"'Outfit'",color:kpi.color}}>{kpi.value}</span>
+            <div style={{display:"flex",alignItems:"baseline",gap:6,justifyContent:"center"}}>
+              <span style={{fontSize:kpi.label==="Sentiment Score"?18:22,fontWeight:500,fontFamily:"'Outfit'",color:kpi.color}}>{kpi.value}</span>
               {kpi.prev!=null&&kpi.label!=="Best Engine"&&delta(parseInt(kpi.value),kpi.prev)}
               {kpi.sub&&<span style={{fontSize:12,color:C.muted}}>{kpi.sub}</span>}
             </div>
@@ -2776,15 +2776,15 @@ function DashboardPage({r,history,goTo}){
       </div>
 
       {/* Engine comparison — compact inline */}
-      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 20px",display:"flex",gap:16,alignItems:"center"}}>
+      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 20px",display:"flex",gap:16,alignItems:"center",justifyContent:"center"}}>
         {r.engines.map((e,i)=>(
           <div key={i} style={{flex:1,display:"flex",alignItems:"center",gap:12}}>
             <div style={{width:36,height:36,borderRadius:10,background:(e.name==="ChatGPT"?"#10A37F":"#4285F4")+"10",display:"flex",alignItems:"center",justifyContent:"center"}}>
               {e.name==="ChatGPT"?<ChatGPTLogo size={18}/>:<GeminiLogo size={18}/>}
             </div>
-            <div style={{flex:1}}>
+            <div style={{flex:1,textAlign:"center"}}>
               <div style={{fontSize:12,fontWeight:500,color:C.text,marginBottom:2}}>{e.name}</div>
-              <div style={{display:"flex",gap:12,fontSize:11,color:C.sub}}>
+              <div style={{display:"flex",gap:12,fontSize:11,color:C.sub,justifyContent:"center"}}>
                 <span>Score: <span style={{fontWeight:500,color:C.text}}>{e.score}%</span></span>
                 <span>Mentions: <span style={{fontWeight:500,color:C.text}}>{e.mentionRate}%</span></span>
                 <span>Citations: <span style={{fontWeight:500,color:C.text}}>{e.citationRate}%</span></span>
