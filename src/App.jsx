@@ -21,7 +21,7 @@ function BrandLogo({name,website,size=22,color}){
 function TagInput({label,tags,setTags,placeholder}){const[input,setInput]=useState("");const add=()=>{const v=input.trim();if(v&&!tags.includes(v)){setTags([...tags,v]);setInput("");}};return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label}</label><div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,minHeight:40,alignItems:"center"}}>{tags.map((tag,i)=>(<span key={i} style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",background:`${C.accent}15`,color:C.accent,borderRadius:100,fontSize:12,fontWeight:500}}>{tag}<span onClick={()=>setTags(tags.filter((_,j)=>j!==i))} style={{cursor:"pointer",opacity:.6,fontSize:14}}>×</span></span>))}<input value={input} onChange={e=>setInput(e.target.value)} placeholder={tags.length===0?placeholder:""} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}} style={{border:"none",background:"transparent",outline:"none",fontSize:13,color:C.text,flex:1,minWidth:80,fontFamily:"inherit"}}/></div><span style={{fontSize:10,color:C.muted}}>Press Enter to add</span></div>);}
 function normalizeUrl(url){if(!url||typeof url!=="string")return "";url=url.trim();if(!url)return "";if(url.startsWith("https://"))return url;if(url.startsWith("http://"))return url.replace("http://","https://");return "https://"+url;}
 const formatAuditDate=(d)=>{const date=d instanceof Date?d:new Date(d);return date.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});};
-function Field({label,value,onChange,placeholder,onBlur:onBlurCb}){return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label}</label><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,color:C.text,fontSize:14,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>{e.target.style.borderColor=C.border;if(onBlurCb)onBlurCb(e);}}/></div>);}
+function Field({label,value,onChange,placeholder,onBlur:onBlurCb}){return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label.endsWith(" *")?<>{label.slice(0,-2)}<span style={{color:C.red}}> *</span></>:label}</label><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,color:C.text,fontSize:14,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>{e.target.style.borderColor=C.border;if(onBlurCb)onBlurCb(e);}}/></div>);}
 function InfoTip({text}){const[show,setShow]=useState(false);return(<span style={{position:"relative",display:"inline-flex",marginLeft:4,cursor:"help"}} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}><span style={{width:14,height:14,borderRadius:"50%",background:C.bg,border:`1px solid ${C.border}`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.muted,fontWeight:600}}>?</span>{show&&<div style={{position:"absolute",bottom:"calc(100% + 6px)",left:"50%",transform:"translateX(-50%)",width:240,padding:"10px 12px",background:C.text,color:"#fff",borderRadius:8,fontSize:11,lineHeight:1.5,zIndex:999,boxShadow:"0 8px 24px rgba(0,0,0,.2)",pointerEvents:"none"}}><div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%) rotate(45deg)",width:8,height:8,background:C.text}}/>{text}</div>}</span>);}
 function SectionNote({text}){return <div style={{padding:"10px 14px",background:`${C.accent}04`,border:`1px solid ${C.accent}10`,borderRadius:C.rs,marginBottom:16,display:"flex",gap:8,alignItems:"flex-start"}}><span style={{fontSize:12,color:C.sub,lineHeight:1.6}}>{text}</span></div>;}
 function NavBtn({onClick,label}){return <div style={{display:"flex",justifyContent:"flex-end",marginTop:20}}><button onClick={onClick} style={{padding:"10px 22px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>{label}</button></div>;}
@@ -2298,6 +2298,7 @@ function NewAuditPage({data,setData,onRun,history=[]}){
   const topicsOk=data.topics.length>=3;
   const[autoFilling,setAutoFilling]=useState(false);
   const[autoFilled,setAutoFilled]=useState(false);
+  const fieldsLocked=!autoFilled&&!(data.industry&&data.industry.length>2)&&!(data.website&&data.website.length>5);
   const[generatingTopics,setGeneratingTopics]=useState(false);
   const[topicsAutoFilled,setTopicsAutoFilled]=useState(false);
   const crawlCacheRef = React.useRef({ url: null, result: null });
@@ -2628,10 +2629,14 @@ Return JSON only:
       </div>
     )}
     <Card><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-      <Field label="Brand Name" value={data.brand} onChange={v=>{setData({...data,brand:v});if(autoFilled)setAutoFilled(false);if(topicsAutoFilled){setTopicsAutoFilled(false);setData(d=>({...d,topics:[]}));}}} placeholder="Acme Corp"/>
-      <Field label="Region" value={data.region} onChange={v=>setData({...data,region:v})} placeholder="e.g. Malaysia"/>
-      <div className={autoFilled?"field-autofilled":""}><Field label="Industry" value={data.industry} onChange={v=>setData({...data,industry:v})} placeholder="e.g. Technology"/></div>
-      <div className={autoFilled?"field-autofilled":""}><Field label="Website" value={data.website} onChange={v=>setData({...data,website:v})} placeholder="acme.com"/></div>
+      <Field label="Brand Name *" value={data.brand} onChange={v=>{setData({...data,brand:v});if(autoFilled)setAutoFilled(false);if(topicsAutoFilled){setTopicsAutoFilled(false);setData(d=>({...d,topics:[]}));}}} placeholder="Acme Corp"/>
+      <Field label="Region *" value={data.region} onChange={v=>setData({...data,region:v})} placeholder="e.g. Malaysia"/>
+      <div style={{opacity:fieldsLocked?0.45:1,pointerEvents:fieldsLocked?"none":"auto",transition:"opacity .3s ease"}}>
+        <Field label="Industry" value={data.industry} onChange={v=>setData({...data,industry:v})} placeholder={fieldsLocked?"Auto-detected from brand":"e.g. Technology"}/>
+      </div>
+      <div style={{opacity:fieldsLocked?0.45:1,pointerEvents:fieldsLocked?"none":"auto",transition:"opacity .3s ease"}}>
+        <Field label="Website" value={data.website} onChange={v=>setData({...data,website:v})} placeholder={fieldsLocked?"Auto-detected from brand":"acme.com"}/>
+      </div>
     </div>
     {autoFilling&&(
       <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.accent,marginTop:12}}>
@@ -2645,22 +2650,22 @@ Return JSON only:
         Generating search topics...
       </div>
     )}
-      <div style={{marginTop:16}}>
+      <div style={{marginTop:16,opacity:fieldsLocked?0.45:1,pointerEvents:fieldsLocked?"none":"auto",transition:"opacity .3s ease"}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:6}}>
           <label style={{fontSize:12,fontWeight:500,color:C.sub}}>Competitor Name</label>
           <label style={{fontSize:12,fontWeight:500,color:C.sub}}>Website</label>
         </div>
-        {(data.competitors||[]).map((comp,i)=>(<div key={i} className={autoFilled?"field-autofilled":""} style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:8}}>
-          <input value={comp.name} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],name:e.target.value};setData({...data,competitors:c});}} placeholder={`Competitor ${i+1}`} style={{padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
+        {(data.competitors||[]).map((comp,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:8}}>
+          <input value={comp.name} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],name:e.target.value};setData({...data,competitors:c});}} placeholder={fieldsLocked?"Auto-detected":`Competitor ${i+1}`} style={{padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <input value={comp.website} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],website:e.target.value};setData({...data,competitors:c});}} placeholder="https://competitor.com" style={{flex:1,padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
+            <input value={comp.website} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],website:e.target.value};setData({...data,competitors:c});}} placeholder={fieldsLocked?"Auto-detected":"competitor.com"} style={{flex:1,padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
             <span onClick={()=>{const c=data.competitors.filter((_,j)=>j!==i);setData({...data,competitors:c});}} style={{cursor:"pointer",color:C.muted,fontSize:16,opacity:0.5,flexShrink:0,lineHeight:1}}>×</span>
           </div>
         </div>))}
         {(data.competitors||[]).length<8&&<button onClick={()=>setData({...data,competitors:[...(data.competitors||[]),{name:"",website:""}]})} style={{padding:"6px 14px",background:"none",border:`1px dashed ${C.border}`,borderRadius:C.rs,fontSize:12,color:C.muted,cursor:"pointer",fontFamily:"inherit"}}>+ Add competitor</button>}
       </div>
     <div style={{marginTop:20,paddingTop:18,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div style={{display:"flex",gap:12,alignItems:"center"}}><span style={{fontSize:11,color:C.muted}}>Engines:</span><ChatGPTLogo size={18}/><GeminiLogo size={18}/></div>
+      <div style={{display:"flex",gap:12,alignItems:"center",opacity:fieldsLocked?0.45:1,transition:"opacity .3s ease"}}><span style={{fontSize:11,color:C.muted}}>Engines:</span><ChatGPTLogo size={18}/><GeminiLogo size={18}/></div>
       <button onClick={generateTopics} disabled={!inputOk||genTopics} style={{padding:"10px 24px",background:inputOk&&!genTopics?C.accent:"#dde1e7",color:inputOk&&!genTopics?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:inputOk&&!genTopics?"pointer":"not-allowed",fontFamily:"'Outfit'"}}>{genTopics?"Generating Topics...":"Generate Topics →"}</button>
     </div>
     {error&&<div style={{marginTop:12,padding:"10px 16px",background:`${C.red}08`,border:`1px solid ${C.red}20`,borderRadius:8,fontSize:12,color:C.red}}>{error}</div>}
