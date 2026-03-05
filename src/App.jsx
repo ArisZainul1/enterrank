@@ -2835,8 +2835,8 @@ function DashboardPage({r,history,goTo}){
             {["Structured Data","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"].map((label,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
                 <span style={{fontSize:11,color:C.muted,minWidth:100}}>{label}</span>
-                <div style={{flex:1,height:6,borderRadius:3,background:C.bg,overflow:"hidden"}}>
-                  <div style={{width:"60%",height:"100%",background:`linear-gradient(90deg, ${C.bg} 25%, ${C.borderSoft} 50%, ${C.bg} 75%)`,backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite"}}/>
+                <div style={{flex:1,height:8,borderRadius:4,background:"#f3f4f6",overflow:"hidden"}}>
+                  <div style={{width:"100%",height:"100%",background:"linear-gradient(90deg, #e5e7eb 25%, #d1d5db 50%, #e5e7eb 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite"}}/>
                 </div>
                 <span style={{fontSize:12,color:C.muted,minWidth:32,textAlign:"right"}}>--</span>
               </div>
@@ -3020,10 +3020,17 @@ function DashboardPage({r,history,goTo}){
           </table>
         </div>
         </>):(
-          <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"40px 20px",textAlign:"center"}}>
-            <div style={{width:24,height:24,border:"2.5px solid "+C.borderSoft,borderTopColor:C.accent,borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 12px"}}/>
-            <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>Analyzing competitors</div>
-            <div style={{fontSize:12,color:C.muted}}>Scoring crawl data and comparing signals...</div>
+          <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"20px",overflow:"hidden"}}>
+            {[0,1,2].map(i=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:i<2?"1px solid "+C.borderSoft:"none"}}>
+                <div style={{width:28,height:28,borderRadius:8,background:"#e5e7eb"}}/>
+                <div style={{flex:1}}>
+                  <div style={{height:12,borderRadius:4,background:"linear-gradient(90deg, #e5e7eb 25%, #d1d5db 50%, #e5e7eb 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite",width:"40%",marginBottom:6}}/>
+                  <div style={{height:8,borderRadius:4,background:"linear-gradient(90deg, #e5e7eb 25%, #d1d5db 50%, #e5e7eb 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite",width:"70%"}}/>
+                </div>
+                <div style={{height:12,borderRadius:4,background:"linear-gradient(90deg, #e5e7eb 25%, #d1d5db 50%, #e5e7eb 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite",width:50}}/>
+              </div>
+            ))}
           </div>
         )}
       </div>
