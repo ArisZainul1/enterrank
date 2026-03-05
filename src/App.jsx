@@ -318,6 +318,7 @@ function scoreCrawlData(crawl){
     if(!hasFaqPage)hasFaqPage=!!spRaw.faq;
     if(!hasProducts)hasProducts=!!spRaw.products;
   }
+  console.log("SCORE_DEBUG:",JSON.stringify({schemasFound:schemas,schemaCount:schemas.length,hasFAQ,hasArticle,hasOrg,hasProduct,hasBreadcrumb,hasHowTo,wordCount,internalLinks,hasBlog,hasAbout,hasFaqPage,hasProducts,hasAuthorInfo,hasTrustSignals,hasTestimonials,hasOpenGraph,hasCanonical,mpKeys:Object.keys(mp).slice(0,20)}));
   const cats=[];
   // 1. Structured Data / Schema
   let s1=0;const e1=[];
