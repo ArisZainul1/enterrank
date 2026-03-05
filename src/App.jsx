@@ -260,10 +260,21 @@ function summariseCrawl(crawlResult){
 }
 
 function scoreCrawlData(crawl){
-  // Handle both full crawl {mainPage,...} and flattened mainPage data {url,...fields}
-  const mp=crawl?.mainPage||crawl;
-  if(!mp||(!mp.domain&&!mp.url&&!mp.schemas))return null;
-  const schemas=mp.schemas||[];
+  if(!crawl)return null;
+  // Handle multiple data shapes
+  let mp,sp;
+  if(crawl.mainPage){
+    // Shape 1: full crawl object { mainPage, subPages }
+    mp=crawl.mainPage;
+    sp=crawl.subPages||{};
+  }else if(crawl.schemas||crawl.wordCount||crawl.aeoSignals||crawl.contentStructure||crawl.domain){
+    // Shape 2: flattened mainPage data passed directly
+    mp=crawl;
+    sp={};
+  }else{
+    return null;
+  }
+  const schemas=mp.schemas||mp.schemaTypes||[];
   const aeo=mp.aeoSignals||{};
   const cs=mp.contentStructure||{};
   const wc=mp.totalWordCount||mp.wordCount||mp.homepageWordCount||0;
@@ -271,10 +282,11 @@ function scoreCrawlData(crawl){
   const h1c=cs.h1Count||mp.h1Count||0;
   const h2c=cs.h2Count||mp.h2Count||0;
   const h3c=cs.h3Count||mp.h3Count||0;
-  const hasBlog=aeo.hasBlog||(mp.subPages||[]).some(sp=>sp.url?.toLowerCase().includes("blog"));
-  const hasFaq=aeo.hasFaqPage||(mp.subPages||[]).some(sp=>sp.url?.toLowerCase().includes("faq")||sp.url?.toLowerCase().includes("help"));
-  const hasAbout=(mp.subPages||[]).some(sp=>sp.url?.toLowerCase().includes("about"));
-  const hasProducts=(mp.subPages||[]).some(sp=>/product|service|solution|pricing/i.test(sp.url||""));
+  const subPagesArr=Array.isArray(mp.subPages)?mp.subPages:Array.isArray(sp)?sp:[];
+  const hasBlog=aeo.hasBlog||(subPagesArr).some(s=>s.url?.toLowerCase().includes("blog"));
+  const hasFaq=aeo.hasFaqPage||(subPagesArr).some(s=>s.url?.toLowerCase().includes("faq")||s.url?.toLowerCase().includes("help"));
+  const hasAbout=(subPagesArr).some(s=>s.url?.toLowerCase().includes("about"));
+  const hasProducts=(subPagesArr).some(s=>/product|service|solution|pricing/i.test(s.url||""));
   const cats=[];
   // 1. Structured Data / Schema
   let s1=0;const e1=[];
@@ -348,7 +360,7 @@ function analyzeSentimentFromResponses(responses,brandName){
     new RegExp(escaped+'\\s+(?:is|are|has|offers?)\\s+(?:a\\s+)?(?:great|excellent|solid|strong|reliable|popular|leading|top|comprehensive|robust)','gi')
   ];
   const negPatterns=[
-    /\b(?:drawback|limitation|downside|however|lacks?|missing|weak|poor|expensive|overpriced|complaints?|issues?|problems?|concerns?|behind|inferior|outdated|inconsistent)\b/gi,
+    /\b(?:drawback|limitation|downside|lacks?|missing|weak|poor|expensive|overpriced|complaints?|issues?|problems?|concerns?|behind|inferior|outdated|inconsistent)\b/gi,
     /\b(?:not\s+(?:the\s+)?(?:best|ideal|recommended)|could\s+(?:be\s+)?(?:better|improved)|room\s+for\s+improvement|falls?\s+short|doesn't\s+(?:offer|provide|support))\b/gi,
     /\b(?:limited\s+(?:coverage|options|features|support)|higher\s+(?:prices?|costs?|rates?)|slower|fewer|lag(?:s|ging)?)\b/gi
   ];
@@ -989,8 +1001,8 @@ Return JSON only. No markdown, no explanation.`;
   // Score each competitor from their crawl data
   const mergedCompsResult=compNames.filter(n=>n).map(cname=>{
     const rawCrawl=compCrawlsRaw[cname];
-    // compCrawlsRaw stores flattened mainPage data, wrap it so scoreCrawlData can find it
-    const scored=rawCrawl?scoreCrawlData({mainPage:rawCrawl}):null;
+    // compCrawlsRaw stores flattened mainPage data — scoreCrawlData handles this shape directly
+    const scored=rawCrawl?scoreCrawlData(rawCrawl):null;
     if(!scored)return{name:cname,score:0,engineScores:[0,0],topStrength:"No crawl data available",painPoints:painCatLabels.map(l=>({label:l,score:0}))};
     const pp=scored.categories.map(c=>({label:c.label,score:c.score,evidence:c.evidence}));
     const avg=Math.round(pp.reduce((a,p)=>a+p.score,0)/pp.length);
@@ -2996,11 +3008,11 @@ function DashboardPage({r,history,goTo}){
               <div style={{flex:1}}>
                 <div style={{fontSize:14,fontWeight:500,color:C.text,marginBottom:4}}>First Audit Complete</div>
                 <div style={{fontSize:12,color:C.sub,lineHeight:1.6,marginBottom:12}}>
-                  Re-audit in <span style={{fontWeight:500,color:C.text}}>30 days</span> after implementing roadmap items to track GEO score improvements. For fast-moving industries, consider re-auditing every 2 weeks.
+                  Re-audit weekly to track GEO score improvements as you implement roadmap items.
                 </div>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                   <div style={{fontSize:11,padding:"6px 12px",background:C.bg,borderRadius:6,color:C.sub}}>
-                    Next recommended audit: <span style={{fontWeight:500,color:C.text}}>{new Date(Date.now()+30*24*60*60*1000).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</span>
+                    Next recommended audit: <span style={{fontWeight:500,color:C.text}}>{new Date(Date.now()+7*24*60*60*1000).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</span>
                   </div>
                   <div style={{fontSize:11,padding:"6px 12px",background:C.bg,borderRadius:6,color:C.sub}}>
                     Baseline score: <span style={{fontWeight:500,color:C.accent}}>{r.overall}%</span>
@@ -3045,7 +3057,7 @@ function DashboardPage({r,history,goTo}){
             <div style={{marginTop:12,padding:"10px 14px",background:C.bg,borderRadius:8,fontSize:11,color:C.muted,display:"flex",alignItems:"center",gap:6}}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               {chartData.length<4
-                ?"Recommended: re-audit every 30 days to track GEO improvements from roadmap implementation."
+                ?"Recommended: re-audit weekly to track the impact of your GEO strategy."
                 :`${chartData.length} audits recorded. Consistent tracking helps measure the impact of your GEO strategy.`
               }
             </div>
