@@ -318,7 +318,6 @@ function scoreCrawlData(crawl){
     if(!hasFaqPage)hasFaqPage=!!spRaw.faq;
     if(!hasProducts)hasProducts=!!spRaw.products;
   }
-  console.log("SCORE_DEBUG:",JSON.stringify({schemasFound:schemas,schemaCount:schemas.length,hasFAQ,hasArticle,hasOrg,hasProduct,hasBreadcrumb,hasHowTo,wordCount,internalLinks,hasBlog,hasAbout,hasFaqPage,hasProducts,hasAuthorInfo,hasTrustSignals,hasTestimonials,hasOpenGraph,hasCanonical,mpKeys:Object.keys(mp).slice(0,20)}));
   const cats=[];
   // 1. Structured Data / Schema
   let s1=0;const e1=[];
@@ -1865,7 +1864,7 @@ function generateAll(cd, apiData){
   const getScoreLabel=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
   const getScoreDesc=(s,b)=>s>=80?b+" is dominant — frequently cited and recommended.":s>=60?b+" has strong visibility — regularly mentioned.":s>=40?b+" has moderate visibility — rarely cited as primary source.":s>=20?b+" has weak visibility — occasionally mentioned.":b+" is invisible to AI engines.";
   const painCats=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
-  const painPoints=(hasApi&&apiData.engineData.painPoints&&apiData.engineData.painPoints.length>0)?apiData.engineData.painPoints.map(pp=>({label:pp.label,score:pp.score,severity:pp.score<30?"critical":pp.score<60?"warning":"good"})):painCats.map(label=>({label,score:0,severity:"critical"}));
+  const painPoints=(hasApi&&apiData.engineData.painPoints&&apiData.engineData.painPoints.length>0)?apiData.engineData.painPoints.map(pp=>({label:pp.label,score:pp.score,severity:pp.score<30?"critical":pp.score<60?"warning":"good",evidence:pp.evidence||[]})):painCats.map(label=>({label,score:0,severity:"critical"}));
   const compVis = (hasApi && apiData.compVisibilityData) ? apiData.compVisibilityData : {};
   const competitors=(hasApi&&apiData.competitorData)?(()=>{const raw=Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors||[];return raw.filter(c=>c.name&&c.name.toLowerCase()!==cd.brand.toLowerCase()).map(c=>{const cPain=(c.painPoints||painCats.map(l=>({label:l,score:c.score||0}))).map(p=>({label:p.label,score:p.score}));const advantages=cPain.map(pp=>{const brandPP=painPoints.find(bp=>bp.label===pp.label);const diff=pp.score-(brandPP?brandPP.score:0);return{category:pp.label,diff,insight:getInsight(pp.label,c.name,cd.brand,diff>0)};}).filter(a=>a.insight);return{name:c.name,score:c.score||0,painPoints:cPain,advantages,mentionRate:(compVis[c.name]?.avgMentionRate)??0,citationRate:(compVis[c.name]?.avgCitationRate)??0,engineScores:[compVis[c.name]?.gpt?.score??c.score??0,compVis[c.name]?.gemini?.score??c.score??0],topStrength:c.topStrength||"N/A"};});})():[];
   const stakeholders=(hasApi&&apiData.archData&&Array.isArray(apiData.archData)&&apiData.archData.length>0)?apiData.archData:[];
@@ -2684,9 +2683,9 @@ function DashboardPage({r,history,goTo}){
   const prevSentiment=prev?.sentimentPerEngine?Math.round((prev.sentimentPerEngine.gpt+prev.sentimentPerEngine.gemini)/2):null;
 
   // ── Data readiness flags (for progressive loading placeholders) ──
-  const painPointsReady=r.painPoints&&r.painPoints.some(p=>p.score>0);
+  const painPointsReady=r.painPoints&&r.painPoints.some(p=>p.score>0||(p.evidence&&p.evidence.length>0));
   const competitorsReady=r.competitors&&r.competitors.length>0&&r.competitors.some(c=>(c.mentionRate||0)>0||(c.citationRate||0)>0||(c.painPoints||[]).some(p=>p.score>0));
-  const sentimentReady=r.sentiment?.brand?.avg!=null&&r.sentiment.brand.avg!==50;
+  const sentimentReady=r.sentiment?.brand?.avg!=null&&r.sentiment.brand.summary&&r.sentiment.brand.summary!=="Sentiment analysis unavailable";
 
   const delta=(cur,pre)=>{
     if(pre===null||pre===undefined)return <span style={{fontSize:10,fontWeight:500,color:C.muted,background:C.bg,padding:"2px 8px",borderRadius:100}}>First audit</span>;
