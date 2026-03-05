@@ -2622,11 +2622,10 @@ function DashboardPage({r,history,goTo}){
   ];
 
   return(<div>
-    {/* Greeting header */}
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:32}}>
+    {/* Header row */}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
       <div>
-        <div style={{fontSize:22,fontWeight:600,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Hello, Aris</div>
-        <div style={{fontSize:13,color:"#6b7280",marginTop:2}}>Dashboard for {r.clientData.brand}</div>
+        <div style={{fontSize:13,color:C.muted}}>Dashboard for {r.clientData.brand}</div>
       </div>
       <button onClick={()=>exportPDF(r)} style={{padding:"8px 16px",fontSize:12,fontWeight:500,background:C.accent,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"'Outfit'",whiteSpace:"nowrap"}}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -2639,113 +2638,166 @@ function DashboardPage({r,history,goTo}){
       <div><div style={{fontSize:13,fontWeight:500,color:"#991b1b"}}>Audit completed with errors</div><div style={{fontSize:12,color:"#b91c1c",marginTop:2}}>{r._auditError} Some sections may show limited data.</div></div>
     </div>}
 
-    {/* ═══ SECTION 1: SYSTEM DIAGNOSTICS ═══ */}
-
-    {/* 1a. Section header */}
-    <div style={{marginBottom:20}}>
-      <div style={{fontSize:18,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>System Diagnostics</div>
-      <div style={{fontSize:13,color:C.muted,marginTop:3}}>At-a-glance health check for {r.clientData.brand}'s AI engine visibility</div>
-    </div>
-
-    {/* 1b. Three metric cards */}
-    <div style={{display:"flex",gap:14,marginBottom:20}}>
-      {metricCards.map(m=>(
-        <Card key={m.label} style={{flex:1,padding:20}}>
-          <div style={{display:"flex",gap:14,alignItems:"center"}}>
-            <div style={{width:44,height:44,borderRadius:12,background:m.iconBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-              {m.icon}
-            </div>
-            <div style={{minWidth:0}}>
-              <div style={{fontSize:11,fontWeight:500,color:C.muted,letterSpacing:".03em",textTransform:"uppercase",marginBottom:4}}>{m.label}</div>
-              <div style={{display:"flex",alignItems:"baseline",gap:8}}>
-                <span style={{fontSize:28,fontWeight:700,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>{m.value}<span style={{fontSize:16,color:C.muted}}>%</span></span>
-                {delta(m.value,m.prev)}
-              </div>
-            </div>
-          </div>
-        </Card>
-      ))}
-    </div>
-
-    {/* 1c. Diagnostic insight cards */}
-    <div style={{display:"flex",flexDirection:"column",gap:8}}>
-      {diags.map((d,i)=>(
-        <div key={i} style={{background:"#fff",border:`1px solid ${C.borderSoft}`,borderRadius:10,padding:"12px 16px",display:"flex",gap:10,alignItems:"flex-start",borderLeft:`3px solid ${sevColors[d.severity]||C.accent}`}}>
-          <span style={{fontSize:16,lineHeight:1,flexShrink:0}}>{d.icon}</span>
-          <span style={{fontSize:12,color:C.sub,lineHeight:1.5}}>{d.text}</span>
-        </div>
-      ))}
-    </div>
-    <div style={{fontSize:11,color:C.muted,marginTop:8}}>{diagCounts.critical} critical · {diagCounts.warning} warnings · {diagCounts.good} healthy</div>
-
-    {/* Section divider */}
-    <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"40px 0"}}/>
-
-    {/* ═══ SECTION 2: BRAND PERFORMANCE ═══ */}
-
-    {/* 2a. Section header */}
-    <div style={{marginBottom:20}}>
-      <div style={{fontSize:18,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>{r.clientData.brand} Performance</div>
-      <div style={{fontSize:13,color:C.muted,marginTop:3}}>Visibility breakdown by AI engine</div>
-    </div>
-
-    {/* 2b. Two engine score cards */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-      {r.engines.map((e,ei)=>{
-        const color=ei===0?"#10A37F":"#4285F4";
-        const Logo=ei===0?ChatGPTLogo:GeminiLogo;
-        const label=ei===0?"ChatGPT":"Gemini";
-        const sentVal=ei===0?(r.sentiment?.brand?.gpt):(r.sentiment?.brand?.gemini);
-        return(
-          <Card key={ei} style={{padding:20}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:0}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <Logo size={20}/>
-                <span style={{fontSize:14,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>{label}</span>
-              </div>
-              <span style={{fontSize:24,fontWeight:700,fontFamily:"'Outfit'",color}}>{e.score}%</span>
-            </div>
-            <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"14px 0"}}/>
-            {[
-              {l:"Mention Rate",v:e.mentionRate},
-              {l:"Citation Rate",v:e.citationRate},
-              {l:"Sentiment",v:sentVal}
-            ].map(row=>(
-              <div key={row.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0"}}>
-                <span style={{fontSize:12,color:C.muted}}>{row.l}</span>
-                <span style={{fontSize:14,fontWeight:600,color:C.text}}>{row.v!=null?row.v+"%":"\u2014"}</span>
-              </div>
-            ))}
-            <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"14px 0"}}/>
-            <div style={{width:"100%",height:4,borderRadius:2,background:C.bg}}>
-              <div style={{width:`${Math.max(2,e.score)}%`,height:4,borderRadius:2,background:color,transition:"width .8s ease-out"}}/>
-            </div>
-          </Card>
-        );
-      })}
-    </div>
-
-    {/* 2c. Overall visibility score */}
-    <Card style={{marginTop:16,padding:"16px 20px"}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <span style={{fontSize:13,fontWeight:500,color:C.muted}}>Overall Visibility Score</span>
-        <div style={{flex:1,margin:"0 24px",height:6,borderRadius:3,background:C.bg}}>
-          <div style={{width:`${Math.max(2,r.overall)}%`,height:6,borderRadius:3,background:C.accent,transition:"width .8s ease-out"}}/>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:20,fontWeight:700,fontFamily:"'Outfit'",color:C.text}}>{r.overall}%</span>
-          <span style={{fontSize:11,fontWeight:600,padding:"3px 10px",borderRadius:100,background:`${gradeColor(r.overall)}10`,color:gradeColor(r.overall)}}>{getGrade(r.overall)}</span>
+    {/* ═══ TIER 1: THE HEADLINE ═══ */}
+    <div style={{marginBottom:32}}>
+      {/* Overall Score — big and center */}
+      <div style={{textAlign:"center",marginBottom:24}}>
+        <div style={{fontSize:13,fontWeight:500,color:C.muted,marginBottom:8}}>GEO Visibility Score</div>
+        <div style={{fontSize:56,fontWeight:500,fontFamily:"'Outfit'",color:C.text,letterSpacing:"-.04em",lineHeight:1}}>{r.overall}<span style={{fontSize:24,color:C.muted,fontWeight:400}}>%</span></div>
+        <div style={{marginTop:8}}>
+          <span style={{fontSize:12,fontWeight:500,padding:"4px 14px",borderRadius:100,background:r.overall>=80?"#dcfce7":r.overall>=60?"#dbeafe":r.overall>=40?"#fef3c7":r.overall>=20?"#ffedd5":"#fee2e2",color:r.overall>=80?"#166534":r.overall>=60?"#1e40af":r.overall>=40?"#92400e":r.overall>=20?"#9a3412":"#991b1b"}}>{r.scoreLabel}</span>
         </div>
       </div>
-    </Card>
 
-    {/* Section divider */}
-    <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"40px 0"}}/>
+      {/* 4 KPI cards in a row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+        {[
+          {label:"Mention Rate",value:avgMentions+"%",prev:prev?.mentions,color:C.accent},
+          {label:"Citation Rate",value:avgCitations+"%",prev:prev?.citations,color:"#8b5cf6"},
+          {label:"Sentiment",value:avgSentiment+"/100",prev:prevSentiment,color:avgSentiment>=55?C.green:avgSentiment>=45?C.amber:C.red},
+          {label:"Best Engine",value:bestEngine.name,sub:bestEngine.score+"%",color:bestEngine.name==="ChatGPT"?"#10A37F":"#4285F4"}
+        ].map((kpi,i)=>(
+          <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 18px"}}>
+            <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:8}}>{kpi.label}</div>
+            <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+              <span style={{fontSize:22,fontWeight:500,fontFamily:"'Outfit'",color:kpi.color}}>{kpi.value}</span>
+              {kpi.prev!=null&&kpi.label!=="Best Engine"&&delta(parseInt(kpi.value),kpi.prev)}
+              {kpi.sub&&<span style={{fontSize:12,color:C.muted}}>{kpi.sub}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
 
-    {/* ═══ SECTION 3: HISTORICAL PERFORMANCE ═══ */}
-    <div style={{marginBottom:48}}>
-      <div style={{fontSize:18,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text,marginBottom:4}}>Historical Performance</div>
-      <div style={{fontSize:13,color:C.muted,marginBottom:16}}>Track {r.clientData.brand}'s AI visibility over time</div>
+      {/* Engine comparison — compact inline */}
+      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 20px",display:"flex",gap:16,alignItems:"center"}}>
+        {r.engines.map((e,i)=>(
+          <div key={i} style={{flex:1,display:"flex",alignItems:"center",gap:12}}>
+            <div style={{width:36,height:36,borderRadius:10,background:(e.name==="ChatGPT"?"#10A37F":"#4285F4")+"10",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              {e.name==="ChatGPT"?<ChatGPTLogo size={18}/>:<GeminiLogo size={18}/>}
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:500,color:C.text,marginBottom:2}}>{e.name}</div>
+              <div style={{display:"flex",gap:12,fontSize:11,color:C.sub}}>
+                <span>Score: <span style={{fontWeight:500,color:C.text}}>{e.score}%</span></span>
+                <span>Mentions: <span style={{fontWeight:500,color:C.text}}>{e.mentionRate}%</span></span>
+                <span>Citations: <span style={{fontWeight:500,color:C.text}}>{e.citationRate}%</span></span>
+              </div>
+            </div>
+            {i===0&&r.engines.length>1&&<div style={{width:1,height:32,background:C.borderSoft}}/>}
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* ═══ TIER 2: INSIGHTS ═══ */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:32}}>
+      {/* Key Findings */}
+      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 20px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <span style={{fontSize:14,fontWeight:500,color:C.text}}>Key Findings</span>
+          <span style={{fontSize:11,color:C.muted}}>{diags.filter(d=>d.severity==="critical").length} critical · {diags.filter(d=>d.severity==="warning").length} warnings</span>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:5}}>
+          {diags.slice(0,4).map((d,i)=>(
+            <div key={i} style={{display:"flex",gap:8,padding:"8px 10px",background:`${sevColors[d.severity]||C.accent}05`,borderRadius:8,border:`1px solid ${sevColors[d.severity]||C.accent}10`,alignItems:"flex-start"}}>
+              <div style={{width:6,height:6,borderRadius:3,background:sevColors[d.severity]||C.accent,flexShrink:0,marginTop:5}}/>
+              <span style={{fontSize:12,color:C.sub,lineHeight:1.5}}>{d.text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Category Health */}
+      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 20px"}}>
+        <div style={{fontSize:14,fontWeight:500,color:C.text,marginBottom:12}}>Category Health</div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {r.painPoints.map((pp,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:11,color:C.sub,minWidth:100,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{pp.label.split("/")[0].trim()}</span>
+              <div style={{flex:1,height:6,borderRadius:3,background:C.bg}}>
+                <div style={{width:Math.max(2,pp.score)+"%",height:6,borderRadius:3,background:pp.severity==="critical"?C.red:pp.severity==="warning"?C.amber:C.green,transition:"width .6s ease"}}/>
+              </div>
+              <span style={{fontSize:12,fontWeight:500,color:C.text,minWidth:32,textAlign:"right"}}>{pp.score}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    {/* ═══ TIER 3: COMPARISON ═══ */}
+    {r.competitors.length>0&&(
+      <div style={{marginBottom:32}}>
+        <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",color:C.text,marginBottom:4}}>Competitive Landscape</div>
+        <div style={{fontSize:12,color:C.muted,marginBottom:16}}>{r.clientData.brand} vs competitors across AI engines</div>
+
+        {/* Share of Voice — 3 donuts stacked */}
+        {(()=>{
+          const compData=r.competitors||[];
+          const brandNameLower=r.clientData.brand.toLowerCase();
+          const allBrands=[
+            {name:r.clientData.brand,website:r.clientData.website,mentionRate:avgMentions,citationRate:avgCitations,color:C.accent},
+            ...compData.filter(c=>c.name.toLowerCase()!==brandNameLower).map((c,i)=>{
+              const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);
+              return{name:c.name,website:compObj?.website||"",mentionRate:c.mentionRate||0,citationRate:c.citationRate||0,color:["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]};
+            })
+          ];
+          const sentimentBrands=[
+            {name:r.clientData.brand,website:r.clientData.website,sentimentScore:avgSentiment,color:C.accent},
+            ...(r.sentiment?.competitors||[]).filter(c=>c.name.toLowerCase()!==brandNameLower).map((c,i)=>({
+              name:c.name,website:((r.clientData.competitors||[]).find(cc=>cc.name.toLowerCase()===c.name.toLowerCase()))?.website||"",sentimentScore:c.avg||50,
+              color:["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]
+            }))
+          ];
+          return(
+            <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:20}}>
+              <ShareOfVoiceSection title="Mentions" rankTitle="Mention Rate" brands={allBrands} metricKey="mentionRate"/>
+              <ShareOfVoiceSection title="Citations" rankTitle="Citation Rate" brands={allBrands} metricKey="citationRate"/>
+              <ShareOfVoiceSection title="Sentiment" rankTitle="Sentiment Score" brands={sentimentBrands} metricKey="sentimentScore"/>
+            </div>
+          );
+        })()}
+
+        {/* Competitor quick-comparison table */}
+        <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,overflow:"hidden"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+            <thead>
+              <tr style={{borderBottom:"2px solid "+C.border}}>
+                {["Brand","Score","Mentions","Citations","vs You"].map(h=>(
+                  <th key={h} style={{padding:"10px 14px",textAlign:h==="Brand"?"left":"center",fontWeight:500,color:C.muted,fontSize:11,textTransform:"uppercase"}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr style={{background:`${C.accent}04`,borderBottom:"1px solid "+C.borderSoft}}>
+                <td style={{padding:"10px 14px",fontWeight:500,color:C.text}}><div style={{display:"flex",alignItems:"center",gap:8}}><BrandLogo name={r.clientData.brand} website={r.clientData.website} size={22} color={C.accent}/>{r.clientData.brand}</div></td>
+                <td style={{padding:"10px 14px",textAlign:"center",fontWeight:500,color:C.accent}}>{r.overall}%</td>
+                <td style={{padding:"10px 14px",textAlign:"center"}}>{avgMentions}%</td>
+                <td style={{padding:"10px 14px",textAlign:"center"}}>{avgCitations}%</td>
+                <td style={{padding:"10px 14px",textAlign:"center",color:C.muted}}>{"\u2014"}</td>
+              </tr>
+              {r.competitors.filter(c=>c.name.toLowerCase()!==r.clientData.brand.toLowerCase()).map((c,i)=>{
+                const compScore=Math.round(((c.mentionRate||0)+(c.citationRate||0))/2);
+                const diff=compScore-Math.round((avgMentions+avgCitations)/2);
+                return(
+                  <tr key={i} style={{borderBottom:"1px solid "+C.borderSoft}}>
+                    <td style={{padding:"10px 14px",color:C.text}}><div style={{display:"flex",alignItems:"center",gap:8}}><BrandLogo name={c.name} website={(r.clientData.competitors||[]).find(cc=>cc.name===c.name)?.website||""} size={22} color={["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]}/>{c.name}</div></td>
+                    <td style={{padding:"10px 14px",textAlign:"center",fontWeight:500}}>{compScore}%</td>
+                    <td style={{padding:"10px 14px",textAlign:"center"}}>{c.mentionRate||0}%</td>
+                    <td style={{padding:"10px 14px",textAlign:"center"}}>{c.citationRate||0}%</td>
+                    <td style={{padding:"10px 14px",textAlign:"center"}}><span style={{fontSize:11,fontWeight:500,padding:"2px 8px",borderRadius:100,color:diff>0?"#991b1b":"#166534",background:diff>0?"#fee2e2":"#dcfce7"}}>{diff>0?"+":""}{diff}%</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
+
+    {/* ═══ TIER 4: HISTORICAL ═══ */}
+    <div style={{marginBottom:32}}>
+      <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",color:C.text,marginBottom:4}}>Historical Performance</div>
+      <div style={{fontSize:12,color:C.muted,marginBottom:16}}>Track {r.clientData.brand}'s AI visibility over time</div>
 
       {(()=>{
         // Deduplicate history entries by date
@@ -2761,7 +2813,6 @@ function DashboardPage({r,history,goTo}){
         }));
         const dayMap=new Map();
         rawData.forEach(d=>{const key=d.date;if(!dayMap.has(key)||d._ts>dayMap.get(key)._ts)dayMap.set(key,d);});
-        // Ensure current audit is represented even if history hasn't refreshed yet
         if(r&&r.overall){
           const todayKey=formatAuditDate(new Date()).replace(/\s\d{4}$/,"");
           const currentMentions=Math.round(((r.engines?.[0]?.mentionRate||0)+(r.engines?.[1]?.mentionRate||0))/2);
@@ -2786,18 +2837,15 @@ function DashboardPage({r,history,goTo}){
         const lines=[{key:"overall",color:C.accent,width:2.5},{key:"mentions",color:"#22c55e",width:1.5},{key:"citations",color:"#f59e0b",width:1.5}];
         const yTicks=[0,25,50,75,100];
         const first=chartData[0],last=chartData[chartData.length-1];
-        const delta=last.overall-first.overall;
+        const chartDelta=last.overall-first.overall;
 
         return(
           <div style={{padding:24,background:C.card,border:"1px solid "+C.border,borderRadius:14}}>
-            {/* Legend */}
             <div style={{display:"flex",gap:20,marginBottom:20,fontSize:12}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:3,borderRadius:2,background:C.accent}}/><span style={{color:C.muted}}>Overall Score</span></div>
               <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:3,borderRadius:2,background:"#22c55e"}}/><span style={{color:C.muted}}>Mention Rate</span></div>
               <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:3,borderRadius:2,background:"#f59e0b"}}/><span style={{color:C.muted}}>Citation Rate</span></div>
             </div>
-
-            {/* SVG Chart */}
             <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",overflow:"visible"}}>
               {yTicks.map(tick=><g key={tick}><line x1={padL} x2={W-padR} y1={getY(tick)} y2={getY(tick)} stroke={C.border} strokeWidth={1} strokeDasharray={tick===0?"none":"4,4"}/><text x={padL-8} y={getY(tick)+4} textAnchor="end" fontSize={10} fill={C.muted}>{tick}%</text></g>)}
               {lines.map(line=><path key={line.key} d={makePath(line.key)} fill="none" stroke={line.color} strokeWidth={line.width} strokeLinecap="round" strokeLinejoin="round"/>)}
@@ -2805,12 +2853,9 @@ function DashboardPage({r,history,goTo}){
               {chartData.map((d,i)=><text key={i} x={getX(i)} y={H-5} textAnchor="middle" fontSize={10} fill={C.muted}>{d.date}</text>)}
               {lines.map(line=><text key={`lbl-${line.key}`} x={getX(n-1)+8} y={getY(last[line.key])+4} fontSize={10} fontWeight={500} fill={line.color}>{last[line.key]}%</text>)}
             </svg>
-
-            {/* Delta summary */}
-            <div style={{marginTop:16,padding:"12px 16px",background:delta>=0?"rgba(220,252,231,0.06)":"rgba(254,226,226,0.06)",borderRadius:10,display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:18}}>{delta>=0?"\u{1F4C8}":"\u{1F4C9}"}</span>
+            <div style={{marginTop:16,padding:"12px 16px",background:chartDelta>=0?"rgba(220,252,231,0.06)":"rgba(254,226,226,0.06)",borderRadius:10,display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:13,color:C.text}}>
-                Overall score {delta>=0?"improved":"decreased"} by <span style={{fontWeight:600,color:delta>=0?"#166534":"#991b1b"}}>{Math.abs(delta)}%</span> since first audit
+                Overall score {chartDelta>=0?"improved":"decreased"} by <span style={{fontWeight:500,color:chartDelta>=0?"#166534":"#991b1b"}}>{Math.abs(chartDelta)}%</span> since first audit
                 <span style={{color:C.muted}}> ({first.fullDate} → {last.fullDate})</span>
               </span>
             </div>
@@ -2818,254 +2863,6 @@ function DashboardPage({r,history,goTo}){
         );
       })()}
     </div>
-
-    {/* Section divider */}
-    <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"40px 0"}}/>
-
-    {/* ═══ SECTION 4: SHARE OF VOICE ═══ */}
-
-    {/* 4a. Section header */}
-    <div style={{marginBottom:20}}>
-      <div style={{fontSize:18,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Share of Voice</div>
-      <div style={{fontSize:13,color:C.muted,marginTop:3}}>{r.clientData.brand} vs competitors across key metrics</div>
-    </div>
-
-    {/* 4b-c. Three ShareOfVoiceSection donuts */}
-    {(()=>{
-      const compData=r.competitors||[];
-      const brandNameLower=r.clientData.brand.toLowerCase();
-      const allBrands=[
-        {name:r.clientData.brand,website:r.clientData.website,mentionRate:avgMentions,citationRate:avgCitations,color:C.accent},
-        ...compData.filter(c=>c.name.toLowerCase()!==brandNameLower).map((c,i)=>{
-          const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);
-          return{
-            name:c.name,
-            website:compObj?.website||"",
-            mentionRate:c.mentionRate||0,
-            citationRate:c.citationRate||0,
-            color:["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]
-          };
-        })
-      ];
-      const sentimentBrands=[
-        {name:r.clientData.brand,website:r.clientData.website,sentimentScore:avgSentiment,color:C.accent},
-        ...(r.sentiment?.competitors||[]).filter(c=>c.name.toLowerCase()!==brandNameLower).map((c,i)=>({
-          name:c.name,website:((r.clientData.competitors||[]).find(cc=>cc.name.toLowerCase()===c.name.toLowerCase()))?.website||"",sentimentScore:c.avg||50,
-          color:["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]
-        }))
-      ];
-      return(
-        <div style={{display:"flex",flexDirection:"column",gap:16}}>
-          <ShareOfVoiceSection title="Share of Mentions" rankTitle="Mention Rate" brands={allBrands} metricKey="mentionRate"/>
-          <ShareOfVoiceSection title="Share of Citations" rankTitle="Citation Rate" brands={allBrands} metricKey="citationRate"/>
-          <ShareOfVoiceSection title="Share of Sentiments" rankTitle="Sentiment Score" brands={sentimentBrands} metricKey="sentimentScore"/>
-        </div>
-      );
-    })()}
-
-    {/* Section divider */}
-    <div style={{borderTop:`1px solid ${C.borderSoft}`,margin:"40px 0"}}/>
-
-    {/* ═══ SECTION 5: COMPETITOR DEEP-DIVE ═══ */}
-
-    {/* 5a. Section header */}
-    <div style={{marginBottom:16}}>
-      <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text}}>Competitor Deep Dive</div>
-      <div style={{fontSize:12,color:C.muted,marginTop:2}}>Looking under the hood — how competitors stack up on AI engines</div>
-    </div>
-
-    {/* 5b. Expandable competitor cards + 5c. Summary */}
-    {(()=>{
-      const compData=r.competitors||[];
-      if(compData.length===0)return(
-        <Card style={{textAlign:"center",padding:"40px 20px"}}>
-          <div style={{fontSize:14,fontWeight:500,color:C.muted,marginBottom:8}}>No competitor data available</div>
-          <div style={{fontSize:12,color:C.muted}}>Add competitors during setup and run an audit to see the deep dive.</div>
-        </Card>
-      );
-
-      const compColors=["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"];
-      const getCompWebsite=(name)=>(r.clientData.competitors||[]).find(cc=>cc.name===name)?.website||"";
-      const getCompSentiment=(name)=>{const sc=(r.sentiment?.competitors||[]).find(c=>c.name===name);return sc?(sc.avg||50):null;};
-      const metricColor=(brandVal,compVal)=>{
-        if(compVal===null||compVal===undefined)return C.text;
-        const diff=compVal-brandVal;
-        if(Math.abs(diff)<=5)return C.text;
-        return diff>0?C.red:C.green;
-      };
-
-      const crawlSignals=[
-        {key:"schemaMarkup",label:"Schema Markup (JSON-LD)",weight:"Critical",desc:"Structured data that AI engines parse directly",check:d=>d?.aeoSignals?.schemaMarkup||(d?.schemas?.length||0)>0,detail:d=>(d?.aeoSignals?.schemaTypes||d?.schemas||[]).join(", ")||"None"},
-        {key:"faqSchema",label:"FAQ Schema",weight:"Critical",desc:"Q&A pairs that AI engines extract as direct answers",check:d=>d?.aeoSignals?.faqSchema||!!d?.hasFAQSchema},
-        {key:"articleSchema",label:"Article / Blog Schema",weight:"High",desc:"Signals authoritative long-form content to AI",check:d=>d?.aeoSignals?.articleSchema||!!d?.hasArticleSchema},
-        {key:"orgSchema",label:"Organization Schema",weight:"High",desc:"Establishes brand entity in knowledge graphs",check:d=>d?.aeoSignals?.orgSchema||!!d?.hasOrgSchema},
-        {key:"howToSchema",label:"HowTo Schema",weight:"Medium",desc:"Step-by-step content AI engines can cite directly",check:d=>d?.aeoSignals?.howToSchema||!!d?.hasHowToSchema},
-        {key:"breadcrumbs",label:"Breadcrumb Navigation",weight:"Medium",desc:"Helps AI understand site hierarchy and topic structure",check:d=>d?.aeoSignals?.breadcrumbs||!!d?.hasBreadcrumb},
-        {key:"speakable",label:"Speakable Schema",weight:"High",desc:"Marks content suitable for voice assistant responses",check:d=>d?.aeoSignals?.speakable||!!d?.hasSpeakable},
-        {key:"authorInfo",label:"Author Attribution (E-E-A-T)",weight:"Critical",desc:"Named expertise — critical trust signal for AI engines",check:d=>d?.aeoSignals?.authorInfo||!!d?.hasAuthorInfo},
-        {key:"trustSignals",label:"Trust Signals",weight:"High",desc:"Awards, certifications, partnerships on website",check:d=>d?.aeoSignals?.trustSignals||!!d?.hasTrustSignals},
-        {key:"testimonials",label:"Social Proof / Reviews",weight:"High",desc:"Testimonials, ratings, client logos on website",check:d=>d?.aeoSignals?.testimonials||!!d?.hasTestimonials},
-        {key:"video",label:"Video Content",weight:"Medium",desc:"Rich media increases AI citation likelihood",check:d=>d?.aeoSignals?.video||!!d?.hasVideo},
-        {key:"openGraph",label:"Open Graph Tags",weight:"Low",desc:"Content preview metadata for sharing and indexing",check:d=>d?.aeoSignals?.openGraph||!!d?.hasOpenGraph},
-        {key:"twitterCard",label:"Twitter / X Card",weight:"Low",desc:"Social sharing metadata",check:d=>d?.aeoSignals?.twitterCard||!!d?.hasTwitterCard},
-        {key:"canonical",label:"Canonical URL",weight:"Medium",desc:"Prevents duplicate content confusion for AI crawlers",check:d=>d?.aeoSignals?.canonical||!!d?.hasCanonical},
-        {key:"contentDepth",label:"Content Depth (1000+ words)",weight:"High",desc:"Substantive content gives AI more to reference and cite",check:d=>d?.aeoSignals?.contentDepth||(d?.wordCount||d?.homepageWordCount||0)>=1000,detail:d=>(d?.totalWordCount||d?.wordCount||d?.homepageWordCount||0).toLocaleString()+" words"},
-        {key:"internalLinking",label:"Internal Link Structure (20+)",weight:"Medium",desc:"Helps AI understand topic relationships across site",check:d=>d?.aeoSignals?.internalLinking||(d?.internalLinks||0)>=20,detail:d=>(d?.internalLinks||0)+" links"},
-        {key:"properHierarchy",label:"Proper Heading Hierarchy",weight:"High",desc:"H1->H2->H3 structure helps AI parse content sections",check:d=>d?.contentStructure?.hasProperHierarchy||(d?.h1Count>0&&d?.h2Count>0),detail:d=>`${d?.contentStructure?.h1Count||d?.h1Count||0} H1, ${d?.contentStructure?.h2Count||d?.h2Count||0} H2, ${d?.contentStructure?.h3Count||d?.h3Count||0} H3`},
-        {key:"hasBlog",label:"Blog / Content Hub",weight:"Critical",desc:"Regular content publishing is the #1 driver of AI visibility",check:d=>d?.aeoSignals?.hasBlog||(d?.subPages||[]).some(sp=>sp.url?.toLowerCase().includes("blog"))},
-        {key:"hasFaqPage",label:"Dedicated FAQ Page",weight:"High",desc:"FAQ pages are directly extracted by AI for answers",check:d=>d?.aeoSignals?.hasFaqPage||(d?.subPages||[]).some(sp=>sp.url?.toLowerCase().includes("faq")||sp.url?.toLowerCase().includes("help"))},
-      ];
-
-      const allForRank=[
-        {name:r.clientData.brand,mentionRate:avgMentions},
-        ...compData.map(c=>({name:c.name,mentionRate:c.mentionRate||0}))
-      ].sort((a,b)=>b.mentionRate-a.mentionRate);
-      const brandRank=allForRank.findIndex(b=>b.name===r.clientData.brand)+1;
-
-      return(<>
-        {compData.map((comp,ci)=>{
-          const isExpanded=expandedComp===ci;
-          const compColor=compColors[ci%5];
-          const compWebsite=getCompWebsite(comp.name);
-          const compSent=getCompSentiment(comp.name);
-
-          return(
-            <Card key={ci} style={{padding:0,marginBottom:10,overflow:"hidden"}}>
-              {/* Collapsed row */}
-              <div onClick={()=>setExpandedComp(isExpanded?null:ci)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px",cursor:"pointer",transition:"background .15s"}} onMouseEnter={e=>{if(!isExpanded)e.currentTarget.style.background=`${C.bg}`;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
-                <div style={{display:"flex",alignItems:"center",gap:12,minWidth:0,flex:1}}>
-                  <BrandLogo name={comp.name} website={compWebsite} size={36} color={compColor}/>
-                  <div style={{minWidth:0}}>
-                    <div style={{fontSize:14,fontWeight:500,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{comp.name}</div>
-                    {compWebsite&&<div style={{fontSize:11,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{compWebsite.replace(/^https?:\/\//,"").replace(/\/$/,"")}</div>}
-                  </div>
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:24,flexShrink:0}}>
-                  <div style={{textAlign:"center",minWidth:52}}>
-                    <div style={{fontSize:9,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:2}}>Mentions</div>
-                    <div style={{fontSize:16,fontWeight:600,fontFamily:"'Outfit'",color:metricColor(avgMentions,comp.mentionRate)}}>{comp.mentionRate||0}%</div>
-                  </div>
-                  <div style={{textAlign:"center",minWidth:52}}>
-                    <div style={{fontSize:9,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:2}}>Citations</div>
-                    <div style={{fontSize:16,fontWeight:600,fontFamily:"'Outfit'",color:metricColor(avgCitations,comp.citationRate)}}>{comp.citationRate||0}%</div>
-                  </div>
-                  <div style={{textAlign:"center",minWidth:52}}>
-                    <div style={{fontSize:9,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:2}}>Sentiment</div>
-                    <div style={{fontSize:16,fontWeight:600,fontFamily:"'Outfit'",color:compSent!==null?metricColor(avgSentiment,compSent):C.muted}}>{compSent!==null?compSent+"%":"—"}</div>
-                  </div>
-                  <span style={{fontSize:10,color:C.muted,marginLeft:8,transition:"transform .2s",display:"inline-block",transform:isExpanded?"rotate(180deg)":"rotate(0)"}}>▼</span>
-                </div>
-              </div>
-
-              {/* Expanded content */}
-              {isExpanded&&(
-                <div style={{borderTop:`1px solid ${C.borderSoft}`,padding:"16px 20px"}}>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-                    {/* Left: Performance comparison bars */}
-                    <div>
-                      <div style={{fontSize:12,fontWeight:500,color:C.text,marginBottom:12}}>Performance vs {r.clientData.brand}</div>
-                      {[
-                        {label:"Mentions",brandVal:avgMentions,compVal:comp.mentionRate||0},
-                        {label:"Citations",brandVal:avgCitations,compVal:comp.citationRate||0},
-                        {label:"Sentiment",brandVal:avgSentiment,compVal:compSent}
-                      ].map((m,mi)=>(
-                        <div key={mi} style={{marginBottom:mi<2?14:0}}>
-                          <div style={{fontSize:11,fontWeight:500,color:C.muted,marginBottom:4}}>{m.label}</div>
-                          {m.compVal!==null?(
-                            <div>
-                              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
-                                <span style={{fontSize:10,color:C.accent,minWidth:60,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.clientData.brand}</span>
-                                <div style={{flex:1,height:6,background:C.borderSoft,borderRadius:3}}>
-                                  <div style={{width:`${Math.max(2,m.brandVal)}%`,height:"100%",background:C.accent,borderRadius:3,transition:"width .6s"}}/>
-                                </div>
-                                <span style={{fontSize:10,fontWeight:600,color:C.text,minWidth:28,textAlign:"right"}}>{m.brandVal}%</span>
-                              </div>
-                              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                                <span style={{fontSize:10,color:compColor,minWidth:60,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{comp.name}</span>
-                                <div style={{flex:1,height:6,background:C.borderSoft,borderRadius:3}}>
-                                  <div style={{width:`${Math.max(2,m.compVal)}%`,height:"100%",background:compColor,borderRadius:3,transition:"width .6s"}}/>
-                                </div>
-                                <span style={{fontSize:10,fontWeight:600,color:C.text,minWidth:28,textAlign:"right"}}>{m.compVal}%</span>
-                              </div>
-                            </div>
-                          ):(
-                            <div style={{fontSize:11,color:C.muted,fontStyle:"italic"}}>Not assessed</div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Right: Strengths / competitive insights */}
-                    <div>
-                      <div style={{fontSize:12,fontWeight:500,color:C.text,marginBottom:12}}>Strengths</div>
-                      {comp.advantages&&comp.advantages.length>0?(
-                        comp.advantages.slice(0,4).map((a,ai)=>(
-                          <div key={ai} style={{display:"flex",gap:6,alignItems:"flex-start",marginBottom:8}}>
-                            <div style={{width:5,height:5,borderRadius:"50%",background:a.insight?.advantage==="them"?C.red:C.green,marginTop:5,flexShrink:0}}/>
-                            <div style={{fontSize:11,color:C.sub,lineHeight:1.6}}>
-                              <span style={{fontWeight:500}}>{a.category?.split("/")[0]?.trim()}</span>: {a.insight?.text||""}
-                            </div>
-                          </div>
-                        ))
-                      ):comp.topStrength&&comp.topStrength!=="N/A"?(
-                        <div style={{fontSize:11,color:C.sub,lineHeight:1.6}}>{comp.topStrength}</div>
-                      ):(
-                        <div style={{fontSize:11,color:C.muted,fontStyle:"italic"}}>Run a deeper audit to unlock competitor insights</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Technical Signals comparison */}
-                  {(()=>{
-                    const brandD=r.brandCrawl;
-                    const compD=r.compCrawlData?.[comp.name]||null;
-                    if(!brandD&&!compD)return null;
-                    const weightColor={Critical:C.red,High:C.amber,Medium:C.accent,Low:C.muted};
-                    return(
-                      <div style={{marginTop:16,paddingTop:16,borderTop:`1px solid ${C.borderSoft}`}}>
-                        <div style={{fontSize:12,fontWeight:500,color:C.text,marginBottom:10}}>Technical Signals</div>
-                        <div style={{display:"grid",gridTemplateColumns:"1fr 60px 60px",gap:"0",fontSize:11}}>
-                          <div style={{fontWeight:500,color:C.muted,paddingBottom:6,borderBottom:`1px solid ${C.borderSoft}`}}>Signal</div>
-                          <div style={{fontWeight:500,color:C.accent,textAlign:"center",paddingBottom:6,borderBottom:`1px solid ${C.borderSoft}`,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.clientData.brand}</div>
-                          <div style={{fontWeight:500,color:compColor,textAlign:"center",paddingBottom:6,borderBottom:`1px solid ${C.borderSoft}`,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{comp.name}</div>
-                          {crawlSignals.map((sig,si)=>{
-                            const brandHas=brandD?sig.check(brandD):false;
-                            const compHas=compD?sig.check(compD):false;
-                            return(<React.Fragment key={si}>
-                              <div style={{padding:"5px 0",borderBottom:si<crawlSignals.length-1?`1px solid ${C.borderSoft}`:"none",color:C.sub}} title={sig.desc}>
-                                <span>{sig.label}</span>
-                                <span style={{marginLeft:6,fontSize:9,color:weightColor[sig.weight]||C.muted}}>{sig.weight}</span>
-                              </div>
-                              <div style={{padding:"5px 0",textAlign:"center",borderBottom:si<crawlSignals.length-1?`1px solid ${C.borderSoft}`:"none",color:brandHas?C.green:C.red}}>{brandHas?"Yes":"No"}</div>
-                              <div style={{padding:"5px 0",textAlign:"center",borderBottom:si<crawlSignals.length-1?`1px solid ${C.borderSoft}`:"none",color:compHas?C.green:C.red}}>{compHas?"Yes":"No"}</div>
-                            </React.Fragment>);
-                          })}
-                        </div>
-                        {(()=>{
-                          const brandCount=brandD?crawlSignals.filter(s=>s.check(brandD)).length:0;
-                          const compCount=compD?crawlSignals.filter(s=>s.check(compD)).length:0;
-                          return(
-                            <div style={{display:"flex",justifyContent:"space-between",marginTop:10,padding:"8px 12px",background:C.bg,borderRadius:8,fontSize:11}}>
-                              <span style={{color:C.sub}}><span style={{fontWeight:600,color:C.accent}}>{r.clientData.brand}</span>: {brandCount}/{crawlSignals.length} signals</span>
-                              <span style={{color:C.sub}}><span style={{fontWeight:600,color:compColor}}>{comp.name}</span>: {compCount}/{crawlSignals.length} signals</span>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </Card>
-          );
-        })}
-
-        {/* 5c. Summary ranking row */}
-        <div style={{background:C.bg,borderRadius:10,padding:"12px 16px",marginTop:10}}>
-          <span style={{fontSize:12,color:C.sub}}>{brandRank===1?"\uD83C\uDFC6 ":""}{r.clientData.brand} ranks <span style={{fontWeight:600}}>#{brandRank}</span> out of {allForRank.length} brands for overall AI visibility</span>
-        </div>
-      </>);
-    })()}
 
   </div>);
 }
