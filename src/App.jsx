@@ -260,92 +260,120 @@ function summariseCrawl(crawlResult){
 }
 
 function scoreCrawlData(crawl){
-  console.log("CRAWL_DEBUG:",JSON.stringify({hasInput:!!crawl,topKeys:crawl?Object.keys(crawl).slice(0,10):[],hasMainPage:!!crawl?.mainPage,mainPageKeys:crawl?.mainPage?Object.keys(crawl.mainPage).slice(0,15):[],schemas:crawl?.mainPage?.schemas||crawl?.schemas||"NONE",hasFAQMarkup:crawl?.mainPage?.hasFAQMarkup??crawl?.hasFAQMarkup??"MISSING",hasArticleMarkup:crawl?.mainPage?.hasArticleMarkup??crawl?.hasArticleMarkup??"MISSING",wordCount:crawl?.mainPage?.wordCount??crawl?.wordCount??"MISSING"}));
   if(!crawl)return null;
-  // Handle multiple data shapes
-  let mp,sp;
+  // Handle multiple data shapes from crawl API
+  let mp,spRaw,schemas;
   if(crawl.mainPage){
-    // Shape 1: full crawl object { mainPage, subPages }
+    // Brand crawl: { mainPage: { ... } } — schemas might be at mainPage level
     mp=crawl.mainPage;
-    sp=crawl.subPages||{};
-  }else if(crawl.schemas||crawl.wordCount||crawl.aeoSignals||crawl.contentStructure||crawl.domain){
-    // Shape 2: flattened mainPage data passed directly
+    spRaw=mp.subPages||crawl.subPages||[];
+    // Schemas could be at mp.schemas OR crawl.schemas — check both, prefer non-empty
+    schemas=(mp.schemas&&mp.schemas.length>0)?mp.schemas:(crawl.schemas||[]);
+  }else if(crawl.url||crawl.domain||crawl.schemas||crawl.homepageWordCount){
+    // Competitor crawl: flat structure, no mainPage wrapper
     mp=crawl;
-    sp={};
+    spRaw=crawl.subPages||[];
+    schemas=crawl.schemas||[];
   }else{
     return null;
   }
-  const schemas=mp.schemas||mp.schemaTypes||[];
-  const aeo=mp.aeoSignals||{};
-  const cs=mp.contentStructure||{};
-  const wc=mp.totalWordCount||mp.wordCount||mp.homepageWordCount||0;
-  const il=mp.internalLinks||0;
-  const h1c=cs.h1Count||mp.h1Count||0;
-  const h2c=cs.h2Count||mp.h2Count||0;
-  const h3c=cs.h3Count||mp.h3Count||0;
-  const subPagesArr=Array.isArray(mp.subPages)?mp.subPages:Array.isArray(sp)?sp:[];
-  const hasBlog=aeo.hasBlog||(subPagesArr).some(s=>s.url?.toLowerCase().includes("blog"));
-  const hasFaq=aeo.hasFaqPage||(subPagesArr).some(s=>s.url?.toLowerCase().includes("faq")||s.url?.toLowerCase().includes("help"));
-  const hasAbout=(subPagesArr).some(s=>s.url?.toLowerCase().includes("about"));
-  const hasProducts=(subPagesArr).some(s=>/product|service|solution|pricing/i.test(s.url||""));
+  // Normalize field names — crawl API uses different names than expected
+  const wordCount=mp.totalWordCount||mp.wordCount||mp.homepageWordCount||0;
+  const internalLinks=mp.internalLinks||0;
+  const externalLinks=mp.externalLinks||0;
+  const imageCount=mp.imageCount||mp.contentStructure?.imageCount||0;
+  const tableCount=mp.tableCount||mp.contentStructure?.tableCount||0;
+  const listCount=mp.listCount||mp.contentStructure?.listCount||0;
+  const h1s=mp.h1s||[];
+  const h2s=mp.h2s||[];
+  const h3Count=mp.h3s?.length||mp.h3Count||mp.contentStructure?.h3Count||0;
+  // Derive boolean flags from schemas array (these don't exist as direct fields in crawl API)
+  const hasFAQ=schemas.some(s=>s==="FAQPage"||s==="Question")||!!mp.hasFAQMarkup||!!mp.hasFAQSchema||!!mp.aeoSignals?.faqSchema;
+  const hasArticle=schemas.some(s=>["Article","NewsArticle","BlogPosting","TechArticle"].includes(s))||!!mp.hasArticleMarkup||!!mp.hasArticleSchema||!!mp.aeoSignals?.articleSchema;
+  const hasOrg=schemas.some(s=>["Organization","LocalBusiness","Corporation"].includes(s))||!!mp.hasOrgSchema||!!mp.aeoSignals?.orgSchema;
+  const hasProduct=schemas.some(s=>s==="Product")||!!mp.hasProductSchema||!!mp.aeoSignals?.productSchema;
+  const hasBreadcrumb=schemas.some(s=>s==="BreadcrumbList")||!!mp.hasBreadcrumb||!!mp.aeoSignals?.breadcrumbs;
+  const hasHowTo=schemas.some(s=>s==="HowTo")||!!mp.hasHowToSchema||!!mp.aeoSignals?.howToSchema;
+  const hasSpeakable=schemas.some(s=>s==="Speakable")||!!mp.hasSpeakable||!!mp.aeoSignals?.speakable;
+  const hasVideo=!!mp.hasVideo||!!mp.aeoSignals?.video||schemas.some(s=>s==="VideoObject");
+  const hasAuthorInfo=!!mp.hasAuthorInfo||!!mp.aeoSignals?.authorInfo;
+  const hasTrustSignals=!!mp.hasTrustSignals||!!mp.aeoSignals?.trustSignals;
+  const hasTestimonials=!!mp.hasTestimonials||!!mp.aeoSignals?.testimonials;
+  const hasOpenGraph=!!mp.hasOpenGraph||!!mp.aeoSignals?.openGraph||!!mp.ogTitle;
+  const hasTwitterCard=!!mp.hasTwitterCard||!!mp.aeoSignals?.twitterCard||!!mp.twitterCard;
+  const hasCanonical=!!mp.hasCanonical||!!mp.aeoSignals?.canonical;
+  const hasHreflang=!!mp.hasHreflang||!!mp.aeoSignals?.hreflang;
+  // Normalize subPages — could be array [{url,title}] or object {blog:{url}}
+  let hasBlog=false,hasAbout=false,hasFaqPage=false,hasProducts=false;
+  if(mp.aeoSignals?.hasBlog)hasBlog=true;
+  if(mp.aeoSignals?.hasFaqPage)hasFaqPage=true;
+  if(Array.isArray(spRaw)){
+    if(!hasBlog)hasBlog=spRaw.some(p=>/blog|resource|news|article/i.test(p.url||p.title||""));
+    if(!hasAbout)hasAbout=spRaw.some(p=>/about/i.test(p.url||p.title||""));
+    if(!hasFaqPage)hasFaqPage=spRaw.some(p=>/faq|help/i.test(p.url||p.title||""));
+    if(!hasProducts)hasProducts=spRaw.some(p=>/product|service|pricing|plan/i.test(p.url||p.title||""));
+  }else if(spRaw&&typeof spRaw==="object"){
+    if(!hasBlog)hasBlog=!!spRaw.blog;
+    if(!hasAbout)hasAbout=!!spRaw.about;
+    if(!hasFaqPage)hasFaqPage=!!spRaw.faq;
+    if(!hasProducts)hasProducts=!!spRaw.products;
+  }
   const cats=[];
   // 1. Structured Data / Schema
   let s1=0;const e1=[];
-  if(schemas.length>0){s1+=25;e1.push(schemas.length+" schema types: "+schemas.join(", "));}
-  if(schemas.some(s=>s==="FAQPage"||s==="Question")){s1+=20;e1.push("FAQ schema present");}else e1.push("No FAQ schema");
-  if(schemas.some(s=>["Article","NewsArticle","BlogPosting","TechArticle"].includes(s))){s1+=15;e1.push("Article schema present");}else e1.push("No Article schema");
-  if(schemas.some(s=>["Organization","LocalBusiness","Corporation"].includes(s))){s1+=15;e1.push("Organization schema present");}else e1.push("No Organization schema");
-  if(schemas.some(s=>s==="Product")){s1+=10;e1.push("Product schema present");}
-  if(schemas.some(s=>s==="BreadcrumbList")){s1+=8;e1.push("Breadcrumb schema present");}
-  if(schemas.some(s=>s==="HowTo")){s1+=7;e1.push("HowTo schema present");}
-  if(schemas.length===0)e1.push("No schema markup detected");
+  if(schemas.length>0){s1+=25;e1.push(schemas.length+" schema types: "+schemas.join(", "));}else{e1.push("No JSON-LD schema markup detected");}
+  if(hasFAQ){s1+=20;e1.push("FAQ schema present");}else{e1.push("No FAQ schema");}
+  if(hasArticle){s1+=15;e1.push("Article schema present");}else{e1.push("No Article schema");}
+  if(hasOrg){s1+=15;e1.push("Organization schema present");}else{e1.push("No Organization schema");}
+  if(hasProduct){s1+=10;e1.push("Product schema present");}
+  if(hasBreadcrumb){s1+=8;e1.push("Breadcrumb schema present");}
+  if(hasHowTo){s1+=7;e1.push("HowTo schema present");}
   cats.push({label:"Structured Data / Schema",score:Math.min(100,s1),evidence:e1});
   // 2. Content Authority
   let s2=0;const e2=[];
-  if(wc>=3000){s2+=30;e2.push(wc+" words (excellent depth)");}else if(wc>=1500){s2+=20;e2.push(wc+" words (good depth)");}else if(wc>=500){s2+=10;e2.push(wc+" words (thin content)");}else e2.push(wc+" words (very thin)");
-  if(hasBlog){s2+=25;e2.push("Blog/content hub found");}else e2.push("No blog detected");
-  if(hasFaq){s2+=15;e2.push("FAQ page found");}else e2.push("No FAQ page");
+  if(wordCount>=3000){s2+=30;e2.push(wordCount.toLocaleString()+" words (excellent depth)");}else if(wordCount>=1500){s2+=20;e2.push(wordCount.toLocaleString()+" words (good depth)");}else if(wordCount>=500){s2+=10;e2.push(wordCount.toLocaleString()+" words (thin content)");}else{e2.push(wordCount+" words (very thin)");}
+  if(hasBlog){s2+=25;e2.push("Blog/content hub found");}else{e2.push("No blog detected");}
+  if(hasFaqPage){s2+=15;e2.push("FAQ page found");}else{e2.push("No FAQ page");}
   if(hasProducts){s2+=10;e2.push("Products/services page found");}
-  if(h2c>=5){s2+=10;e2.push(h2c+" H2 headings (good structure)");}else if(h2c>=2){s2+=5;e2.push(h2c+" H2 headings");}
-  if((cs.tableCount||mp.tableCount||0)>0||(cs.listCount||mp.listCount||0)>0){s2+=10;e2.push("Structured content (tables/lists) present");}
+  if(h2s.length>=5){s2+=10;e2.push(h2s.length+" H2 headings");}else if(h2s.length>=2){s2+=5;e2.push(h2s.length+" H2 headings");}
+  if(tableCount>0||listCount>0){s2+=10;e2.push("Structured content (tables/lists) present");}
   cats.push({label:"Content Authority",score:Math.min(100,s2),evidence:e2});
   // 3. E-E-A-T Signals
   let s3=0;const e3=[];
-  if(aeo.authorInfo||mp.hasAuthorInfo){s3+=25;e3.push("Author attribution detected");}else e3.push("No author info");
-  if(aeo.trustSignals||mp.hasTrustSignals){s3+=20;e3.push("Trust signals (awards/certs) detected");}else e3.push("No trust signals");
-  if(aeo.testimonials||mp.hasTestimonials){s3+=20;e3.push("Testimonials/reviews detected");}else e3.push("No testimonials");
-  if(hasAbout){s3+=15;e3.push("About page found");}else e3.push("No about page");
-  if(schemas.some(s=>["Organization","LocalBusiness","Corporation"].includes(s))){s3+=10;e3.push("Organization schema supports entity verification");}
-  if(aeo.video||mp.hasVideo){s3+=10;e3.push("Video content detected");}
+  if(hasAuthorInfo){s3+=25;e3.push("Author attribution detected");}else{e3.push("No author info");}
+  if(hasTrustSignals){s3+=20;e3.push("Trust signals detected");}else{e3.push("No trust signals");}
+  if(hasTestimonials){s3+=20;e3.push("Testimonials/reviews detected");}else{e3.push("No testimonials");}
+  if(hasAbout){s3+=15;e3.push("About page found");}else{e3.push("No about page");}
+  if(hasOrg){s3+=10;e3.push("Organization schema supports entity verification");}
+  if(hasVideo){s3+=10;e3.push("Video content detected");}
   cats.push({label:"E-E-A-T Signals",score:Math.min(100,s3),evidence:e3});
   // 4. Technical SEO
   let s4=0;const e4=[];
-  if(aeo.openGraph||mp.hasOpenGraph){s4+=15;e4.push("Open Graph tags present");}else e4.push("Missing Open Graph");
-  if(aeo.twitterCard||mp.hasTwitterCard){s4+=10;e4.push("Twitter Card present");}else e4.push("Missing Twitter Card");
-  if(aeo.canonical||mp.hasCanonical){s4+=15;e4.push("Canonical URL present");}else e4.push("Missing canonical URL");
-  if(h1c===1){s4+=15;e4.push("Single H1 (correct structure)");}else if(h1c>1){s4+=5;e4.push(h1c+" H1s (should be 1)");}else e4.push("No H1 tag");
-  if(h2c>0&&h3c>0){s4+=10;e4.push("Proper heading hierarchy (H1→H2→H3)");}
-  if(il>=20){s4+=15;e4.push(il+" internal links (strong linking)");}else if(il>=10){s4+=8;e4.push(il+" internal links");}else e4.push(il+" internal links (weak)");
-  if(aeo.hreflang||mp.hasHreflang){s4+=10;e4.push("Hreflang tags present");}
-  if((cs.imageCount||mp.imageCount||0)>0){s4+=10;e4.push((cs.imageCount||mp.imageCount)+" images");}
+  if(hasOpenGraph){s4+=15;e4.push("Open Graph tags present");}else{e4.push("Missing Open Graph");}
+  if(hasTwitterCard){s4+=10;e4.push("Twitter Card present");}else{e4.push("Missing Twitter Card");}
+  if(hasCanonical){s4+=15;e4.push("Canonical URL present");}else{e4.push("Missing canonical");}
+  if(h1s.length===1){s4+=15;e4.push("Single H1 (correct)");}else if(h1s.length>1){s4+=5;e4.push(h1s.length+" H1s (should be 1)");}else{e4.push("No H1 tag");}
+  if(h2s.length>0&&h3Count>0){s4+=10;e4.push("Proper heading hierarchy");}
+  if(internalLinks>=20){s4+=15;e4.push(internalLinks+" internal links");}else if(internalLinks>=10){s4+=8;e4.push(internalLinks+" internal links");}else{e4.push(internalLinks+" internal links (weak)");}
+  if(hasHreflang){s4+=10;e4.push("Hreflang present");}
+  if(imageCount>0){s4+=10;e4.push(imageCount+" images");}
   cats.push({label:"Technical SEO",score:Math.min(100,s4),evidence:e4});
   // 5. Citation Network
   let s5=0;const e5=[];
-  const el=mp.externalLinks||0;
-  if(el>=10){s5+=20;e5.push(el+" external links (strong outbound network)");}else if(el>=3){s5+=10;e5.push(el+" external links");}else e5.push(el+" external links (weak)");
-  if(il>=30){s5+=25;e5.push(il+" internal links (excellent cross-linking)");}else if(il>=15){s5+=15;e5.push(il+" internal links");}else{s5+=5;e5.push(il+" internal links (poor cross-linking)");}
-  if(schemas.some(s=>s==="BreadcrumbList")){s5+=15;e5.push("Breadcrumb navigation aids crawlability");}
-  if(hasBlog){s5+=15;e5.push("Blog creates inbound link opportunities");}
-  if(schemas.length>=3){s5+=10;e5.push("Rich schema aids knowledge graph inclusion");}
-  if(aeo.speakable||mp.hasSpeakable){s5+=15;e5.push("Speakable markup for voice citations");}
+  if(externalLinks>=10){s5+=20;e5.push(externalLinks+" external links");}else if(externalLinks>=3){s5+=10;e5.push(externalLinks+" external links");}else{e5.push((externalLinks||0)+" external links (weak)");}
+  if(internalLinks>=30){s5+=25;e5.push(internalLinks+" internal links (excellent)");}else if(internalLinks>=15){s5+=15;e5.push(internalLinks+" internal links");}else{s5+=5;e5.push(internalLinks+" internal links (poor)");}
+  if(hasBreadcrumb){s5+=15;e5.push("Breadcrumb navigation");}
+  if(hasBlog){s5+=15;e5.push("Blog creates link opportunities");}
+  if(schemas.length>=3){s5+=10;e5.push("Rich schema aids knowledge graph");}
+  if(hasSpeakable){s5+=15;e5.push("Speakable markup for voice citations");}
   cats.push({label:"Citation Network",score:Math.min(100,s5),evidence:e5});
   // 6. Content Freshness
   let s6=40;const e6=["Baseline score — publish dates not detectable from crawl"];
-  if(hasBlog){s6+=20;e6.push("Blog presence suggests regular content updates");}
-  if(schemas.some(s=>["Article","NewsArticle","BlogPosting"].includes(s))){s6+=15;e6.push("Article schema suggests active publishing");}
-  if(wc>=2000){s6+=10;e6.push("Substantial content volume ("+wc+" words)");}
-  if(aeo.video||mp.hasVideo){s6+=10;e6.push("Video content indicates multimedia investment");}
-  if(hasProducts){s6+=5;e6.push("Active product/service pages");}
+  if(hasBlog){s6+=20;e6.push("Blog suggests regular updates");}
+  if(hasArticle){s6+=15;e6.push("Article schema suggests active publishing");}
+  if(wordCount>=2000){s6+=10;e6.push("Substantial content volume");}
+  if(hasVideo){s6+=10;e6.push("Video content detected");}
+  if(hasProducts){s6+=5;e6.push("Active product pages");}
   cats.push({label:"Content Freshness",score:Math.min(100,s6),evidence:e6});
   return{categories:cats};
 }
@@ -1035,7 +1063,6 @@ Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentenc
   }})(),
   // ── Pain Points — scored from REAL crawl data ──
   (async()=>{try{
-    console.log("BRAND_CRAWL_DEBUG:",JSON.stringify({hasBrandCrawl:!!brandCrawl,brandCrawlKeys:brandCrawl?Object.keys(brandCrawl).slice(0,10):[]}));
     const scored=scoreCrawlData(brandCrawl);
     if(scored&&scored.categories){
       mergedPainPoints=scored.categories.map(c=>({label:c.label,score:c.score,severity:c.score<30?"critical":c.score<60?"warning":"good",evidence:c.evidence}));
