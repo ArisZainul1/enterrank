@@ -2630,8 +2630,8 @@ Return JSON only:
     <Card><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       <Field label="Brand Name" value={data.brand} onChange={v=>{setData({...data,brand:v});if(autoFilled)setAutoFilled(false);if(topicsAutoFilled){setTopicsAutoFilled(false);setData(d=>({...d,topics:[]}));}}} placeholder="Acme Corp"/>
       <Field label="Region" value={data.region} onChange={v=>setData({...data,region:v})} placeholder="e.g. Malaysia"/>
-      <Field label="Industry" value={data.industry} onChange={v=>setData({...data,industry:v})} placeholder="e.g. Technology"/>
-      <Field label="Website" value={data.website} onChange={v=>setData({...data,website:v})} placeholder="acme.com"/>
+      <div className={autoFilled?"field-autofilled":""}><Field label="Industry" value={data.industry} onChange={v=>setData({...data,industry:v})} placeholder="e.g. Technology"/></div>
+      <div className={autoFilled?"field-autofilled":""}><Field label="Website" value={data.website} onChange={v=>setData({...data,website:v})} placeholder="acme.com"/></div>
     </div>
     {autoFilling&&(
       <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.accent,marginTop:12}}>
@@ -2650,7 +2650,7 @@ Return JSON only:
           <label style={{fontSize:12,fontWeight:500,color:C.sub}}>Competitor Name</label>
           <label style={{fontSize:12,fontWeight:500,color:C.sub}}>Website</label>
         </div>
-        {(data.competitors||[]).map((comp,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:8}}>
+        {(data.competitors||[]).map((comp,i)=>(<div key={i} className={autoFilled?"field-autofilled":""} style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:8}}>
           <input value={comp.name} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],name:e.target.value};setData({...data,competitors:c});}} placeholder={`Competitor ${i+1}`} style={{padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <input value={comp.website} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],website:e.target.value};setData({...data,competitors:c});}} placeholder="https://competitor.com" style={{flex:1,padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
@@ -5205,7 +5205,7 @@ export default function App(){
 
   return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",color:C.text,display:"flex"}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes loadingSlide{0%{transform:translateX(-100%);opacity:0.5}30%{opacity:1}100%{transform:translateX(350%);opacity:0.3}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}`}</style>
+    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes loadingSlide{0%{transform:translateX(-100%);opacity:0.5}30%{opacity:1}100%{transform:translateX(350%);opacity:0.3}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}.field-autofilled input{background:#f3f4f6!important;color:${C.sub}!important;transition:all .15s}.field-autofilled input:focus{background:#fff!important;color:${C.text}!important}`}</style>
 
     {/* Sidebar */}
     <Sidebar step={step} setStep={setStep} results={results} brand={results?.clientData?.brand||data.brand} onBack={handleBackToHub} isLocal={isLocal} onLogout={handleLogout} collapsed={sideCollapsed} setCollapsed={setSideCollapsed} sectionReady={sectionReady} auditInProgress={auditInProgress}/>
