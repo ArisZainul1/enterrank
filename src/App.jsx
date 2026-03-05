@@ -2927,9 +2927,26 @@ function DashboardPage({r,history,goTo}){
         const chartData=[...dayMap.values()].map(({_ts,...rest})=>rest);
 
         if(chartData.length<2)return(
-          <div style={{padding:32,background:C.card,border:"1px solid "+C.border,borderRadius:14,textAlign:"center"}}>
-            <div style={{fontSize:14,fontWeight:500,marginBottom:4}}>Not enough data yet</div>
-            <div style={{fontSize:12,color:C.muted}}>Run at least 2 audits to see historical trends. Each audit is saved automatically.</div>
+          <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"24px"}}>
+            <div style={{display:"flex",alignItems:"flex-start",gap:16}}>
+              <div style={{width:40,height:40,borderRadius:10,background:C.accent+"08",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:500,color:C.text,marginBottom:4}}>First Audit Complete</div>
+                <div style={{fontSize:12,color:C.sub,lineHeight:1.6,marginBottom:12}}>
+                  Re-audit in <span style={{fontWeight:500,color:C.text}}>30 days</span> after implementing roadmap items to track GEO score improvements. For fast-moving industries, consider re-auditing every 2 weeks.
+                </div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  <div style={{fontSize:11,padding:"6px 12px",background:C.bg,borderRadius:6,color:C.sub}}>
+                    Next recommended audit: <span style={{fontWeight:500,color:C.text}}>{new Date(Date.now()+30*24*60*60*1000).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</span>
+                  </div>
+                  <div style={{fontSize:11,padding:"6px 12px",background:C.bg,borderRadius:6,color:C.sub}}>
+                    Baseline score: <span style={{fontWeight:500,color:C.accent}}>{r.overall}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         );
 
@@ -2963,6 +2980,13 @@ function DashboardPage({r,history,goTo}){
                 Overall score {chartDelta>=0?"improved":"decreased"} by <span style={{fontWeight:500,color:chartDelta>=0?"#166534":"#991b1b"}}>{Math.abs(chartDelta)}%</span> since first audit
                 <span style={{color:C.muted}}> ({first.fullDate} → {last.fullDate})</span>
               </span>
+            </div>
+            <div style={{marginTop:12,padding:"10px 14px",background:C.bg,borderRadius:8,fontSize:11,color:C.muted,display:"flex",alignItems:"center",gap:6}}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              {chartData.length<4
+                ?"Recommended: re-audit every 30 days to track GEO improvements from roadmap implementation."
+                :`${chartData.length} audits recorded. Consistent tracking helps measure the impact of your GEO strategy.`
+              }
             </div>
           </div>
         );
