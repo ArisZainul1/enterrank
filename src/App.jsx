@@ -3858,6 +3858,23 @@ function ContentHubPage({r,goTo,activeProject,onUpdate}){
     const industry=r?.clientData?.industry||"";
     const brandContext=buildBrandContext();
 
+    // Find queries where brand is Absent or only Mentioned — these are the gaps content should target
+    const gapGptQueries=r?.engines?.[0]?.queries||[];
+    const absentQueries=gapGptQueries.filter(q=>q.status==="Absent").map(q=>q.query).slice(0,5);
+    const mentionedOnlyQueries=gapGptQueries.filter(q=>q.status==="Mentioned").map(q=>q.query).slice(0,3);
+    const citedQueries=gapGptQueries.filter(q=>q.status==="Cited").map(q=>q.query).slice(0,3);
+
+    const queryGapsContext=`
+REAL AUDIT DATA — Use this to make content strategically targeted:
+- Queries where ${brand} is ABSENT (content should directly answer these): ${absentQueries.length>0?absentQueries.map(q=>`"${q}"`).join(", "):"None — brand has good coverage"}
+- Queries where ${brand} is only MENTIONED but not CITED (content should aim for citation): ${mentionedOnlyQueries.length>0?mentionedOnlyQueries.map(q=>`"${q}"`).join(", "):"None"}
+- Queries where ${brand} IS CITED (reference these as examples of what works): ${citedQueries.length>0?citedQueries.map(q=>`"${q}"`).join(", "):"None"}
+
+CONTENT STRATEGY RULE: The content you generate MUST be structured so that AI engines (ChatGPT, Gemini) would cite ${brand} when users ask the Absent queries above. Include direct answers to those questions, specific data points, pricing or feature details, and authoritative claims that AI engines can extract.`;
+
+    const painPointGaps=(r?.painPoints||[]).filter(p=>p.severity==="critical"||p.severity==="warning").map(p=>`${p.label}: ${p.score}%`).join(", ");
+    const painContext=painPointGaps?`\nWEAK CATEGORIES TO ADDRESS: ${painPointGaps}`:"";
+
     const typePrompts={
       blog:`Write a comprehensive, SEO-optimized blog article (800-1500 words) about: "${topic}"\n\nStructure it with:\n- An engaging headline (H1)\n- An intro paragraph that hooks the reader\n- 3-5 subheadings (H2) with detailed paragraphs under each\n- Practical tips, data points, or examples where relevant\n- A conclusion with a clear next step or CTA\n- Meta description (150 chars)\n\nOptimize for AEO/GEO: include natural question-and-answer patterns within the text, use clear factual statements that AI engines can extract, and structure information in a way that's easy for AI to cite.`,
       faq:`Create a schema-optimized FAQ page with 8-12 questions and answers about: "${topic}"\n\nEach Q&A should:\n- Use natural language questions people actually search for\n- Provide comprehensive, authoritative answers (3-5 sentences each)\n- Include specific details, numbers, or examples where relevant\n- Be structured so AI engines can easily extract and cite individual answers\n\nAlso provide the JSON-LD FAQPage schema markup at the end.`,
@@ -3867,6 +3884,11 @@ function ContentHubPage({r,goTo,activeProject,onUpdate}){
       landing:`Write landing page copy about: "${topic}"\n\nInclude these sections:\n- Hero headline + subheadline\n- Hero CTA button text\n- 3 key benefit blocks (icon suggestion + headline + 2-sentence description each)\n- Social proof section (suggested testimonial format)\n- Feature comparison or "How it works" (3 steps)\n- FAQ section (4-5 questions)\n- Final CTA section with headline + button text\n\nMake it conversion-focused. Every section should move the reader toward the CTA.`,
       schema:`Generate JSON-LD structured data markup for: "${topic}"\n\nProvide these schema types (whichever are relevant):\n- Organization schema\n- Product schema (if product-related)\n- FAQPage schema\n- Article schema\n- BreadcrumbList schema\n- HowTo schema (if process-related)\n\nEach schema should be complete, valid JSON-LD that can be directly pasted into a webpage <script> tag. Include all required and recommended properties.`
     };
+
+    // Inject audit context into all content prompts
+    Object.keys(typePrompts).forEach(key=>{
+      typePrompts[key]=typePrompts[key]+"\n\n"+queryGapsContext+painContext;
+    });
 
     const systemPrompt=`You are an expert AEO/GEO content strategist. You create content specifically optimized to be cited and recommended by AI search engines (ChatGPT, Gemini, Perplexity, etc).\n\nBRAND CONTEXT:\nBrand: ${brand}\nIndustry: ${industry}\nRegion: ${region}\n${brandContext}\n\nAEO OPTIMIZATION RULES:\n- Use clear, factual, authoritative language that AI engines prefer to cite\n- Include natural question-and-answer patterns\n- Structure content with clear headings and logical flow\n- Include specific details, statistics, and examples\n- Write in a way that answers user queries directly and comprehensively\n- Avoid fluff, filler, and vague statements\n- Make statements that are quotable and extractable by AI\n\nIMPORTANT: All content must be in English. Follow all compliance restrictions listed above. Never violate brand guidelines.`;
 
