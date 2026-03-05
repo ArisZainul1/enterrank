@@ -2677,6 +2677,11 @@ function DashboardPage({r,history,goTo}){
   const prev=history.length>1?history[history.length-2]:null;
   const prevSentiment=prev?.sentimentPerEngine?Math.round((prev.sentimentPerEngine.gpt+prev.sentimentPerEngine.gemini)/2):null;
 
+  // ── Data readiness flags (for progressive loading placeholders) ──
+  const painPointsReady=r.painPoints&&r.painPoints.some(p=>p.score>0);
+  const competitorsReady=r.competitors&&r.competitors.length>0&&r.competitors.some(c=>(c.mentionRate||0)>0||(c.citationRate||0)>0||(c.painPoints||[]).some(p=>p.score>0));
+  const sentimentReady=r.sentiment?.brand?.avg!=null&&r.sentiment.brand.avg!==50;
+
   const delta=(cur,pre)=>{
     if(pre===null||pre===undefined)return <span style={{fontSize:10,fontWeight:500,color:C.muted,background:C.bg,padding:"2px 8px",borderRadius:100}}>First audit</span>;
     const d=cur-pre;
@@ -2756,7 +2761,7 @@ function DashboardPage({r,history,goTo}){
         {[
           {label:"Mention Rate",value:avgMentions+"%",prev:prev?.mentions,color:C.accent},
           {label:"Citation Rate",value:avgCitations+"%",prev:prev?.citations,color:"#8b5cf6"},
-          {label:"Sentiment",value:avgSentiment+"/100",prev:prevSentiment,color:avgSentiment>=55?C.green:avgSentiment>=45?C.amber:C.red},
+          {label:"Sentiment",value:sentimentReady?avgSentiment+"/100":"...",prev:sentimentReady?prevSentiment:null,color:sentimentReady?(avgSentiment>=55?C.green:avgSentiment>=45?C.amber:C.red):C.muted},
           {label:"Best Engine",value:bestEngine.name,sub:bestEngine.score+"%",color:bestEngine.name==="ChatGPT"?"#10A37F":"#4285F4"}
         ].map((kpi,i)=>(
           <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 18px"}}>
@@ -2812,17 +2817,31 @@ function DashboardPage({r,history,goTo}){
       {/* Category Health */}
       <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 20px"}}>
         <div style={{fontSize:14,fontWeight:500,color:C.text,marginBottom:12}}>Category Health</div>
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {r.painPoints.map((pp,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:11,color:C.sub,minWidth:100,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{pp.label.split("/")[0].trim()}</span>
-              <div style={{flex:1,height:6,borderRadius:3,background:C.bg}}>
-                <div style={{width:Math.max(2,pp.score)+"%",height:6,borderRadius:3,background:pp.severity==="critical"?C.red:pp.severity==="warning"?C.amber:C.green,transition:"width .6s ease"}}/>
+        {painPointsReady?(
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {r.painPoints.map((pp,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:11,color:C.sub,minWidth:100,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{pp.label.split("/")[0].trim()}</span>
+                <div style={{flex:1,height:6,borderRadius:3,background:C.bg}}>
+                  <div style={{width:Math.max(2,pp.score)+"%",height:6,borderRadius:3,background:pp.severity==="critical"?C.red:pp.severity==="warning"?C.amber:C.green,transition:"width .6s ease"}}/>
+                </div>
+                <span style={{fontSize:12,fontWeight:500,color:C.text,minWidth:32,textAlign:"right"}}>{pp.score}%</span>
               </div>
-              <span style={{fontSize:12,fontWeight:500,color:C.text,minWidth:32,textAlign:"right"}}>{pp.score}%</span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ):(
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {["Structured Data","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"].map((label,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:11,color:C.muted,minWidth:100}}>{label}</span>
+                <div style={{flex:1,height:6,borderRadius:3,background:C.bg,overflow:"hidden"}}>
+                  <div style={{width:"60%",height:"100%",background:`linear-gradient(90deg, ${C.bg} 25%, ${C.borderSoft} 50%, ${C.bg} 75%)`,backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite"}}/>
+                </div>
+                <span style={{fontSize:12,color:C.muted,minWidth:32,textAlign:"right"}}>--</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
 
@@ -2832,6 +2851,7 @@ function DashboardPage({r,history,goTo}){
         <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",color:C.text,marginBottom:4}}>Competitive Landscape</div>
         <div style={{fontSize:12,color:C.muted,marginBottom:16}}>{r.clientData.brand} vs competitors across AI engines</div>
 
+        {competitorsReady?(<>
         {/* Share of Voice — 3 donuts stacked */}
         {(()=>{
           const compData=r.competitors||[];
@@ -2998,6 +3018,13 @@ function DashboardPage({r,history,goTo}){
             </tbody>
           </table>
         </div>
+        </>):(
+          <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"40px 20px",textAlign:"center"}}>
+            <div style={{width:24,height:24,border:"2.5px solid "+C.borderSoft,borderTopColor:C.accent,borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 12px"}}/>
+            <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>Analyzing competitors</div>
+            <div style={{fontSize:12,color:C.muted}}>Scoring crawl data and comparing signals...</div>
+          </div>
+        )}
       </div>
     )}
 
@@ -4752,7 +4779,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
 
   return(<div style={{minHeight:"100vh",background:"#fff",fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif"}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}*{box-sizing:border-box}::selection{background:${C.accent}18}`}</style>
+    <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}*{box-sizing:border-box}::selection{background:${C.accent}18}`}</style>
 
     {/* Top nav */}
     <div style={{padding:"14px 32px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -4958,7 +4985,7 @@ export default function App(){
 
   if(!authed)return(<div style={{minHeight:"100vh",background:"#fff",fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",alignItems:"center",justifyContent:"center"}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}10!important}`}</style>
+    <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}10!important}`}</style>
     <div style={{width:"100%",maxWidth:380,padding:"0 24px",animation:"fadeIn .5s ease-out"}}>
       <div style={{textAlign:"center",marginBottom:40}}>
         <div style={{display:"inline-flex",alignItems:"center",gap:10,marginBottom:6}}>
@@ -5177,7 +5204,7 @@ export default function App(){
 
   return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",color:C.text,display:"flex"}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes loadingSlide{0%{transform:translateX(-100%);opacity:0.5}30%{opacity:1}100%{transform:translateX(350%);opacity:0.3}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}`}</style>
+    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes loadingSlide{0%{transform:translateX(-100%);opacity:0.5}30%{opacity:1}100%{transform:translateX(350%);opacity:0.3}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}`}</style>
 
     {/* Sidebar */}
     <Sidebar step={step} setStep={setStep} results={results} brand={results?.clientData?.brand||data.brand} onBack={handleBackToHub} isLocal={isLocal} onLogout={handleLogout} collapsed={sideCollapsed} setCollapsed={setSideCollapsed} sectionReady={sectionReady} auditInProgress={auditInProgress}/>
