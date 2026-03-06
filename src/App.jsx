@@ -3044,11 +3044,11 @@ Return JSON only:
     <Card><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       <Field label="Brand Name *" value={data.brand} onChange={v=>{setData({...data,brand:v});if(autoFilled)setAutoFilled(false);if(topicsAutoFilled){setTopicsAutoFilled(false);setData(d=>({...d,topics:[]}));}}} placeholder="Acme Corp"/>
       <Field label="Region *" value={data.region} onChange={v=>setData({...data,region:v})} placeholder="e.g. Malaysia"/>
-      <div style={{opacity:fieldsLocked?0.45:1,pointerEvents:fieldsLocked?"none":"auto",transition:"opacity .3s ease"}}>
-        <Field label="Industry" value={data.industry} onChange={v=>setData({...data,industry:v})} placeholder={fieldsLocked?"Auto-detected from brand":"e.g. Technology"}/>
+      <div style={{opacity:fieldsLocked?0.4:1,pointerEvents:fieldsLocked?"none":"auto",transition:"opacity .3s ease"}}>
+        <Field label="Industry" value={data.industry} onChange={v=>setData({...data,industry:v})} placeholder="e.g. Technology"/>
       </div>
-      <div style={{opacity:fieldsLocked?0.45:1,pointerEvents:fieldsLocked?"none":"auto",transition:"opacity .3s ease"}}>
-        <Field label="Website" value={data.website} onChange={v=>setData({...data,website:v})} placeholder={fieldsLocked?"Auto-detected from brand":"acme.com"}/>
+      <div style={{opacity:fieldsLocked?0.4:1,pointerEvents:fieldsLocked?"none":"auto",transition:"opacity .3s ease"}}>
+        <Field label="Website" value={data.website} onChange={v=>setData({...data,website:v})} placeholder="acme.com"/>
       </div>
     </div>
     {autoFilling&&(
@@ -3063,22 +3063,22 @@ Return JSON only:
         Generating search topics...
       </div>
     )}
-      <div style={{marginTop:16,opacity:fieldsLocked?0.45:1,pointerEvents:fieldsLocked?"none":"auto",transition:"opacity .3s ease"}}>
+      <div style={{marginTop:16,opacity:fieldsLocked?0.4:1,pointerEvents:fieldsLocked?"none":"auto",transition:"opacity .3s ease"}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:6}}>
           <label style={{fontSize:12,fontWeight:500,color:C.sub}}>Competitor Name</label>
           <label style={{fontSize:12,fontWeight:500,color:C.sub}}>Website</label>
         </div>
         {(data.competitors||[]).map((comp,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:8}}>
-          <input value={comp.name} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],name:e.target.value};setData({...data,competitors:c});}} placeholder={fieldsLocked?"Auto-detected":`Competitor ${i+1}`} style={{padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
+          <input value={comp.name} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],name:e.target.value};setData({...data,competitors:c});}} placeholder={`Competitor ${i+1}`} style={{padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <input value={comp.website} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],website:e.target.value};setData({...data,competitors:c});}} placeholder={fieldsLocked?"Auto-detected":"competitor.com"} style={{flex:1,padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
+            <input value={comp.website} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],website:e.target.value};setData({...data,competitors:c});}} placeholder="competitor.com" style={{flex:1,padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
             <span onClick={()=>{const c=data.competitors.filter((_,j)=>j!==i);setData({...data,competitors:c});}} style={{cursor:"pointer",color:C.muted,fontSize:16,opacity:0.5,flexShrink:0,lineHeight:1}}>×</span>
           </div>
         </div>))}
         {(data.competitors||[]).length<8&&<button onClick={()=>setData({...data,competitors:[...(data.competitors||[]),{name:"",website:""}]})} style={{padding:"6px 14px",background:"none",border:`1px dashed ${C.border}`,borderRadius:C.rs,fontSize:12,color:C.muted,cursor:"pointer",fontFamily:"inherit"}}>+ Add competitor</button>}
       </div>
     <div style={{marginTop:20,paddingTop:18,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div style={{display:"flex",gap:12,alignItems:"center",opacity:fieldsLocked?0.45:1,transition:"opacity .3s ease"}}><span style={{fontSize:11,color:C.muted}}>Engines:</span><ChatGPTLogo size={18}/><GeminiLogo size={18}/></div>
+      <div style={{display:"flex",gap:12,alignItems:"center",opacity:fieldsLocked?0.4:1,transition:"opacity .3s ease"}}><span style={{fontSize:11,color:C.muted}}>Engines:</span><ChatGPTLogo size={18}/><GeminiLogo size={18}/></div>
       <button onClick={()=>{setAuditStep("archetypes");if(availableArchetypes.length===0)generateArchetypes();}} disabled={!inputOk||genTopics} style={{padding:"10px 24px",background:inputOk&&!genTopics?C.accent:"#dde1e7",color:inputOk&&!genTopics?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:inputOk&&!genTopics?"pointer":"not-allowed",fontFamily:"'Geist-Variable','Outfit'"}}>{genTopics?"Generating...":"Select Audience →"}</button>
     </div>
     {error&&<div style={{marginTop:12,padding:"10px 16px",background:`${C.red}08`,border:`1px solid ${C.red}20`,borderRadius:8,fontSize:12,color:C.red}}>{error}</div>}
