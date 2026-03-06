@@ -5477,7 +5477,10 @@ export default function App(){
         const audits=await sbLoadProjectAudits(projectSummary.id);
         const project={...projectSummary,history:[]};
         if(audits.length>0){
-          const fullAudit=await sbLoadAudit(audits[0].id);
+          let fullAudit=await sbLoadAudit(audits[0].id);
+          if(!fullAudit||!fullAudit.results){
+            try{const cached=JSON.parse(localStorage.getItem("enterrank_audit_"+projectSummary.id)||"null");if(cached&&cached.apiData)fullAudit={results:cached.apiData};}catch(e){}
+          }
           if(fullAudit&&fullAudit.results){
             // Build history from all audits for the performance chart
             const historyEntries=audits.map(a=>({
@@ -5661,6 +5664,7 @@ export default function App(){
         });
         if(project){
           await sbSaveAudit(project.id,apiData,{overall:entry.overall,mentions:entry.mentions,citations:entry.citations,sentiment:entry.sentimentAvg});
+          try{localStorage.setItem("enterrank_audit_"+project.id,JSON.stringify({apiData,timestamp:Date.now()}));}catch(e){}
           setActiveProject({...project,_supabase:true});
           try{
             const freshAudits=await sbLoadProjectAudits(project.id);
@@ -5734,6 +5738,7 @@ export default function App(){
       if(project){
         await sbSaveAudit(project.id,apiData,{overall:entry.overall,mentions:entry.mentions,citations:entry.citations,sentiment:entry.sentimentAvg});
         console.log('Audit saved to Supabase:',project.id);
+        try{localStorage.setItem("enterrank_audit_"+project.id,JSON.stringify({apiData,timestamp:Date.now()}));}catch(e){}
         setActiveProject({...project,_supabase:true});
         // Refresh audit history so the chart updates
         try{
