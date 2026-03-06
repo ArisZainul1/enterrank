@@ -214,7 +214,6 @@ async function crawlWebsite(url){
     const res=await fetch("/api/crawl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url})});
     const data=await res.json();
     if(data.error&&!data.domain)return null;
-    console.log("RAW_CRAWL_RESULT:", JSON.stringify({topKeys: Object.keys(data || {}), schemas: data?.schemas || "NONE", mainPageSchemas: data?.mainPage?.schemas || "NONE", technicalSignals: data?.technicalSignals ? Object.keys(data.technicalSignals) : "NONE", hasSchemaField: "schemas" in (data || {}), schemaValues: data?.schemas || data?.mainPage?.schemas || data?.technicalSignals?.schemas || "NOWHERE", aeoSchemaTypes: data?.aeoSignals?.schemaTypes || "NONE"}));
     return{mainPage:data};
   }catch(e){console.error("Crawl error for "+url+":",e);return null;}
 }
@@ -320,15 +319,17 @@ function scoreCrawlData(crawl){
     if(!hasProducts)hasProducts=!!spRaw.products;
   }
   const cats=[];
-  // 1. Structured Data / Schema
+  // 1. Structured Data / Schema (0-100)
   let s1=0;const e1=[];
-  if(schemas.length>0){s1+=25;e1.push(schemas.length+" schema types: "+schemas.join(", "));}else{e1.push("No JSON-LD schema markup detected");}
-  if(hasFAQ){s1+=20;e1.push("FAQ schema present");}else{e1.push("No FAQ schema");}
-  if(hasArticle){s1+=15;e1.push("Article schema present");}else{e1.push("No Article schema");}
-  if(hasOrg){s1+=15;e1.push("Organization schema present");}else{e1.push("No Organization schema");}
-  if(hasProduct){s1+=10;e1.push("Product schema present");}
-  if(hasBreadcrumb){s1+=8;e1.push("Breadcrumb schema present");}
-  if(hasHowTo){s1+=7;e1.push("HowTo schema present");}
+  if(schemas.length>0){s1+=15;e1.push(schemas.length+" schema types detected: "+schemas.join(", "));}
+  if(hasFAQ){s1+=20;e1.push("FAQ schema detected");}else{e1.push("No FAQ schema");}
+  if(hasArticle){s1+=15;e1.push("Article schema detected");}else{e1.push("No Article schema");}
+  if(hasOrg){s1+=20;e1.push("Organization schema detected");}else{e1.push("No Organization schema");}
+  if(hasProduct){s1+=10;e1.push("Product schema detected");}
+  if(hasBreadcrumb){s1+=8;e1.push("Breadcrumb schema detected");}
+  if(hasHowTo){s1+=7;e1.push("HowTo schema detected");}
+  if(hasSpeakable){s1+=5;e1.push("Speakable schema detected");}
+  if(schemas.length===0&&!hasFAQ&&!hasArticle&&!hasOrg&&!hasProduct){e1.unshift("No JSON-LD schema markup detected");}
   cats.push({label:"Structured Data / Schema",score:Math.min(100,s1),evidence:e1});
   // 2. Content Authority
   let s2=0;const e2=[];
@@ -1064,7 +1065,6 @@ Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentenc
   }})(),
   // ── Pain Points — scored from REAL crawl data ──
   (async()=>{try{
-    console.log("BRANDCRAWL_SHAPE:", JSON.stringify({topKeys: brandCrawl ? Object.keys(brandCrawl) : "null", hasMainPage: !!brandCrawl?.mainPage, topLevelSchemas: brandCrawl?.schemas || "NONE", mainPageSchemas: brandCrawl?.mainPage?.schemas || "NONE", deepSchemas: brandCrawl?.mainPage?.mainPage?.schemas || "NONE"}));
     const scored=scoreCrawlData(brandCrawl);
     if(scored&&scored.categories){
       mergedPainPoints=scored.categories.map(c=>({label:c.label,score:c.score,severity:c.score<30?"critical":c.score<60?"warning":"good",evidence:c.evidence}));
@@ -1575,7 +1575,6 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
   accumulated.guidelineData = true;
   try{onProgress("All sections ready...", null, {...accumulated});}catch(emitErr){console.error("Emission 4 failed:",emitErr);}
 
-  console.log("FINAL_PAINPOINTS:", JSON.stringify(mergedPainPoints.map(p => p.label + ": " + p.score)));
   return {
     engineData:{
       engines:[
@@ -1892,7 +1891,6 @@ function generateAll(cd, apiData){
   const getScoreLabel=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
   const getScoreDesc=(s,b)=>s>=80?b+" is dominant — frequently cited and recommended.":s>=60?b+" has strong visibility — regularly mentioned.":s>=40?b+" has moderate visibility — rarely cited as primary source.":s>=20?b+" has weak visibility — occasionally mentioned.":b+" is invisible to AI engines.";
   const painCats=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
-  console.log("GENERATEALL_PAINPOINTS:", hasApi?"hasApi":"noApi", apiData?.engineData?.painPoints ? JSON.stringify(apiData.engineData.painPoints.map(p=>p.label+":"+p.score)) : "NULL");
   const painPoints=(hasApi&&apiData.engineData.painPoints&&apiData.engineData.painPoints.length>0)?apiData.engineData.painPoints.map(pp=>({label:pp.label,score:pp.score,severity:pp.score<30?"critical":pp.score<60?"warning":"good",evidence:pp.evidence||[]})):painCats.map(label=>({label,score:0,severity:"critical"}));
   const compVis = (hasApi && apiData.compVisibilityData) ? apiData.compVisibilityData : {};
   const competitors=(hasApi&&apiData.competitorData)?(()=>{const raw=Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors||[];return raw.filter(c=>c.name&&c.name.toLowerCase()!==cd.brand.toLowerCase()).map(c=>{const cPain=(c.painPoints||painCats.map(l=>({label:l,score:c.score||0}))).map(p=>({label:p.label,score:p.score}));const advantages=cPain.map(pp=>{const brandPP=painPoints.find(bp=>bp.label===pp.label);const diff=pp.score-(brandPP?brandPP.score:0);return{category:pp.label,diff,insight:getInsight(pp.label,c.name,cd.brand,diff>0)};}).filter(a=>a.insight);return{name:c.name,score:c.score||0,painPoints:cPain,advantages,mentionRate:(compVis[c.name]?.avgMentionRate)??0,citationRate:(compVis[c.name]?.avgCitationRate)??0,engineScores:[compVis[c.name]?.gpt?.score??c.score??0,compVis[c.name]?.gemini?.score??c.score??0],topStrength:c.topStrength||"N/A"};});})():[];
@@ -5112,7 +5110,6 @@ export default function App(){
       setAuditStage("");
       const r = generateAll(auditData, apiData);
       setResults(() => r);
-      console.log("AUDIT_COMPLETE: setting all sections ready");
       setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, playbook:true, channels:true, contenthub:true, roadmap:true });
 
       const entry={date:formatAuditDate(new Date()),brand:auditData.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
@@ -5169,7 +5166,6 @@ export default function App(){
       }catch(legacyErr){console.error('Legacy save failed:',legacyErr);}}
 
     } catch(e) {
-      console.error("AUDIT_COMPLETE (error path): setting all sections ready, error:", e.message || e);
       console.error("Progressive audit error:", e);
       setAuditInProgress(false);
       setAuditStage("");
