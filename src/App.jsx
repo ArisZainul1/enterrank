@@ -899,86 +899,82 @@ Return JSON only:
   }catch(stepError){
     console.error("Sentiment analysis failed:",stepError.message);
   }})(),
-  // ── Sentiment Signals ──
+  // ── Sentiment Signals (Theme Extraction) ──
   (async()=>{try{
-    const responseSnippets=[];
-    (gptResponses||[]).forEach((resp,i)=>{
-      const text=typeof resp==="string"?resp:resp?.response||resp?.text||resp?.result||"";
-      if(text.length>20)responseSnippets.push({engine:"ChatGPT",query:searchQueries[i]||"",snippet:text.slice(0,800)});
+    const gptTexts=(gptResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"ChatGPT"})).filter(r=>r.text.length>50);
+    const gemTexts=(gemResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"Gemini"})).filter(r=>r.text.length>50);
+    const allTexts=[...gptTexts,...gemTexts];
+    const brandLower=brand.toLowerCase();
+    const relevantTexts=allTexts.filter(r=>r.text.toLowerCase().includes(brandLower));
+    if(relevantTexts.length===0){sentimentSignals={themes:[],summary:"Brand not found in AI engine responses."};return;}
+    const excerpts=relevantTexts.map(r=>{
+      const sentences=r.text.split(/[.!?]+/).filter(s=>s.toLowerCase().includes(brandLower)).slice(0,3);
+      return{engine:r.engine,sentences:sentences.map(s=>s.trim()).filter(s=>s.length>20)};
+    }).filter(r=>r.sentences.length>0);
+    const excerptBlock=excerpts.map((e,i)=>`[${e.engine}] ${e.sentences.join(". ")}`).join("\n\n");
+    const themePrompt=`Analyze these REAL AI engine responses about "${brand}" in ${industry} (${region}).
+
+ACTUAL RESPONSE EXCERPTS:
+${excerptBlock.slice(0,3000)}
+
+Extract recurring THEMES — patterns in how AI engines describe ${brand}. For each theme:
+1. Give it a short descriptive name (e.g. "Strong Network Coverage", "Premium Pricing Concerns", "Market Leadership Position")
+2. Classify as "positive", "negative", or "neutral"
+3. Count how many excerpts contain this theme
+4. Pull the most relevant direct quote (under 80 chars) that demonstrates this theme
+
+Also provide a 1-sentence summary of overall AI engine sentiment toward ${brand}.
+
+Return JSON only:
+{
+  "themes": [
+    {"name":"<theme name>","sentiment":"positive"|"negative"|"neutral","count":<number>,"quote":"<short direct quote under 80 chars>","engine":"ChatGPT"|"Gemini"|"Both"}
+  ],
+  "summary":"<1 sentence overall sentiment summary>"
+}
+
+Rules:
+- Extract 4-8 themes based on what's ACTUALLY in the excerpts
+- Do NOT invent themes that aren't supported by the text
+- Count reflects how many separate excerpts mention this theme
+- Themes should be specific to ${brand}, not generic industry observations
+- Mix of positive, negative, and neutral themes based on what the text actually says`;
+    const [themeGpt,themeGem]=await Promise.all([
+      callOpenAI(themePrompt,engineSystemPrompt).catch(()=>null),
+      callGemini(themePrompt,engineSystemPrompt).catch(()=>null)
+    ]);
+    const gptThemes=safeJSON(themeGpt)||{themes:[],summary:""};
+    const gemThemes=safeJSON(themeGem)||{themes:[],summary:""};
+    const mergedThemes={};
+    [...(gptThemes.themes||[]),...(gemThemes.themes||[])].forEach(t=>{
+      if(!t.name)return;
+      const key=t.name.toLowerCase().replace(/[^a-z0-9]/g,"");
+      if(mergedThemes[key]){
+        mergedThemes[key].count=Math.max(mergedThemes[key].count||1,t.count||1);
+        if(t.quote&&!mergedThemes[key].quotes.includes(t.quote))mergedThemes[key].quotes.push(t.quote);
+        if(t.engine&&t.engine!==mergedThemes[key].engine)mergedThemes[key].engine="Both";
+      }else{
+        mergedThemes[key]={
+          name:t.name,
+          sentiment:t.sentiment||"neutral",
+          count:t.count||1,
+          quotes:t.quote?[t.quote]:[],
+          engine:t.engine||"Both"
+        };
+      }
     });
-    (gemResponses||[]).forEach((resp,i)=>{
-      const text=typeof resp==="string"?resp:resp?.response||resp?.text||resp?.result||"";
-      if(text.length>20)responseSnippets.push({engine:"Gemini",query:searchQueries[i]||"",snippet:text.slice(0,800)});
-    });
-    const gptSnippets=responseSnippets.filter(s=>s.engine==="ChatGPT");
-    const gemSnippets=responseSnippets.filter(s=>s.engine==="Gemini");
-    const interleaved=[];
-    const maxLen=Math.max(gptSnippets.length,gemSnippets.length);
-    for(let i=0;i<maxLen;i++){if(gptSnippets[i])interleaved.push(gptSnippets[i]);if(gemSnippets[i])interleaved.push(gemSnippets[i]);}
-    let snippetBlock=interleaved.map(s=>`[${s.engine}] Q: ${s.query}\nA: ${s.snippet}`).join("\n\n");
-    if(snippetBlock.length>6000)snippetBlock=snippetBlock.slice(0,6000);
-    if(snippetBlock.length>100){
-      const sigPrompt=`Analyze the following AI engine responses about "${brand}" in the ${industry} industry in ${region}.
-
-RESPONSES:
-${snippetBlock}
-
-Known competitors to EXCLUDE from brand sentiments: ${compNames.join(", ")}
-
-Extract:
-1. positive: Array of up to 4 positive signals — specific themes or qualities AI engines portray favorably about ${brand}. Each a short phrase (3-8 words).
-2. negative: Array of up to 4 negative signals — specific concerns or weaknesses AI engines mention about ${brand}. Each a short phrase.
-3. quotes: Array of up to 6 notable direct quotes from the AI responses about ${brand}. Each: {"text":"<under 40 words>","engine":"ChatGPT"|"Gemini","sentiment":"positive"|"negative"|"neutral"}
-4. competitorSentiment: Array for each competitor mentioned: {"name":"...","sentiment":"positive"|"negative"|"mixed","summary":"one sentence comparing to ${brand}"}
-
-CRITICAL FILTERING RULES:
-- ONLY extract sentiments and quotes that are SPECIFICALLY about ${brand}
-- Do NOT include sentiments about competitors even if they appear in the same response
-- If a quote mentions a competitor by name, it is NOT a brand sentiment and must be excluded
-- Every quote MUST be directly about ${brand} products, services, pricing, network, or reputation
-- Test each quote by asking: Is this statement describing ${brand} specifically? If no, exclude it
-
-DEDUPLICATION RULES:
-- Each positive signal must describe a DIFFERENT strength — no two should convey the same point
-- Each negative signal must describe a DIFFERENT concern — no repeats
-- Each quote must express a UNIQUE perspective — if two quotes say the same thing, keep only the more specific one
-- Maximum 4 positive signals, 4 negative signals, 6 quotes
-
-Competitors to look for: ${compNames.join(", ")}
-
-Return ONLY valid JSON:
-{"positive":["..."],"negative":["..."],"quotes":[{"text":"...","engine":"...","sentiment":"..."}],"competitorSentiment":[{"name":"...","sentiment":"...","summary":"..."}]}`;
-      const [gptSig,gemSig]=await Promise.all([
-        callOpenAI(sigPrompt,engineSystemPrompt).catch(()=>null),
-        callGemini(sigPrompt,engineSystemPrompt).catch(()=>null)
-      ]);
-      const gptP=safeJSON(gptSig),gemP=safeJSON(gemSig);
-      const mergeArr=(a1,a2)=>{const combined=[...(a1||[]),...(a2||[])];const seen=new Set();return combined.filter(item=>{const key=(typeof item==="string"?item:item.text||item.name||"").toLowerCase().trim();if(seen.has(key)||key.length<3)return false;seen.add(key);return true;});};
-      sentimentSignals={
-        positive:mergeArr(gptP?.positive,gemP?.positive).slice(0,8),
-        negative:mergeArr(gptP?.negative,gemP?.negative).slice(0,6),
-        quotes:mergeArr(gptP?.quotes,gemP?.quotes).slice(0,8),
-        competitorSentiment:mergeArr(gptP?.competitorSentiment,gemP?.competitorSentiment),
-        rawSnippets:responseSnippets.slice(0,10)
-      };
-      // Post-processing: deduplicate quotes
-      if(sentimentSignals&&sentimentSignals.quotes){
-        const seenQuotes=new Set();
-        sentimentSignals.quotes=sentimentSignals.quotes.filter(q=>{const key=(q.text||q.quote||"").toLowerCase().trim().slice(0,50);if(seenQuotes.has(key))return false;seenQuotes.add(key);return true;});
-      }
-      // Post-processing: deduplicate positive signals
-      if(sentimentSignals&&sentimentSignals.positive){
-        const seenPos=new Set();
-        sentimentSignals.positive=sentimentSignals.positive.filter(s=>{const key=(typeof s==="string"?s:s.theme||s.title||JSON.stringify(s)).toLowerCase().trim().slice(0,40);if(seenPos.has(key))return false;seenPos.add(key);return true;});
-      }
-      // Post-processing: deduplicate negative signals
-      if(sentimentSignals&&sentimentSignals.negative){
-        const seenNeg=new Set();
-        sentimentSignals.negative=sentimentSignals.negative.filter(s=>{const key=(typeof s==="string"?s:s.theme||s.title||JSON.stringify(s)).toLowerCase().trim().slice(0,40);if(seenNeg.has(key))return false;seenNeg.add(key);return true;});
-      }
-    }
-  }catch(stepError){
-    console.error("Sentiment signal extraction failed:",stepError.message);
+    const themesList=Object.values(mergedThemes).sort((a,b)=>b.count-a.count).slice(0,8);
+    const summary=gptThemes.summary||gemThemes.summary||"";
+    sentimentSignals={
+      themes:themesList,
+      summary,
+      positive:themesList.filter(t=>t.sentiment==="positive"),
+      negative:themesList.filter(t=>t.sentiment==="negative"),
+      quotes:themesList.flatMap(t=>t.quotes.map(q=>({text:q,engine:t.engine,sentiment:t.sentiment})))
+    };
+  }catch(e){
+    console.error("Theme extraction failed:",e);
+    sentimentSignals={themes:[],summary:"",positive:[],negative:[],quotes:[]};
   }})(),
   // ── Source Channels ──
   (async()=>{try{
