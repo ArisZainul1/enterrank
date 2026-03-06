@@ -2045,7 +2045,7 @@ function LandingPage({ onGetStarted }) {
   const [hoverCTA, setHoverCTA] = React.useState(false);
 
   return (
-    <div style={{height:"100vh",overflow:"hidden",background:"#ffffff",display:"flex",flexDirection:"column",fontFamily:"'Geist-Variable','Plus Jakarta Sans',-apple-system,sans-serif",position:"relative",overflow:"hidden"}}>
+    <div style={{height:"100vh",overflow:"hidden",background:"#ffffff",display:"flex",flexDirection:"column",fontFamily:"'Geist-Variable',-apple-system,BlinkMacSystemFont,sans-serif",position:"relative",overflow:"hidden"}}>
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
       <style>{`
         @keyframes floatDash{0%,100%{transform:perspective(1400px) rotateY(-12deg) rotateX(5deg) translateY(0)}50%{transform:perspective(1400px) rotateY(-12deg) rotateX(5deg) translateY(-10px)}}
@@ -2063,7 +2063,7 @@ function LandingPage({ onGetStarted }) {
       {/* Top bar */}
       <div style={{position:"relative",zIndex:2,padding:"24px 48px",display:"flex",alignItems:"center",gap:10}}>
         <svg width="32" height="32" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
-        <span style={{fontSize:16,fontWeight:500,color:"#0f172a",fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.01em"}}>EnterRank</span>
+        <span style={{fontSize:16,fontWeight:500,color:"#0f172a",fontFamily:"'Geist-Variable',-apple-system,sans-serif",letterSpacing:"-.01em"}}>EnterRank</span>
         <span style={{fontSize:12,color:"#94a3b8",marginLeft:2}}>by Entermind</span>
       </div>
 
@@ -2072,9 +2072,9 @@ function LandingPage({ onGetStarted }) {
 
         {/* Left column */}
         <div style={{flex:"0 0 42%",maxWidth:500}}>
-          <div style={{fontSize:11,fontWeight:500,color:"#2563eb",letterSpacing:".1em",textTransform:"uppercase",marginBottom:20,animation:"fadeUp 0.5s ease-out",fontFamily:"'Space Mono',monospace"}}>{"Audit \u00b7 Analyse \u00b7 Optimise"}</div>
+          <div style={{fontSize:11,fontWeight:500,color:"#2563eb",letterSpacing:".1em",textTransform:"uppercase",marginBottom:20,animation:"fadeUp 0.5s ease-out",fontFamily:"'Geist-Variable',-apple-system,sans-serif"}}>{"Audit \u00b7 Analyse \u00b7 Optimise"}</div>
 
-          <h1 style={{fontSize:50,fontWeight:500,fontFamily:"'Geist-Variable','Outfit'",color:"#0f172a",letterSpacing:"-.04em",margin:"0 0 20px",lineHeight:1.08,animation:"fadeUp 0.7s ease-out"}}>
+          <h1 style={{fontSize:50,fontWeight:500,fontFamily:"'Geist-Variable',-apple-system,sans-serif",color:"#0f172a",letterSpacing:"-.04em",margin:"0 0 20px",lineHeight:1.08,animation:"fadeUp 0.7s ease-out"}}>
             Own Your Brand's<br/>
             <span style={{color:"#2563eb"}}>AI Visibility</span>
           </h1>
@@ -2096,7 +2096,7 @@ function LandingPage({ onGetStarted }) {
               fontSize:14,
               fontWeight:500,
               cursor:"pointer",
-              fontFamily:"'Geist-Variable','Outfit'",
+              fontFamily:"'Geist-Variable',-apple-system,sans-serif",
               transition:"all .25s ease",
               boxShadow:hoverCTA?"0 8px 28px rgba(37,99,235,0.3)":"0 4px 16px rgba(37,99,235,0.15)",
               transform:hoverCTA?"translateY(-2px)":"translateY(0)",
@@ -2115,7 +2115,7 @@ function LandingPage({ onGetStarted }) {
               {value:"Actionable Insights",label:"Every Score Traced to Evidence"}
             ].map((t,i)=>(
               <div key={i}>
-                <div style={{fontSize:14,fontWeight:500,color:"#0f172a",fontFamily:"'Geist-Variable','Outfit'"}}>{t.value}</div>
+                <div style={{fontSize:14,fontWeight:500,color:"#0f172a",fontFamily:"'Geist-Variable',-apple-system,sans-serif"}}>{t.value}</div>
                 <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>{t.label}</div>
               </div>
             ))}
@@ -2141,15 +2141,15 @@ function LandingPage({ onGetStarted }) {
                 <div style={{width:10,height:10,borderRadius:"50%",background:"#f59e0b"}}/>
                 <div style={{width:10,height:10,borderRadius:"50%",background:"#22c55e"}}/>
               </div>
-              <div style={{fontSize:11,color:"#94a3b8",fontFamily:"'Space Mono',monospace"}}>enterrank.ai/dashboard</div>
+              <div style={{fontSize:11,color:"#94a3b8",fontFamily:"'Geist-Variable',-apple-system,sans-serif"}}>enterrank.ai/dashboard</div>
               <div style={{width:40}}/>
             </div>
 
             {/* Dashboard body with sidebar */}
             <div style={{display:"flex",minHeight:360}}>
               {/* Fake sidebar */}
-              <div style={{width:140,background:"#f8fafc",borderRight:"1px solid #f1f5f9",padding:"12px 0",flexShrink:0}}>
-                <div style={{padding:"6px 14px",marginBottom:8}}>
+              <div style={{width:110,background:"#f8fafc",borderRight:"1px solid #f1f5f9",padding:"12px 0",flexShrink:0}}>
+                <div style={{padding:"6px 12px",marginBottom:6}}>
                   <div style={{display:"flex",alignItems:"center",gap:5}}>
                     <svg width="14" height="14" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
                     <span style={{fontSize:9,fontWeight:500,color:"#0f172a"}}>EnterRank</span>
@@ -2159,26 +2159,22 @@ function LandingPage({ onGetStarted }) {
                   {label:"Dashboard",active:true},
                   {label:"Query Categories",active:false},
                   {label:"Sentiment",active:false},
-                  {label:"Query Results",active:false}
+                  {label:"Query Results",active:false},
+                  {label:"Channels",active:false},
+                  {label:"Roadmap",active:false},
+                  {label:"Playbook",active:false},
+                  {label:"Content Hub",active:false}
                 ].map((item,i)=>(
-                  <div key={i} style={{padding:"6px 14px",fontSize:9,color:item.active?"#2563eb":"#64748b",background:item.active?"#eff6ff":"transparent",fontWeight:item.active?500:400,borderLeft:item.active?"2px solid #2563eb":"2px solid transparent",marginBottom:1}}>{item.label}</div>
-                ))}
-                <div style={{padding:"4px 14px",fontSize:8,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".06em",marginTop:8,marginBottom:4}}>Strategy</div>
-                {["Target Channels","90-Day Roadmap"].map((item,i)=>(
-                  <div key={i} style={{padding:"6px 14px",fontSize:9,color:"#64748b",marginBottom:1}}>{item}</div>
-                ))}
-                <div style={{padding:"4px 14px",fontSize:8,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".06em",marginTop:8,marginBottom:4}}>Creation</div>
-                {["Brand Playbook","Content Hub"].map((item,i)=>(
-                  <div key={i} style={{padding:"6px 14px",fontSize:9,color:"#64748b",marginBottom:1}}>{item}</div>
+                  <div key={i} style={{padding:"5px 12px",fontSize:8,color:item.active?"#2563eb":"#94a3b8",background:item.active?"#eff6ff":"transparent",fontWeight:item.active?500:400,borderLeft:item.active?"2px solid #2563eb":"2px solid transparent",marginBottom:0}}>{item.label}</div>
                 ))}
               </div>
 
               {/* Main dashboard content */}
-              <div style={{flex:1,padding:16,overflowY:"hidden"}}>
+              <div style={{flex:1,padding:18,overflowY:"hidden"}}>
                 {/* Score */}
                 <div style={{textAlign:"center",marginBottom:12}}>
                   <div style={{fontSize:8,color:"#94a3b8",letterSpacing:".08em",textTransform:"uppercase",marginBottom:4}}>GEO Visibility Score</div>
-                  <div style={{fontSize:36,fontWeight:500,color:"#0f172a",fontFamily:"'Geist-Variable','Outfit'",lineHeight:1}}>72<span style={{fontSize:14,color:"#94a3b8"}}>%</span></div>
+                  <div style={{fontSize:36,fontWeight:500,color:"#0f172a",fontFamily:"'Geist-Variable',-apple-system,sans-serif",lineHeight:1}}>72<span style={{fontSize:14,color:"#94a3b8"}}>%</span></div>
                   <div style={{display:"inline-block",fontSize:8,fontWeight:500,padding:"2px 7px",borderRadius:100,background:"#dcfce7",color:"#166534",marginTop:3}}>Strong</div>
                 </div>
 
@@ -2187,7 +2183,7 @@ function LandingPage({ onGetStarted }) {
                   {[{l:"Mention Rate",v:"68%",c:"#2563eb"},{l:"Citation Rate",v:"45%",c:"#8b5cf6"},{l:"Sentiment",v:"Positive",c:"#059669"}].map((k,i)=>(
                     <div key={i} style={{background:"#f8fafc",borderRadius:6,padding:"6px 8px",border:"1px solid #f1f5f9"}}>
                       <div style={{fontSize:7,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".05em",marginBottom:2}}>{k.l}</div>
-                      <div style={{fontSize:12,fontWeight:500,color:k.c,fontFamily:"'Geist-Variable','Outfit'"}}>{k.v}</div>
+                      <div style={{fontSize:12,fontWeight:500,color:k.c,fontFamily:"'Geist-Variable',-apple-system,sans-serif"}}>{k.v}</div>
                     </div>
                   ))}
                 </div>
@@ -2200,14 +2196,13 @@ function LandingPage({ onGetStarted }) {
                       {q:"What are the best cloud platforms for startups?",g:"Cited",m:"Cited"},
                       {q:"Enterprise CRM software comparison",g:"Mentioned",m:"Cited"},
                       {q:"I need a project management tool for a remote team of 50",g:"Cited",m:"Mentioned"},
-                      {q:"Best analytics tools",g:"Mentioned",m:"Absent"},
-                      {q:"How do I choose between on-premise vs cloud infrastructure?",g:"Absent",m:"Mentioned"}
+                      {q:"Best analytics tools",g:"Mentioned",m:"Absent"}
                     ].map((r,i)=>{
                       const badge=(s)=>({fontSize:7,fontWeight:500,padding:"1px 4px",borderRadius:3,
                         background:s==="Cited"?"#dcfce7":s==="Mentioned"?"#dbeafe":"#fee2e2",
                         color:s==="Cited"?"#166534":s==="Mentioned"?"#1e40af":"#991b1b"});
                       return(
-                        <div key={i} style={{display:"flex",alignItems:"center",padding:"5px 8px",borderBottom:i<4?"1px solid #f1f5f9":"none",gap:4}}>
+                        <div key={i} style={{display:"flex",alignItems:"center",padding:"5px 8px",borderBottom:i<3?"1px solid #f1f5f9":"none",gap:4}}>
                           <div style={{flex:1,fontSize:8,color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.q}</div>
                           <span style={badge(r.g)}>{r.g}</span>
                           <span style={badge(r.m)}>{r.m}</span>
