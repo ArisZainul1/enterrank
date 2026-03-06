@@ -1984,9 +1984,9 @@ function LandingPage({ onGetStarted }) {
       `}</style>
       {/* Background elements */}
       <div style={{position:"absolute",inset:0,zIndex:0}}>
-        <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(rgba(37,99,235,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.04) 1px, transparent 1px)",backgroundSize:"60px 60px",animation:"gridMove 20s linear infinite"}}/>
-        <div style={{position:"absolute",top:-200,right:-100,width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.07) 0%, transparent 65%)"}}/>
-        <div style={{position:"absolute",bottom:-150,left:-80,width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 65%)"}}/>
+        <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(rgba(37,99,235,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.07) 1px, transparent 1px)",backgroundSize:"60px 60px",animation:"gridMove 20s linear infinite"}}/>
+        <div style={{position:"absolute",top:-200,right:-100,width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 65%)"}}/>
+        <div style={{position:"absolute",bottom:-150,left:-80,width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle, rgba(99,102,241,0.09) 0%, transparent 65%)"}}/>
       </div>
       {/* Main content */}
       <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",zIndex:1,padding:"60px 24px 40px"}}>
@@ -1999,11 +1999,11 @@ function LandingPage({ onGetStarted }) {
         <div style={{textAlign:"center",maxWidth:720,animation:"fadeUp 0.8s ease-out"}}>
           <div style={{fontSize:13,fontWeight:500,color:"#2563eb",letterSpacing:".08em",textTransform:"uppercase",marginBottom:20,fontFamily:"'Space Mono'"}}>{"Audit \u00b7 Analyse \u00b7 Optimise"}</div>
           <h1 style={{fontSize:56,fontWeight:500,fontFamily:"'Outfit'",color:"#0f172a",letterSpacing:"-.045em",margin:"0 0 20px",lineHeight:1.08}}>
-            See how AI engines<br/>
-            <span style={{color:"#2563eb"}}>see your brand</span>
+            Own your<br/>
+            <span style={{color:"#2563eb"}}>AI visibility</span>
           </h1>
           <p style={{fontSize:17,color:"#64748b",margin:"0 0 36px",lineHeight:1.65,maxWidth:520,marginLeft:"auto",marginRight:"auto"}}>
-            End-to-end AI engine auditing and optimisation. Test real queries on ChatGPT and Gemini, measure visibility, and build your strategy to get cited.
+            Test real queries on AI engines, measure visibility, and build your strategy to get cited.
           </p>
           {/* CTA */}
           <button
@@ -2052,10 +2052,6 @@ function LandingPage({ onGetStarted }) {
             </div>
           ))}
         </div>
-      </div>
-      {/* Footer */}
-      <div style={{textAlign:"center",padding:"20px 0 28px",position:"relative",zIndex:1}}>
-        <div style={{fontSize:11,color:"#9ca3af",letterSpacing:".02em"}}>{"Powered by ChatGPT & Gemini APIs \u00b7 Built by Entermind"}</div>
       </div>
     </div>
   );
