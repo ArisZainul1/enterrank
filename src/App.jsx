@@ -1715,10 +1715,10 @@ function exportPDF(r){
 
   // ── SHARE OF VOICE ──
   checkPage(30);sectionHeader("Share of Voice");
-  const allBrandsForVoice=[{name:brand,mentionRate:avgMention,citationRate:avgCitation},...(r.competitors||[]).filter(c=>c.name.toLowerCase()!==brand.toLowerCase())];
+  const allBrandsForVoice=[{name:brand,mentionShare:r.sovData?.shares?.[brand]?.mentionShare||0,citationShare:r.sovData?.shares?.[brand]?.citationShare||0},...(r.competitors||[]).filter(c=>c.name.toLowerCase()!==brand.toLowerCase()).map(c=>({name:c.name,mentionShare:r.sovData?.shares?.[c.name]?.mentionShare||0,citationShare:r.sovData?.shares?.[c.name]?.citationShare||0}))];
   if(allBrandsForVoice.length>0){
-    doc.autoTable({startY:y,head:[["Brand","Mention Rate","Citation Rate","Overall"]],
-      body:allBrandsForVoice.map(b=>[b.name,(b.mentionRate||0)+"%",(b.citationRate||0)+"%",Math.round(((b.mentionRate||0)+(b.citationRate||0))/2)+"%"]),
+    doc.autoTable({startY:y,head:[["Brand","Mention Share","Citation Share","Overall Share"]],
+      body:allBrandsForVoice.map(b=>[b.name,(b.mentionShare||0)+"%",(b.citationShare||0)+"%",Math.round(((b.mentionShare||0)+(b.citationShare||0))/2)+"%"]),
       margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:3},
       headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold"},
       columnStyles:{0:{cellWidth:contentW-75},1:{cellWidth:25,halign:"center"},2:{cellWidth:25,halign:"center"},3:{cellWidth:25,halign:"center"}}
@@ -1941,7 +1941,28 @@ function generateAll(cd, apiData){
   const compCrawlData=(hasApi&&apiData.compCrawlData)?apiData.compCrawlData:{};
   const searchQueries=(hasApi&&apiData.searchQueries)?apiData.searchQueries:[];
   const channelSourceData=(hasApi&&apiData.channelSourceData)?apiData.channelSourceData:{sourceChannels:[],opportunities:[]};
-  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,channelSourceData,clientData:cd};
+  // Share of Voice (Profound method)
+  const sovData=(()=>{
+    const brandName=cd.brand;
+    const allBrandNames=[brandName,...competitors.map(c=>c.name)];
+    const gptQ=(hasApi&&apiData.engineData)?(apiData.engineData.engines||[]).find(e=>e.id==="chatgpt"||e.name==="ChatGPT"):null;
+    const gemQ=(hasApi&&apiData.engineData)?(apiData.engineData.engines||[]).find(e=>e.id==="gemini"||e.name==="Gemini"):null;
+    const gptQueries=gptQ?.queries||[];const gemQueries=gemQ?.queries||[];
+    const totalQueries=Math.max(gptQueries.length,gemQueries.length,1);
+    const mentionCounts={};const citationCounts={};
+    allBrandNames.forEach(name=>{mentionCounts[name]=0;citationCounts[name]=0;});
+    const brandMentionCount=gptQueries.filter(q=>q.status==="Cited"||q.status==="Mentioned").length+gemQueries.filter(q=>q.status==="Cited"||q.status==="Mentioned").length;
+    const brandCitationCount=gptQueries.filter(q=>q.status==="Cited").length+gemQueries.filter(q=>q.status==="Cited").length;
+    mentionCounts[brandName]=brandMentionCount;citationCounts[brandName]=brandCitationCount;
+    const cVis=(hasApi&&apiData.compVisibilityData)?apiData.compVisibilityData:{};
+    competitors.forEach(c=>{const cv=cVis[c.name];if(cv){const gM=Math.round((cv.gpt?.mentionRate||0)/100*totalQueries);const geM=Math.round((cv.gemini?.mentionRate||0)/100*totalQueries);const gC=Math.round((cv.gpt?.citationRate||0)/100*totalQueries);const geC=Math.round((cv.gemini?.citationRate||0)/100*totalQueries);mentionCounts[c.name]=gM+geM;citationCounts[c.name]=gC+geC;}});
+    const totalMentions=Object.values(mentionCounts).reduce((a,b)=>a+b,0)||1;
+    const totalCitations=Object.values(citationCounts).reduce((a,b)=>a+b,0)||1;
+    const shares={};
+    allBrandNames.forEach(name=>{shares[name]={mentionCount:mentionCounts[name],citationCount:citationCounts[name],mentionShare:Math.round((mentionCounts[name]/totalMentions)*100),citationShare:Math.round((citationCounts[name]/totalCitations)*100)};});
+    return{shares,totalMentions,totalCitations,totalQueries:totalQueries*2};
+  })();
+  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,channelSourceData,sovData,clientData:cd};
 }
 
 function generatePartial(cd, partial) {
@@ -2975,15 +2996,16 @@ function DashboardPage({r,history,goTo}){
         {competitorsReady?(<>
         {/* Share of Voice — 3 donuts stacked */}
         {(()=>{
-          const compData=r.competitors||[];
+          const sov=r.sovData;
           const brandNameLower=r.clientData.brand.toLowerCase();
-          const allBrands=[
-            {name:r.clientData.brand,website:r.clientData.website,mentionRate:avgMentions,citationRate:avgCitations,color:C.accent},
-            ...compData.filter(c=>c.name.toLowerCase()!==brandNameLower).map((c,i)=>{
-              const compObj=(r.clientData.competitors||[]).find(cc=>cc.name===c.name);
-              return{name:c.name,website:compObj?.website||"",mentionRate:c.mentionRate||0,citationRate:c.citationRate||0,color:["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]};
-            })
+          const mentionBrands=[
+            {name:r.clientData.brand,website:r.clientData.website,mentionRate:sov?.shares?.[r.clientData.brand]?.mentionShare||0,color:C.accent},
+            ...r.competitors.filter(c=>c.name.toLowerCase()!==brandNameLower).map((c,i)=>({
+              name:c.name,website:(r.clientData.competitors||[]).find(cc=>cc.name===c.name)?.website||"",mentionRate:sov?.shares?.[c.name]?.mentionShare||0,
+              color:["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]
+            }))
           ];
+          const citationBrands=mentionBrands.map(b=>({...b,citationRate:sov?.shares?.[b.name]?.citationShare||0}));
           const sentimentBrands=[
             {name:r.clientData.brand,website:r.clientData.website,sentimentScore:avgSentiment,color:C.accent},
             ...(r.sentiment?.competitors||[]).filter(c=>c.name.toLowerCase()!==brandNameLower).map((c,i)=>({
@@ -2991,13 +3013,14 @@ function DashboardPage({r,history,goTo}){
               color:["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5]
             }))
           ];
-          return(
-            <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:20}}>
-              <ShareOfVoiceSection title="Mentions" rankTitle="Mention Rate" brands={allBrands} metricKey="mentionRate"/>
-              <ShareOfVoiceSection title="Citations" rankTitle="Citation Rate" brands={allBrands} metricKey="citationRate"/>
+          return(<>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:8}}>
+              <ShareOfVoiceSection title="Share of Mentions" rankTitle="Mention Share" brands={mentionBrands} metricKey="mentionRate"/>
+              <ShareOfVoiceSection title="Share of Citations" rankTitle="Citation Share" brands={citationBrands} metricKey="citationRate"/>
               <ShareOfVoiceSection title="Sentiment" rankTitle="Sentiment Score" brands={sentimentBrands} metricKey="sentimentScore"/>
             </div>
-          );
+            <div style={{fontSize:11,color:C.muted,marginBottom:16,padding:"0 4px"}}>Share = brand mentions / total mentions across all brands in {sov?.totalQueries||"all"} AI engine responses. <span style={{color:C.sub}}>Higher share = AI engines name you more often relative to competitors.</span></div>
+          </>);
         })()}
 
         {/* Competitor quick-comparison table */}
