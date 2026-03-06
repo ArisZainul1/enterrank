@@ -6,7 +6,7 @@ import "jspdf-autotable";
 const ChatGPTLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.998 5.998 0 0 0-3.998 2.9 6.042 6.042 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" fill="#10A37F"/></svg>);
 const GeminiLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M12 24C12 20.8174 10.7357 17.7652 8.48528 15.5147C6.23484 13.2643 3.18261 12 0 12C3.18261 12 6.23484 10.7357 8.48528 8.48528C10.7357 6.23484 12 3.18261 12 0C12 3.18261 13.2643 6.23484 15.5147 8.48528C17.7652 10.7357 20.8174 12 24 12C20.8174 12 17.7652 13.2643 15.5147 15.5147C13.2643 17.7652 12 20.8174 12 24Z" fill="url(#gG2)"/><defs><linearGradient id="gG2" x1="0" y1="12" x2="24" y2="12"><stop stopColor="#4285F4"/><stop offset=".5" stopColor="#9B72CB"/><stop offset="1" stopColor="#D96570"/></linearGradient></defs></svg>);
 const C={bg:"#f8f9fb",surface:"#ffffff",border:"#e8ecf1",borderSoft:"#f0f2f5",text:"#111827",sub:"#4b5563",muted:"#9ca3af",accent:"#2563eb",green:"#059669",amber:"#d97706",red:"#dc2626",r:12,rs:8};
-function Ring({score,size=100,color,sw=5}){const r2=(size-sw*2)/2,ci=2*Math.PI*r2;const col=color||(score>=70?C.green:score>=40?C.amber:C.red);return(<div style={{position:"relative",width:size,height:size}}><svg width={size} height={size}><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={C.borderSoft} strokeWidth={sw}/><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={col} strokeWidth={sw} strokeDasharray={ci} strokeDashoffset={ci-(score/100)*ci} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`} style={{transition:"stroke-dashoffset 1.2s ease-out"}}/></svg><div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:size*.26,fontWeight:700,color:C.text,lineHeight:1,fontFamily:"'Outfit'"}}>{score}%</span></div></div>);}
+function Ring({score,size=100,color,sw=5}){const r2=(size-sw*2)/2,ci=2*Math.PI*r2;const col=color||(score>=70?C.green:score>=40?C.amber:C.red);return(<div style={{position:"relative",width:size,height:size}}><svg width={size} height={size}><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={C.borderSoft} strokeWidth={sw}/><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={col} strokeWidth={sw} strokeDasharray={ci} strokeDashoffset={ci-(score/100)*ci} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`} style={{transition:"stroke-dashoffset 1.2s ease-out"}}/></svg><div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:size*.26,fontWeight:700,color:C.text,lineHeight:1,fontFamily:"'Geist-Variable','Outfit'"}}>{score}%</span></div></div>);}
 function Bar({value,color=C.accent,h=5}){return <div style={{width:"100%",height:h,background:C.borderSoft,borderRadius:h}}><div style={{width:`${Math.max(2,value)}%`,height:"100%",background:color,borderRadius:h,transition:"width .8s ease-out"}}/></div>;}
 function Pill({children,color=C.accent,filled}){return <span style={{display:"inline-flex",padding:"3px 10px",borderRadius:100,fontSize:11,fontWeight:600,background:filled?color:`${color}10`,color:filled?"#fff":color}}>{children}</span>;}
 function Card({children,style={},onClick}){return <div onClick={onClick} style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:14,padding:22,boxShadow:"0 1px 2px rgba(0,0,0,.03)",...(onClick?{cursor:"pointer"}:{}),...style}}>{children}</div>;}
@@ -24,8 +24,8 @@ const formatAuditDate=(d)=>{const date=d instanceof Date?d:new Date(d);return da
 function Field({label,value,onChange,placeholder,onBlur:onBlurCb}){return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label.endsWith(" *")?<>{label.slice(0,-2)}<span style={{color:C.red}}> *</span></>:label}</label><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,color:C.text,fontSize:14,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>{e.target.style.borderColor=C.border;if(onBlurCb)onBlurCb(e);}}/></div>);}
 function InfoTip({text}){const[show,setShow]=useState(false);return(<span style={{position:"relative",display:"inline-flex",marginLeft:4,cursor:"help"}} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}><span style={{width:14,height:14,borderRadius:"50%",background:C.bg,border:`1px solid ${C.border}`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.muted,fontWeight:600}}>?</span>{show&&<div style={{position:"absolute",bottom:"calc(100% + 6px)",left:"50%",transform:"translateX(-50%)",width:240,padding:"10px 12px",background:C.text,color:"#fff",borderRadius:8,fontSize:11,lineHeight:1.5,zIndex:999,boxShadow:"0 8px 24px rgba(0,0,0,.2)",pointerEvents:"none"}}><div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%) rotate(45deg)",width:8,height:8,background:C.text}}/>{text}</div>}</span>);}
 function SectionNote({text}){return <div style={{padding:"10px 14px",background:`${C.accent}04`,border:`1px solid ${C.accent}10`,borderRadius:C.rs,marginBottom:16,display:"flex",gap:8,alignItems:"flex-start"}}><span style={{fontSize:12,color:C.sub,lineHeight:1.6}}>{text}</span></div>;}
-function NavBtn({onClick,label}){return <div style={{display:"flex",justifyContent:"flex-end",marginTop:20}}><button onClick={onClick} style={{padding:"10px 22px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>{label}</button></div>;}
-function Logo(){return(<div style={{display:"flex",alignItems:"center",gap:9}}><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg><div><span style={{fontWeight:800,fontSize:16,color:C.text,letterSpacing:"-.03em",fontFamily:"'Outfit'"}}>EnterRank</span><span style={{fontSize:9,color:C.muted,marginLeft:6,fontWeight:500,textTransform:"uppercase",letterSpacing:".08em"}}>by Entermind</span></div></div>);}
+function NavBtn({onClick,label}){return <div style={{display:"flex",justifyContent:"flex-end",marginTop:20}}><button onClick={onClick} style={{padding:"10px 22px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>{label}</button></div>;}
+function Logo(){return(<div style={{display:"flex",alignItems:"center",gap:9}}><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg><div><span style={{fontWeight:800,fontSize:16,color:C.text,letterSpacing:"-.03em",fontFamily:"'Geist-Variable','Outfit'"}}>EnterRank</span><span style={{fontSize:9,color:C.muted,marginLeft:6,fontWeight:500,textTransform:"uppercase",letterSpacing:".08em"}}>by Entermind</span></div></div>);}
 function BRow({name,score,color,bold,diff}){return(<div style={{display:"flex",alignItems:"center",gap:12}}><span style={{minWidth:120,fontSize:12,fontWeight:bold?600:400,color:bold?C.accent:C.sub}}>{name}</span><div style={{flex:1}}><Bar value={score} color={color} h={8}/></div><span style={{minWidth:26,textAlign:"right",fontSize:13,fontWeight:700,color:bold?C.text:C.sub}}>{score}</span>{diff!==undefined&&<span style={{fontSize:11,fontWeight:600,color:diff>0?C.red:C.green,minWidth:32,textAlign:"right"}}>{diff>0?`+${diff}`:diff}</span>}</div>);}
 function SC(s){return s==="critical"?C.red:s==="warning"?C.amber:C.green;}
 
@@ -92,7 +92,7 @@ function MiniDonut({data,size=110,innerRatio=.6}){
       {arcs.map((a,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:5,fontSize:10,cursor:"default",padding:"1px 0"}} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)}>
         <div style={{width:7,height:7,borderRadius:2,background:a.color,flexShrink:0}}/>
         <span style={{color:hover===i?C.text:C.sub,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:hover===i?600:400,transition:"all .1s"}}>{a.label}</span>
-        <span style={{fontWeight:600,color:hover===i?a.color:C.text,flexShrink:0,fontFamily:"'Outfit'",transition:"color .1s"}}>{a.pct}%</span>
+        <span style={{fontWeight:600,color:hover===i?a.color:C.text,flexShrink:0,fontFamily:"'Geist-Variable','Outfit'",transition:"color .1s"}}>{a.pct}%</span>
       </div>))}
     </div>
   </div>);
@@ -1972,7 +1972,7 @@ function generatePartial(cd, partial) {
 function LandingPage({ onGetStarted }) {
   const [hoverCTA, setHoverCTA] = React.useState(false);
   return (
-    <div style={{minHeight:"100vh",background:"#fafbfc",display:"flex",flexDirection:"column",fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",position:"relative",overflow:"hidden"}}>
+    <div style={{minHeight:"100vh",background:"#fafbfc",display:"flex",flexDirection:"column",fontFamily:"'Geist-Variable','Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",position:"relative",overflow:"hidden"}}>
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
       <style>{`
         @keyframes floatA{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-12px) rotate(1deg)}}
@@ -1993,12 +1993,12 @@ function LandingPage({ onGetStarted }) {
         {/* Logo + brand */}
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:48,animation:"fadeUp 0.6s ease-out"}}>
           <svg width="36" height="36" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
-          <span style={{fontSize:15,fontWeight:500,color:"#6b7280",fontFamily:"'Outfit'",letterSpacing:".02em"}}>EnterRank <span style={{color:"#d1d5db"}}>by</span> Entermind</span>
+          <span style={{fontSize:15,fontWeight:500,color:"#6b7280",fontFamily:"'Geist-Variable','Outfit'",letterSpacing:".02em"}}>EnterRank <span style={{color:"#d1d5db"}}>by</span> Entermind</span>
         </div>
         {/* Hero headline */}
         <div style={{textAlign:"center",maxWidth:720,animation:"fadeUp 0.8s ease-out"}}>
           <div style={{fontSize:13,fontWeight:500,color:"#2563eb",letterSpacing:".08em",textTransform:"uppercase",marginBottom:20,fontFamily:"'Space Mono'"}}>{"Audit \u00b7 Analyse \u00b7 Optimise"}</div>
-          <h1 style={{fontSize:56,fontWeight:500,fontFamily:"'Outfit'",color:"#0f172a",letterSpacing:"-.045em",margin:"0 0 20px",lineHeight:1.08}}>
+          <h1 style={{fontSize:56,fontWeight:500,fontFamily:"'Geist-Variable','Outfit'",color:"#0f172a",letterSpacing:"-.045em",margin:"0 0 20px",lineHeight:1.08}}>
             Own your<br/>
             <span style={{color:"#2563eb"}}>AI visibility</span>
           </h1>
@@ -2019,7 +2019,7 @@ function LandingPage({ onGetStarted }) {
               fontSize:15,
               fontWeight:500,
               cursor:"pointer",
-              fontFamily:"'Outfit'",
+              fontFamily:"'Geist-Variable','Outfit'",
               letterSpacing:".01em",
               transition:"all .25s ease",
               boxShadow:hoverCTA?"0 8px 30px rgba(37,99,235,0.35)":"0 4px 16px rgba(37,99,235,0.2)",
@@ -2047,7 +2047,7 @@ function LandingPage({ onGetStarted }) {
               onMouseLeave={e => { e.currentTarget.style.borderColor = "#e8ecf1"; e.currentTarget.style.boxShadow = "none"; }}
             >
               <div style={{marginBottom:14}}>{f.icon}</div>
-              <div style={{fontSize:14,fontWeight:500,color:"#0f172a",marginBottom:6,fontFamily:"'Outfit'"}}>{f.title}</div>
+              <div style={{fontSize:14,fontWeight:500,color:"#0f172a",marginBottom:6,fontFamily:"'Geist-Variable','Outfit'"}}>{f.title}</div>
               <div style={{fontSize:12,color:"#64748b",lineHeight:1.65}}>{f.desc}</div>
             </div>
           ))}
@@ -2075,7 +2075,7 @@ function LoginForm({onSubmit,error,loading}){
       </div>
     </div>
     {error&&<div style={{padding:"10px 14px",background:`${C.red}06`,border:`1px solid ${C.red}12`,borderRadius:10,fontSize:13,color:C.red}}>{error}</div>}
-    <button onClick={submit} disabled={!ok||loading} style={{width:"100%",padding:"12px",background:ok&&!loading?C.accent:"#d1d5db",color:"#fff",border:"none",borderRadius:10,fontSize:15,fontWeight:600,cursor:ok&&!loading?"pointer":"not-allowed",fontFamily:"'Outfit'",transition:"all .2s",marginTop:2}}>{loading?"Signing in...":"Sign in"}</button>
+    <button onClick={submit} disabled={!ok||loading} style={{width:"100%",padding:"12px",background:ok&&!loading?C.accent:"#d1d5db",color:"#fff",border:"none",borderRadius:10,fontSize:15,fontWeight:600,cursor:ok&&!loading?"pointer":"not-allowed",fontFamily:"'Geist-Variable','Outfit'",transition:"all .2s",marginTop:2}}>{loading?"Signing in...":"Sign in"}</button>
   </div>);
 }
 
@@ -2132,7 +2132,7 @@ function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,s
 
     {/* New Audit button */}
     <div style={{padding:collapsed?"10px 8px":"12px 16px"}}>
-      <button onClick={()=>setStep("input")} style={{width:"100%",padding:collapsed?"8px":"9px 14px",background:step==="input"?`${C.accent}08`:"transparent",border:`1px solid ${step==="input"?C.accent+"30":C.border}`,borderRadius:8,fontSize:12,fontWeight:600,color:step==="input"?C.accent:C.sub,cursor:"pointer",fontFamily:"'Outfit'",display:"flex",alignItems:"center",justifyContent:collapsed?"center":"flex-start",gap:8,transition:"all .15s"}}>
+      <button onClick={()=>setStep("input")} style={{width:"100%",padding:collapsed?"8px":"9px 14px",background:step==="input"?`${C.accent}08`:"transparent",border:`1px solid ${step==="input"?C.accent+"30":C.border}`,borderRadius:8,fontSize:12,fontWeight:600,color:step==="input"?C.accent:C.sub,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'",display:"flex",alignItems:"center",justifyContent:collapsed?"center":"flex-start",gap:8,transition:"all .15s"}}>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
         {!collapsed&&"New Audit"}
       </button>
@@ -2211,7 +2211,7 @@ function ShareOfVoiceSection({title,rankTitle,brands,metricKey}){
       {/* Left: donut */}
       <div style={{padding:"24px 28px",borderRight:`1px solid ${C.border}`}}>
         <div style={{fontSize:13,color:C.muted,marginBottom:4}}>{title}</div>
-        <div style={{fontSize:28,fontWeight:700,color:C.text,fontFamily:"'Outfit'",marginBottom:16}}>{ownBrand?.pct||0}%<span style={{fontSize:14,color:C.muted,fontWeight:400,marginLeft:6}}>–</span></div>
+        <div style={{fontSize:28,fontWeight:700,color:C.text,fontFamily:"'Geist-Variable','Outfit'",marginBottom:16}}>{ownBrand?.pct||0}%<span style={{fontSize:14,color:C.muted,fontWeight:400,marginLeft:6}}>–</span></div>
         <div style={{display:"flex",justifyContent:"center"}}>
           <svg width={size} height={size} onMouseLeave={()=>setHover(null)}>
             {arcs.map((a,i)=>(<path key={i} d={a.path} fill={hover===i?a.color:`${a.color}cc`} stroke="none" onMouseEnter={()=>setHover(i)} style={{cursor:"default",transition:"fill .15s"}}/>))}
@@ -2227,7 +2227,7 @@ function ShareOfVoiceSection({title,rankTitle,brands,metricKey}){
       {/* Right: ranked list */}
       <div style={{padding:"24px 28px"}}>
         <div style={{fontSize:13,color:C.muted,marginBottom:4}}>{rankTitle}</div>
-        <div style={{fontSize:28,fontWeight:700,color:C.text,fontFamily:"'Outfit'",marginBottom:16}}>#{brandRank}<span style={{fontSize:14,color:C.muted,fontWeight:400,marginLeft:6}}>–</span></div>
+        <div style={{fontSize:28,fontWeight:700,color:C.text,fontFamily:"'Geist-Variable','Outfit'",marginBottom:16}}>#{brandRank}<span style={{fontSize:14,color:C.muted,fontWeight:400,marginLeft:6}}>–</span></div>
         <div style={{borderTop:`1px solid ${C.border}`,paddingTop:8}}>
           <div style={{display:"grid",gridTemplateColumns:"30px 1fr auto",gap:8,padding:"6px 0",fontSize:11,color:C.muted,fontWeight:500}}>
             <span></span><span>Brand</span><span>Share</span>
@@ -2238,7 +2238,7 @@ function ShareOfVoiceSection({title,rankTitle,brands,metricKey}){
               <BrandLogo name={a.name} website={a.website} size={22} color={a.color}/>
               <span style={{fontSize:13,fontWeight:500,color:C.text}}>{a.name}</span>
             </div>
-            <span style={{fontSize:14,fontWeight:600,color:C.text,fontFamily:"'Outfit'"}}>{a.pct}%</span>
+            <span style={{fontSize:14,fontWeight:600,color:C.text,fontFamily:"'Geist-Variable','Outfit'"}}>{a.pct}%</span>
           </div>))}
         </div>
       </div>
@@ -2342,13 +2342,13 @@ function AuditLoadingInline({ progress, stage }) {
             strokeLinecap="round"/>
         </svg>
         <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <span style={{ fontSize:24, fontWeight:500, color:C.text, fontFamily:"'Outfit'", letterSpacing:"-.02em" }}>{Math.round(p)}%</span>
+          <span style={{ fontSize:24, fontWeight:500, color:C.text, fontFamily:"'Geist-Variable','Outfit'", letterSpacing:"-.02em" }}>{Math.round(p)}%</span>
         </div>
       </div>
 
       {/* Status text */}
       <div style={{ textAlign:"center" }}>
-        <div style={{ fontSize:16, fontWeight:500, color:C.text, fontFamily:"'Outfit'", letterSpacing:"-.02em", marginBottom:6 }}>
+        <div style={{ fontSize:16, fontWeight:500, color:C.text, fontFamily:"'Geist-Variable','Outfit'", letterSpacing:"-.02em", marginBottom:6 }}>
           Analyzing your brand
         </div>
         <div style={{ fontSize:12, color:C.muted }}>
@@ -2670,7 +2670,7 @@ Return JSON only:
   /* ─── STEP 2: Topics Review ─── */
   if(auditStep==="topics")return(<div style={{maxWidth:620,margin:"0 auto"}}>
     <div style={{marginBottom:24,textAlign:"center"}}>
-      <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Review Topics for {data.brand}</h2>
+      <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Review Topics for {data.brand}</h2>
       <p style={{color:C.sub,fontSize:13,marginTop:4}}>These topics will be used to measure AI engine visibility. Edit, remove, or add more.</p>
     </div>
     <Card>
@@ -2688,7 +2688,7 @@ Return JSON only:
       {/* Topic list */}
       <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
         {data.topics.map((topic,i)=>{const topicLower=topic.toLowerCase();const topicContainsBrand=data.brand&&data.brand.trim().length>1&&topicLower.includes(data.brand.trim().toLowerCase());const topicContainsComp=(data.competitors||[]).some(c=>c.name&&c.name.trim().length>1&&topicLower.includes(c.name.trim().toLowerCase()));const hasWarning=topicContainsBrand||topicContainsComp;return(<div key={i}><div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:hasWarning?"#fef2f2":C.bg,borderRadius:8,border:`1px solid ${hasWarning?"#fecaca":C.borderSoft}`}}>
-          <span style={{fontSize:13,color:C.accent,fontWeight:600,fontFamily:"'Outfit'",minWidth:22}}>{i+1}.</span>
+          <span style={{fontSize:13,color:C.accent,fontWeight:600,fontFamily:"'Geist-Variable','Outfit'",minWidth:22}}>{i+1}.</span>
           {editingTopic===i?(<>
             <input value={editVal} onChange={e=>setEditVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")saveEdit(i);if(e.key==="Escape"){setEditingTopic(null);setEditVal("");}}} autoFocus style={{flex:1,padding:"4px 8px",background:"#fff",border:`1px solid ${C.accent}40`,borderRadius:6,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit"}}/>
             <span onClick={()=>saveEdit(i)} style={{cursor:"pointer",fontSize:11,color:C.accent,fontWeight:600}}>Save</span>
@@ -2703,17 +2703,17 @@ Return JSON only:
 
       {/* Topic counter */}
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
-        <span style={{fontSize:11,fontWeight:500,color:data.topics.length>=10?C.red:C.muted,fontFamily:"'Outfit'"}}>{data.topics.length} / 10 topics</span>
+        <span style={{fontSize:11,fontWeight:500,color:data.topics.length>=10?C.red:C.muted,fontFamily:"'Geist-Variable','Outfit'"}}>{data.topics.length} / 10 topics</span>
       </div>
 
       {/* Add new topic */}
       <div style={{display:"flex",gap:8,marginBottom:16}}>
         <input value={newTopic} onChange={e=>setNewTopic(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTopic();}} placeholder={data.topics.length>=10?"Maximum 10 topics reached":"Add a custom topic..."} disabled={data.topics.length>=10} style={{flex:1,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit",opacity:data.topics.length>=10?.5:1}}/>
-        <button onClick={addTopic} disabled={!newTopic.trim()||data.topics.length>=10} style={{padding:"8px 16px",background:newTopic.trim()&&data.topics.length<10?C.accent:"#dde1e7",color:newTopic.trim()&&data.topics.length<10?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:newTopic.trim()&&data.topics.length<10?"pointer":"not-allowed",fontFamily:"'Outfit'"}}>Add</button>
+        <button onClick={addTopic} disabled={!newTopic.trim()||data.topics.length>=10} style={{padding:"8px 16px",background:newTopic.trim()&&data.topics.length<10?C.accent:"#dde1e7",color:newTopic.trim()&&data.topics.length<10?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:newTopic.trim()&&data.topics.length<10?"pointer":"not-allowed",fontFamily:"'Geist-Variable','Outfit'"}}>Add</button>
       </div>
 
       {/* Generate more button */}
-      <button onClick={regenerateTopics} disabled={genTopics||generatingTopics||data.topics.length>=10} style={{width:"100%",padding:"10px 16px",background:"none",border:`1px dashed ${C.accent}40`,borderRadius:8,fontSize:12,fontWeight:600,color:data.topics.length>=10?C.muted:C.accent,cursor:genTopics||generatingTopics||data.topics.length>=10?"not-allowed":"pointer",fontFamily:"'Outfit'",marginBottom:8,opacity:genTopics||generatingTopics||data.topics.length>=10?.5:1}}>
+      <button onClick={regenerateTopics} disabled={genTopics||generatingTopics||data.topics.length>=10} style={{width:"100%",padding:"10px 16px",background:"none",border:`1px dashed ${C.accent}40`,borderRadius:8,fontSize:12,fontWeight:600,color:data.topics.length>=10?C.muted:C.accent,cursor:genTopics||generatingTopics||data.topics.length>=10?"not-allowed":"pointer",fontFamily:"'Geist-Variable','Outfit'",marginBottom:8,opacity:genTopics||generatingTopics||data.topics.length>=10?.5:1}}>
         {genTopics?"Generating more topics...":"+ Generate More Topics"}
       </button>
       {data.topics.length>0&&!genTopics&&!generatingTopics&&(
@@ -2723,10 +2723,10 @@ Return JSON only:
       )}
 
       <div style={{paddingTop:16,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <button onClick={()=>setAuditStep("input")} style={{padding:"8px 16px",background:"none",border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,color:C.sub,cursor:"pointer",fontFamily:"'Outfit'"}}>← Back to Details</button>
+        <button onClick={()=>setAuditStep("input")} style={{padding:"8px 16px",background:"none",border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,color:C.sub,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>← Back to Details</button>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <span style={{fontSize:11,color:C.muted}}>{data.topics.length} topics</span>
-          <button onClick={go} disabled={!topicsOk} style={{padding:"10px 24px",background:topicsOk?C.accent:"#dde1e7",color:topicsOk?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:topicsOk?"pointer":"not-allowed",fontFamily:"'Outfit'"}}>Run Audit →</button>
+          <button onClick={go} disabled={!topicsOk} style={{padding:"10px 24px",background:topicsOk?C.accent:"#dde1e7",color:topicsOk?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:topicsOk?"pointer":"not-allowed",fontFamily:"'Geist-Variable','Outfit'"}}>Run Audit →</button>
         </div>
       </div>
     </Card>
@@ -2735,7 +2735,7 @@ Return JSON only:
 
   /* ─── STEP 1: Client Details Input ─── */
   return(<div style={{maxWidth:620,margin:"0 auto"}}>
-    <div style={{marginBottom:24,textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>{data.brand?"Configure Audit":"New Audit"}</h2><p style={{color:C.sub,fontSize:13,marginTop:4}}>{data.brand?`${history.length>0?"Run another":"Set up"} audit for ${data.brand}.`:"Enter client details to begin."}</p></div>
+    <div style={{marginBottom:24,textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>{data.brand?"Configure Audit":"New Audit"}</h2><p style={{color:C.sub,fontSize:13,marginTop:4}}>{data.brand?`${history.length>0?"Run another":"Set up"} audit for ${data.brand}.`:"Enter client details to begin."}</p></div>
     {autoFilled&&(
       <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:`${C.accent}08`,border:`1px solid ${C.accent}20`,borderRadius:10,marginBottom:16,fontSize:12,color:C.accent}}>
         <span style={{fontSize:14}}>✦</span>
@@ -2781,7 +2781,7 @@ Return JSON only:
       </div>
     <div style={{marginTop:20,paddingTop:18,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div style={{display:"flex",gap:12,alignItems:"center",opacity:fieldsLocked?0.45:1,transition:"opacity .3s ease"}}><span style={{fontSize:11,color:C.muted}}>Engines:</span><ChatGPTLogo size={18}/><GeminiLogo size={18}/></div>
-      <button onClick={generateTopics} disabled={!inputOk||genTopics} style={{padding:"10px 24px",background:inputOk&&!genTopics?C.accent:"#dde1e7",color:inputOk&&!genTopics?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:inputOk&&!genTopics?"pointer":"not-allowed",fontFamily:"'Outfit'"}}>{genTopics?"Generating Topics...":"Generate Topics →"}</button>
+      <button onClick={generateTopics} disabled={!inputOk||genTopics} style={{padding:"10px 24px",background:inputOk&&!genTopics?C.accent:"#dde1e7",color:inputOk&&!genTopics?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:inputOk&&!genTopics?"pointer":"not-allowed",fontFamily:"'Geist-Variable','Outfit'"}}>{genTopics?"Generating Topics...":"Generate Topics →"}</button>
     </div>
     {error&&<div style={{marginTop:12,padding:"10px 16px",background:`${C.red}08`,border:`1px solid ${C.red}20`,borderRadius:8,fontSize:12,color:C.red}}>{error}</div>}
     </Card></div>);
@@ -2855,7 +2855,7 @@ function DashboardPage({r,history,goTo}){
       <div>
         <div style={{fontSize:13,color:C.muted}}>Dashboard for {r.clientData.brand}</div>
       </div>
-      <button onClick={()=>exportPDF(r)} style={{padding:"8px 16px",fontSize:12,fontWeight:500,background:C.accent,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"'Outfit'",whiteSpace:"nowrap"}}>
+      <button onClick={()=>exportPDF(r)} style={{padding:"8px 16px",fontSize:12,fontWeight:500,background:C.accent,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"'Geist-Variable','Outfit'",whiteSpace:"nowrap"}}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         Export PDF
       </button>
@@ -2871,7 +2871,7 @@ function DashboardPage({r,history,goTo}){
       {/* Overall Score — big and center */}
       <div style={{textAlign:"center",marginBottom:24}}>
         <div style={{fontSize:13,fontWeight:500,color:C.muted,marginBottom:8}}>GEO Visibility Score</div>
-        <div style={{fontSize:56,fontWeight:500,fontFamily:"'Outfit'",color:C.text,letterSpacing:"-.04em",lineHeight:1}}>{r.overall}<span style={{fontSize:24,color:C.muted,fontWeight:400}}>%</span></div>
+        <div style={{fontSize:56,fontWeight:500,fontFamily:"'Geist-Variable','Outfit'",color:C.text,letterSpacing:"-.04em",lineHeight:1}}>{r.overall}<span style={{fontSize:24,color:C.muted,fontWeight:400}}>%</span></div>
         <div style={{marginTop:8}}>
           <span style={{fontSize:12,fontWeight:500,padding:"4px 14px",borderRadius:100,background:r.overall>=80?"#dcfce7":r.overall>=60?"#dbeafe":r.overall>=40?"#fef3c7":r.overall>=20?"#ffedd5":"#fee2e2",color:r.overall>=80?"#166534":r.overall>=60?"#1e40af":r.overall>=40?"#92400e":r.overall>=20?"#9a3412":"#991b1b"}}>{r.scoreLabel}</span>
         </div>
@@ -2888,7 +2888,7 @@ function DashboardPage({r,history,goTo}){
           <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 18px",textAlign:"center"}}>
             <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:8}}>{kpi.label}</div>
             <div style={{display:"flex",alignItems:"baseline",gap:6,justifyContent:"center"}}>
-              <span style={{fontSize:kpi.label==="Sentiment Score"?18:22,fontWeight:500,fontFamily:"'Outfit'",color:kpi.color}}>{kpi.value}</span>
+              <span style={{fontSize:kpi.label==="Sentiment Score"?18:22,fontWeight:500,fontFamily:"'Geist-Variable','Outfit'",color:kpi.color}}>{kpi.value}</span>
               {kpi.prev!=null&&kpi.label!=="Best Engine"&&delta(parseInt(kpi.value),kpi.prev)}
               {kpi.sub&&<span style={{fontSize:12,color:C.muted}}>{kpi.sub}</span>}
             </div>
@@ -2969,7 +2969,7 @@ function DashboardPage({r,history,goTo}){
     {/* ═══ TIER 3: COMPARISON ═══ */}
     {r.competitors.length>0&&(
       <div style={{marginBottom:32}}>
-        <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",color:C.text,marginBottom:4}}>Competitive Landscape</div>
+        <div style={{fontSize:16,fontWeight:500,fontFamily:"'Geist-Variable','Outfit'",color:C.text,marginBottom:4}}>Competitive Landscape</div>
         <div style={{fontSize:12,color:C.muted,marginBottom:16}}>{r.clientData.brand} vs competitors across AI engines</div>
 
         {competitorsReady?(<>
@@ -3158,7 +3158,7 @@ function DashboardPage({r,history,goTo}){
 
     {/* ═══ TIER 4: HISTORICAL ═══ */}
     <div style={{marginBottom:32}}>
-      <div style={{fontSize:16,fontWeight:500,fontFamily:"'Outfit'",color:C.text,marginBottom:4}}>Historical Performance</div>
+      <div style={{fontSize:16,fontWeight:500,fontFamily:"'Geist-Variable','Outfit'",color:C.text,marginBottom:4}}>Historical Performance</div>
       <div style={{fontSize:12,color:C.muted,marginBottom:16}}>Track {r.clientData.brand}'s AI visibility over time</div>
 
       {(()=>{
@@ -3273,15 +3273,15 @@ Return JSON only.`;
     }catch(e){console.error("Archetype regeneration failed:",e);}
     setRegenArch(false);
   };
-  if(!r.stakeholders||r.stakeholders.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>User Archetypes</h2></div>
+  if(!r.stakeholders||r.stakeholders.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>User Archetypes</h2></div>
     <div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
       <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Archetypes not generated</div>
       <div style={{fontSize:12,color:"#9ca3af",marginBottom:16}}>This can happen if the AI service timed out during the audit.</div>
-      <button onClick={regenerateArchetypes} disabled={regenArch} style={{padding:"8px 18px",fontSize:12,fontWeight:500,background:regenArch?"#e5e7eb":C.accent,color:regenArch?"#999":"#fff",border:"none",borderRadius:8,cursor:regenArch?"default":"pointer",fontFamily:"'Outfit'"}}>{regenArch?"Generating...":"Generate Archetypes"}</button>
+      <button onClick={regenerateArchetypes} disabled={regenArch} style={{padding:"8px 18px",fontSize:12,fontWeight:500,background:regenArch?"#e5e7eb":C.accent,color:regenArch?"#999":"#fff",border:"none",borderRadius:8,cursor:regenArch?"default":"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>{regenArch?"Generating...":"Generate Archetypes"}</button>
     </div>
   </div>);
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>User Archetypes</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Who is searching — grouped by stakeholder type</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>User Archetypes</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Who is searching — grouped by stakeholder type</p></div>
     <SectionNote text="Select a stakeholder group to see customer segments within it. 'Visibility' shows how often AI engines mention your brand for this segment's queries."/>
     <div style={{display:"flex",gap:8,marginBottom:20}}>
       {r.stakeholders.map((sg,i)=>(<div key={i} onClick={()=>{setSelGroup(i);setSelArch(null);}} style={{flex:1,padding:"14px 16px",background:selGroup===i?`${C.accent}06`:C.surface,border:`1px solid ${selGroup===i?`${C.accent}30`:C.border}`,borderRadius:C.rs,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
@@ -3405,13 +3405,13 @@ function IntentPage({r,goTo}){
   return(<div>
     {/* Header */}
     <div style={{marginBottom:32}}>
-      <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Query Results</h2>
+      <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Query Results</h2>
       <p style={{color:"#6b7280",fontSize:13,marginTop:4}}>Audit query results across ChatGPT and Gemini for {r.clientData.brand}</p>
     </div>
 
     {/* Overall summary */}
     <div style={{padding:"20px 24px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:14,marginBottom:32}}>
-      <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Outfit'"}}>Query Visibility Summary</div>
+      <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Geist-Variable','Outfit'"}}>Query Visibility Summary</div>
       <div style={{fontSize:12,color:C.muted,marginTop:2}}>{combinedQueries.length} prompts tested across both engines</div>
     </div>
 
@@ -3434,7 +3434,7 @@ function IntentPage({r,goTo}){
 
     {/* Section B: Test a Prompt */}
     <div style={{marginTop:40,padding:24,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
-      <div style={{fontSize:15,fontWeight:500,fontFamily:"'Outfit'",letterSpacing:"-.02em",color:C.text,marginBottom:4}}>Test a Prompt</div>
+      <div style={{fontSize:15,fontWeight:500,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em",color:C.text,marginBottom:4}}>Test a Prompt</div>
       <p style={{fontSize:12,color:C.muted,marginBottom:16,marginTop:0}}>Type any search query to test whether {r.clientData.brand} gets cited or mentioned on ChatGPT and Gemini.</p>
 
       <div style={{display:"flex",gap:8}}>
@@ -3444,7 +3444,7 @@ function IntentPage({r,goTo}){
           onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}
           onKeyDown={e=>e.key==="Enter"&&testQuery.trim()&&handleTestPrompt()}/>
         <button onClick={handleTestPrompt} disabled={!testQuery.trim()||testingPrompt}
-          style={{padding:"10px 20px",fontSize:13,fontWeight:500,fontFamily:"'Outfit'",
+          style={{padding:"10px 20px",fontSize:13,fontWeight:500,fontFamily:"'Geist-Variable','Outfit'",
             background:testQuery.trim()&&!testingPrompt?C.accent:"#e5e7eb",
             color:testQuery.trim()&&!testingPrompt?"#fff":"#999",
             border:"none",borderRadius:10,cursor:testQuery.trim()&&!testingPrompt?"pointer":"default",
@@ -3532,7 +3532,7 @@ function PlaybookPage({r,goTo,activeProject}){
   const saveBtn=(onClick)=>(<div style={{marginTop:14,display:"flex",alignItems:"center",gap:10,justifyContent:"flex-end"}}>
     {saveStatus==="saved"&&<span style={{fontSize:11,color:C.green,fontWeight:500}}>Saved</span>}
     {saveStatus==="error"&&<span style={{fontSize:11,color:C.red,fontWeight:500}}>Save failed</span>}
-    <button onClick={onClick} disabled={saving} style={{padding:"8px 20px",background:C.accent,color:"#fff",border:"none",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",opacity:saving?.6:1}}>{saving?"Saving...":"Save"}</button>
+    <button onClick={onClick} disabled={saving} style={{padding:"8px 20px",background:C.accent,color:"#fff",border:"none",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'",opacity:saving?.6:1}}>{saving?"Saving...":"Save"}</button>
   </div>);
 
   const aiLink=(onClick)=>(<span onClick={generating?undefined:onClick} style={{fontSize:12,fontWeight:500,color:generating?C.muted:C.accent,cursor:generating?"default":"pointer",marginLeft:8,display:"inline-flex",alignItems:"center",gap:4}}>{generating?"Generating...":"AI Generate"}</span>);
@@ -3555,7 +3555,7 @@ function PlaybookPage({r,goTo,activeProject}){
       <label style={labelStyle}>{label}</label>
       <div style={{display:"flex",gap:6,marginBottom:6}}>
         <input value={inp} onChange={e=>setInp(e.target.value)} placeholder={placeholder} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addToList(section,field,inp);setInp("");}}} style={{...inputStyle,flex:1}}/>
-        <button onClick={()=>{addToList(section,field,inp);setInp("");}} style={{padding:"8px 14px",background:`${c}10`,color:c,border:`1px solid ${c}25`,borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",whiteSpace:"nowrap"}}>+ Add</button>
+        <button onClick={()=>{addToList(section,field,inp);setInp("");}} style={{padding:"8px 14px",background:`${c}10`,color:c,border:`1px solid ${c}25`,borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'",whiteSpace:"nowrap"}}>+ Add</button>
       </div>
       <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
         {items.map((item,i)=>(<span key={i} style={{display:"inline-flex",alignItems:"center",gap:4,padding:"4px 10px",background:`${c}08`,color:c,borderRadius:100,fontSize:11,fontWeight:500}}>{item}<span onClick={()=>removeFromList(section,field,i)} style={{cursor:"pointer",opacity:.6,fontSize:13,lineHeight:1}}>×</span></span>))}
@@ -3628,7 +3628,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const v=playbook.brand_voice;
       return(<Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Voice & Tone{aiLink(genVoice)}</h3>
+          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Brand Voice & Tone{aiLink(genVoice)}</h3>
         </div>
         <div style={{marginBottom:10}}><label style={labelStyle}>Tone of Voice</label><input value={v.tone} onChange={e=>setPlaybook({...playbook,brand_voice:{...v,tone:e.target.value}})} placeholder="e.g. Authoritative, data-driven, approachable" style={inputStyle}/></div>
         <div style={{marginBottom:10}}><label style={labelStyle}>Brand Personality</label><textarea value={v.personality} onChange={e=>setPlaybook({...playbook,brand_voice:{...v,personality:e.target.value}})} placeholder="Describe your brand personality in 2-3 sentences..." rows={3} style={{...inputStyle,resize:"vertical"}}/></div>
@@ -3642,7 +3642,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const t=playbook.taglines;
       return(<Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Taglines & Messaging{aiLink(genTaglines)}</h3>
+          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Taglines & Messaging{aiLink(genTaglines)}</h3>
         </div>
         <div style={{marginBottom:10}}><label style={labelStyle}>Primary Tagline</label><input value={t.primary} onChange={e=>setPlaybook({...playbook,taglines:{...t,primary:e.target.value}})} placeholder={`e.g. "${brand} — The future of ${industry}"`} style={inputStyle}/></div>
         <ListEditor section="taglines" field="supporting" label="Supporting Messages" placeholder="e.g. Trusted by 500+ enterprises worldwide"/>
@@ -3654,7 +3654,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const setVi=(k,val)=>setPlaybook({...playbook,visual_ci:{...vi,[k]:val}});
       return(<Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Visual Corporate Identity{aiLink(genVisual)}</h3>
+          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Visual Corporate Identity{aiLink(genVisual)}</h3>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:14}}>
           {[["primaryColor","Primary"],["secondaryColor","Secondary"],["accentColor","Accent"]].map(([key,lbl])=>(<div key={key}>
@@ -3683,7 +3683,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const co=playbook.compliance;
       return(<Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Compliance & Restrictions{aiLink(genCompliance)}</h3>
+          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Compliance & Restrictions{aiLink(genCompliance)}</h3>
         </div>
         <ListEditor section="compliance" field="restrictions" label="Brand Restrictions" placeholder="e.g. Never compare directly with competitor X" color={C.red}/>
         <div style={{marginBottom:10}}><label style={labelStyle}>Additional Notes</label><textarea value={co.notes} onChange={e=>setPlaybook({...playbook,compliance:{...co,notes:e.target.value}})} placeholder="Any additional compliance notes, legal disclaimers, or regulatory requirements..." rows={4} style={{...inputStyle,resize:"vertical"}}/></div>
@@ -3707,8 +3707,8 @@ function PlaybookPage({r,goTo,activeProject}){
       };
       return(<Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Products & Services</h3>
-          <button onClick={()=>startEdit(null,"new")} style={{padding:"6px 14px",background:`${C.accent}10`,color:C.accent,border:`1px solid ${C.accent}25`,borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>+ Add Product</button>
+          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Products & Services</h3>
+          <button onClick={()=>startEdit(null,"new")} style={{padding:"6px 14px",background:`${C.accent}10`,color:C.accent,border:`1px solid ${C.accent}25`,borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>+ Add Product</button>
         </div>
         {editProduct!==null&&<div style={{padding:14,background:C.bg,borderRadius:C.rs,border:`1px solid ${C.accent}25`,marginBottom:14}}>
           <div style={{marginBottom:8}}><label style={labelStyle}>Product Name</label><input value={prodForm.name} onChange={e=>setProdForm({...prodForm,name:e.target.value})} placeholder="e.g. Enterprise Analytics Suite" style={inputStyle}/></div>
@@ -3717,13 +3717,13 @@ function PlaybookPage({r,goTo,activeProject}){
             <label style={labelStyle}>Features (press Enter to add)</label>
             <div style={{display:"flex",gap:6,marginBottom:6}}>
               <input value={featureInput} onChange={e=>setFeatureInput(e.target.value)} placeholder="e.g. Real-time dashboards" onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();if(featureInput.trim()){setProdForm({...prodForm,features:[...prodForm.features,featureInput.trim()]});setFeatureInput("");}}}} style={{...inputStyle,flex:1}}/>
-              <button onClick={()=>{if(featureInput.trim()){setProdForm({...prodForm,features:[...prodForm.features,featureInput.trim()]});setFeatureInput("");}}} style={{padding:"8px 14px",background:`${C.accent}10`,color:C.accent,border:`1px solid ${C.accent}25`,borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>+ Add</button>
+              <button onClick={()=>{if(featureInput.trim()){setProdForm({...prodForm,features:[...prodForm.features,featureInput.trim()]});setFeatureInput("");}}} style={{padding:"8px 14px",background:`${C.accent}10`,color:C.accent,border:`1px solid ${C.accent}25`,borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>+ Add</button>
             </div>
             <div style={{display:"flex",flexWrap:"wrap",gap:4}}>{prodForm.features.map((f,i)=>(<span key={i} style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 8px",background:`${C.accent}08`,color:C.accent,borderRadius:100,fontSize:11}}>{f}<span onClick={()=>setProdForm({...prodForm,features:prodForm.features.filter((_,j)=>j!==i)})} style={{cursor:"pointer",opacity:.6,fontSize:13}}>×</span></span>))}</div>
           </div>
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-            <button onClick={()=>{setEditProduct(null);setProdForm({name:"",description:"",features:[]});setFeatureInput("");}} style={{padding:"6px 14px",background:C.bg,color:C.sub,border:`1px solid ${C.border}`,borderRadius:6,fontSize:11,fontWeight:500,cursor:"pointer",fontFamily:"'Outfit'"}}>Cancel</button>
-            <button onClick={saveProd} style={{padding:"6px 14px",background:C.accent,color:"#fff",border:"none",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>Save Product</button>
+            <button onClick={()=>{setEditProduct(null);setProdForm({name:"",description:"",features:[]});setFeatureInput("");}} style={{padding:"6px 14px",background:C.bg,color:C.sub,border:`1px solid ${C.border}`,borderRadius:6,fontSize:11,fontWeight:500,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>Cancel</button>
+            <button onClick={saveProd} style={{padding:"6px 14px",background:C.accent,color:"#fff",border:"none",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>Save Product</button>
           </div>
         </div>}
         {prods.length===0&&editProduct===null&&<div style={{textAlign:"center",padding:20,color:C.muted,fontSize:12}}>No products added yet. Click "+ Add Product" to get started.</div>}
@@ -3747,7 +3747,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const po=Array.isArray(playbook.positioning)?playbook.positioning:[];
       return(<Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Competitive Positioning{aiLink(genPositioning)}</h3>
+          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Competitive Positioning{aiLink(genPositioning)}</h3>
         </div>
         {po.length>0?po.map((p,i)=>(<div key={i} style={{padding:12,background:C.surface,borderRadius:C.rs,border:`1px solid ${C.borderSoft}`,marginBottom:8}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -3766,12 +3766,12 @@ function PlaybookPage({r,goTo,activeProject}){
   };
 
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Playbook</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Your brand hub — identity, voice, and AI-optimised guidelines</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Brand Playbook</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Your brand hub — identity, voice, and AI-optimised guidelines</p></div>
     <SectionNote text="This is your central brand hub. Define your brand voice, manage compliance, and set guidelines. Everything here powers your content generation and AI engine strategy."/>
 
     {/* Tab Bar */}
     <div style={{display:"flex",gap:0,marginBottom:16,borderBottom:`1px solid ${C.border}`,overflowX:"auto"}}>
-      {TABS.map(tab=>(<button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{padding:"10px 16px",background:"transparent",border:"none",borderBottom:activeTab===tab.id?`2px solid ${C.accent}`:"2px solid transparent",color:activeTab===tab.id?C.accent:C.muted,fontSize:12,fontWeight:activeTab===tab.id?600:500,cursor:"pointer",fontFamily:"'Outfit'",whiteSpace:"nowrap",transition:"all .15s"}}>{tab.label}</button>))}
+      {TABS.map(tab=>(<button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{padding:"10px 16px",background:"transparent",border:"none",borderBottom:activeTab===tab.id?`2px solid ${C.accent}`:"2px solid transparent",color:activeTab===tab.id?C.accent:C.muted,fontSize:12,fontWeight:activeTab===tab.id?600:500,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'",whiteSpace:"nowrap",transition:"all .15s"}}>{tab.label}</button>))}
     </div>
 
     {/* Loading state */}
@@ -3788,13 +3788,13 @@ function PlaybookPage({r,goTo,activeProject}){
 
     {/* Brand Guidelines - expandable (always shown when results available) */}
     <Card style={{marginBottom:16}}>
-      <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:"0 0 4px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Brand Guidelines</h3>
+      <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:"0 0 4px",fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Brand Guidelines</h3>
       <p style={{fontSize:12,color:C.muted,margin:"0 0 14px"}}>{r.brandGuidelines.length} technical guidelines for maximising AI engine citation rate. Click to expand.</p>
       <div style={{display:"flex",flexDirection:"column",gap:6}}>
         {r.brandGuidelines.map((g,i)=>{const isOpen=expandG===i;return(<div key={i} style={{borderRadius:C.rs,border:`1px solid ${isOpen?`${C.accent}25`:C.border}`,overflow:"hidden",transition:"all .15s"}}>
           <div onClick={()=>setExpandG(isOpen?null:i)} style={{padding:"12px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,background:isOpen?`${C.accent}03`:"transparent"}}>
             <div style={{flex:1}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><span style={{fontSize:11,fontWeight:700,color:C.accent,fontFamily:"'Outfit'",background:`${C.accent}08`,padding:"2px 8px",borderRadius:4}}>G{String(i+1).padStart(2,"0")}</span><span style={{fontSize:13,fontWeight:500,color:C.text}}>{g.area}</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><span style={{fontSize:11,fontWeight:700,color:C.accent,fontFamily:"'Geist-Variable','Outfit'",background:`${C.accent}08`,padding:"2px 8px",borderRadius:4}}>G{String(i+1).padStart(2,"0")}</span><span style={{fontSize:13,fontWeight:500,color:C.text}}>{g.area}</span></div>
               {!isOpen&&<div style={{fontSize:11,color:C.muted,marginTop:4,lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{g.rule}</div>}
             </div>
             <span style={{fontSize:10,color:C.accent,marginTop:4,flexShrink:0}}>{isOpen?"▲":"▼"}</span>
@@ -3828,7 +3828,7 @@ function SentimentPage({r}){
   const brandNameLower=(r?.clientData?.brand||"").toLowerCase();
   return(<div>
     <div style={{marginBottom:32}}>
-      <h2 style={{fontSize:22,fontWeight:600,color:C.text,letterSpacing:"-.02em",margin:0,fontFamily:"'Outfit'"}}>Sentiment Analysis</h2>
+      <h2 style={{fontSize:22,fontWeight:600,color:C.text,letterSpacing:"-.02em",margin:0,fontFamily:"'Geist-Variable','Outfit'"}}>Sentiment Analysis</h2>
       <p style={{fontSize:13,color:"#6b7280",marginTop:4}}>How AI engines perceive and portray {r?.clientData?.brand||"your brand"}</p>
     </div>
 
@@ -3837,7 +3837,7 @@ function SentimentPage({r}){
       <Card>
         <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:12}}>Brand Sentiment</div>
         <div style={{display:"flex",alignItems:"baseline",gap:8}}>
-          <span style={{fontSize:36,fontWeight:600,color:scoreInfo.color,fontFamily:"'Outfit'"}}>{sentimentScore}</span>
+          <span style={{fontSize:36,fontWeight:600,color:scoreInfo.color,fontFamily:"'Geist-Variable','Outfit'"}}>{sentimentScore}</span>
           <span style={{fontSize:13,color:scoreInfo.color,fontWeight:500}}>{scoreInfo.label}</span>
         </div>
         <div style={{fontSize:12,color:C.muted,marginTop:8}}>Based on analysis of AI engine responses across all tested queries</div>
@@ -3862,7 +3862,7 @@ function SentimentPage({r}){
     {/* Positive and Negative signals */}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:32}}>
       <Card>
-        <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,display:"flex",alignItems:"center",gap:8,fontFamily:"'Outfit'"}}>
+        <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,display:"flex",alignItems:"center",gap:8,fontFamily:"'Geist-Variable','Outfit'"}}>
           Positive Signals
         </div>
         {signals.positive.length>0?signals.positive.map((signal,i)=>(
@@ -3873,7 +3873,7 @@ function SentimentPage({r}){
         )):(<div style={{fontSize:12,color:C.muted}}>No positive signals detected</div>)}
       </Card>
       <Card>
-        <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,display:"flex",alignItems:"center",gap:8,fontFamily:"'Outfit'"}}>
+        <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,display:"flex",alignItems:"center",gap:8,fontFamily:"'Geist-Variable','Outfit'"}}>
           Negative Signals
         </div>
         {signals.negative.length>0?signals.negative.map((signal,i)=>(
@@ -3887,7 +3887,7 @@ function SentimentPage({r}){
 
     {/* AI Engine Quotes */}
     <div style={{marginBottom:32}}>
-      <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,fontFamily:"'Outfit'"}}>What AI Engines Are Saying</div>
+      <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,fontFamily:"'Geist-Variable','Outfit'"}}>What AI Engines Are Saying</div>
       {signals.quotes.length>0?(<div style={{display:"grid",gap:10}}>
         {signals.quotes.map((quote,i)=>{
           const q=typeof quote==="string"?{text:quote,engine:"Unknown",sentiment:"neutral"}:quote;
@@ -3906,7 +3906,7 @@ function SentimentPage({r}){
 
     {/* Competitor Sentiment Details */}
     {signals.competitorSentiment?.length>0&&(<div style={{marginBottom:32}}>
-      <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,fontFamily:"'Outfit'"}}>Competitor Sentiment Breakdown</div>
+      <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,fontFamily:"'Geist-Variable','Outfit'"}}>Competitor Sentiment Breakdown</div>
       <div style={{display:"grid",gap:10}}>
         {signals.competitorSentiment.map((comp,i)=>{
           const sentColor=comp.sentiment==="positive"?"#22c55e":comp.sentiment==="negative"?"#dc2626":"#d97706";
@@ -3940,11 +3940,11 @@ function ChannelsPage({r}){
 
   return(<div>
     <div style={{marginBottom:24}}>
-      <h2 style={{fontSize:22,fontWeight:600,color:"#111827",letterSpacing:"-.02em",margin:0,fontFamily:"'Outfit'"}}>Target Channels</h2>
+      <h2 style={{fontSize:22,fontWeight:600,color:"#111827",letterSpacing:"-.02em",margin:0,fontFamily:"'Geist-Variable','Outfit'"}}>Target Channels</h2>
       <p style={{fontSize:13,color:"#6b7280",marginTop:4}}>Channels ranked by real AI engine source data from your audit</p>
     </div>
     <div style={{display:"flex",gap:0,marginBottom:24,borderBottom:"1px solid "+C.border,overflowX:"auto"}}>
-      {tabs.map(tab=>(<button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{padding:"10px 16px",fontSize:12,fontWeight:activeTab===tab.id?600:500,color:activeTab===tab.id?C.accent:"#9ca3af",background:"none",border:"none",borderBottom:activeTab===tab.id?"2px solid "+C.accent:"2px solid transparent",cursor:"pointer",fontFamily:"'Outfit'",whiteSpace:"nowrap",transition:"all .15s"}}>{tab.label}</button>))}
+      {tabs.map(tab=>(<button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{padding:"10px 16px",fontSize:12,fontWeight:activeTab===tab.id?600:500,color:activeTab===tab.id?C.accent:"#9ca3af",background:"none",border:"none",borderBottom:activeTab===tab.id?"2px solid "+C.accent:"2px solid transparent",cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'",whiteSpace:"nowrap",transition:"all .15s"}}>{tab.label}</button>))}
     </div>
 
     {/* TAB 1: Where AI Sources You */}
@@ -4192,7 +4192,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
       return(<div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
         <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Content grid not generated</div>
         <div style={{fontSize:12,color:"#9ca3af",marginBottom:16}}>This can happen if the AI service timed out during the audit.</div>
-        <button onClick={regenerateGrid} disabled={regenGrid} style={{padding:"8px 18px",fontSize:12,fontWeight:500,background:regenGrid?"#e5e7eb":C.accent,color:regenGrid?"#999":"#fff",border:"none",borderRadius:8,cursor:regenGrid?"default":"pointer",fontFamily:"'Outfit'"}}>{regenGrid?"Generating...":"Generate Content Grid"}</button>
+        <button onClick={regenerateGrid} disabled={regenGrid} style={{padding:"8px 18px",fontSize:12,fontWeight:500,background:regenGrid?"#e5e7eb":C.accent,color:regenGrid?"#999":"#fff",border:"none",borderRadius:8,cursor:regenGrid?"default":"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>{regenGrid?"Generating...":"Generate Content Grid"}</button>
       </div>);
     }
     return(<div>
@@ -4207,9 +4207,9 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
           <td style={{padding:"10px",color:C.sub,fontSize:11}}>{item.owner}</td>
         </tr>))}</tbody></table>
       </Card>
-      <Card><h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:"0 0 12px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Monthly Output Requirements</h3>
+      <Card><h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:"0 0 12px",fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Monthly Output Requirements</h3>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
-          {(r.outputReqs||[]).map((item,i)=>(<div key={i} style={{padding:"14px",background:C.bg,borderRadius:C.rs,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{item.n}</div><div style={{fontSize:10,color:C.muted,marginBottom:4}}>{item.u}</div><div style={{fontSize:12,fontWeight:500,color:C.text}}>{item.l}</div><div style={{fontSize:10,color:C.muted,marginTop:2}}>{item.d}</div></div>))}
+          {(r.outputReqs||[]).map((item,i)=>(<div key={i} style={{padding:"14px",background:C.bg,borderRadius:C.rs,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:C.accent,fontFamily:"'Geist-Variable','Outfit'"}}>{item.n}</div><div style={{fontSize:10,color:C.muted,marginBottom:4}}>{item.u}</div><div style={{fontSize:12,fontWeight:500,color:C.text}}>{item.l}</div><div style={{fontSize:10,color:C.muted,marginTop:2}}>{item.d}</div></div>))}
         </div>
       </Card>
     </div>);
@@ -4280,7 +4280,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
               <span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:"#f1f5f9",color:C.muted}}>{typeInfo.label}</span>
             </div>
           </div>
-          <button onClick={()=>generateContent(s.type,s.topic,s.channel,s.source_query,s.source_roadmap_item)} disabled={generating} style={{padding:"8px 16px",fontSize:11,fontWeight:500,background:generating?"#e5e7eb":C.accent,color:generating?"#999":"#fff",border:"none",borderRadius:8,cursor:generating?"default":"pointer",whiteSpace:"nowrap",fontFamily:"'Outfit'"}}>{generating?"Generating...":"Generate"}</button>
+          <button onClick={()=>generateContent(s.type,s.topic,s.channel,s.source_query,s.source_roadmap_item)} disabled={generating} style={{padding:"8px 16px",fontSize:11,fontWeight:500,background:generating?"#e5e7eb":C.accent,color:generating?"#999":"#fff",border:"none",borderRadius:8,cursor:generating?"default":"pointer",whiteSpace:"nowrap",fontFamily:"'Geist-Variable','Outfit'"}}>{generating?"Generating...":"Generate"}</button>
         </div>);
       })}
     </div>);
@@ -4316,7 +4316,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
         <textarea value={topic} onChange={e=>setTopic(e.target.value)} placeholder={`What should this ${selectedTypeInfo?.label||"content"} be about? Be specific — the more detail you provide, the better the output.`} style={{width:"100%",minHeight:100,padding:"12px 14px",fontSize:13,border:`1px solid ${C.border}`,borderRadius:10,outline:"none",resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",color:C.text,background:C.bg}}/>
       </div>
 
-      <button onClick={()=>{if(topic.trim())generateContent(selectedType,topic.trim(),channel||null);}} disabled={!topic.trim()||generating} style={{padding:"12px 28px",fontSize:13,fontWeight:500,background:topic.trim()&&!generating?C.accent:"#e5e7eb",color:topic.trim()&&!generating?"#fff":"#999",border:"none",borderRadius:10,cursor:topic.trim()&&!generating?"pointer":"default",display:"flex",alignItems:"center",gap:8,fontFamily:"'Outfit'"}}>
+      <button onClick={()=>{if(topic.trim())generateContent(selectedType,topic.trim(),channel||null);}} disabled={!topic.trim()||generating} style={{padding:"12px 28px",fontSize:13,fontWeight:500,background:topic.trim()&&!generating?C.accent:"#e5e7eb",color:topic.trim()&&!generating?"#fff":"#999",border:"none",borderRadius:10,cursor:topic.trim()&&!generating?"pointer":"default",display:"flex",alignItems:"center",gap:8,fontFamily:"'Geist-Variable','Outfit'"}}>
         {generating?(<><div style={{width:14,height:14,border:"2px solid #fff",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>Generating {selectedTypeInfo?.label}...</>):(<>Generate {selectedTypeInfo?.label}</>)}
       </button>
 
@@ -4395,7 +4395,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
 
       {editingContent&&(<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:20,display:"flex",flexDirection:"column"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,gap:8}}>
-          <input value={editTitle} onChange={e=>setEditTitle(e.target.value)} style={{fontSize:16,fontWeight:500,border:"none",outline:"none",background:"transparent",flex:1,padding:0,color:C.text,fontFamily:"'Outfit'"}} placeholder="Content title..."/>
+          <input value={editTitle} onChange={e=>setEditTitle(e.target.value)} style={{fontSize:16,fontWeight:500,border:"none",outline:"none",background:"transparent",flex:1,padding:0,color:C.text,fontFamily:"'Geist-Variable','Outfit'"}} placeholder="Content title..."/>
           <div style={{display:"flex",gap:6,flexShrink:0}}>
             <button onClick={copyContent} style={{padding:"5px 10px",fontSize:11,background:"#f1f5f9",border:"none",borderRadius:6,cursor:"pointer",color:C.text,fontFamily:"inherit"}}>{copied?"Copied!":"Copy"}</button>
             <button onClick={()=>updateStatus(editingContent.id,editingContent.status==="draft"?"published":"draft")} style={{padding:"5px 10px",fontSize:11,background:editingContent.status==="draft"?"#dcfce7":"#f3f4f6",color:editingContent.status==="draft"?"#166534":"#6b7280",border:"none",borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>{editingContent.status==="draft"?"✓ Publish":"↩ Draft"}</button>
@@ -4413,14 +4413,14 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
         <textarea value={editText} onChange={e=>setEditText(e.target.value)} style={{flex:1,minHeight:400,padding:16,fontSize:13,lineHeight:1.7,border:`1px solid ${C.border}`,borderRadius:10,outline:"none",resize:"vertical",fontFamily:"Georgia, serif",boxSizing:"border-box",color:C.text,background:C.bg}}/>
 
         <div style={{display:"flex",justifyContent:"flex-end",marginTop:12,gap:8}}>
-          <button onClick={saveEdit} disabled={saving} style={{padding:"8px 20px",fontSize:12,fontWeight:500,background:saving?"#e5e7eb":C.accent,color:saving?"#999":"#fff",border:"none",borderRadius:8,cursor:saving?"default":"pointer",fontFamily:"'Outfit'"}}>{saving?"Saving...":"Save Changes"}</button>
+          <button onClick={saveEdit} disabled={saving} style={{padding:"8px 20px",fontSize:12,fontWeight:500,background:saving?"#e5e7eb":C.accent,color:saving?"#999":"#fff",border:"none",borderRadius:8,cursor:saving?"default":"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>{saving?"Saving...":"Save Changes"}</button>
         </div>
       </div>)}
     </div>);
   };
 
   if(!projectId)return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Generate content powered by your brand playbook and audit insights.</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Generate content powered by your brand playbook and audit insights.</p></div>
     <Card style={{textAlign:"center",padding:32}}>
       <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>No project linked yet</div>
       <div style={{fontSize:12,color:C.muted}}>Save an audit first to start generating content.</div>
@@ -4428,15 +4428,15 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
   </div>);
 
   if(loading)return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2></div>
     <div style={{textAlign:"center",padding:40,color:C.muted,fontSize:13}}>Loading content library...</div>
   </div>);
 
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Generate content powered by your brand playbook and audit insights.</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Generate content powered by your brand playbook and audit insights.</p></div>
 
     <div style={{display:"flex",gap:0,marginBottom:20,borderBottom:`1px solid ${C.border}`,overflowX:"auto"}}>
-      {TABS.map(tab=>(<button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{padding:"10px 16px",background:"transparent",border:"none",borderBottom:activeTab===tab.id?`2px solid ${C.accent}`:"2px solid transparent",color:activeTab===tab.id?C.accent:C.muted,fontSize:12,fontWeight:activeTab===tab.id?600:500,cursor:"pointer",fontFamily:"'Outfit'",whiteSpace:"nowrap",transition:"all .15s",display:"flex",alignItems:"center",gap:6}}>
+      {TABS.map(tab=>(<button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{padding:"10px 16px",background:"transparent",border:"none",borderBottom:activeTab===tab.id?`2px solid ${C.accent}`:"2px solid transparent",color:activeTab===tab.id?C.accent:C.muted,fontSize:12,fontWeight:activeTab===tab.id?600:500,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'",whiteSpace:"nowrap",transition:"all .15s",display:"flex",alignItems:"center",gap:6}}>
         {tab.label}
         {tab.id==="library"&&contentLibrary.length>0&&<span style={{fontSize:10,background:C.border,color:C.text,padding:"2px 6px",borderRadius:10}}>{contentLibrary.length}</span>}
       </button>))}
@@ -4451,14 +4451,14 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
 
 /* ─── PAGE: CONTENT GRID (Step 07) ─── */
 function GridPage({r,goTo}){
-  if(!r.contentTypes||r.contentTypes.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content Grid</h2></div>
+  if(!r.contentTypes||r.contentTypes.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Content Grid</h2></div>
     <div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
       <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Content grid not generated</div>
       <div style={{fontSize:12,color:"#9ca3af"}}>This can happen if the AI service timed out during the audit.</div>
     </div>
   </div>);
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Content-Channel Grid</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Personalised content strategy based on {r.clientData.brand}'s audit findings.</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Content-Channel Grid</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Personalised content strategy based on {r.clientData.brand}'s audit findings.</p></div>
     <SectionNote text={`This content grid is tailored to ${r.clientData.brand}'s specific gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
     <Card style={{marginBottom:20,overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
       <thead><tr style={{borderBottom:`2px solid ${C.border}`}}>{["Content Type","Channels","Frequency","Priority","Owner"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:600,color:C.muted,fontSize:10,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
@@ -4470,9 +4470,9 @@ function GridPage({r,goTo}){
         <td style={{padding:"10px",color:C.sub,fontSize:11}}>{ct.owner}</td>
       </tr>))}</tbody></table>
     </Card>
-    <Card><h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:"0 0 12px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Monthly Output Requirements for {r.clientData.brand}</h3>
+    <Card><h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:"0 0 12px",fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Monthly Output Requirements for {r.clientData.brand}</h3>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
-        {(r.outputReqs||[]).map((item,i)=>(<div key={i} style={{padding:"14px",background:C.bg,borderRadius:C.rs,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:C.accent,fontFamily:"'Outfit'"}}>{item.n}</div><div style={{fontSize:10,color:C.muted,marginBottom:4}}>{item.u}</div><div style={{fontSize:12,fontWeight:500,color:C.text}}>{item.l}</div><div style={{fontSize:10,color:C.muted,marginTop:2}}>{item.d}</div></div>))}
+        {(r.outputReqs||[]).map((item,i)=>(<div key={i} style={{padding:"14px",background:C.bg,borderRadius:C.rs,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:C.accent,fontFamily:"'Geist-Variable','Outfit'"}}>{item.n}</div><div style={{fontSize:10,color:C.muted,marginBottom:4}}>{item.u}</div><div style={{fontSize:12,fontWeight:500,color:C.text}}>{item.l}</div><div style={{fontSize:10,color:C.muted,marginTop:2}}>{item.d}</div></div>))}
       </div>
     </Card>
   </div>);
@@ -4494,11 +4494,11 @@ Return JSON only:
     }catch(e){console.error("Roadmap regeneration failed:",e);}
     setRegenRoad(false);
   };
-  if(!r.roadmap||!r.roadmap.day30)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>90-Day Roadmap</h2></div>
+  if(!r.roadmap||!r.roadmap.day30)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>90-Day Roadmap</h2></div>
     <div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
       <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Roadmap not generated</div>
       <div style={{fontSize:12,color:"#9ca3af",marginBottom:16}}>This can happen if the AI service timed out during the audit.</div>
-      <button onClick={regenerateRoadmap} disabled={regenRoad} style={{padding:"8px 18px",fontSize:12,fontWeight:500,background:regenRoad?"#e5e7eb":C.accent,color:regenRoad?"#999":"#fff",border:"none",borderRadius:8,cursor:regenRoad?"default":"pointer",fontFamily:"'Outfit'"}}>{regenRoad?"Generating...":"Generate Roadmap"}</button>
+      <button onClick={regenerateRoadmap} disabled={regenRoad} style={{padding:"8px 18px",fontSize:12,fontWeight:500,background:regenRoad?"#e5e7eb":C.accent,color:regenRoad?"#999":"#fff",border:"none",borderRadius:8,cursor:regenRoad?"default":"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>{regenRoad?"Generating...":"Generate Roadmap"}</button>
     </div>
   </div>);
   const phases=[r.roadmap.day30,r.roadmap.day60,r.roadmap.day90];
@@ -4506,7 +4506,7 @@ Return JSON only:
 
   return(<div>
     <div style={{marginBottom:24}}>
-      <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>90-Day Transformation Roadmap</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Department-by-department plan for <strong>{r.clientData.brand}</strong></p>
+      <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>90-Day Transformation Roadmap</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Department-by-department plan for <strong>{r.clientData.brand}</strong></p>
     </div>
     <SectionNote text="This roadmap assigns tasks to every department involved. The PDF export includes all 8 stages of your audit in a professional format with cover page and table of contents."/>
 
@@ -4522,8 +4522,8 @@ Return JSON only:
         <div style={{position:"absolute",left:-19,top:10,width:12,height:12,borderRadius:"50%",background:p.accent,border:"3px solid #f5f6f8",boxShadow:`0 0 0 2px ${p.accent}33`}}/>
         <Card>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-            <div><div style={{fontSize:16,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>{p.title}</div><div style={{color:p.accent,fontSize:11,fontWeight:600,marginTop:1}}>{p.sub}</div></div>
-            <div style={{padding:"5px 12px",background:`${p.accent}08`,borderRadius:8,border:`1px solid ${p.accent}20`}}><span style={{fontSize:10,color:C.muted}}>Lift: </span><span style={{fontSize:14,fontWeight:700,color:p.accent,fontFamily:"'Outfit'"}}>{p.lift}</span></div>
+            <div><div style={{fontSize:16,fontWeight:500,color:C.text,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>{p.title}</div><div style={{color:p.accent,fontSize:11,fontWeight:600,marginTop:1}}>{p.sub}</div></div>
+            <div style={{padding:"5px 12px",background:`${p.accent}08`,borderRadius:8,border:`1px solid ${p.accent}20`}}><span style={{fontSize:10,color:C.muted}}>Lift: </span><span style={{fontSize:14,fontWeight:700,color:p.accent,fontFamily:"'Geist-Variable','Outfit'"}}>{p.lift}</span></div>
           </div>
           {p.departments.map((d,di)=>(<div key={di} style={{marginBottom:di<p.departments.length-1?10:0}}>
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}><div style={{width:3,height:14,borderRadius:2,background:d.color}}/><span style={{fontSize:12,fontWeight:500,color:d.color}}>{d.dept}</span></div>
@@ -4534,9 +4534,9 @@ Return JSON only:
     </div>
 
     <Card style={{marginTop:20,background:`linear-gradient(135deg,${C.accent}08,${C.accent}03)`,border:`1px solid ${C.accent}20`,textAlign:"center"}}>
-      <div style={{fontSize:17,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em",marginBottom:4}}>Ready to dominate AI search results?</div>
+      <div style={{fontSize:17,fontWeight:500,color:C.text,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em",marginBottom:4}}>Ready to dominate AI search results?</div>
       <p style={{fontSize:12,color:C.sub,maxWidth:460,margin:"0 auto 14px"}}>Let Entermind execute this strategy and guarantee measurable improvements within 90 days.</p>
-      <button onClick={()=>exportPDF(r)} style={{padding:"11px 26px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>Export Full Report as PDF</button>
+      <button onClick={()=>exportPDF(r)} style={{padding:"11px 26px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>Export Full Report as PDF</button>
     </Card>
   </div>);
 }
@@ -4905,14 +4905,14 @@ function ProjectHub({onSelect,onNew,onLogout}){
 
   const scoreColor=(s)=>!s?C.muted:s>=70?C.green:s>=40?C.amber:C.red;
 
-  return(<div style={{minHeight:"100vh",background:"#fff",fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif"}}>
+  return(<div style={{minHeight:"100vh",background:"#fff",fontFamily:"'Geist-Variable','Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif"}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}*{box-sizing:border-box}::selection{background:${C.accent}18}`}</style>
 
     {/* Top nav */}
     <div style={{padding:"14px 32px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <Logo/>
-      <button onClick={onLogout} style={{padding:"7px 16px",fontSize:12,fontWeight:500,background:"transparent",color:C.muted,border:`1px solid ${C.border}`,borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"'Outfit'",transition:"all .15s"}}
+      <button onClick={onLogout} style={{padding:"7px 16px",fontSize:12,fontWeight:500,background:"transparent",color:C.muted,border:`1px solid ${C.border}`,borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"'Geist-Variable','Outfit'",transition:"all .15s"}}
         onMouseEnter={e=>{e.currentTarget.style.color=C.text;e.currentTarget.style.borderColor=C.sub;}}
         onMouseLeave={e=>{e.currentTarget.style.color=C.muted;e.currentTarget.style.borderColor=C.border;}}>Log Out</button>
     </div>
@@ -4921,7 +4921,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
       {/* Page header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:36}}>
         <div>
-          <h1 style={{fontSize:28,fontWeight:600,color:C.text,margin:0,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Client Management</h1>
+          <h1 style={{fontSize:28,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Client Management</h1>
         </div>
       </div>
 
@@ -4930,9 +4930,9 @@ function ProjectHub({onSelect,onNew,onLogout}){
         <div style={{padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.border}`}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/></svg>
-            <span style={{fontSize:15,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>Workspaces</span>
+            <span style={{fontSize:15,fontWeight:500,color:C.text,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Workspaces</span>
           </div>
-          <button onClick={onNew} style={{padding:"8px 18px",background:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",display:"flex",alignItems:"center",gap:5,transition:"opacity .15s"}}
+          <button onClick={onNew} style={{padding:"8px 18px",background:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'",display:"flex",alignItems:"center",gap:5,transition:"opacity .15s"}}
             onMouseEnter={e=>e.currentTarget.style.opacity=".85"}
             onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
             New workspace
@@ -4944,9 +4944,9 @@ function ProjectHub({onSelect,onNew,onLogout}){
           <div style={{width:48,height:48,borderRadius:12,background:C.bg,display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}>
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 4v14M4 11h14" stroke={C.muted} strokeWidth="2" strokeLinecap="round"/></svg>
           </div>
-          <h3 style={{fontSize:16,fontWeight:500,color:C.text,margin:"0 0 6px",fontFamily:"'Outfit'",letterSpacing:"-.02em"}}>No workspaces yet</h3>
+          <h3 style={{fontSize:16,fontWeight:500,color:C.text,margin:"0 0 6px",fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>No workspaces yet</h3>
           <p style={{color:C.muted,fontSize:13,margin:"0 0 20px"}}>Create your first workspace to start tracking visibility.</p>
-          <button onClick={onNew} style={{padding:"10px 22px",background:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'"}}>Create workspace</button>
+          <button onClick={onNew} style={{padding:"10px 22px",background:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>Create workspace</button>
         </div>:
         <div>
           {projects.sort((a,b)=>new Date(b.lastAudit||b.createdAt)-new Date(a.lastAudit||a.createdAt)).map((p,pi)=>(
@@ -4963,7 +4963,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
                 </div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:12}}>
-                <button onClick={(e)=>{e.stopPropagation();onSelect(p);}} style={{padding:"6px 16px",background:"#fff",color:C.text,border:`1px solid ${C.border}`,borderRadius:7,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit'",transition:"all .15s"}}
+                <button onClick={(e)=>{e.stopPropagation();onSelect(p);}} style={{padding:"6px 16px",background:"#fff",color:C.text,border:`1px solid ${C.border}`,borderRadius:7,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'",transition:"all .15s"}}
                   onMouseEnter={e=>{e.currentTarget.style.background=C.text;e.currentTarget.style.color="#fff";e.currentTarget.style.borderColor=C.text;}}
                   onMouseLeave={e=>{e.currentTarget.style.background="#fff";e.currentTarget.style.color=C.text;e.currentTarget.style.borderColor=C.border;}}>
                   Open
@@ -5114,19 +5114,19 @@ export default function App(){
 
   if(showLanding&&!authed)return <LandingPage onGetStarted={()=>setShowLanding(false)}/>;
 
-  if(!authed)return(<div style={{minHeight:"100vh",background:"#fff",fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",alignItems:"center",justifyContent:"center"}}>
+  if(!authed)return(<div style={{minHeight:"100vh",background:"#fff",fontFamily:"'Geist-Variable','Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",alignItems:"center",justifyContent:"center"}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}10!important}`}</style>
     <div style={{width:"100%",maxWidth:380,padding:"0 24px",animation:"fadeIn .5s ease-out"}}>
       <div style={{textAlign:"center",marginBottom:40}}>
         <div style={{display:"inline-flex",alignItems:"center",gap:10,marginBottom:6}}>
           <svg width="36" height="36" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
-          <span style={{fontSize:24,fontWeight:800,fontFamily:"'Outfit'",color:C.text,letterSpacing:"-.03em"}}>EnterRank</span>
+          <span style={{fontSize:24,fontWeight:800,fontFamily:"'Geist-Variable','Outfit'",color:C.text,letterSpacing:"-.03em"}}>EnterRank</span>
         </div>
         <div style={{fontSize:14,color:C.muted,fontWeight:400}}>AI Engine Optimisation Platform</div>
       </div>
       <div style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:16,padding:"36px 32px",boxShadow:"0 1px 3px rgba(0,0,0,.04),0 8px 32px rgba(0,0,0,.04)"}}>
-        <h2 style={{fontSize:20,fontWeight:600,color:C.text,margin:"0 0 2px",fontFamily:"'Outfit'",letterSpacing:"-.02em",textAlign:"center"}}>Welcome back</h2>
+        <h2 style={{fontSize:20,fontWeight:600,color:C.text,margin:"0 0 2px",fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em",textAlign:"center"}}>Welcome back</h2>
         <p style={{fontSize:13,color:C.muted,margin:"0 0 28px",textAlign:"center"}}>Sign in to your account</p>
         <LoginForm onSubmit={handleLogin} error={loginError} loading={loggingIn}/>
       </div>
@@ -5142,13 +5142,13 @@ export default function App(){
           <div style={{width:48,height:48,borderRadius:14,background:`${C.accent}10`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
             <BrandLogo name={projectPrompt.project.brand} website={projectPrompt.project.website} size={28} color={C.accent}/>
           </div>
-          <div style={{fontSize:20,fontWeight:500,color:C.text,fontFamily:"'Outfit'",letterSpacing:"-.02em",marginBottom:6}}>{projectPrompt.project.brand}</div>
+          <div style={{fontSize:20,fontWeight:500,color:C.text,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em",marginBottom:6}}>{projectPrompt.project.brand}</div>
           <div style={{fontSize:13,color:C.muted}}>Last audit: {projectPrompt.lastAudit.date||"Recent"} · Score: {projectPrompt.lastAudit.overall||"—"}%</div>
         </div>
         <div style={{fontSize:14,color:C.sub,textAlign:"center",marginBottom:24}}>Would you like to run another audit or view the existing dashboard?</div>
         <div style={{display:"flex",gap:12}}>
-          <button onClick={()=>openProjectDashboard(projectPrompt.project,projectPrompt.lastAudit)} style={{flex:1,padding:"14px 20px",background:"#fff",border:`2px solid ${C.accent}`,borderRadius:12,fontSize:14,fontWeight:600,color:C.accent,cursor:"pointer",fontFamily:"'Outfit'",transition:"all .15s"}} onMouseEnter={e=>Object.assign(e.target.style,{background:`${C.accent}08`})} onMouseLeave={e=>Object.assign(e.target.style,{background:"#fff"})}>View Dashboard</button>
-          <button onClick={()=>openProjectForAudit(projectPrompt.project)} style={{flex:1,padding:"14px 20px",background:C.accent,border:`2px solid ${C.accent}`,borderRadius:12,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"'Outfit'",transition:"all .15s"}} onMouseEnter={e=>Object.assign(e.target.style,{background:"#1d4ed8"})} onMouseLeave={e=>Object.assign(e.target.style,{background:C.accent})}>Run Audit</button>
+          <button onClick={()=>openProjectDashboard(projectPrompt.project,projectPrompt.lastAudit)} style={{flex:1,padding:"14px 20px",background:"#fff",border:`2px solid ${C.accent}`,borderRadius:12,fontSize:14,fontWeight:600,color:C.accent,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'",transition:"all .15s"}} onMouseEnter={e=>Object.assign(e.target.style,{background:`${C.accent}08`})} onMouseLeave={e=>Object.assign(e.target.style,{background:"#fff"})}>View Dashboard</button>
+          <button onClick={()=>openProjectForAudit(projectPrompt.project)} style={{flex:1,padding:"14px 20px",background:C.accent,border:`2px solid ${C.accent}`,borderRadius:12,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'",transition:"all .15s"}} onMouseEnter={e=>Object.assign(e.target.style,{background:"#1d4ed8"})} onMouseLeave={e=>Object.assign(e.target.style,{background:C.accent})}>Run Audit</button>
         </div>
         <div onClick={()=>setProjectPrompt(null)} style={{textAlign:"center",marginTop:16,fontSize:12,color:C.muted,cursor:"pointer"}}>Cancel</div>
       </div>
@@ -5333,7 +5333,7 @@ export default function App(){
   };
 
 
-  return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",color:C.text,display:"flex"}}>
+  return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Geist-Variable','Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",color:C.text,display:"flex"}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes loadingSlide{0%{transform:translateX(-100%);opacity:0.5}30%{opacity:1}100%{transform:translateX(350%);opacity:0.3}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}.field-autofilled input{background:#f3f4f6!important;color:${C.sub}!important;transition:all .15s}.field-autofilled input:focus{background:#fff!important;color:${C.text}!important}`}</style>
 
