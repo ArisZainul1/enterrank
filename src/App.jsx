@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { supabase } from './supabase';
+import { supabase, sbSignUp, sbSignIn, sbSignOut, sbGetSession, sbOnAuthChange } from './supabase';
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
@@ -2249,25 +2249,140 @@ function LandingPage({ onGetStarted }) {
 }
 
 /* ─── LOGIN FORM ─── */
-function LoginForm({onSubmit,error,loading}){
-  const[email,setEmail]=useState("");const[pw,setPw]=useState("");const[showPw,setShowPw]=useState(false);
-  const ok=email.length>0&&pw.length>0;
-  const submit=()=>{if(ok&&!loading)onSubmit(email,pw);};
-  return(<div style={{display:"flex",flexDirection:"column",gap:18}}>
-    <div>
-      <label style={{fontSize:13,fontWeight:500,color:C.text,display:"block",marginBottom:6}}>Email</label>
-      <input value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")submit();}} placeholder="you@company.com" type="email" style={{width:"100%",padding:"11px 14px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit",transition:"all .15s"}}/>
-    </div>
-    <div>
-      <label style={{fontSize:13,fontWeight:500,color:C.text,display:"block",marginBottom:6}}>Password</label>
-      <div style={{position:"relative"}}>
-        <input value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")submit();}} placeholder="••••••••" type={showPw?"text":"password"} style={{width:"100%",padding:"11px 14px",paddingRight:48,background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit",transition:"all .15s"}}/>
-        <span onClick={()=>setShowPw(!showPw)} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",cursor:"pointer",fontSize:12,color:C.muted,userSelect:"none",fontWeight:500}}>{showPw?"Hide":"Show"}</span>
+function LoginForm({ onLogin, onSignUp, error, loading }) {
+  const [email, setEmail] = useState("");
+  const [pw, setPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [localError, setLocalError] = useState("");
+
+  const ok = email.length > 3 && pw.length >= 6 && (!isSignUp || confirmPw.length >= 6);
+
+  const submit = () => {
+    if (!ok || loading) return;
+    setLocalError("");
+    if (isSignUp) {
+      if (pw !== confirmPw) { setLocalError("Passwords don't match"); return; }
+      if (pw.length < 6) { setLocalError("Password must be at least 6 characters"); return; }
+      onSignUp(email.trim(), pw);
+    } else {
+      onLogin(email.trim(), pw);
+    }
+  };
+
+  const displayError = localError || error;
+
+  return (
+    <div style={{height:"100vh",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Geist-Variable',-apple-system,BlinkMacSystemFont,sans-serif",position:"relative",background:"#ffffff"}}>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+      <style>{`
+        @keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        *{box-sizing:border-box}
+        ::selection{background:#2563eb18}
+      `}</style>
+
+      {/* Gradient mesh background */}
+      <div style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden"}}>
+        <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle at 1px 1px, rgba(0,0,0,0.02) 1px, transparent 0)",backgroundSize:"32px 32px"}}/>
+        <div style={{position:"absolute",top:"-15%",right:"-5%",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.07) 0%, rgba(99,102,241,0.03) 40%, transparent 65%)",filter:"blur(40px)"}}/>
+        <div style={{position:"absolute",top:"30%",left:"-8%",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle, rgba(59,130,246,0.05) 0%, rgba(147,51,234,0.02) 40%, transparent 65%)",filter:"blur(50px)"}}/>
+        <div style={{position:"absolute",bottom:"-10%",right:"20%",width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle, rgba(14,165,233,0.04) 0%, rgba(37,99,235,0.02) 40%, transparent 65%)",filter:"blur(45px)"}}/>
+        <div style={{position:"absolute",bottom:"-20%",left:"10%",width:400,height:400,borderRadius:"50%",background:"radial-gradient(circle, rgba(168,85,247,0.04) 0%, transparent 60%)",filter:"blur(50px)"}}/>
+      </div>
+
+      {/* Login card */}
+      <div style={{position:"relative",zIndex:1,width:"100%",maxWidth:400,padding:"0 24px",animation:"fadeIn .6s ease-out"}}>
+        <div style={{background:"#ffffff",borderRadius:16,border:"1px solid #e2e8f0",boxShadow:"0 16px 48px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.03)",padding:"40px 36px"}}>
+
+          {/* Logo + title */}
+          <div style={{textAlign:"center",marginBottom:32}}>
+            <svg width="36" height="36" viewBox="0 0 28 28" style={{margin:"0 auto 14px",display:"block"}}><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
+            <div style={{fontSize:20,fontWeight:500,color:"#0f172a",fontFamily:"'Geist-Variable',-apple-system,sans-serif",letterSpacing:"-.02em"}}>{isSignUp ? "Create your account" : "Welcome back"}</div>
+            <div style={{fontSize:13,color:"#94a3b8",marginTop:4}}>{isSignUp ? "Get started with EnterRank" : "Sign in to EnterRank"}</div>
+          </div>
+
+          {/* Form fields */}
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            <div>
+              <label style={{display:"block",fontSize:12,fontWeight:500,color:"#374151",marginBottom:5}}>Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && submit()}
+                placeholder="you@company.com"
+                style={{width:"100%",padding:"11px 14px",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,fontSize:14,color:"#0f172a",outline:"none",fontFamily:"inherit",transition:"all .15s"}}
+              />
+            </div>
+
+            <div>
+              <label style={{display:"block",fontSize:12,fontWeight:500,color:"#374151",marginBottom:5}}>Password</label>
+              <div style={{position:"relative"}}>
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={pw}
+                  onChange={e => setPw(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && submit()}
+                  placeholder={isSignUp ? "Min. 6 characters" : "Enter your password"}
+                  style={{width:"100%",padding:"11px 14px",paddingRight:52,background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,fontSize:14,color:"#0f172a",outline:"none",fontFamily:"inherit",transition:"all .15s"}}
+                />
+                <span onClick={() => setShowPw(!showPw)} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",cursor:"pointer",fontSize:12,color:"#94a3b8",userSelect:"none",fontWeight:500}}>{showPw ? "Hide" : "Show"}</span>
+              </div>
+            </div>
+
+            {isSignUp && (
+              <div>
+                <label style={{display:"block",fontSize:12,fontWeight:500,color:"#374151",marginBottom:5}}>Confirm Password</label>
+                <input
+                  type="password"
+                  value={confirmPw}
+                  onChange={e => setConfirmPw(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && submit()}
+                  placeholder="Confirm your password"
+                  style={{width:"100%",padding:"11px 14px",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,fontSize:14,color:"#0f172a",outline:"none",fontFamily:"inherit",transition:"all .15s"}}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Error */}
+          {displayError && (
+            <div style={{marginTop:12,padding:"10px 14px",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,fontSize:12,color:"#dc2626"}}>{displayError}</div>
+          )}
+
+          {/* Submit button */}
+          <button
+            onClick={submit}
+            disabled={!ok || loading}
+            style={{width:"100%",marginTop:18,padding:"12px",background:ok && !loading ? "#2563eb" : "#e2e8f0",color:ok && !loading ? "#fff" : "#94a3b8",border:"none",borderRadius:8,fontSize:14,fontWeight:500,cursor:ok && !loading ? "pointer" : "not-allowed",fontFamily:"'Geist-Variable',-apple-system,sans-serif",transition:"all .2s"}}
+          >
+            {loading ? (
+              <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                <div style={{width:14,height:14,border:"2px solid rgba(255,255,255,0.3)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>
+                {isSignUp ? "Creating account..." : "Signing in..."}
+              </div>
+            ) : (
+              isSignUp ? "Create Account" : "Sign In"
+            )}
+          </button>
+
+          {/* Toggle */}
+          <div style={{textAlign:"center",marginTop:20,fontSize:13,color:"#94a3b8"}}>
+            {isSignUp ? (
+              <>Already have an account? <span onClick={() => { setIsSignUp(false); setConfirmPw(""); setLocalError(""); }} style={{color:"#2563eb",cursor:"pointer",fontWeight:500}}>Sign in</span></>
+            ) : (
+              <>Don't have an account? <span onClick={() => { setIsSignUp(true); setLocalError(""); }} style={{color:"#2563eb",cursor:"pointer",fontWeight:500}}>Create account</span></>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{textAlign:"center",marginTop:20,fontSize:11,color:"#94a3b8"}}>EnterRank by Entermind</div>
       </div>
     </div>
-    {error&&<div style={{padding:"10px 14px",background:`${C.red}06`,border:`1px solid ${C.red}12`,borderRadius:10,fontSize:13,color:C.red}}>{error}</div>}
-    <button onClick={submit} disabled={!ok||loading} style={{width:"100%",padding:"12px",background:ok&&!loading?C.accent:"#d1d5db",color:"#fff",border:"none",borderRadius:10,fontSize:15,fontWeight:600,cursor:ok&&!loading?"pointer":"not-allowed",fontFamily:"'Geist-Variable','Outfit'",transition:"all .2s",marginTop:2}}>{loading?"Signing in...":"Sign in"}</button>
-  </div>);
+  );
 }
 
 /* ─── CHAT PANEL — Human-in-the-loop AI assistant ─── */
@@ -5575,7 +5690,9 @@ function ProjectHub({onSelect,onNew,onLogout}){
 
 export default function App(){
   const isLocal=typeof window!=="undefined"&&window.location.hostname==="localhost";
-  const[authed,setAuthed]=useState(()=>{if(isLocal)return true;try{return sessionStorage.getItem("enterrank_token")?true:false;}catch(e){return false;}});
+  const[authed,setAuthed]=useState(()=>{if(isLocal)return true;return false;});
+  const [authLoading, setAuthLoading] = useState(!isLocal);
+  const [authUser, setAuthUser] = useState(null);
   const[showLanding,setShowLanding]=useState(true);
   const[screen,setScreen]=useState(isLocal?"dashboard":"hub");
   const[activeProject,setActiveProject]=useState(null);
@@ -5593,20 +5710,59 @@ export default function App(){
   const[loginError,setLoginError]=useState("");
   const[loggingIn,setLoggingIn]=useState(false);
 
+  React.useEffect(() => {
+    if (isLocal) return;
+    const checkSession = async () => {
+      try {
+        const session = await sbGetSession();
+        if (session) { setAuthed(true); setAuthUser(session.user); }
+      } catch(e) {}
+      setAuthLoading(false);
+    };
+    checkSession();
+    const { data: listener } = sbOnAuthChange((event, session) => {
+      if (event === "SIGNED_IN" && session) { setAuthed(true); setAuthUser(session.user); }
+      else if (event === "SIGNED_OUT") { setAuthed(false); setAuthUser(null); }
+    });
+    return () => listener?.subscription?.unsubscribe();
+  }, []);
 
-  const handleLogin=async(email,password)=>{
-    if(isLocal){setAuthed(true);return;}
-    setLoggingIn(true);setLoginError("");
-    try{
-      const res=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
-      const data=await res.json();
-      if(data.success){try{sessionStorage.setItem("enterrank_token",data.token);}catch(e){}setAuthed(true);}
-      else{setLoginError(data.error||"Invalid credentials");}
-    }catch(e){setLoginError("Connection error. Please try again.");}
+
+  const handleLogin = async (email, password) => {
+    if (isLocal) { setAuthed(true); return; }
+    setLoggingIn(true); setLoginError("");
+    try {
+      const result = await sbSignIn(email, password);
+      if (result.error) { setLoginError(result.error); }
+      else { setAuthed(true); setAuthUser(result.user); }
+    } catch(e) { setLoginError("Connection error. Please try again."); }
     setLoggingIn(false);
   };
 
-  const handleLogout=()=>{if(isLocal){setResults(null);setStep("input");return;}try{sessionStorage.removeItem("enterrank_token");}catch(e){}setAuthed(false);setResults(null);setStep("input");setScreen("hub");setActiveProject(null);};
+  const handleSignUp = async (email, password) => {
+    setLoggingIn(true); setLoginError("");
+    try {
+      const result = await sbSignUp(email, password);
+      if (result.error) { setLoginError(result.error); }
+      else {
+        const signInResult = await sbSignIn(email, password);
+        if (signInResult.error) { setLoginError("Account created! Please sign in."); }
+        else { setAuthed(true); setAuthUser(signInResult.user); }
+      }
+    } catch(e) { setLoginError("Connection error. Please try again."); }
+    setLoggingIn(false);
+  };
+
+  const handleLogout = async () => {
+    if (isLocal) { setResults(null); setStep("input"); return; }
+    try { await sbSignOut(); } catch(e) {}
+    setAuthed(false);
+    setAuthUser(null);
+    setResults(null);
+    setStep("input");
+    setScreen("hub");
+    setActiveProject(null);
+  };
 
   const[projectPrompt,setProjectPrompt]=useState(null);
 
@@ -5697,27 +5853,15 @@ export default function App(){
 
   const handleBackToHub=()=>{setScreen("hub");setResults(null);setStep("input");};
 
+  if (authLoading) return (
+    <div style={{height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#ffffff"}}>
+      <div style={{width:24,height:24,border:"2.5px solid #e2e8f0",borderTopColor:"#2563eb",borderRadius:"50%",animation:"spin .8s linear infinite"}}/>
+    </div>
+  );
+
   if(showLanding&&!authed)return <LandingPage onGetStarted={()=>setShowLanding(false)}/>;
 
-  if(!authed)return(<div style={{minHeight:"100vh",background:"#fff",fontFamily:"'Geist-Variable','Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",alignItems:"center",justifyContent:"center"}}>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}10!important}`}</style>
-    <div style={{width:"100%",maxWidth:380,padding:"0 24px",animation:"fadeIn .5s ease-out"}}>
-      <div style={{textAlign:"center",marginBottom:40}}>
-        <div style={{display:"inline-flex",alignItems:"center",gap:10,marginBottom:6}}>
-          <svg width="36" height="36" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
-          <span style={{fontSize:24,fontWeight:800,fontFamily:"'Geist-Variable','Outfit'",color:C.text,letterSpacing:"-.03em"}}>EnterRank</span>
-        </div>
-        <div style={{fontSize:14,color:C.muted,fontWeight:400}}>AI Engine Optimisation Platform</div>
-      </div>
-      <div style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:16,padding:"36px 32px",boxShadow:"0 1px 3px rgba(0,0,0,.04),0 8px 32px rgba(0,0,0,.04)"}}>
-        <h2 style={{fontSize:20,fontWeight:600,color:C.text,margin:"0 0 2px",fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em",textAlign:"center"}}>Welcome back</h2>
-        <p style={{fontSize:13,color:C.muted,margin:"0 0 28px",textAlign:"center"}}>Sign in to your account</p>
-        <LoginForm onSubmit={handleLogin} error={loginError} loading={loggingIn}/>
-      </div>
-      <div style={{textAlign:"center",marginTop:20,fontSize:12,color:C.muted}}>Powered by <span style={{fontWeight:600,color:C.sub}}>Entermind</span></div>
-    </div>
-  </div>);
+  if(!authed)return <LoginForm onLogin={handleLogin} onSignUp={handleSignUp} error={loginError} loading={loggingIn}/>;
 
   if(screen==="hub")return(<>
     <ProjectHub onSelect={handleSelectProject} onNew={handleNewProject} onLogout={handleLogout}/>
