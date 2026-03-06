@@ -1573,6 +1573,7 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
   accumulated.guidelineData = true;
   try{onProgress("All sections ready...", null, {...accumulated});}catch(emitErr){console.error("Emission 4 failed:",emitErr);}
 
+  console.log("FINAL_PAINPOINTS:", JSON.stringify(mergedPainPoints.map(p => p.label + ": " + p.score)));
   return {
     engineData:{
       engines:[
@@ -1889,6 +1890,7 @@ function generateAll(cd, apiData){
   const getScoreLabel=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
   const getScoreDesc=(s,b)=>s>=80?b+" is dominant — frequently cited and recommended.":s>=60?b+" has strong visibility — regularly mentioned.":s>=40?b+" has moderate visibility — rarely cited as primary source.":s>=20?b+" has weak visibility — occasionally mentioned.":b+" is invisible to AI engines.";
   const painCats=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
+  console.log("GENERATEALL_PAINPOINTS:", hasApi?"hasApi":"noApi", apiData?.engineData?.painPoints ? JSON.stringify(apiData.engineData.painPoints.map(p=>p.label+":"+p.score)) : "NULL");
   const painPoints=(hasApi&&apiData.engineData.painPoints&&apiData.engineData.painPoints.length>0)?apiData.engineData.painPoints.map(pp=>({label:pp.label,score:pp.score,severity:pp.score<30?"critical":pp.score<60?"warning":"good",evidence:pp.evidence||[]})):painCats.map(label=>({label,score:0,severity:"critical"}));
   const compVis = (hasApi && apiData.compVisibilityData) ? apiData.compVisibilityData : {};
   const competitors=(hasApi&&apiData.competitorData)?(()=>{const raw=Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors||[];return raw.filter(c=>c.name&&c.name.toLowerCase()!==cd.brand.toLowerCase()).map(c=>{const cPain=(c.painPoints||painCats.map(l=>({label:l,score:c.score||0}))).map(p=>({label:p.label,score:p.score}));const advantages=cPain.map(pp=>{const brandPP=painPoints.find(bp=>bp.label===pp.label);const diff=pp.score-(brandPP?brandPP.score:0);return{category:pp.label,diff,insight:getInsight(pp.label,c.name,cd.brand,diff>0)};}).filter(a=>a.insight);return{name:c.name,score:c.score||0,painPoints:cPain,advantages,mentionRate:(compVis[c.name]?.avgMentionRate)??0,citationRate:(compVis[c.name]?.avgCitationRate)??0,engineScores:[compVis[c.name]?.gpt?.score??c.score??0,compVis[c.name]?.gemini?.score??c.score??0],topStrength:c.topStrength||"N/A"};});})():[];
@@ -5108,6 +5110,7 @@ export default function App(){
       setAuditStage("");
       const r = generateAll(auditData, apiData);
       setResults(() => r);
+      console.log("AUDIT_COMPLETE: setting all sections ready");
       setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, playbook:true, channels:true, contenthub:true, roadmap:true });
 
       const entry={date:formatAuditDate(new Date()),brand:auditData.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
@@ -5164,6 +5167,7 @@ export default function App(){
       }catch(legacyErr){console.error('Legacy save failed:',legacyErr);}}
 
     } catch(e) {
+      console.error("AUDIT_COMPLETE (error path): setting all sections ready, error:", e.message || e);
       console.error("Progressive audit error:", e);
       setAuditInProgress(false);
       setAuditStage("");
