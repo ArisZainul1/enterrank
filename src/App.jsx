@@ -1592,29 +1592,56 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
   accumulated.guidelineData = true;
   try{onProgress("All sections ready...", null, {...accumulated});}catch(emitErr){console.error("Emission 4 failed:",emitErr);}
 
-  return {
-    engineData:{
-      engines:[
-        {id:"chatgpt",...gptData,queries:(gptData.queries||[])},
-        {id:"gemini",...gemData,queries:(gemData.queries||[])}
-      ],
-      painPoints:mergedPainPoints.length>0?mergedPainPoints.slice(0,6):null
-    },
-    competitorData:{competitors:(compData.competitors||[]).slice(0,5)},
-    archData:archData.stakeholders||[],
-    intentData:intentData.length>0?intentData:null,
-    channelData:{channels:(chData.channels||[]).slice(0,12)},
-    contentGridData:(contentData.contentTypes||[]).slice(0,10),
-    roadmapData:roadData,
-    contentData:(contentData.contentTypes||[]).slice(0,10),
-    sentimentData:sentimentData,
-    sentimentSignals:sentimentSignals,
-    brandCrawlData: brandCrawl?.mainPage || null,
-    compCrawlData: compCrawlsRaw,
-    compVisibilityData: compScoresMap,
-    searchQueries: searchQueries,
-    channelSourceData: channelSourceData
-  };
+  try {
+    return {
+      engineData:{
+        engines:[
+          {id:"chatgpt",...(typeof gptData!=="undefined"&&gptData?gptData:{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}),queries:((typeof gptData!=="undefined"&&gptData?gptData.queries:null)||[])},
+          {id:"gemini",...(typeof gemData!=="undefined"&&gemData?gemData:{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}),queries:((typeof gemData!=="undefined"&&gemData?gemData.queries:null)||[])}
+        ],
+        painPoints:typeof mergedPainPoints!=="undefined"&&mergedPainPoints&&mergedPainPoints.length>0?mergedPainPoints.slice(0,6):[]
+      },
+      competitorData:{competitors:typeof compData!=="undefined"&&compData?(compData.competitors||[]).slice(0,5):[]},
+      archData:typeof archData!=="undefined"&&archData?archData.stakeholders||[]:[],
+      intentData:typeof intentData!=="undefined"&&intentData&&intentData.length>0?intentData:null,
+      channelData:{channels:typeof chData!=="undefined"&&chData?(chData.channels||[]).slice(0,12):[]},
+      contentGridData:typeof contentData!=="undefined"&&contentData?(contentData.contentTypes||[]).slice(0,10):[],
+      roadmapData:typeof roadData!=="undefined"?roadData:null,
+      contentData:typeof contentData!=="undefined"&&contentData?(contentData.contentTypes||[]).slice(0,10):[],
+      sentimentData:typeof sentimentData!=="undefined"?sentimentData:{brand:{gpt:50,gemini:50,avg:50,summary:""},competitors:[]},
+      sentimentSignals:typeof sentimentSignals!=="undefined"?sentimentSignals:{positive:[],negative:[],quotes:[],competitorSentiment:[],rawSnippets:[]},
+      brandCrawlData:typeof brandCrawl!=="undefined"&&brandCrawl?brandCrawl.mainPage||null:null,
+      compCrawlData:typeof compCrawlsRaw!=="undefined"?compCrawlsRaw:{},
+      compVisibilityData:typeof compScoresMap!=="undefined"?compScoresMap:{},
+      searchQueries:typeof searchQueries!=="undefined"?searchQueries:[],
+      queryArchetypeMap:typeof queryArchetypeMap!=="undefined"?queryArchetypeMap:{},
+      channelSourceData:typeof channelSourceData!=="undefined"?channelSourceData:{sourceChannels:[],opportunities:[]},
+      guidelinesData:typeof guidelinesData!=="undefined"?guidelinesData:null
+    };
+  } catch(returnError) {
+    console.error("CRITICAL: runRealAudit return assembly failed:",returnError);
+    return {
+      engineData:{engines:[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"gemini",name:"Gemini",color:"#4285F4",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}],painPoints:[]},
+      sentimentData:{brand:{gpt:50,gemini:50,avg:50,summary:""},competitors:[]},
+      sentimentSignals:{positive:[],negative:[],quotes:[],competitorSentiment:[],rawSnippets:[]},
+      competitorData:{competitors:[]},
+      compVisibilityData:{},
+      archData:[],
+      intentData:null,
+      channelData:{channels:[]},
+      channelSourceData:{sourceChannels:[],opportunities:[]},
+      contentGridData:[],
+      contentData:[],
+      roadmapData:null,
+      brandCrawlData:null,
+      compCrawlData:{},
+      searchQueries:[],
+      queryArchetypeMap:{},
+      guidelinesData:null,
+      error:true,
+      errorMessage:"Audit completed but result assembly failed: "+(returnError.message||"Unknown error")
+    };
+  }
  }catch(fatalError){
     console.error("Audit failed:",fatalError);
     onProgress("Audit failed: "+(fatalError.message||"Unknown error"),-1);
