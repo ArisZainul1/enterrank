@@ -2072,7 +2072,7 @@ function LandingPage({ onGetStarted }) {
       {/* Top bar */}
       <div style={{position:"relative",zIndex:2,padding:"24px 48px",display:"flex",alignItems:"center",gap:10}}>
         <svg width="32" height="32" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
-        <span style={{fontSize:16,fontWeight:500,color:"#0f172a",fontFamily:"'Geist-Variable',-apple-system,sans-serif",letterSpacing:"-.01em"}}>EnterRank</span>
+        <span style={{fontSize:16,fontWeight:500,color:"#0f172a",fontFamily:"'Outfit',-apple-system,sans-serif",letterSpacing:"-.01em"}}>EnterRank</span>
         <span style={{fontSize:12,color:"#94a3b8",marginLeft:2}}>by Entermind</span>
       </div>
 
@@ -2117,15 +2117,15 @@ function LandingPage({ onGetStarted }) {
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
 
-          <div style={{display:"flex",gap:32,marginTop:40,animation:"fadeUp 1.1s ease-out"}}>
+          <div style={{display:"flex",gap:24,marginTop:40,alignItems:"flex-start",animation:"fadeUp 1.1s ease-out"}}>
             {[
               {value:"End-to-End Auditing",label:"From Crawl to Strategy"},
               {value:"Real AI Responses",label:"Not Estimates or Simulations"},
               {value:"Actionable Insights",label:"Every Score Traced to Evidence"}
             ].map((t,i)=>(
-              <div key={i}>
-                <div style={{fontSize:14,fontWeight:500,color:"#0f172a",fontFamily:"'Geist-Variable',-apple-system,sans-serif"}}>{t.value}</div>
-                <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>{t.label}</div>
+              <div key={i} style={{flex:"1 1 0",minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:500,color:"#0f172a",fontFamily:"'Geist-Variable',-apple-system,sans-serif",whiteSpace:"nowrap"}}>{t.value}</div>
+                <div style={{fontSize:11,color:"#94a3b8",marginTop:2,whiteSpace:"nowrap"}}>{t.label}</div>
               </div>
             ))}
           </div>
@@ -2150,7 +2150,7 @@ function LandingPage({ onGetStarted }) {
                 <div style={{width:10,height:10,borderRadius:"50%",background:"#f59e0b"}}/>
                 <div style={{width:10,height:10,borderRadius:"50%",background:"#22c55e"}}/>
               </div>
-              <div style={{fontSize:11,color:"#94a3b8",fontFamily:"'Geist-Variable',-apple-system,sans-serif"}}>enterrank.ai/dashboard</div>
+              <div style={{fontSize:11,color:"#94a3b8",fontFamily:"monospace"}}>enterrank.ai/dashboard</div>
               <div style={{width:40}}/>
             </div>
 
@@ -2161,7 +2161,7 @@ function LandingPage({ onGetStarted }) {
                 <div style={{padding:"6px 12px",marginBottom:6}}>
                   <div style={{display:"flex",alignItems:"center",gap:5}}>
                     <svg width="14" height="14" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
-                    <span style={{fontSize:9,fontWeight:500,color:"#0f172a"}}>EnterRank</span>
+                    <span style={{fontSize:9,fontWeight:500,color:"#0f172a",fontFamily:"'Outfit',-apple-system,sans-serif"}}>EnterRank</span>
                   </div>
                 </div>
                 {[
@@ -2183,7 +2183,7 @@ function LandingPage({ onGetStarted }) {
                 {/* Score */}
                 <div style={{textAlign:"center",marginBottom:12}}>
                   <div style={{fontSize:8,color:"#94a3b8",letterSpacing:".08em",textTransform:"uppercase",marginBottom:4}}>GEO Visibility Score</div>
-                  <div style={{fontSize:36,fontWeight:500,color:"#0f172a",fontFamily:"'Geist-Variable',-apple-system,sans-serif",lineHeight:1}}>72<span style={{fontSize:14,color:"#94a3b8"}}>%</span></div>
+                  <div style={{fontSize:36,fontWeight:500,color:"#0f172a",fontFamily:"'Outfit',-apple-system,sans-serif",lineHeight:1}}>72<span style={{fontSize:14,color:"#94a3b8"}}>%</span></div>
                   <div style={{display:"inline-block",fontSize:8,fontWeight:500,padding:"2px 7px",borderRadius:100,background:"#dcfce7",color:"#166534",marginTop:3}}>Strong</div>
                 </div>
 
@@ -2192,7 +2192,7 @@ function LandingPage({ onGetStarted }) {
                   {[{l:"Mention Rate",v:"68%",c:"#2563eb"},{l:"Citation Rate",v:"45%",c:"#8b5cf6"},{l:"Sentiment",v:"Positive",c:"#059669"}].map((k,i)=>(
                     <div key={i} style={{background:"#f8fafc",borderRadius:6,padding:"6px 8px",border:"1px solid #f1f5f9"}}>
                       <div style={{fontSize:7,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".05em",marginBottom:2}}>{k.l}</div>
-                      <div style={{fontSize:12,fontWeight:500,color:k.c,fontFamily:"'Geist-Variable',-apple-system,sans-serif"}}>{k.v}</div>
+                      <div style={{fontSize:12,fontWeight:500,color:k.c,fontFamily:"'Outfit',-apple-system,sans-serif"}}>{k.v}</div>
                     </div>
                   ))}
                 </div>
