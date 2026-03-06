@@ -2118,15 +2118,16 @@ function LandingPage({ onGetStarted }) {
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
 
-          <div style={{display:"flex",gap:24,marginTop:40,alignItems:"flex-start",animation:"fadeUp 1.1s ease-out"}}>
+          {/* Trust indicators */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:0,marginTop:40,animation:"fadeUp 1.1s ease-out",maxWidth:440}}>
             {[
-              {value:"End-to-End Auditing",label:"From Crawl to Strategy"},
-              {value:"Real AI Responses",label:"Not Estimates or Simulations"},
-              {value:"Actionable Insights",label:"Every Score Traced to Evidence"}
+              {value:"End-to-End",label:"From Crawl to Strategy"},
+              {value:"Real Responses",label:"Not Estimates"},
+              {value:"Actionable",label:"Traced to Evidence"}
             ].map((t,i)=>(
-              <div key={i} style={{flex:"1 1 0",minWidth:0}}>
-                <div style={{fontSize:13,fontWeight:500,color:"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif",whiteSpace:"nowrap"}}>{t.value}</div>
-                <div style={{fontSize:11,color:"#94a3b8",marginTop:2,whiteSpace:"nowrap"}}>{t.label}</div>
+              <div key={i} style={{padding:"0 16px",borderLeft:i>0?"1px solid #e2e8f0":"none"}}>
+                <div style={{fontSize:13,fontWeight:500,color:"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{t.value}</div>
+                <div style={{fontSize:11,color:"#94a3b8",marginTop:2,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{t.label}</div>
               </div>
             ))}
           </div>
