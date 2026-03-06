@@ -2668,8 +2668,7 @@ Return JSON only:
       const prompt=`For "${data.brand}" in "${data.industry}" (${data.region||"Global"}).
 Website: ${data.website||"unknown"}
 Competitors: ${compNamesStr||"none"}
-${crawlSummary?"Website content:
-"+crawlSummary.slice(0,600):""}
+${crawlSummary?"Website content:\n"+crawlSummary.slice(0,600):""}
 
 Generate 6 distinct audience archetypes — real customer segments who would search for ${data.industry} products/services on AI engines (ChatGPT, Gemini) in ${data.region||"their region"}.
 
@@ -2717,8 +2716,7 @@ Return JSON only:
     try{
       const compNamesStr=(data.competitors||[]).filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
       let crawlSummary="";try{const cached=getCachedCrawl(data.website||"");if(cached){crawlSummary=summariseCrawl(cached);}else{const cr=await crawlWebsite(data.website||"");if(cr){crawlCacheRef.current={url:data.website,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
-      const archContext=archs.map((a,i)=>`${i+1}. ${a.name} (${a.demographics||"general"}): ${a.description}`).join("
-");
+      const archContext=archs.map((a,i)=>`${i+1}. ${a.name} (${a.demographics||"general"}): ${a.description}`).join("\n");
       const prompt=`You are generating search topics for an AI visibility audit of "${data.brand}" in "${data.industry}" (${data.region||"Global"}).
 
 BRAND: ${data.brand}
@@ -2726,9 +2724,7 @@ INDUSTRY: ${data.industry}
 WEBSITE: ${data.website||"unknown"}
 COMPETITORS: ${compNamesStr||"None specified"}
 
-${crawlSummary?"BRAND WEBSITE CONTENT:
-"+crawlSummary.slice(0,600)+"
-":""}
+${crawlSummary?"BRAND WEBSITE CONTENT:\n"+crawlSummary.slice(0,600)+"\n":""}
 TARGET AUDIENCE ARCHETYPES (ranked by priority):
 ${archContext}
 
