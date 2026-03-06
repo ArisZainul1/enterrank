@@ -5614,8 +5614,11 @@ export default function App(){
       const apiData = await runRealAudit(auditData, (msg, pct, partialData) => {
         if(auditComplete) return;
         if(pct != null) {
-          setAuditProgress(pct);
-          setDashboardLoadProgress(Math.min(100, Math.round((pct / 55) * 100)));
+          setAuditProgress(prev => {
+            const next = Math.max(prev, pct);
+            setDashboardLoadProgress(Math.min(100, Math.round((next / 55) * 100)));
+            return next;
+          });
         }
         if(msg) setAuditStage(msg);
         if(partialData) {
