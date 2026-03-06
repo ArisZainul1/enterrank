@@ -2465,10 +2465,6 @@ function AuditLoadingInline({ progress, stage }) {
         })}
       </div>
 
-      {/* Subtle hint */}
-      <div style={{ fontSize:11, color:C.muted, textAlign:"center", opacity:0.7, marginTop:4 }}>
-        Dashboard sections will unlock as data arrives
-      </div>
     </div>
   );
 }
@@ -3015,11 +3011,7 @@ Return JSON only:
       <button onClick={regenerateTopics} disabled={genTopics||generatingTopics||data.topics.length>=10} style={{width:"100%",padding:"10px 16px",background:"none",border:`1px dashed ${C.accent}40`,borderRadius:8,fontSize:12,fontWeight:600,color:data.topics.length>=10?C.muted:C.accent,cursor:genTopics||generatingTopics||data.topics.length>=10?"not-allowed":"pointer",fontFamily:"'Geist-Variable','Outfit'",marginBottom:8,opacity:genTopics||generatingTopics||data.topics.length>=10?.5:1}}>
         {genTopics?"Generating more topics...":"+ Generate More Topics"}
       </button>
-      {data.topics.length>0&&!genTopics&&!generatingTopics&&(
-        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:16}}>
-          <span onClick={()=>{setData(d=>({...d,topics:[]}));setTopicsAutoFilled(false);const compNamesArr=(data.competitors||[]).map(c=>typeof c==="string"?c:c?.name||"").filter(Boolean);generateTopicsFromIndustry(data.industry,data.region,compNamesArr);}} style={{fontSize:11,color:C.accent,cursor:"pointer",textDecoration:"underline"}}>{"\u21BB"} Regenerate all topics</span>
-        </div>
-      )}
+
 
       <div style={{paddingTop:16,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <button onClick={()=>setAuditStep("archetypes")} style={{padding:"8px 16px",background:"none",border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,color:C.sub,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>← Back to Audience</button>
