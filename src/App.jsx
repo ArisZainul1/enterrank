@@ -2442,6 +2442,13 @@ function NewAuditPage({data,setData,onRun,history=[]}){
   const fieldsLocked=!autoFilled&&!(data.industry&&data.industry.length>2)&&!(data.website&&data.website.length>5);
   const[generatingTopics,setGeneratingTopics]=useState(false);
   const[topicsAutoFilled,setTopicsAutoFilled]=useState(false);
+  const[availableArchetypes,setAvailableArchetypes]=useState([]);
+  const[selectedArchetypes,setSelectedArchetypes]=useState([]);
+  const[generatingArchetypes,setGeneratingArchetypes]=useState(false);
+  const[editingArch,setEditingArch]=useState(null);
+  const[editArchData,setEditArchData]=useState({name:"",description:"",demographics:""});
+  const[addingArch,setAddingArch]=useState(false);
+  const[newArchData,setNewArchData]=useState({name:"",description:"",demographics:""});
   const crawlCacheRef = React.useRef({ url: null, result: null });
   const getCachedCrawl = (url) => {
     if (!url || !crawlCacheRef.current.url || !crawlCacheRef.current.result) return null;
@@ -2647,6 +2654,104 @@ Return JSON only:
     setGenTopics(false);
   };
 
+  const generateArchetypes=async()=>{
+    setGeneratingArchetypes(true);
+    try{
+      const compNamesStr=(data.competitors||[]).filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
+      let crawlSummary="";
+      try{const cached=getCachedCrawl(data.website||"");if(cached){crawlSummary=summariseCrawl(cached);}else{const cr=await crawlWebsite(data.website||"");if(cr){crawlCacheRef.current={url:data.website,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
+      const prompt=`For "${data.brand}" in "${data.industry}" (${data.region||"Global"}).
+Website: ${data.website||"unknown"}
+Competitors: ${compNamesStr||"none"}
+${crawlSummary?"Website content:
+"+crawlSummary.slice(0,600):""}
+
+Generate 6 distinct audience archetypes — real customer segments who would search for ${data.industry} products/services on AI engines (ChatGPT, Gemini) in ${data.region||"their region"}.
+
+Requirements:
+- Each archetype must be SPECIFIC to ${data.industry} in ${data.region}, not generic personas
+- Include a mix: some high-value segments, some high-volume segments, some niche segments
+- Think about WHO actually types queries into ChatGPT about ${data.industry} — students, professionals, decision-makers, researchers, etc.
+- Demographics should include age range and 1-2 defining characteristics
+
+Return JSON only:
+[{"name":"<specific archetype name>","description":"<1-2 sentences about their AI search behavior>","demographics":"<age range, key characteristic>"}]`;
+      const raw=await callOpenAI(prompt,"You are a market research expert specializing in AI search behavior. Return ONLY valid JSON arrays, no markdown fences.");
+      const parsed=safeJSON(raw);
+      if(parsed&&Array.isArray(parsed)&&parsed.length>0){
+        const cleaned=parsed.filter(a=>a.name&&a.description).slice(0,8).map((a,i)=>({id:"arch-"+Date.now()+"-"+i,name:a.name.trim(),description:a.description.trim(),demographics:(a.demographics||"").trim()}));
+        setAvailableArchetypes(cleaned);
+      }else{setAvailableArchetypes([]);}
+    }catch(e){console.error("Archetype generation failed:",e);}
+    setGeneratingArchetypes(false);
+  };
+
+  const generateMoreArchetypes=async()=>{
+    setGeneratingArchetypes(true);
+    try{
+      const existing2=availableArchetypes.map(a=>a.name).join(", ");
+      const prompt=`For "${data.brand}" in "${data.industry}" (${data.region||"Global"}).
+I already have these archetypes: ${existing2}
+
+Generate 3 MORE DIFFERENT audience archetypes for people who search for ${data.industry} on AI engines in ${data.region}. Do NOT duplicate existing ones.
+
+Return JSON only:
+[{"name":"...","description":"...","demographics":"..."}]`;
+      const raw=await callOpenAI(prompt,"You are a market research expert. Return ONLY valid JSON arrays.");
+      const parsed=safeJSON(raw);
+      if(parsed&&Array.isArray(parsed)){
+        const cleaned=parsed.filter(a=>a.name&&a.description).slice(0,3).map((a,i)=>({id:"arch-"+Date.now()+"-"+i,name:a.name.trim(),description:a.description.trim(),demographics:(a.demographics||"").trim()}));
+        setAvailableArchetypes(prev=>[...prev,...cleaned]);
+      }
+    }catch(e){}
+    setGeneratingArchetypes(false);
+  };
+
+  const generateTopicsFromArchetypes=async(archs)=>{
+    setGenTopics(true);setError(null);
+    try{
+      const compNamesStr=(data.competitors||[]).filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
+      let crawlSummary="";try{const cached=getCachedCrawl(data.website||"");if(cached){crawlSummary=summariseCrawl(cached);}else{const cr=await crawlWebsite(data.website||"");if(cr){crawlCacheRef.current={url:data.website,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
+      const archContext=archs.map((a,i)=>`${i+1}. ${a.name} (${a.demographics||"general"}): ${a.description}`).join("
+");
+      const prompt=`You are generating search topics for an AI visibility audit of "${data.brand}" in "${data.industry}" (${data.region||"Global"}).
+
+BRAND: ${data.brand}
+INDUSTRY: ${data.industry}
+WEBSITE: ${data.website||"unknown"}
+COMPETITORS: ${compNamesStr||"None specified"}
+
+${crawlSummary?"BRAND WEBSITE CONTENT:
+"+crawlSummary.slice(0,600)+"
+":""}
+TARGET AUDIENCE ARCHETYPES (ranked by priority):
+${archContext}
+
+Generate exactly 10 search topics that these archetypes would actually search for on AI engines (ChatGPT, Gemini).
+
+CRITICAL RULES:
+1. Topics must be weighted by archetype priority — archetype #1 should influence ~4 topics, #2 ~3 topics, #3 ~3 topics
+2. Each topic should reflect what that archetype ACTUALLY searches for
+3. Topics must be about products/services ${data.brand} actually offers (check website content)
+4. Do NOT mention ${data.brand} by name — these are generic queries where ${data.brand} SHOULD appear
+5. Mix of comparison, recommendation, how-to, and transactional queries
+6. Include the region naturally where relevant
+7. Each topic should be 10-25 words, natural language
+${compNamesStr?"8. Do NOT mention competitor names: "+compNamesStr:""}
+
+Return JSON only:
+{"topics": ["topic 1", "topic 2", ...]}`;
+      const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Return ONLY valid JSON.");
+      const parsed=safeJSON(raw);
+      const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
+      if(topics&&Array.isArray(topics)&&topics.length>0){
+        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,10)}));
+      }else{setError("Failed to generate topics. Please try again.");}
+    }catch(e){console.error("Topic generation from archetypes failed:",e);setError("Failed to generate topics. Check your API connection.");}
+    setGenTopics(false);
+  };
+
+
   const startEdit=(i)=>{setEditingTopic(i);setEditVal(data.topics[i]);};
   const saveEdit=(i)=>{
     if(editVal.trim()){const t=[...data.topics];t[i]=editVal.trim();setData({...data,topics:t});}
@@ -2694,6 +2799,131 @@ Return JSON only:
   if(running)return(<AuditLoadingScreen progress={progress} C={C}/>);
 
   /* ─── STEP 2: Topics Review ─── */
+  /* ─── STEP 2: Archetype Selection ─── */
+  if(auditStep==="archetypes")return(
+    <div style={{maxWidth:800,margin:"0 auto"}}>
+      <div style={{marginBottom:24,textAlign:"center"}}>
+        <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'"}}>Target Audience</h2>
+        <p style={{color:C.sub,fontSize:13,marginTop:4}}>Select up to 3 archetypes to focus your audit. Drag to the right panel and rank by priority.</p>
+      </div>
+
+      {generatingArchetypes&&availableArchetypes.length===0?(
+        <div style={{textAlign:"center",padding:60}}>
+          <div style={{width:24,height:24,border:"2.5px solid "+C.borderSoft,borderTopColor:C.accent,borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 12px"}}/>
+          <div style={{fontSize:13,color:C.sub}}>Generating audience archetypes for {data.brand}...</div>
+        </div>
+      ):(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+          {/* LEFT PANEL: Available Archetypes */}
+          <div>
+            <div style={{fontSize:12,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:10}}>Available Archetypes</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8,minHeight:200}}>
+              {availableArchetypes.filter(a=>!selectedArchetypes.find(s=>s.id===a.id)).map((arch)=>(
+                <div key={arch.id} draggable onDragStart={(e)=>e.dataTransfer.setData("archId",arch.id)} style={{padding:"14px 16px",background:"#fff",border:"1px solid "+C.border,borderRadius:10,cursor:"grab",transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.accent+"40";e.currentTarget.style.boxShadow="0 2px 8px rgba(37,99,235,0.06)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.boxShadow="none";}}>
+                  {editingArch===arch.id?(
+                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                      <input value={editArchData.name} onChange={e=>setEditArchData({...editArchData,name:e.target.value})} style={{padding:"6px 10px",border:"1px solid "+C.border,borderRadius:6,fontSize:12,color:C.text,outline:"none"}} placeholder="Archetype name"/>
+                      <input value={editArchData.description} onChange={e=>setEditArchData({...editArchData,description:e.target.value})} style={{padding:"6px 10px",border:"1px solid "+C.border,borderRadius:6,fontSize:11,color:C.sub,outline:"none"}} placeholder="Description"/>
+                      <input value={editArchData.demographics} onChange={e=>setEditArchData({...editArchData,demographics:e.target.value})} style={{padding:"6px 10px",border:"1px solid "+C.border,borderRadius:6,fontSize:11,color:C.sub,outline:"none"}} placeholder="Demographics"/>
+                      <div style={{display:"flex",gap:6}}>
+                        <button onClick={()=>{setAvailableArchetypes(prev=>prev.map(a=>a.id===arch.id?{...a,...editArchData}:a));setEditingArch(null);}} style={{padding:"4px 12px",background:C.accent,color:"#fff",border:"none",borderRadius:6,fontSize:11,cursor:"pointer"}}>Save</button>
+                        <button onClick={()=>setEditingArch(null)} style={{padding:"4px 12px",background:"none",color:C.muted,border:"1px solid "+C.border,borderRadius:6,fontSize:11,cursor:"pointer"}}>Cancel</button>
+                      </div>
+                    </div>
+                  ):(
+                    <>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                        <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>{arch.name}</div>
+                        <div style={{display:"flex",gap:4}}>
+                          <span onClick={(e)=>{e.stopPropagation();setEditingArch(arch.id);setEditArchData({name:arch.name,description:arch.description,demographics:arch.demographics});}} style={{fontSize:10,color:C.muted,cursor:"pointer",padding:"2px 4px"}}>Edit</span>
+                          <span onClick={(e)=>{e.stopPropagation();setAvailableArchetypes(prev=>prev.filter(a=>a.id!==arch.id));}} style={{fontSize:10,color:C.red,cursor:"pointer",padding:"2px 4px"}}>Remove</span>
+                        </div>
+                      </div>
+                      <div style={{fontSize:11,color:C.sub,lineHeight:1.5,marginBottom:4}}>{arch.description}</div>
+                      {arch.demographics&&<div style={{fontSize:10,color:C.muted}}>{arch.demographics}</div>}
+                    </>
+                  )}
+                </div>
+              ))}
+              {addingArch?(
+                <div style={{padding:"14px 16px",background:"#fff",border:"1px dashed "+C.accent+"40",borderRadius:10}}>
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    <input value={newArchData.name} onChange={e=>setNewArchData({...newArchData,name:e.target.value})} style={{padding:"6px 10px",border:"1px solid "+C.border,borderRadius:6,fontSize:12,color:C.text,outline:"none"}} placeholder="Archetype name"/>
+                    <input value={newArchData.description} onChange={e=>setNewArchData({...newArchData,description:e.target.value})} style={{padding:"6px 10px",border:"1px solid "+C.border,borderRadius:6,fontSize:11,color:C.sub,outline:"none"}} placeholder="Description"/>
+                    <input value={newArchData.demographics} onChange={e=>setNewArchData({...newArchData,demographics:e.target.value})} style={{padding:"6px 10px",border:"1px solid "+C.border,borderRadius:6,fontSize:11,color:C.sub,outline:"none"}} placeholder="Demographics (e.g. 25-34, tech-savvy)"/>
+                    <div style={{display:"flex",gap:6}}>
+                      <button onClick={()=>{if(newArchData.name.trim()){setAvailableArchetypes(prev=>[...prev,{id:"arch-custom-"+Date.now(),...newArchData}]);setNewArchData({name:"",description:"",demographics:""});setAddingArch(false);}}} style={{padding:"4px 12px",background:C.accent,color:"#fff",border:"none",borderRadius:6,fontSize:11,cursor:"pointer"}}>Add</button>
+                      <button onClick={()=>{setAddingArch(false);setNewArchData({name:"",description:"",demographics:""});}} style={{padding:"4px 12px",background:"none",color:C.muted,border:"1px solid "+C.border,borderRadius:6,fontSize:11,cursor:"pointer"}}>Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              ):(
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>setAddingArch(true)} style={{flex:1,padding:"10px",background:"none",border:"1px dashed "+C.border,borderRadius:8,fontSize:11,color:C.accent,cursor:"pointer",fontWeight:500}}>+ Add Custom</button>
+                  <button onClick={generateMoreArchetypes} disabled={generatingArchetypes} style={{flex:1,padding:"10px",background:"none",border:"1px dashed "+C.border,borderRadius:8,fontSize:11,color:generatingArchetypes?C.muted:C.accent,cursor:generatingArchetypes?"not-allowed":"pointer",fontWeight:500}}>{generatingArchetypes?"Generating...":"+ Generate More"}</button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT PANEL: Selected Archetypes (max 3) */}
+          <div>
+            <div style={{fontSize:12,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:10}}>Focus Archetypes <span style={{color:C.sub,textTransform:"none",letterSpacing:0}}>({selectedArchetypes.length}/3)</span></div>
+            <div
+              onDragOver={(e)=>{e.preventDefault();e.currentTarget.style.background=C.accent+"04";}}
+              onDragLeave={(e)=>{e.currentTarget.style.background="transparent";}}
+              onDrop={(e)=>{
+                e.preventDefault();e.currentTarget.style.background="transparent";
+                const archId=e.dataTransfer.getData("archId");
+                if(!archId)return;if(selectedArchetypes.length>=3)return;
+                const arch=availableArchetypes.find(a=>a.id===archId);
+                if(arch&&!selectedArchetypes.find(s=>s.id===archId)){setSelectedArchetypes(prev=>[...prev,arch]);}
+              }}
+              style={{minHeight:200,border:"2px dashed "+(selectedArchetypes.length===0?C.border:C.accent+"30"),borderRadius:12,padding:12,display:"flex",flexDirection:"column",gap:8,transition:"all .2s"}}
+            >
+              {selectedArchetypes.length===0&&(
+                <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+                  <div style={{textAlign:"center",color:C.muted}}>
+                    <div style={{fontSize:13,marginBottom:4}}>Drag archetypes here</div>
+                    <div style={{fontSize:11}}>Select up to 3 to focus your audit</div>
+                  </div>
+                </div>
+              )}
+              {selectedArchetypes.map((arch,i)=>(
+                <div key={arch.id} draggable onDragStart={(e)=>e.dataTransfer.setData("reorderId",String(i))} onDragOver={(e)=>e.preventDefault()} onDrop={(e)=>{e.preventDefault();e.stopPropagation();const fromStr=e.dataTransfer.getData("reorderId");if(fromStr==="")return;const from=parseInt(fromStr);if(isNaN(from))return;const newOrder=[...selectedArchetypes];const[moved]=newOrder.splice(from,1);newOrder.splice(i,0,moved);setSelectedArchetypes(newOrder);}} style={{padding:"12px 14px",background:C.accent+"06",border:"1px solid "+C.accent+"20",borderRadius:10,cursor:"grab",display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{width:24,height:24,borderRadius:8,background:C.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:500,flexShrink:0}}>{i+1}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:500,color:C.text}}>{arch.name}</div>
+                    <div style={{fontSize:10,color:C.muted}}>{arch.demographics}</div>
+                  </div>
+                  <span onClick={()=>setSelectedArchetypes(prev=>prev.filter(a=>a.id!==arch.id))} style={{fontSize:14,color:C.muted,cursor:"pointer",padding:"4px",flexShrink:0}}>x</span>
+                </div>
+              ))}
+              {selectedArchetypes.length>0&&selectedArchetypes.length<3&&(
+                <div style={{fontSize:10,color:C.muted,textAlign:"center",padding:4}}>Drag {3-selectedArchetypes.length} more to fill your focus</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom navigation */}
+      <div style={{paddingTop:20,borderTop:"1px solid "+C.borderSoft,marginTop:20,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <button onClick={()=>setAuditStep("input")} style={{padding:"8px 16px",background:"none",border:"1px solid "+C.border,borderRadius:8,fontSize:12,color:C.sub,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>Back to Details</button>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <span style={{fontSize:11,color:C.muted}}>{selectedArchetypes.length} of 3 selected</span>
+          <button
+            onClick={()=>{setData(d=>({...d,archetypes:selectedArchetypes}));setAuditStep("topics");setGenTopics(true);generateTopicsFromArchetypes(selectedArchetypes);}}
+            disabled={selectedArchetypes.length===0}
+            style={{padding:"10px 24px",background:selectedArchetypes.length>0?C.accent:"#dde1e7",color:selectedArchetypes.length>0?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:500,cursor:selectedArchetypes.length>0?"pointer":"not-allowed",fontFamily:"'Geist-Variable','Outfit'"}}
+          >
+            Generate Topics
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   if(auditStep==="topics")return(<div style={{maxWidth:620,margin:"0 auto"}}>
     <div style={{marginBottom:24,textAlign:"center"}}>
       <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.02em"}}>Review Topics for {data.brand}</h2>
@@ -2749,7 +2979,7 @@ Return JSON only:
       )}
 
       <div style={{paddingTop:16,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <button onClick={()=>setAuditStep("input")} style={{padding:"8px 16px",background:"none",border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,color:C.sub,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>← Back to Details</button>
+        <button onClick={()=>setAuditStep("archetypes")} style={{padding:"8px 16px",background:"none",border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,color:C.sub,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>← Back to Audience</button>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <span style={{fontSize:11,color:C.muted}}>{data.topics.length} topics</span>
           <button onClick={go} disabled={!topicsOk} style={{padding:"10px 24px",background:topicsOk?C.accent:"#dde1e7",color:topicsOk?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:topicsOk?"pointer":"not-allowed",fontFamily:"'Geist-Variable','Outfit'"}}>Run Audit →</button>
@@ -2807,7 +3037,7 @@ Return JSON only:
       </div>
     <div style={{marginTop:20,paddingTop:18,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div style={{display:"flex",gap:12,alignItems:"center",opacity:fieldsLocked?0.45:1,transition:"opacity .3s ease"}}><span style={{fontSize:11,color:C.muted}}>Engines:</span><ChatGPTLogo size={18}/><GeminiLogo size={18}/></div>
-      <button onClick={generateTopics} disabled={!inputOk||genTopics} style={{padding:"10px 24px",background:inputOk&&!genTopics?C.accent:"#dde1e7",color:inputOk&&!genTopics?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:inputOk&&!genTopics?"pointer":"not-allowed",fontFamily:"'Geist-Variable','Outfit'"}}>{genTopics?"Generating Topics...":"Generate Topics →"}</button>
+      <button onClick={()=>{setAuditStep("archetypes");if(availableArchetypes.length===0)generateArchetypes();}} disabled={!inputOk||genTopics} style={{padding:"10px 24px",background:inputOk&&!genTopics?C.accent:"#dde1e7",color:inputOk&&!genTopics?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:inputOk&&!genTopics?"pointer":"not-allowed",fontFamily:"'Geist-Variable','Outfit'"}}>{genTopics?"Generating...":"Select Audience →"}</button>
     </div>
     {error&&<div style={{marginTop:12,padding:"10px 16px",background:`${C.red}08`,border:`1px solid ${C.red}20`,borderRadius:8,fontSize:12,color:C.red}}>{error}</div>}
     </Card></div>);
@@ -5195,7 +5425,7 @@ export default function App(){
   const[screen,setScreen]=useState(isLocal?"dashboard":"hub");
   const[activeProject,setActiveProject]=useState(null);
   const[step,setStep]=useState("input");
-  const[data,setData]=useState({brand:"",industry:"",website:"",region:"",topics:[],competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
+  const[data,setData]=useState({brand:"",industry:"",website:"",region:"",topics:[],competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}],archetypes:[]});
   const[results,setResults]=useState(null);
   const[history,setHistory]=useState([]);
   const [sectionReady, setSectionReady] = useState({ dashboard:true, archetypes:true, sentiment:true, intent:true, playbook:true, channels:true, contenthub:true, roadmap:true });
@@ -5278,7 +5508,7 @@ export default function App(){
   const openProjectForAudit=(project)=>{
     setProjectPrompt(null);
     setActiveProject(project);
-    setData({brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors&&project.competitors.length>0?project.competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
+    setData({brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors&&project.competitors.length>0?project.competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}],archetypes:project.archetypes||[]});
     setHistory((project.history||[]).map(h=>({date:h.date||formatAuditDate(h.timestamp||h.created_at),...h})));
     setResults(null);
     setStep("input");
@@ -5288,7 +5518,7 @@ export default function App(){
   const openProjectDashboard=(project,lastAudit)=>{
     setProjectPrompt(null);
     setActiveProject(project);
-    setData({brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors&&project.competitors.length>0?project.competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
+    setData({brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors&&project.competitors.length>0?project.competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}],archetypes:project.archetypes||[]});
     setHistory((project.history||[]).map(h=>({date:h.date||formatAuditDate(h.timestamp||h.created_at),...h})));
     // Rebuild results from last audit
     const cd={brand:project.brand,industry:project.industry||"",website:project.website||"",region:project.region||"",topics:project.topics||[],competitors:project.competitors||[]};
@@ -5300,7 +5530,7 @@ export default function App(){
 
   const handleNewProject=()=>{
     setActiveProject(null);
-    setData({brand:"",industry:"",website:"",region:"",topics:[],competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}]});
+    setData({brand:"",industry:"",website:"",region:"",topics:[],competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}],archetypes:[]});
     setHistory([]);
     setResults(null);
     setStep("input");
