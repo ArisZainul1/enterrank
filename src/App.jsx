@@ -473,7 +473,7 @@ IMPORTANT RULES FOR QUERY GENERATION:
 - Each query should be something a real consumer would search for when considering this brand
 - Queries should map to the actual service categories visible on the brand website
 
-Topics:
+${(()=>{const archs=cd.archetypes||[];if(archs.length===0)return"";return"Target Audience Archetypes (ranked by priority):\n"+archs.map((a,i)=>`${i+1}. ${a.name}${a.demographics?" ("+a.demographics+")":""}: ${a.description||""}`).join("\n")+"\n\nIMPORTANT: For each query, tag it with the archetype name that would most likely ask that query.\n";})()}Topics:
 ${topicsToUse.map((t, i) => `${i + 1}. ${t}`).join("\n")}
 
 For each topic, generate 2 queries using DIFFERENT angles from this list:
@@ -512,20 +512,21 @@ GOOD examples (specific, varied angles):
 - "Where to buy authentic heat-not-burn devices and consumables online in Malaysia?"
 
 Return JSON only:
-{"queries": [${topicsToUse.map((t, i) => `\n  {"topic": "${t.replace(/"/g, '\\"')}", "q1": "first query for this topic", "q2": "second query for this topic"}`).join(",")}
+{"queries": [${topicsToUse.map((t, i) => `\n  {"topic": "${t.replace(/"/g, '\\"')}", "q1": "first query for this topic", "q1_archetype": "archetype name or empty", "q2": "second query for this topic", "q2_archetype": "archetype name or empty"}`).join(",")}
 ]}`;
 
   const queryGenRaw = await callOpenAI4o(queryGenPrompt, "You are an AEO/GEO search query expert. Generate highly specific, realistic search queries. Return ONLY valid JSON, no markdown fences.");
   const queryGenParsed = safeJSON(queryGenRaw) || { queries: [] };
 
   // Extract queries from the structured response
+  const queryArchetypeMap={};
   if (Array.isArray(queryGenParsed.queries)) {
     queryGenParsed.queries.forEach(item => {
       if (typeof item === "string") {
         searchQueries.push(item);
       } else if (item && typeof item === "object") {
-        if (item.q1) searchQueries.push(item.q1);
-        if (item.q2) searchQueries.push(item.q2);
+        if (item.q1) {searchQueries.push(item.q1);if(item.q1_archetype)queryArchetypeMap[item.q1]=item.q1_archetype;}
+        if (item.q2) {searchQueries.push(item.q2);if(item.q2_archetype)queryArchetypeMap[item.q2]=item.q2_archetype;}
       }
     });
   }
@@ -847,6 +848,7 @@ Return JSON only:
     {id:"gemini", ...gemData, queries:(gemData.queries||[]).slice(0,8)}
   ], painPoints: null };
   accumulated.searchQueries = searchQueries || [];
+  accumulated.queryArchetypeMap = queryArchetypeMap || {};
   accumulated.brandCrawlData = brandCrawl || null;
   accumulated.compCrawlData = compCrawlsRaw || {};
   accumulated.compVisibilityData = compScoresMap || {};
@@ -1113,6 +1115,7 @@ Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentenc
   accumulated.competitorData = compData || { competitors: [] };
   accumulated.compVisibilityData = compScoresMap || {};
   accumulated.searchQueries = searchQueries || [];
+  accumulated.queryArchetypeMap = queryArchetypeMap || {};
   accumulated.brandCrawlData = brandCrawl || null;
   accumulated.compCrawlData = compCrawlsRaw || {};
   try{onProgress("Dashboard ready — loading remaining sections...", 68, {...accumulated});}catch(emitErr){console.error("Emission 2 failed:",emitErr);}
@@ -1761,11 +1764,11 @@ function exportPDF(r){
     const gemMatch = qcGemQueries.find(q => q.query === qText) || qcGemQueries[i];
     const bestStatus = (gptMatch?.status === "Cited" || gemMatch?.status === "Cited") ? "Cited" : (gptMatch?.status === "Mentioned" || gemMatch?.status === "Mentioned") ? "Mentioned" : "Absent";
     const cat = (() => { const q = qText.toLowerCase(); if (/best|top\s+\d|recommend|which\s+(is|are)|should\s+i/i.test(q)) return "Recommendation"; if (/vs|compar|versus|difference/i.test(q)) return "Comparison"; if (/how\s+(to|do|does|can|much)|guide|tutorial/i.test(q)) return "How-To"; if (/buy|price|cost|plan|package|subscription/i.test(q)) return "Transactional"; if (/review|rating|experience|worth/i.test(q)) return "Evaluation"; if (/what\s+(is|are)|explain|meaning/i.test(q)) return "Informational"; return "General"; })();
-    return [qText, cat, gptMatch?.status || "Absent", gemMatch?.status || "Absent"];
+    const arch=(r.queryArchetypeMap||{})[qText]||"";return [qText, cat, arch, gptMatch?.status || "Absent", gemMatch?.status || "Absent"];
   });
   if (qcAll.length > 0) {
-    doc.autoTable({ startY: y, head: [["Query", "Category", "ChatGPT", "Gemini"]], body: qcAll, margin: { left: margin, right: margin }, styles: { fontSize: 7, cellPadding: 3 }, headStyles: { fillColor: accent, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 8 }, columnStyles: { 0: { cellWidth: contentW - 70 }, 1: { cellWidth: 25 }, 2: { cellWidth: 22, halign: "center" }, 3: { cellWidth: 23, halign: "center" } },
-      didParseCell: function(data) { if (data.section === "body" && (data.column.index === 2 || data.column.index === 3)) { const val = data.cell.raw; if (val === "Cited") data.cell.styles.textColor = green; else if (val === "Mentioned") data.cell.styles.textColor = accent; else data.cell.styles.textColor = red; data.cell.styles.fontStyle = "bold"; } }
+    doc.autoTable({ startY: y, head: [["Query", "Category", "Archetype", "ChatGPT", "Gemini"]], body: qcAll, margin: { left: margin, right: margin }, styles: { fontSize: 7, cellPadding: 3 }, headStyles: { fillColor: accent, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 8 }, columnStyles: { 0: { cellWidth: contentW - 95 }, 1: { cellWidth: 22 }, 2: { cellWidth: 25 }, 3: { cellWidth: 22, halign: "center" }, 4: { cellWidth: 26, halign: "center" } },
+      didParseCell: function(data) { if (data.section === "body" && (data.column.index === 3 || data.column.index === 4)) { const val = data.cell.raw; if (val === "Cited") data.cell.styles.textColor = green; else if (val === "Mentioned") data.cell.styles.textColor = accent; else data.cell.styles.textColor = red; data.cell.styles.fontStyle = "bold"; } }
     }); y = doc.lastAutoTable.finalY + 10;
   }
 
@@ -1945,6 +1948,7 @@ function generateAll(cd, apiData){
   const brandCrawl=(hasApi&&apiData.brandCrawlData)?apiData.brandCrawlData:null;
   const compCrawlData=(hasApi&&apiData.compCrawlData)?apiData.compCrawlData:{};
   const searchQueries=(hasApi&&apiData.searchQueries)?apiData.searchQueries:[];
+  const queryArchetypeMap=(hasApi&&apiData.queryArchetypeMap)?apiData.queryArchetypeMap:{};
   const channelSourceData=(hasApi&&apiData.channelSourceData)?apiData.channelSourceData:{sourceChannels:[],opportunities:[]};
   // Share of Voice (Profound method)
   const sovData=(()=>{
@@ -1967,7 +1971,7 @@ function generateAll(cd, apiData){
     allBrandNames.forEach(name=>{shares[name]={mentionCount:mentionCounts[name],citationCount:citationCounts[name],mentionShare:Math.round((mentionCounts[name]/totalMentions)*100),citationShare:Math.round((citationCounts[name]/totalCitations)*100)};});
     return{shares,totalMentions,totalCitations,totalQueries:totalQueries*2};
   })();
-  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,channelSourceData,sovData,clientData:cd};
+  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,queryArchetypeMap,channelSourceData,sovData,clientData:cd};
 }
 
 function generatePartial(cd, partial) {
@@ -1989,6 +1993,7 @@ function generatePartial(cd, partial) {
     brandCrawlData: partial.brandCrawlData || null,
     compCrawlData: partial.compCrawlData || {},
     searchQueries: partial.searchQueries || [],
+    queryArchetypeMap: partial.queryArchetypeMap || {},
     channelSourceData: partial.channelSourceData || { sourceChannels: [], opportunities: [] }
   };
   try { return generateAll(cd, safeApiData); } catch(e) { console.error("generatePartial error:", e); return null; }
@@ -3531,7 +3536,8 @@ function QueryCategoriesPage({ r }) {
       query: qText,
       gptStatus: gptMatch?.status || "Absent",
       gemStatus: gemMatch?.status || "Absent",
-      bestStatus: (gptMatch?.status === "Cited" || gemMatch?.status === "Cited") ? "Cited" : (gptMatch?.status === "Mentioned" || gemMatch?.status === "Mentioned") ? "Mentioned" : "Absent"
+      bestStatus: (gptMatch?.status === "Cited" || gemMatch?.status === "Cited") ? "Cited" : (gptMatch?.status === "Mentioned" || gemMatch?.status === "Mentioned") ? "Mentioned" : "Absent",
+      archetype: (r.queryArchetypeMap||{})[qText]||""
     };
   });
 
@@ -3650,7 +3656,7 @@ function QueryCategoriesPage({ r }) {
                   <div style={{ paddingTop: 12 }}>
                     {cat.queries.map((q, qi) => (
                       <div key={qi} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: qi < cat.queries.length - 1 ? "1px solid " + C.borderSoft : "none" }}>
-                        <div style={{ flex: 1, fontSize: 12, color: C.sub, lineHeight: 1.5 }}>{q.query}</div>
+                        <div style={{ flex: 1, fontSize: 12, color: C.sub, lineHeight: 1.5 }}>{q.query}{q.archetype&&<span style={{display:"inline-block",fontSize:9,fontWeight:500,padding:"2px 7px",borderRadius:4,background:C.accent+"10",color:C.accent,marginLeft:8,verticalAlign:"middle",whiteSpace:"nowrap"}}>{q.archetype}</span>}</div>
                         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                           <span style={statusBadge(q.gptStatus)}>GPT: {q.gptStatus}</span>
                           <span style={statusBadge(q.gemStatus)}>Gem: {q.gemStatus}</span>
@@ -3757,7 +3763,7 @@ function IntentPage({r,goTo}){
     const qText=typeof query==="string"?query:query.query;
     const gptMatch=gptQueries.find(q=>q.query===qText)||gptQueries[i];
     const gemMatch=gemQueries.find(q=>q.query===qText)||gemQueries[i];
-    return{query:qText,gptStatus:normalizeStatus(gptMatch?.status),gemStatus:normalizeStatus(gemMatch?.status)};
+    return{query:qText,gptStatus:normalizeStatus(gptMatch?.status),gemStatus:normalizeStatus(gemMatch?.status),archetype:(r.queryArchetypeMap||{})[qText]||""};
   });
 
   // Status badge helper
@@ -3853,7 +3859,7 @@ function IntentPage({r,goTo}){
         <span style={{textAlign:"center"}}>Gemini</span>
       </div>
       {combinedQueries.map((q,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 110px 110px",padding:"14px 20px",alignItems:"center",borderBottom:i<combinedQueries.length-1?"1px solid "+C.border+"30":"none",background:i%2===0?"transparent":C.border+"10"}}>
-        <span style={{fontSize:13,lineHeight:1.5,color:C.text,paddingRight:12}}>{q.query}</span>
+        <span style={{fontSize:13,lineHeight:1.5,color:C.text,paddingRight:12}}>{q.query}{q.archetype&&<span style={{display:"inline-block",fontSize:9,fontWeight:500,padding:"2px 7px",borderRadius:4,background:C.accent+"10",color:C.accent,marginLeft:8,verticalAlign:"middle",whiteSpace:"nowrap"}}>{q.archetype}</span>}</span>
         <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gptStatus)}</div>
         <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gemStatus)}</div>
       </div>))}
