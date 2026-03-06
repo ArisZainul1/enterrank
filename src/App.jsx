@@ -2068,8 +2068,13 @@ function LandingPage({ onGetStarted }) {
 
       {/* Top bar */}
       <div style={{position:"relative",zIndex:2,padding:"24px 48px",display:"flex",alignItems:"center",gap:10}}>
-        <img src="/enterank-logo.svg" alt="EnterRank" style={{height:28}}/>
-        <span style={{fontSize:11,color:"#94a3b8",marginLeft:8}}>by Entermind</span>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <img src="/enterank-icon.svg" alt="EnterRank" style={{width:32,height:32}}/>
+          <div style={{display:"flex",flexDirection:"column",gap:0,lineHeight:1}}>
+            <span style={{fontSize:16,fontWeight:500,color:"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.01em"}}>EnterRank</span>
+            <span style={{fontSize:10,color:"#94a3b8",marginTop:1}}>by Entermind AI</span>
+          </div>
+        </div>
       </div>
 
       {/* Main content */}
@@ -2134,7 +2139,7 @@ function LandingPage({ onGetStarted }) {
                 <div style={{width:10,height:10,borderRadius:"50%",background:"#f59e0b"}}/>
                 <div style={{width:10,height:10,borderRadius:"50%",background:"#22c55e"}}/>
               </div>
-              <div style={{fontSize:11,color:"#94a3b8",fontFamily:"monospace"}}>enterrank.ai/dashboard</div>
+              <img src="/enterank-logo.svg" alt="EnterRank" style={{height:14,opacity:0.5}}/>
               <div style={{width:40}}/>
             </div>
 
@@ -2142,11 +2147,8 @@ function LandingPage({ onGetStarted }) {
             <div style={{display:"flex",minHeight:360}}>
               {/* Fake sidebar */}
               <div style={{width:110,background:"#f8fafc",borderRight:"1px solid #f1f5f9",padding:"12px 0",flexShrink:0}}>
-                <div style={{padding:"6px 12px",marginBottom:6}}>
-                  <div style={{display:"flex",alignItems:"center",gap:5}}>
-                    <img src="/enterank-icon.svg" alt="ER" style={{width:14,height:14}}/>
-                    <span style={{fontSize:9,fontWeight:500,color:"#0f172a",fontFamily:"'Outfit',-apple-system,sans-serif"}}>EnterRank</span>
-                  </div>
+                <div style={{padding:"8px 14px",marginBottom:8}}>
+                  <img src="/enterank-icon.svg" alt="ER" style={{width:18,height:18}}/>
                 </div>
                 {[
                   {label:"Dashboard",active:true},
