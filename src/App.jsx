@@ -3406,22 +3406,19 @@ function DashboardPage({r,history,goTo}){
       </div>
 
       {/* Engine comparison — compact inline */}
-      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 20px",display:"flex",gap:16,alignItems:"center",justifyContent:"center"}}>
+      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 20px",display:"flex",gap:24,alignItems:"center",justifyContent:"center"}}>
         {r.engines.map((e,i)=>(
-          <div key={i} style={{flex:1,display:"flex",alignItems:"center",gap:12}}>
-            <div style={{width:36,height:36,borderRadius:10,background:(e.name==="ChatGPT"?"#10A37F":"#4285F4")+"10",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              {e.name==="ChatGPT"?<ChatGPTLogo size={18}/>:<GeminiLogo size={18}/>}
-            </div>
-            <div style={{flex:1,textAlign:"center"}}>
-              <div style={{fontSize:12,fontWeight:500,color:C.text,marginBottom:2}}>{e.name}</div>
-              <div style={{display:"flex",gap:12,fontSize:11,color:C.sub,justifyContent:"center"}}>
+          <React.Fragment key={i}>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>{e.name}</div>
+              <div style={{display:"flex",gap:16,fontSize:11,color:C.sub,justifyContent:"center"}}>
                 <span>Score: <span style={{fontWeight:500,color:C.text}}>{e.score}%</span></span>
                 <span>Mentions: <span style={{fontWeight:500,color:C.text}}>{e.mentionRate}%</span></span>
                 <span>Citations: <span style={{fontWeight:500,color:C.text}}>{e.citationRate}%</span></span>
               </div>
             </div>
-            {i===0&&r.engines.length>1&&<div style={{width:1,height:32,background:C.borderSoft}}/>}
-          </div>
+            {i===0&&r.engines.length>1&&<div style={{width:1,height:28,background:C.borderSoft}}/>}
+          </React.Fragment>
         ))}
       </div>
     </div>
@@ -3508,7 +3505,7 @@ function DashboardPage({r,history,goTo}){
             }))
           ];
           return(<>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:8}}>
+            <div style={{display:"flex",flexDirection:"column",gap:16,marginBottom:8}}>
               <ShareOfVoiceSection title="Share of Mentions" rankTitle="Mention Share" brands={mentionBrands} metricKey="mentionRate"/>
               <ShareOfVoiceSection title="Share of Citations" rankTitle="Citation Share" brands={citationBrands} metricKey="citationRate"/>
               <ShareOfVoiceSection title="Sentiment" rankTitle="Sentiment Score" brands={sentimentBrands} metricKey="sentimentScore"/>
