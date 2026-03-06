@@ -4086,6 +4086,175 @@ Return JSON only.`;
   </div>);
 }
 
+/* ─── PAGE: VISIBILITY MAP ─── */
+function VisibilityMapPage({ r }) {
+  const [expandedCat, setExpandedCat] = useState(null);
+  const gptQueries = r.engines[0]?.queries || [];
+  const gemQueries = r.engines[1]?.queries || [];
+  const allQueries = (r.searchQueries || gptQueries.map(q => q.query)).map((query, i) => {
+    const qText = typeof query === "string" ? query : query.query;
+    const gptMatch = gptQueries.find(q => q.query === qText) || gptQueries[i];
+    const gemMatch = gemQueries.find(q => q.query === qText) || gemQueries[i];
+    return {
+      query: qText,
+      gptStatus: gptMatch?.status || "Absent",
+      gemStatus: gemMatch?.status || "Absent",
+      bestStatus: (gptMatch?.status === "Cited" || gemMatch?.status === "Cited") ? "Cited" : (gptMatch?.status === "Mentioned" || gemMatch?.status === "Mentioned") ? "Mentioned" : "Absent"
+    };
+  });
+  const categorize = (query) => {
+    const q = query.toLowerCase();
+    if (/\bbest\b|top\s+\d|recommend|which\s+(is|are)|should\s+i/i.test(q)) return "Recommendation";
+    if (/\bvs\b|compar|versus|difference\s+between|or\b.*\bor\b/i.test(q)) return "Comparison";
+    if (/\bhow\s+(to|do|does|can|much)|guide|tutorial|step/i.test(q)) return "How-To";
+    if (/\bbuy\b|price|cost|plan|package|subscription|where\s+to|deal/i.test(q)) return "Transactional";
+    if (/\breview|rating|experience|worth|reliable|complaint/i.test(q)) return "Evaluation";
+    if (/\bwhat\s+(is|are)|explain|meaning|definition|overview/i.test(q)) return "Informational";
+    return "General";
+  };
+  const categorized = {};
+  allQueries.forEach(q => {
+    const cat = categorize(q.query);
+    if (!categorized[cat]) categorized[cat] = [];
+    categorized[cat].push(q);
+  });
+  const categories = Object.entries(categorized).map(([name, queries]) => {
+    const cited = queries.filter(q => q.bestStatus === "Cited").length;
+    const mentioned = queries.filter(q => q.bestStatus === "Mentioned").length;
+    const absent = queries.filter(q => q.bestStatus === "Absent").length;
+    const total = queries.length;
+    const winRate = Math.round(((cited + mentioned) / total) * 100);
+    const citeRate = Math.round((cited / total) * 100);
+    return { name, queries, cited, mentioned, absent, total, winRate, citeRate };
+  }).sort((a, b) => b.total - a.total);
+  const brandName = r.clientData?.brand || "Your brand";
+  const competitors = r.competitors || [];
+  const painPoints = r.painPoints || [];
+  const totalCited = allQueries.filter(q => q.bestStatus === "Cited").length;
+  const totalMentioned = allQueries.filter(q => q.bestStatus === "Mentioned").length;
+  const totalAbsent = allQueries.filter(q => q.bestStatus === "Absent").length;
+  const totalQueries = allQueries.length || 1;
+  const overallWinRate = Math.round(((totalCited + totalMentioned) / totalQueries) * 100);
+  const getRecommendation = (cat) => {
+    if (cat.winRate >= 70) return { type: "strong", text: `${brandName} dominates ${cat.name.toLowerCase()} queries. Maintain this position by keeping content fresh and authoritative.` };
+    if (cat.winRate >= 40) return { type: "opportunity", text: `Mixed results on ${cat.name.toLowerCase()} queries \u2014 ${cat.absent} of ${cat.total} queries miss ${brandName}. Create targeted content for the gaps.` };
+    return { type: "critical", text: `${brandName} is largely invisible for ${cat.name.toLowerCase()} queries. This is a priority gap \u2014 AI engines aren't associating your brand with these searches.` };
+  };
+  const recColors = { strong: { bg: "#f0fdf4", border: "#059669", text: "#166534" }, opportunity: { bg: "#fffbeb", border: "#d97706", text: "#92400e" }, critical: { bg: "#fef2f2", border: "#dc2626", text: "#991b1b" } };
+  return (
+    <div>
+      <div style={{ marginBottom: 32 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 500, color: C.text, margin: 0, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>Visibility Map</h2>
+        <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Strategic overview of where {brandName} is visible and where the gaps are</p>
+      </div>
+      {/* Overview bar */}
+      <div style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "20px 24px", marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: C.text }}>Overall Visibility</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{brandName} appears in {overallWinRate}% of tested AI engine queries</div>
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 500, color: overallWinRate >= 60 ? "#059669" : overallWinRate >= 30 ? "#d97706" : "#dc2626", fontFamily: "'Satoshi',-apple-system,sans-serif" }}>{overallWinRate}%</div>
+        </div>
+        <div style={{ display: "flex", height: 10, borderRadius: 5, overflow: "hidden", background: C.bg, marginBottom: 8 }}>
+          <div style={{ width: (totalCited / totalQueries * 100) + "%", background: "#22c55e", transition: "width .6s ease" }} title={"Cited: " + totalCited} />
+          <div style={{ width: (totalMentioned / totalQueries * 100) + "%", background: "#3b82f6", transition: "width .6s ease" }} title={"Mentioned: " + totalMentioned} />
+          <div style={{ width: (totalAbsent / totalQueries * 100) + "%", background: "#ef4444", transition: "width .6s ease" }} title={"Absent: " + totalAbsent} />
+        </div>
+        <div style={{ display: "flex", gap: 16, fontSize: 11, color: C.muted }}>
+          <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#22c55e", marginRight: 4 }} />Cited: {totalCited}</span>
+          <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#3b82f6", marginRight: 4 }} />Mentioned: {totalMentioned}</span>
+          <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#ef4444", marginRight: 4 }} />Absent: {totalAbsent}</span>
+        </div>
+      </div>
+      {/* Category cards */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {categories.map((cat, ci) => {
+          const isOpen = expandedCat === ci;
+          const rec = getRecommendation(cat);
+          const rc = recColors[rec.type];
+          return (
+            <div key={ci} style={{ background: "#fff", border: "1px solid " + (isOpen ? C.accent + "30" : C.border), borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
+              <div onClick={() => setExpandedCat(isOpen ? null : ci)} style={{ padding: "18px 20px", cursor: "pointer", display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 15, fontWeight: 500, color: C.text }}>{cat.name}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{cat.total} queries tested</div>
+                </div>
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: cat.winRate >= 60 ? "#f0fdf4" : cat.winRate >= 30 ? "#fffbeb" : "#fef2f2", border: "2px solid " + (cat.winRate >= 60 ? "#22c55e" : cat.winRate >= 30 ? "#f59e0b" : "#ef4444"), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: cat.winRate >= 60 ? "#166534" : cat.winRate >= 30 ? "#92400e" : "#991b1b" }}>{cat.winRate}%</span>
+                </div>
+                <div style={{ display: "flex", gap: 8, fontSize: 11, flexShrink: 0 }}>
+                  <span style={{ color: "#166534", fontWeight: 500 }}>{cat.cited} cited</span>
+                  <span style={{ color: "#1e40af", fontWeight: 500 }}>{cat.mentioned} mentioned</span>
+                  <span style={{ color: "#991b1b", fontWeight: 500 }}>{cat.absent} absent</span>
+                </div>
+                <span style={{ fontSize: 10, color: C.muted, flexShrink: 0 }}>{isOpen ? "\u25BC" : "\u25B6"}</span>
+              </div>
+              {isOpen && (
+                <div style={{ padding: "0 20px 18px", borderTop: "1px solid " + C.borderSoft }}>
+                  <div style={{ margin: "14px 0", padding: "12px 16px", background: rc.bg, borderRadius: 8, borderLeft: "3px solid " + rc.border }}>
+                    <div style={{ fontSize: 10, fontWeight: 500, color: rc.text, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 4 }}>{rec.type === "strong" ? "Strength" : rec.type === "opportunity" ? "Opportunity" : "Priority Gap"}</div>
+                    <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6 }}>{rec.text}</div>
+                  </div>
+                  {cat.absent > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, marginBottom: 8 }}>Queries where {brandName} is absent:</div>
+                      {cat.queries.filter(q => q.bestStatus === "Absent").map((q, qi) => (
+                        <div key={qi} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#fef2f2", borderRadius: 6, marginBottom: 4, fontSize: 12, color: "#991b1b" }}>
+                          <span style={{ color: "#ef4444", flexShrink: 0 }}>&#x2717;</span>
+                          <span style={{ flex: 1, color: C.sub }}>{q.query}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {cat.cited > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, marginBottom: 8 }}>Queries where {brandName} is cited:</div>
+                      {cat.queries.filter(q => q.bestStatus === "Cited").map((q, qi) => (
+                        <div key={qi} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#f0fdf4", borderRadius: 6, marginBottom: 4, fontSize: 12 }}>
+                          <span style={{ color: "#22c55e", flexShrink: 0 }}>&#x2713;</span>
+                          <span style={{ flex: 1, color: C.sub }}>{q.query}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {competitors.length > 0 && (
+                    <div style={{ marginTop: 14, padding: "12px 14px", background: C.bg, borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, marginBottom: 6 }}>How competitors perform on {cat.name.toLowerCase()} queries</div>
+                      <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6 }}>
+                        {competitors.slice(0, 3).map(c => c.name).join(", ")} {competitors.length > 1 ? "are" : "is"} competing for the same {cat.name.toLowerCase()} queries.{cat.winRate < 50 ? ` Focus content creation on the ${cat.absent} absent queries above to close the gap.` : " Maintain your advantage with regular content updates."}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {painPoints.length > 0 && (
+        <div style={{ marginTop: 24, background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "20px 24px" }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: C.text, marginBottom: 4 }}>Website Signals Impacting Visibility</div>
+          <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>Category health scores from your website crawl data</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+            {painPoints.map((pp, i) => (
+              <div key={i} style={{ padding: "10px 12px", background: C.bg, borderRadius: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, color: C.sub }}>{pp.label.split("/")[0].trim()}</span>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: pp.severity === "critical" ? "#dc2626" : pp.severity === "warning" ? "#d97706" : "#059669" }}>{pp.score}%</span>
+                </div>
+                <div style={{ height: 4, borderRadius: 2, background: "#e5e7eb" }}>
+                  <div style={{ width: Math.max(2, pp.score) + "%", height: 4, borderRadius: 2, background: pp.severity === "critical" ? "#ef4444" : pp.severity === "warning" ? "#f59e0b" : "#22c55e" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── PAGE: INTENT PATHWAY ─── */
 function IntentPage({r,goTo}){
   const[testQuery,setTestQuery]=useState("");
@@ -6008,7 +6177,7 @@ export default function App(){
     setAuditStage("Preparing audit...");
     setStep("dashboard");
     setResults(null);
-    setSectionReady({ dashboard:false, archetypes:false, sentiment:false, intent:false, playbook:false, channels:false, contenthub:false, roadmap:false });
+    setSectionReady({ dashboard:false, archetypes:false, sentiment:false, intent:false, visibility:false, playbook:false, channels:false, contenthub:false, roadmap:false });
 
     try {
       const apiData = await runRealAudit(auditData, (msg, pct, partialData) => {
@@ -6033,6 +6202,7 @@ export default function App(){
               dashboard: !!(partialData.engineData && partialData.competitorData),
               sentiment: !!(partialData.sentimentData && partialData.sentimentSignals),
               archetypes: !!(partialData.archData && partialData.archData.length > 0),
+              visibility: !!(partialData.engineData && partialData.competitorData),
               intent: !!(partialData.intentData && partialData.intentData.length > 0),
               channels: !!(partialData.channelData && partialData.channelData.channels && partialData.channelData.channels.length > 0),
               contenthub: !!(partialData.contentGridData && partialData.contentGridData.length > 0),
@@ -6050,7 +6220,7 @@ export default function App(){
       setAuditStage("");
       const r = generateAll(auditData, apiData);
       setResults(() => r);
-      setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, playbook:true, channels:true, contenthub:true, roadmap:true });
+      setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, visibility:true, playbook:true, channels:true, contenthub:true, roadmap:true });
 
       const entry={date:formatAuditDate(new Date()),brand:auditData.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
 
@@ -6110,7 +6280,7 @@ export default function App(){
       console.error("Progressive audit error:", e);
       setAuditInProgress(false);
       setAuditStage("");
-      setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, playbook:true, channels:true, contenthub:true, roadmap:true });
+      setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, visibility:true, playbook:true, channels:true, contenthub:true, roadmap:true });
     }
   };
 
@@ -6199,6 +6369,7 @@ export default function App(){
         {step==="dashboard"&&results&&<DashboardPage r={results} history={history} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }}/>}
         {step==="archetypes"&&results&&(sectionReady.archetypes||!auditInProgress)&&<QueryCategoriesPage r={results}/>}
         {step==="sentiment"&&results&&(sectionReady.sentiment||!auditInProgress)&&<SentimentPage r={results}/>}
+        {step==="visibility"&&results&&<VisibilityMapPage r={results}/>}
         {step==="playbook"&&results&&(sectionReady.playbook||!auditInProgress)&&<PlaybookPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject}/>}
         {step==="channels"&&results&&(sectionReady.channels||!auditInProgress)&&<ChannelsPage r={results}/>}
         {step==="contenthub"&&results&&(sectionReady.contenthub||!auditInProgress)&&<ContentHubPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject} onUpdate={setResults}/>}
