@@ -4497,119 +4497,158 @@ function PlaybookPage({r,goTo,activeProject}){
 
 /* ─── PAGE: SENTIMENT ANALYSIS ─── */
 function SentimentPage({r}){
-  const signals=r?.sentimentSignals||{positive:[],negative:[],quotes:[],competitorSentiment:[],rawSnippets:[]};
+  const[selectedTheme,setSelectedTheme]=useState(null);
+  const[activeTab,setActiveTab]=useState("all");
+  const signals=r?.sentimentSignals||{themes:[],summary:"",positive:[],negative:[],quotes:[]};
+  const themes=signals.themes||[];
   const sentimentScore=r?.sentiment?.brand?.avg||50;
   const compSentiment=r?.sentiment?.competitors||[];
-  const getScoreLabel=(score)=>{
-    if(score>=80)return{label:"Very Positive",color:"#16a34a"};
-    if(score>=60)return{label:"Positive",color:"#22c55e"};
-    if(score>=45)return{label:"Neutral",color:"#d97706"};
-    if(score>=30)return{label:"Negative",color:"#ea580c"};
-    return{label:"Very Negative",color:"#dc2626"};
-  };
-  const scoreInfo=getScoreLabel(sentimentScore);
-  const brandNameLower=(r?.clientData?.brand||"").toLowerCase();
+  const brandName=r?.clientData?.brand||"Your brand";
+  const sentimentLabel=sentimentScore>=55?"Positive":sentimentScore>=45?"Neutral":"Negative";
+  const sentimentColor=sentimentScore>=55?"#059669":sentimentScore>=45?"#d97706":"#dc2626";
+  const posCount=themes.filter(t=>t.sentiment==="positive").length;
+  const negCount=themes.filter(t=>t.sentiment==="negative").length;
+  const neuCount=themes.filter(t=>t.sentiment==="neutral").length;
+  const totalThemes=themes.length||1;
+  const filteredThemes=activeTab==="all"?themes:themes.filter(t=>t.sentiment===activeTab);
+  const brandNameLower=brandName.toLowerCase();
   return(<div>
     <div style={{marginBottom:32}}>
-      <h2 style={{fontSize:22,fontWeight:600,color:C.text,letterSpacing:"-.02em",margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Sentiment Analysis</h2>
-      <p style={{fontSize:13,color:"#6b7280",marginTop:4}}>How AI engines perceive and portray {r?.clientData?.brand||"your brand"}</p>
+      <h2 style={{fontSize:22,fontWeight:500,color:C.text,letterSpacing:"-.02em",margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Sentiment Analysis</h2>
+      <p style={{fontSize:13,color:"#6b7280",marginTop:4}}>How AI engines perceive and portray {brandName}</p>
     </div>
 
-    {/* Score overview + competitor comparison */}
+    {/* Top section: Label + bar + competitor comparison */}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:32}}>
+      {/* Sentiment overview */}
       <Card>
-        <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:12}}>Brand Sentiment</div>
-        <div style={{display:"flex",alignItems:"baseline",gap:8}}>
-          <span style={{fontSize:36,fontWeight:600,color:scoreInfo.color,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{sentimentScore}</span>
-          <span style={{fontSize:13,color:scoreInfo.color,fontWeight:500}}>{scoreInfo.label}</span>
+        <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:16}}>Overall Sentiment</div>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+          <span style={{fontSize:28,fontWeight:500,color:sentimentColor,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{sentimentLabel}</span>
         </div>
-        <div style={{fontSize:12,color:C.muted,marginTop:8}}>Based on analysis of AI engine responses across all tested queries</div>
-      </Card>
-      <Card>
-        <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:12}}>Competitor Comparison</div>
-        {compSentiment.length>0?(<div>
-          {compSentiment.filter(c=>c.name?.toLowerCase()!==brandNameLower).map((comp,i)=>{
-            const cInfo=getScoreLabel(comp.avg||50);
-            return(<div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:i<compSentiment.filter(c=>c.name?.toLowerCase()!==brandNameLower).length-1?`1px solid ${C.borderSoft}`:"none"}}>
-              <span style={{fontSize:13,color:C.text}}>{comp.name}</span>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <div style={{width:60,height:4,background:"#e5e7eb",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:(comp.avg||50)+"%",background:cInfo.color,borderRadius:2}}/></div>
-                <span style={{fontSize:12,fontWeight:500,color:cInfo.color,minWidth:24,textAlign:"right"}}>{comp.avg||50}</span>
-              </div>
-            </div>);
-          })}
-        </div>):(<div style={{fontSize:12,color:C.muted}}>No competitor sentiment data available</div>)}
-      </Card>
-    </div>
-
-    {/* Positive and Negative signals */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:32}}>
-      <Card>
-        <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,display:"flex",alignItems:"center",gap:8,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>
-          Positive Signals
-        </div>
-        {signals.positive.length>0?signals.positive.map((signal,i)=>(
-          <div key={i} style={{padding:"8px 12px",background:"#f0fdf4",borderRadius:8,marginBottom:6,fontSize:13,color:"#166534",display:"flex",alignItems:"center",gap:8}}>
-            <span style={{color:"#22c55e",fontSize:10}}>●</span>
-            {typeof signal==="string"?signal:signal.text||signal}
+        <div style={{marginBottom:12}}>
+          <div style={{display:"flex",height:8,borderRadius:4,overflow:"hidden",background:C.bg}}>
+            {posCount>0&&<div style={{width:(posCount/totalThemes*100)+"%",background:"#22c55e",transition:"width .6s ease"}}/>}
+            {neuCount>0&&<div style={{width:(neuCount/totalThemes*100)+"%",background:"#f59e0b",transition:"width .6s ease"}}/>}
+            {negCount>0&&<div style={{width:(negCount/totalThemes*100)+"%",background:"#ef4444",transition:"width .6s ease"}}/>}
           </div>
-        )):(<div style={{fontSize:12,color:C.muted}}>No positive signals detected</div>)}
-      </Card>
-      <Card>
-        <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,display:"flex",alignItems:"center",gap:8,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>
-          Negative Signals
-        </div>
-        {signals.negative.length>0?signals.negative.map((signal,i)=>(
-          <div key={i} style={{padding:"8px 12px",background:"#fef2f2",borderRadius:8,marginBottom:6,fontSize:13,color:"#991b1b",display:"flex",alignItems:"center",gap:8}}>
-            <span style={{color:"#dc2626",fontSize:10}}>●</span>
-            {typeof signal==="string"?signal:signal.text||signal}
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:11,color:C.muted}}>
+            <span><span style={{color:"#22c55e",fontWeight:500}}>{posCount}</span> Positive</span>
+            <span><span style={{color:"#f59e0b",fontWeight:500}}>{neuCount}</span> Neutral</span>
+            <span><span style={{color:"#ef4444",fontWeight:500}}>{negCount}</span> Negative</span>
           </div>
-        )):(<div style={{fontSize:12,color:C.muted}}>No negative signals detected</div>)}
+        </div>
+        {signals.summary&&<div style={{fontSize:12,color:C.sub,lineHeight:1.6,padding:"10px 12px",background:C.bg,borderRadius:8}}>{signals.summary}</div>}
+      </Card>
+
+      {/* Competitor comparison */}
+      <Card>
+        <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:16}}>Competitor Comparison</div>
+        {compSentiment.length>0?(
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {compSentiment.filter(c=>c.name.toLowerCase()!==brandNameLower).map((comp,i)=>{
+              const compLabel=comp.avg>=55?"Positive":comp.avg>=45?"Neutral":"Negative";
+              const compColor=comp.avg>=55?"#059669":comp.avg>=45?"#d97706":"#dc2626";
+              return(
+                <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:i<compSentiment.filter(c=>c.name.toLowerCase()!==brandNameLower).length-1?"1px solid "+C.borderSoft:"none"}}>
+                  <span style={{fontSize:13,fontWeight:500,color:C.text}}>{comp.name}</span>
+                  <span style={{fontSize:12,fontWeight:500,color:compColor,padding:"3px 10px",borderRadius:6,background:compColor+"10"}}>{compLabel}</span>
+                </div>
+              );
+            })}
+          </div>
+        ):(
+          <div style={{fontSize:12,color:C.muted,textAlign:"center",padding:20}}>No competitor data available</div>
+        )}
       </Card>
     </div>
 
-    {/* AI Engine Quotes */}
-    <div style={{marginBottom:32}}>
-      <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>What AI Engines Are Saying</div>
-      {signals.quotes.length>0?(<div style={{display:"grid",gap:10}}>
-        {signals.quotes.map((quote,i)=>{
-          const q=typeof quote==="string"?{text:quote,engine:"Unknown",sentiment:"neutral"}:quote;
-          const sentColors={positive:{border:"#dcfce7",bg:"#f0fdf450"},negative:{border:"#fee2e2",bg:"#fef2f250"},neutral:{border:C.border,bg:"transparent"}};
-          const sc=sentColors[q.sentiment]||sentColors.neutral;
-          return(<div key={i} style={{padding:"16px 20px",background:sc.bg,border:"1px solid "+sc.border,borderRadius:12,borderLeft:"3px solid "+(q.sentiment==="positive"?"#22c55e":q.sentiment==="negative"?"#dc2626":"#9ca3af")}}>
-            <div style={{fontSize:13,color:C.text,lineHeight:1.6,fontStyle:"italic"}}>"{q.text}"</div>
-            <div style={{fontSize:11,color:C.muted,marginTop:8,display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontWeight:500}}>{q.engine}</span>
-              <span style={{fontSize:10,padding:"2px 6px",borderRadius:4,background:q.sentiment==="positive"?"#dcfce7":q.sentiment==="negative"?"#fee2e2":"#f3f4f6",color:q.sentiment==="positive"?"#166534":q.sentiment==="negative"?"#991b1b":"#6b7280"}}>{q.sentiment}</span>
-            </div>
-          </div>);
-        })}
-      </div>):(<div style={{padding:24,textAlign:"center",color:C.muted,fontSize:12,background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>No quotes extracted</div>)}
-    </div>
-
-    {/* Competitor Sentiment Details */}
-    {signals.competitorSentiment?.length>0&&(<div style={{marginBottom:32}}>
-      <div style={{fontSize:15,fontWeight:500,color:C.text,marginBottom:16,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Competitor Sentiment Breakdown</div>
-      <div style={{display:"grid",gap:10}}>
-        {signals.competitorSentiment.map((comp,i)=>{
-          const sentColor=comp.sentiment==="positive"?"#22c55e":comp.sentiment==="negative"?"#dc2626":"#d97706";
-          const configuredComps=(r?.clientData?.competitors||[]).map(c=>(c.name||c||"").toLowerCase());
-          const isConfigured=configuredComps.some(cc=>cc===(comp.name||"").toLowerCase());
-          return(<div key={i} style={{padding:"14px 18px",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:12,display:"flex",alignItems:"center",gap:14}}>
-            <div style={{width:8,height:8,borderRadius:"50%",background:sentColor,flexShrink:0}}/>
-            <div style={{flex:1}}>
-              <div style={{fontSize:13,fontWeight:500,color:"#111827",display:"flex",alignItems:"center",gap:8}}>{comp.name}{!isConfigured&&(<span style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:"#f3f4f6",color:"#9ca3af",fontWeight:500}}>Discovered</span>)}</div>
-              <div style={{fontSize:12,color:C.muted,marginTop:2}}>{comp.summary}</div>
-            </div>
-            <span style={{fontSize:10,fontWeight:500,padding:"3px 8px",borderRadius:4,background:comp.sentiment==="positive"?"#dcfce7":comp.sentiment==="negative"?"#fee2e2":"#fef3c7",color:comp.sentiment==="positive"?"#166534":comp.sentiment==="negative"?"#991b1b":"#92400e",textTransform:"capitalize"}}>{comp.sentiment}</span>
-          </div>);
-        })}
+    {/* Themes section */}
+    <div style={{marginBottom:24}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div>
+          <div style={{fontSize:16,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Themes</div>
+          <div style={{fontSize:12,color:C.muted,marginTop:2}}>Key themes and patterns surfaced by AI when referencing {brandName}</div>
+        </div>
       </div>
-    </div>)}
 
+      {/* Filter tabs */}
+      <div style={{display:"flex",gap:0,marginBottom:16,borderBottom:"1px solid "+C.border}}>
+        {[
+          {id:"all",label:"All"},
+          {id:"positive",label:"Positive"},
+          {id:"negative",label:"Negative"},
+          {id:"neutral",label:"Neutral"}
+        ].map(tab=>(
+          <button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{
+            padding:"8px 16px",fontSize:12,fontWeight:activeTab===tab.id?500:400,
+            color:activeTab===tab.id?C.text:C.muted,
+            background:"none",border:"none",
+            borderBottom:activeTab===tab.id?"2px solid "+C.accent:"2px solid transparent",
+            cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",transition:"all .15s"
+          }}>{tab.label}</button>
+        ))}
+      </div>
+
+      {/* Themes table */}
+      {filteredThemes.length>0?(
+        <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,overflow:"hidden"}}>
+          {/* Header */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 100px 80px",padding:"10px 20px",borderBottom:"1px solid "+C.border,background:C.bg}}>
+            <span style={{fontSize:11,fontWeight:500,color:C.muted}}>Theme</span>
+            <span style={{fontSize:11,fontWeight:500,color:C.muted,textAlign:"center"}}>Sentiment</span>
+            <span style={{fontSize:11,fontWeight:500,color:C.muted,textAlign:"center"}}>Occurrences</span>
+          </div>
+          {/* Rows */}
+          {filteredThemes.map((theme,i)=>{
+            const isOpen=selectedTheme===i;
+            const tColor=theme.sentiment==="positive"?"#059669":theme.sentiment==="negative"?"#dc2626":"#d97706";
+            const tBg=theme.sentiment==="positive"?"#dcfce7":theme.sentiment==="negative"?"#fee2e2":"#fef3c7";
+            const tLabel=theme.sentiment.charAt(0).toUpperCase()+theme.sentiment.slice(1);
+            return(
+              <div key={i}>
+                <div onClick={()=>setSelectedTheme(isOpen?null:i)} style={{
+                  display:"grid",gridTemplateColumns:"1fr 100px 80px",padding:"14px 20px",
+                  borderBottom:i<filteredThemes.length-1||isOpen?"1px solid "+C.borderSoft:"none",
+                  cursor:"pointer",transition:"background .15s",
+                  background:isOpen?C.bg+"80":"transparent"
+                }}
+                  onMouseEnter={e=>{if(!isOpen)e.currentTarget.style.background=C.bg+"40";}}
+                  onMouseLeave={e=>{if(!isOpen)e.currentTarget.style.background="transparent";}}
+                >
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:10,color:C.muted}}>{isOpen?"\u25BC":"\u25B6"}</span>
+                    <span style={{fontSize:13,fontWeight:500,color:C.text}}>{theme.name}</span>
+                  </div>
+                  <div style={{textAlign:"center"}}>
+                    <span style={{fontSize:11,fontWeight:500,padding:"3px 10px",borderRadius:6,background:tBg,color:tColor}}>{tLabel}</span>
+                  </div>
+                  <div style={{textAlign:"center",fontSize:13,fontWeight:500,color:C.text}}>{theme.count}</div>
+                </div>
+                {/* Expanded evidence */}
+                {isOpen&&theme.quotes&&theme.quotes.length>0&&(
+                  <div style={{padding:"12px 20px 16px 40px",background:C.bg+"60",borderBottom:i<filteredThemes.length-1?"1px solid "+C.borderSoft:"none"}}>
+                    <div style={{fontSize:11,fontWeight:500,color:C.muted,marginBottom:8}}>Evidence from AI engine responses:</div>
+                    {theme.quotes.map((quote,qi)=>(
+                      <div key={qi} style={{padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid "+C.borderSoft,marginBottom:6,borderLeft:"3px solid "+tColor}}>
+                        <div style={{fontSize:12,color:C.sub,lineHeight:1.6,fontStyle:"italic"}}>"{quote}"</div>
+                        <div style={{fontSize:10,color:C.muted,marginTop:4}}>{theme.engine||"AI Engine"}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ):(
+        <Card style={{textAlign:"center",padding:"40px 20px"}}>
+          <div style={{fontSize:13,color:C.muted}}>No {activeTab!=="all"?activeTab+" ":""}themes detected in AI engine responses</div>
+        </Card>
+      )}
+    </div>
   </div>);
 }
-
 /* ─── PAGE: TARGET CHANNELS (3-tab layout) ─── */
 function ChannelsPage({r}){
   const[activeTab,setActiveTab]=useState("sources");
