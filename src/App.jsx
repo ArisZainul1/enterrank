@@ -2043,48 +2043,55 @@ function generatePartial(cd, partial) {
 /* ─── LANDING PAGE ─── */
 function LandingPage({ onGetStarted }) {
   const [hoverCTA, setHoverCTA] = React.useState(false);
+
   return (
-    <div style={{minHeight:"100vh",background:"#fafbfc",display:"flex",flexDirection:"column",fontFamily:"'Geist-Variable','Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",position:"relative",overflow:"hidden"}}>
+    <div style={{minHeight:"100vh",background:"linear-gradient(135deg, #0c1222 0%, #131d33 40%, #0f1a2e 100%)",display:"flex",flexDirection:"column",fontFamily:"'Geist-Variable','Plus Jakarta Sans',-apple-system,sans-serif",position:"relative",overflow:"hidden"}}>
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
       <style>{`
-        @keyframes floatA{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-12px) rotate(1deg)}}
-        @keyframes floatB{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(8px) rotate(-0.5deg)}}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes slideIn{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
-        @keyframes pulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
-        @keyframes gridMove{0%{background-position:0 0}100%{background-position:60px 60px}}
+        @keyframes floatDash{0%,100%{transform:perspective(1200px) rotateY(-8deg) rotateX(4deg) translateY(0)}50%{transform:perspective(1200px) rotateY(-8deg) rotateX(4deg) translateY(-8px)}}
+        @keyframes glowPulse{0%,100%{opacity:0.3}50%{opacity:0.6}}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        @keyframes slideInRight{from{opacity:0;transform:translateX(60px) perspective(1200px) rotateY(-8deg) rotateX(4deg)}to{opacity:1;transform:translateX(0) perspective(1200px) rotateY(-8deg) rotateX(4deg)}}
+        @keyframes shimmerBar{0%{background-position:-200% 0}100%{background-position:200% 0}}
       `}</style>
-      {/* Background elements */}
-      <div style={{position:"absolute",inset:0,zIndex:0}}>
-        <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(rgba(37,99,235,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.07) 1px, transparent 1px)",backgroundSize:"60px 60px",animation:"gridMove 20s linear infinite"}}/>
-        <div style={{position:"absolute",top:-200,right:-100,width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 65%)"}}/>
-        <div style={{position:"absolute",bottom:-150,left:-80,width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle, rgba(99,102,241,0.09) 0%, transparent 65%)"}}/>
+
+      {/* Ambient background effects */}
+      <div style={{position:"absolute",inset:0,overflow:"hidden",zIndex:0}}>
+        <div style={{position:"absolute",top:"-20%",right:"-10%",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 60%)",animation:"glowPulse 6s ease-in-out infinite"}}/>
+        <div style={{position:"absolute",bottom:"-30%",left:"-5%",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 60%)"}}/>
+        <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)",backgroundSize:"80px 80px"}}/>
       </div>
-      {/* Main content */}
-      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",zIndex:1,padding:"60px 24px 40px"}}>
-        {/* Logo + brand */}
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:48,animation:"fadeUp 0.6s ease-out"}}>
-          <svg width="36" height="36" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
-          <span style={{fontSize:15,fontWeight:500,color:"#6b7280",fontFamily:"'Geist-Variable','Outfit'",letterSpacing:".02em"}}>EnterRank <span style={{color:"#d1d5db"}}>by</span> Entermind</span>
-        </div>
-        {/* Hero headline */}
-        <div style={{textAlign:"center",maxWidth:720,animation:"fadeUp 0.8s ease-out"}}>
-          <div style={{fontSize:13,fontWeight:500,color:"#2563eb",letterSpacing:".08em",textTransform:"uppercase",marginBottom:20,fontFamily:"'Space Mono'"}}>{"Audit \u00b7 Analyse \u00b7 Optimise"}</div>
-          <h1 style={{fontSize:56,fontWeight:500,fontFamily:"'Geist-Variable','Outfit'",color:"#0f172a",letterSpacing:"-.045em",margin:"0 0 20px",lineHeight:1.08}}>
-            Own your<br/>
-            <span style={{color:"#2563eb"}}>AI visibility</span>
+
+      {/* Top bar -- logo only */}
+      <div style={{position:"relative",zIndex:2,padding:"28px 48px",display:"flex",alignItems:"center",gap:10}}>
+        <svg width="32" height="32" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
+        <span style={{fontSize:16,fontWeight:500,color:"#e2e8f0",fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.01em"}}>EnterRank</span>
+      </div>
+
+      {/* Main content -- two columns */}
+      <div style={{flex:1,display:"flex",alignItems:"center",position:"relative",zIndex:1,padding:"0 48px 60px",gap:60,maxWidth:1400,margin:"0 auto",width:"100%"}}>
+
+        {/* Left column -- text */}
+        <div style={{flex:"0 0 45%",maxWidth:540}}>
+          <div style={{fontSize:12,fontWeight:500,color:"#60a5fa",letterSpacing:".1em",textTransform:"uppercase",marginBottom:24,animation:"fadeUp 0.6s ease-out",fontFamily:"'Space Mono',monospace"}}>AI Engine Optimisation</div>
+
+          <h1 style={{fontSize:52,fontWeight:500,fontFamily:"'Geist-Variable','Outfit'",color:"#f1f5f9",letterSpacing:"-.04em",margin:"0 0 20px",lineHeight:1.1,animation:"fadeUp 0.8s ease-out"}}>
+            Own Your Brand's<br/>
+            <span style={{color:"#60a5fa"}}>AI Visibility</span>
           </h1>
-          <p style={{fontSize:17,color:"#64748b",margin:"0 0 36px",lineHeight:1.65,maxWidth:520,marginLeft:"auto",marginRight:"auto"}}>
-            Test real queries on AI engines, measure visibility, and build your strategy to get cited.
+
+          <p style={{fontSize:16,color:"#94a3b8",margin:"0 0 36px",lineHeight:1.7,maxWidth:460,animation:"fadeUp 1s ease-out"}}>
+            Test real queries on ChatGPT and Gemini. See exactly when AI engines mention, cite, or ignore your brand — and build the strategy to change it.
           </p>
-          {/* CTA */}
+
           <button
             onClick={onGetStarted}
             onMouseEnter={() => setHoverCTA(true)}
             onMouseLeave={() => setHoverCTA(false)}
             style={{
-              padding:"16px 44px",
-              background:hoverCTA?"#1d4ed8":"#2563eb",
+              padding:"16px 36px",
+              background:hoverCTA?"#3b82f6":"#2563eb",
               color:"#fff",
               border:"none",
               borderRadius:12,
@@ -2092,39 +2099,128 @@ function LandingPage({ onGetStarted }) {
               fontWeight:500,
               cursor:"pointer",
               fontFamily:"'Geist-Variable','Outfit'",
-              letterSpacing:".01em",
               transition:"all .25s ease",
-              boxShadow:hoverCTA?"0 8px 30px rgba(37,99,235,0.35)":"0 4px 16px rgba(37,99,235,0.2)",
-              transform:hoverCTA?"translateY(-1px)":"translateY(0)"
+              boxShadow:hoverCTA?"0 8px 32px rgba(37,99,235,0.4)":"0 4px 20px rgba(37,99,235,0.25)",
+              transform:hoverCTA?"translateY(-2px)":"translateY(0)",
+              display:"flex",alignItems:"center",gap:10,
+              animation:"fadeUp 1.1s ease-out"
             }}
-          >Run Audit Now</button>
+          >
+            Run Audit Now
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+
+          {/* Trust indicators */}
+          <div style={{display:"flex",gap:24,marginTop:40,animation:"fadeUp 1.3s ease-out"}}>
+            {[
+              {label:"AI Engines Tested",value:"2 Live APIs"},
+              {label:"Per Audit",value:"20+ Queries"},
+              {label:"Real Data",value:"Zero Estimates"}
+            ].map((t,i)=>(
+              <div key={i}>
+                <div style={{fontSize:14,fontWeight:500,color:"#e2e8f0",fontFamily:"'Geist-Variable','Outfit'"}}>{t.value}</div>
+                <div style={{fontSize:11,color:"#64748b",marginTop:2}}>{t.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
-        {/* Feature cards */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20,maxWidth:780,width:"100%",marginTop:64}}>
-          {[
-            {title:"Real Engine Testing",desc:"Every query tested live on ChatGPT and Gemini APIs. No estimates, no simulations \u2014 real AI responses classified and scored.",icon:(<svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect x="2" y="6" width="24" height="16" rx="3" stroke="#2563eb" strokeWidth="1.5" fill="none"/><path d="M8 14l3 3 6-6" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>)},
-            {title:"Competitive Intelligence",desc:"Crawl competitor websites, compare GEO signals, and benchmark your visibility against the brands fighting for the same queries.",icon:(<svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="10" cy="14" r="6" stroke="#2563eb" strokeWidth="1.5" fill="none"/><circle cx="18" cy="14" r="6" stroke="#2563eb" strokeWidth="1.5" fill="none" opacity="0.5"/></svg>)},
-            {title:"Actionable Strategy",desc:"Category scoring, content recommendations, and a 90-day roadmap \u2014 all grounded in real audit findings, not generic advice.",icon:(<svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M6 20l5-5 4 3 7-9" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/><circle cx="6" cy="20" r="1.5" fill="#2563eb"/><circle cx="11" cy="15" r="1.5" fill="#2563eb"/><circle cx="15" cy="18" r="1.5" fill="#2563eb"/><circle cx="22" cy="9" r="1.5" fill="#2563eb"/></svg>)}
-          ].map((f, i) => (
-            <div key={i} style={{
-              background:"rgba(255,255,255,0.7)",
-              backdropFilter:"blur(8px)",
-              border:"1px solid #e8ecf1",
-              borderRadius:14,
-              padding:"28px 24px",
-              animation:`fadeUp ${0.9 + i * 0.15}s ease-out`,
-              transition:"all .2s ease"
-            }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "#2563eb30"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(37,99,235,0.06)"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "#e8ecf1"; e.currentTarget.style.boxShadow = "none"; }}
-            >
-              <div style={{marginBottom:14}}>{f.icon}</div>
-              <div style={{fontSize:14,fontWeight:500,color:"#0f172a",marginBottom:6,fontFamily:"'Geist-Variable','Outfit'"}}>{f.title}</div>
-              <div style={{fontSize:12,color:"#64748b",lineHeight:1.65}}>{f.desc}</div>
+
+        {/* Right column -- fake dashboard preview */}
+        <div style={{flex:1,display:"flex",justifyContent:"flex-end",animation:"slideInRight 1.2s ease-out"}}>
+          <div style={{
+            width:580,
+            background:"linear-gradient(145deg, #1a2332 0%, #151e2d 100%)",
+            borderRadius:16,
+            border:"1px solid rgba(255,255,255,0.08)",
+            boxShadow:"0 32px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.05)",
+            transform:"perspective(1200px) rotateY(-8deg) rotateX(4deg)",
+            animation:"floatDash 6s ease-in-out infinite",
+            overflow:"hidden"
+          }}>
+            {/* Fake dashboard header */}
+            <div style={{padding:"16px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{width:10,height:10,borderRadius:"50%",background:"#ef4444"}}/>
+                <div style={{width:10,height:10,borderRadius:"50%",background:"#f59e0b"}}/>
+                <div style={{width:10,height:10,borderRadius:"50%",background:"#22c55e"}}/>
+              </div>
+              <div style={{fontSize:11,color:"#475569",fontFamily:"'Space Mono',monospace"}}>enterrank.ai/dashboard</div>
+              <div style={{width:30}}/>
             </div>
-          ))}
+
+            {/* Fake score section */}
+            <div style={{padding:"24px 24px 16px",textAlign:"center"}}>
+              <div style={{fontSize:10,color:"#64748b",letterSpacing:".08em",textTransform:"uppercase",marginBottom:8}}>GEO Visibility Score</div>
+              <div style={{fontSize:44,fontWeight:500,color:"#f1f5f9",fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.03em"}}>72<span style={{fontSize:18,color:"#64748b"}}>%</span></div>
+              <div style={{display:"inline-block",fontSize:10,fontWeight:500,padding:"3px 10px",borderRadius:100,background:"rgba(34,197,94,0.15)",color:"#4ade80",marginTop:6}}>Strong</div>
+            </div>
+
+            {/* Fake KPI row */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,padding:"0 20px 16px"}}>
+              {[
+                {label:"Mention Rate",value:"68%",color:"#60a5fa"},
+                {label:"Citation Rate",value:"45%",color:"#a78bfa"},
+                {label:"Sentiment",value:"Positive",color:"#4ade80"}
+              ].map((k,i)=>(
+                <div key={i} style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"10px 12px",border:"1px solid rgba(255,255,255,0.04)"}}>
+                  <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",letterSpacing:".06em",marginBottom:4}}>{k.label}</div>
+                  <div style={{fontSize:16,fontWeight:500,color:k.color,fontFamily:"'Geist-Variable','Outfit'"}}>{k.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Fake query results table */}
+            <div style={{padding:"0 20px 20px"}}>
+              <div style={{fontSize:10,color:"#64748b",textTransform:"uppercase",letterSpacing:".06em",marginBottom:8}}>Query Results</div>
+              <div style={{background:"rgba(255,255,255,0.02)",borderRadius:10,border:"1px solid rgba(255,255,255,0.04)",overflow:"hidden"}}>
+                {[
+                  {q:"Best mobile plans in Malaysia",gpt:"Cited",gem:"Cited"},
+                  {q:"Compare prepaid data packages 2026",gpt:"Mentioned",gem:"Cited"},
+                  {q:"Fastest 5G network coverage",gpt:"Cited",gem:"Mentioned"},
+                  {q:"Affordable postpaid plans for students",gpt:"Mentioned",gem:"Absent"},
+                  {q:"Enterprise mobile solutions comparison",gpt:"Absent",gem:"Mentioned"}
+                ].map((r,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",padding:"8px 12px",borderBottom:i<4?"1px solid rgba(255,255,255,0.04)":"none",gap:8}}>
+                    <div style={{flex:1,fontSize:11,color:"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.q}</div>
+                    <div style={{display:"flex",gap:4}}>
+                      <span style={{fontSize:9,fontWeight:500,padding:"2px 6px",borderRadius:4,
+                        background:r.gpt==="Cited"?"rgba(34,197,94,0.15)":r.gpt==="Mentioned"?"rgba(96,165,250,0.15)":"rgba(239,68,68,0.15)",
+                        color:r.gpt==="Cited"?"#4ade80":r.gpt==="Mentioned"?"#60a5fa":"#f87171"
+                      }}>{r.gpt}</span>
+                      <span style={{fontSize:9,fontWeight:500,padding:"2px 6px",borderRadius:4,
+                        background:r.gem==="Cited"?"rgba(34,197,94,0.15)":r.gem==="Mentioned"?"rgba(96,165,250,0.15)":"rgba(239,68,68,0.15)",
+                        color:r.gem==="Cited"?"#4ade80":r.gem==="Mentioned"?"#60a5fa":"#f87171"
+                      }}>{r.gem}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Fake competitor bars */}
+            <div style={{padding:"0 20px 20px"}}>
+              <div style={{fontSize:10,color:"#64748b",textTransform:"uppercase",letterSpacing:".06em",marginBottom:8}}>Share of Voice</div>
+              {[
+                {name:"Your Brand",share:38,color:"#2563eb"},
+                {name:"Competitor A",share:28,color:"#f97316"},
+                {name:"Competitor B",share:22,color:"#8b5cf6"},
+                {name:"Competitor C",share:12,color:"#06b6d4"}
+              ].map((c,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                  <div style={{width:70,fontSize:10,color:"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.name}</div>
+                  <div style={{flex:1,height:4,borderRadius:2,background:"rgba(255,255,255,0.06)"}}>
+                    <div style={{width:c.share+"%",height:4,borderRadius:2,background:c.color,transition:"width 1s ease"}}/>
+                  </div>
+                  <div style={{fontSize:10,color:"#94a3b8",minWidth:24,textAlign:"right"}}>{c.share}%</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Bottom accent line */}
+      <div style={{position:"absolute",bottom:0,left:0,right:0,height:1,background:"linear-gradient(90deg, transparent, rgba(37,99,235,0.2), transparent)",zIndex:1}}/>
     </div>
   );
 }
