@@ -2053,11 +2053,20 @@ function LandingPage({ onGetStarted }) {
         @keyframes slideInRight{from{opacity:0;transform:translateX(80px)}to{opacity:1;transform:translateX(0)}}
       `}</style>
 
-      {/* Subtle background texture */}
-      <div style={{position:"absolute",inset:0,zIndex:0}}>
-        <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0)",backgroundSize:"32px 32px"}}/>
-        <div style={{position:"absolute",top:"-30%",right:"-15%",width:800,height:800,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.04) 0%, transparent 60%)"}}/>
-        <div style={{position:"absolute",bottom:"-20%",left:"-10%",width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle, rgba(99,102,241,0.03) 0%, transparent 60%)"}}/>
+      {/* Background gradient mesh */}
+      <div style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden"}}>
+        {/* Base subtle dot pattern */}
+        <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle at 1px 1px, rgba(0,0,0,0.02) 1px, transparent 0)",backgroundSize:"32px 32px"}}/>
+        {/* Top-right warm blob */}
+        <div style={{position:"absolute",top:"-15%",right:"-5%",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.07) 0%, rgba(99,102,241,0.03) 40%, transparent 65%)",filter:"blur(40px)"}}/>
+        {/* Center-left accent blob */}
+        <div style={{position:"absolute",top:"30%",left:"-8%",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle, rgba(59,130,246,0.05) 0%, rgba(147,51,234,0.02) 40%, transparent 65%)",filter:"blur(50px)"}}/>
+        {/* Bottom-right soft blob */}
+        <div style={{position:"absolute",bottom:"-10%",right:"20%",width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle, rgba(14,165,233,0.04) 0%, rgba(37,99,235,0.02) 40%, transparent 65%)",filter:"blur(45px)"}}/>
+        {/* Bottom-left warm blob */}
+        <div style={{position:"absolute",bottom:"-20%",left:"10%",width:400,height:400,borderRadius:"50%",background:"radial-gradient(circle, rgba(168,85,247,0.04) 0%, transparent 60%)",filter:"blur(50px)"}}/>
+        {/* Top-center subtle wash */}
+        <div style={{position:"absolute",top:"-5%",left:"30%",width:500,height:300,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.03) 0%, transparent 60%)",filter:"blur(60px)"}}/>
       </div>
 
       {/* Top bar */}
