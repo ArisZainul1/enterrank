@@ -99,7 +99,7 @@ function MiniDonut({data,size=110,innerRatio=.6}){
 }
 
 /* ─── MULTI-ENGINE API LAYER ─── */
-async function callWithRetry(fn, maxRetries=3, baseDelayMs=1000){
+async function callWithRetry(fn, maxRetries=2, baseDelayMs=2000){
   for(let attempt=0;attempt<=maxRetries;attempt++){
     try{
       const result=await fn();
@@ -107,11 +107,13 @@ async function callWithRetry(fn, maxRetries=3, baseDelayMs=1000){
       if(attempt===maxRetries)return null;
       await new Promise(r=>setTimeout(r,baseDelayMs*Math.pow(2,attempt)));
     }catch(e){
-      if(attempt===maxRetries)return null;
-      const isRateLimit=e.message?.includes("429")||e.message?.includes("rate")||e.message?.includes("quota");
-      let delay=baseDelayMs*Math.pow(2,attempt);
-      if(isRateLimit)delay=delay*2;
-      console.error(`API attempt ${attempt+1}/${maxRetries+1} failed (${isRateLimit?"rate limit":"error"}), retrying in ${delay}ms...`);
+      const isRetryable=e.name==="AbortError"||e.message?.includes("429")||e.message?.includes("rate")||e.message?.includes("quota")||e.message?.includes("timeout")||e.message?.includes("abort")||e.message?.includes("ECONNRESET")||e.message?.includes("fetch failed")||e.message?.includes("500")||e.message?.includes("502")||e.message?.includes("503");
+      if(attempt===maxRetries||!isRetryable){
+        console.error(`API call failed after ${attempt+1} attempts:`,e.message||e);
+        return null;
+      }
+      const delay=Math.min(baseDelayMs*Math.pow(2,attempt),10000);
+      console.warn(`Retry ${attempt+1}/${maxRetries} after ${delay}ms:`,e.message||e);
       await new Promise(r=>setTimeout(r,delay));
     }
   }
@@ -141,47 +143,53 @@ function validateResponse(raw,minLength=10){
 async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst."){
   return callWithRetry(async()=>{
     const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),45000);
+    const timeout=setTimeout(()=>controller.abort(),55000);
     try{
       const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt}),signal:controller.signal});
       clearTimeout(timeout);
+      if(!res.ok&&[400,401,404].includes(res.status))return null;
+      if(!res.ok)throw new Error(res.status+" "+res.statusText);
       const data=await res.json();
-      if(data.error){console.error("OpenAI error:",data.error);return null;}
+      if(data.error){throw new Error("API: "+data.error);}
       if(data.rateLimit?.remaining&&parseInt(data.rateLimit.remaining)<5)await new Promise(r=>setTimeout(r,3000));
       return validateResponse(data.text)||"";
-    }catch(e){clearTimeout(timeout);console.error("OpenAI API error:",e);return null;}
+    }catch(e){clearTimeout(timeout);throw e;}
   });
 }
 
 async function callOpenAI4o(prompt, systemPrompt="You are an expert AEO analyst."){
   return callWithRetry(async()=>{
     const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),45000);
+    const timeout=setTimeout(()=>controller.abort(),55000);
     try{
       const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt,model:"gpt-4o"}),signal:controller.signal});
       clearTimeout(timeout);
+      if(!res.ok&&[400,401,404].includes(res.status))return null;
+      if(!res.ok)throw new Error(res.status+" "+res.statusText);
       const data=await res.json();
-      if(data.error){console.error("OpenAI 4o error:",data.error);return null;}
+      if(data.error){throw new Error("API: "+data.error);}
       if(data.rateLimit?.remaining&&parseInt(data.rateLimit.remaining)<5)await new Promise(r=>setTimeout(r,3000));
       return validateResponse(data.text)||"";
-    }catch(e){clearTimeout(timeout);console.error("OpenAI 4o API error:",e);return null;}
+    }catch(e){clearTimeout(timeout);throw e;}
   });
 }
 
 async function callGemini(prompt, systemPrompt="You are an expert AEO analyst."){
   return callWithRetry(async()=>{
     const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),45000);
+    const timeout=setTimeout(()=>controller.abort(),55000);
     try{
       const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt}),signal:controller.signal});
       clearTimeout(timeout);
+      if(!res.ok&&[400,401,404].includes(res.status))return null;
+      if(!res.ok)throw new Error(res.status+" "+res.statusText);
       const data=await res.json();
       if(data.error){
         if(data.error.includes("SAFETY")||data.error.includes("block"))return "";
-        console.error("Gemini error:",data.error);return null;
+        throw new Error("API: "+data.error);
       }
       return validateResponse(data.text)||"";
-    }catch(e){clearTimeout(timeout);console.error("Gemini API error:",e);return null;}
+    }catch(e){clearTimeout(timeout);throw e;}
   });
 }
 
@@ -192,11 +200,13 @@ async function callOpenAISearch(query, region){
     try{
       const r=await fetch("/api/openai-search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,region}),signal:controller.signal});
       clearTimeout(timeout);
+      if(!r.ok&&[400,401,404].includes(r.status))return null;
+      if(!r.ok)throw new Error(r.status+" "+r.statusText);
       const d=await r.json();
-      if(d.error&&!d.result){console.error("OpenAI Search error:",d.error);return null;}
+      if(d.error&&!d.result){throw new Error("API: "+d.error);}
       if(d.rateLimit?.remaining&&parseInt(d.rateLimit.remaining)<5)await new Promise(r=>setTimeout(r,3000));
       return{text:d.result||"",citations:d.citations||[]};
-    }catch(e){clearTimeout(timeout);console.error("OpenAI Search API error:",e);return null;}
+    }catch(e){clearTimeout(timeout);throw e;}
   })||{text:"",citations:[]};
 }
 
