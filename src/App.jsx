@@ -2045,43 +2045,41 @@ function LandingPage({ onGetStarted }) {
   const [hoverCTA, setHoverCTA] = React.useState(false);
 
   return (
-    <div style={{minHeight:"100vh",background:"linear-gradient(135deg, #0c1222 0%, #131d33 40%, #0f1a2e 100%)",display:"flex",flexDirection:"column",fontFamily:"'Geist-Variable','Plus Jakarta Sans',-apple-system,sans-serif",position:"relative",overflow:"hidden"}}>
+    <div style={{minHeight:"100vh",background:"#ffffff",display:"flex",flexDirection:"column",fontFamily:"'Geist-Variable','Plus Jakarta Sans',-apple-system,sans-serif",position:"relative",overflow:"hidden"}}>
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
       <style>{`
-        @keyframes floatDash{0%,100%{transform:perspective(1200px) rotateY(-8deg) rotateX(4deg) translateY(0)}50%{transform:perspective(1200px) rotateY(-8deg) rotateX(4deg) translateY(-8px)}}
-        @keyframes glowPulse{0%,100%{opacity:0.3}50%{opacity:0.6}}
+        @keyframes floatDash{0%,100%{transform:perspective(1400px) rotateY(-12deg) rotateX(5deg) translateY(0)}50%{transform:perspective(1400px) rotateY(-12deg) rotateX(5deg) translateY(-10px)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes slideInRight{from{opacity:0;transform:translateX(60px) perspective(1200px) rotateY(-8deg) rotateX(4deg)}to{opacity:1;transform:translateX(0) perspective(1200px) rotateY(-8deg) rotateX(4deg)}}
-        @keyframes shimmerBar{0%{background-position:-200% 0}100%{background-position:200% 0}}
+        @keyframes slideInRight{from{opacity:0;transform:translateX(80px)}to{opacity:1;transform:translateX(0)}}
       `}</style>
 
-      {/* Ambient background effects */}
-      <div style={{position:"absolute",inset:0,overflow:"hidden",zIndex:0}}>
-        <div style={{position:"absolute",top:"-20%",right:"-10%",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 60%)",animation:"glowPulse 6s ease-in-out infinite"}}/>
-        <div style={{position:"absolute",bottom:"-30%",left:"-5%",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 60%)"}}/>
-        <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)",backgroundSize:"80px 80px"}}/>
+      {/* Subtle background texture */}
+      <div style={{position:"absolute",inset:0,zIndex:0}}>
+        <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0)",backgroundSize:"32px 32px"}}/>
+        <div style={{position:"absolute",top:"-30%",right:"-15%",width:800,height:800,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.04) 0%, transparent 60%)"}}/>
+        <div style={{position:"absolute",bottom:"-20%",left:"-10%",width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle, rgba(99,102,241,0.03) 0%, transparent 60%)"}}/>
       </div>
 
-      {/* Top bar -- logo only */}
-      <div style={{position:"relative",zIndex:2,padding:"28px 48px",display:"flex",alignItems:"center",gap:10}}>
+      {/* Top bar */}
+      <div style={{position:"relative",zIndex:2,padding:"24px 48px",display:"flex",alignItems:"center",gap:10}}>
         <svg width="32" height="32" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
-        <span style={{fontSize:16,fontWeight:500,color:"#e2e8f0",fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.01em"}}>EnterRank</span>
+        <span style={{fontSize:16,fontWeight:500,color:"#0f172a",fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.01em"}}>EnterRank</span>
+        <span style={{fontSize:12,color:"#94a3b8",marginLeft:2}}>by Entermind</span>
       </div>
 
-      {/* Main content -- two columns */}
-      <div style={{flex:1,display:"flex",alignItems:"center",position:"relative",zIndex:1,padding:"0 48px 60px",gap:60,maxWidth:1400,margin:"0 auto",width:"100%"}}>
+      {/* Main content */}
+      <div style={{flex:1,display:"flex",alignItems:"center",position:"relative",zIndex:1,padding:"0 48px 60px",gap:48,maxWidth:1400,margin:"0 auto",width:"100%"}}>
 
-        {/* Left column -- text */}
-        <div style={{flex:"0 0 45%",maxWidth:540}}>
-          <div style={{fontSize:12,fontWeight:500,color:"#60a5fa",letterSpacing:".1em",textTransform:"uppercase",marginBottom:24,animation:"fadeUp 0.6s ease-out",fontFamily:"'Space Mono',monospace"}}>AI Engine Optimisation</div>
+        {/* Left column */}
+        <div style={{flex:"0 0 42%",maxWidth:500}}>
+          <div style={{fontSize:11,fontWeight:500,color:"#2563eb",letterSpacing:".1em",textTransform:"uppercase",marginBottom:20,animation:"fadeUp 0.5s ease-out",fontFamily:"'Space Mono',monospace"}}>AI Engine Optimisation</div>
 
-          <h1 style={{fontSize:52,fontWeight:500,fontFamily:"'Geist-Variable','Outfit'",color:"#f1f5f9",letterSpacing:"-.04em",margin:"0 0 20px",lineHeight:1.1,animation:"fadeUp 0.8s ease-out"}}>
+          <h1 style={{fontSize:50,fontWeight:500,fontFamily:"'Geist-Variable','Outfit'",color:"#0f172a",letterSpacing:"-.04em",margin:"0 0 20px",lineHeight:1.08,animation:"fadeUp 0.7s ease-out"}}>
             Own Your Brand's<br/>
-            <span style={{color:"#60a5fa"}}>AI Visibility</span>
+            <span style={{color:"#2563eb"}}>AI Visibility</span>
           </h1>
 
-          <p style={{fontSize:16,color:"#94a3b8",margin:"0 0 36px",lineHeight:1.7,maxWidth:460,animation:"fadeUp 1s ease-out"}}>
+          <p style={{fontSize:16,color:"#64748b",margin:"0 0 32px",lineHeight:1.7,maxWidth:440,animation:"fadeUp 0.9s ease-out"}}>
             Test real queries on ChatGPT and Gemini. See exactly when AI engines mention, cite, or ignore your brand — and build the strategy to change it.
           </p>
 
@@ -2090,137 +2088,129 @@ function LandingPage({ onGetStarted }) {
             onMouseEnter={() => setHoverCTA(true)}
             onMouseLeave={() => setHoverCTA(false)}
             style={{
-              padding:"16px 36px",
-              background:hoverCTA?"#3b82f6":"#2563eb",
+              padding:"15px 32px",
+              background:hoverCTA?"#1d4ed8":"#2563eb",
               color:"#fff",
               border:"none",
-              borderRadius:12,
-              fontSize:15,
+              borderRadius:10,
+              fontSize:14,
               fontWeight:500,
               cursor:"pointer",
               fontFamily:"'Geist-Variable','Outfit'",
               transition:"all .25s ease",
-              boxShadow:hoverCTA?"0 8px 32px rgba(37,99,235,0.4)":"0 4px 20px rgba(37,99,235,0.25)",
+              boxShadow:hoverCTA?"0 8px 28px rgba(37,99,235,0.3)":"0 4px 16px rgba(37,99,235,0.15)",
               transform:hoverCTA?"translateY(-2px)":"translateY(0)",
-              display:"flex",alignItems:"center",gap:10,
-              animation:"fadeUp 1.1s ease-out"
+              display:"flex",alignItems:"center",gap:8,
+              animation:"fadeUp 1s ease-out"
             }}
           >
             Run Audit Now
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
 
-          {/* Trust indicators */}
-          <div style={{display:"flex",gap:24,marginTop:40,animation:"fadeUp 1.3s ease-out"}}>
+          <div style={{display:"flex",gap:32,marginTop:40,animation:"fadeUp 1.1s ease-out"}}>
             {[
-              {label:"AI Engines Tested",value:"2 Live APIs"},
-              {label:"Per Audit",value:"20+ Queries"},
-              {label:"Real Data",value:"Zero Estimates"}
+              {value:"2 Live APIs",label:"AI Engines Tested"},
+              {value:"20+ Queries",label:"Per Audit"},
+              {value:"Zero Estimates",label:"Real Data Only"}
             ].map((t,i)=>(
               <div key={i}>
-                <div style={{fontSize:14,fontWeight:500,color:"#e2e8f0",fontFamily:"'Geist-Variable','Outfit'"}}>{t.value}</div>
-                <div style={{fontSize:11,color:"#64748b",marginTop:2}}>{t.label}</div>
+                <div style={{fontSize:14,fontWeight:500,color:"#0f172a",fontFamily:"'Geist-Variable','Outfit'"}}>{t.value}</div>
+                <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>{t.label}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Right column -- fake dashboard preview */}
-        <div style={{flex:1,display:"flex",justifyContent:"flex-end",animation:"slideInRight 1.2s ease-out"}}>
+        {/* Right column -- dashboard preview */}
+        <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"center",animation:"slideInRight 1s ease-out"}}>
           <div style={{
-            width:580,
-            background:"linear-gradient(145deg, #1a2332 0%, #151e2d 100%)",
+            width:"100%",maxWidth:620,
+            background:"#ffffff",
             borderRadius:16,
-            border:"1px solid rgba(255,255,255,0.08)",
-            boxShadow:"0 32px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.05)",
-            transform:"perspective(1200px) rotateY(-8deg) rotateX(4deg)",
+            border:"1px solid #e2e8f0",
+            boxShadow:"0 24px 80px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02)",
+            transform:"perspective(1400px) rotateY(-12deg) rotateX(5deg)",
             animation:"floatDash 6s ease-in-out infinite",
             overflow:"hidden"
           }}>
-            {/* Fake dashboard header */}
-            <div style={{padding:"16px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
+            {/* Window chrome */}
+            <div style={{padding:"12px 16px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",gap:6}}>
                 <div style={{width:10,height:10,borderRadius:"50%",background:"#ef4444"}}/>
                 <div style={{width:10,height:10,borderRadius:"50%",background:"#f59e0b"}}/>
                 <div style={{width:10,height:10,borderRadius:"50%",background:"#22c55e"}}/>
               </div>
-              <div style={{fontSize:11,color:"#475569",fontFamily:"'Space Mono',monospace"}}>enterrank.ai/dashboard</div>
-              <div style={{width:30}}/>
+              <div style={{fontSize:11,color:"#94a3b8",fontFamily:"'Space Mono',monospace"}}>enterrank.ai/dashboard</div>
+              <div style={{width:40}}/>
             </div>
 
-            {/* Fake score section */}
-            <div style={{padding:"24px 24px 16px",textAlign:"center"}}>
-              <div style={{fontSize:10,color:"#64748b",letterSpacing:".08em",textTransform:"uppercase",marginBottom:8}}>GEO Visibility Score</div>
-              <div style={{fontSize:44,fontWeight:500,color:"#f1f5f9",fontFamily:"'Geist-Variable','Outfit'",letterSpacing:"-.03em"}}>72<span style={{fontSize:18,color:"#64748b"}}>%</span></div>
-              <div style={{display:"inline-block",fontSize:10,fontWeight:500,padding:"3px 10px",borderRadius:100,background:"rgba(34,197,94,0.15)",color:"#4ade80",marginTop:6}}>Strong</div>
-            </div>
+            {/* Fake dashboard content */}
+            <div style={{padding:20}}>
+              {/* Score */}
+              <div style={{textAlign:"center",marginBottom:16}}>
+                <div style={{fontSize:9,color:"#94a3b8",letterSpacing:".08em",textTransform:"uppercase",marginBottom:6}}>GEO Visibility Score</div>
+                <div style={{fontSize:40,fontWeight:500,color:"#0f172a",fontFamily:"'Geist-Variable','Outfit'",lineHeight:1}}>72<span style={{fontSize:16,color:"#94a3b8"}}>%</span></div>
+                <div style={{display:"inline-block",fontSize:9,fontWeight:500,padding:"2px 8px",borderRadius:100,background:"#dcfce7",color:"#166534",marginTop:4}}>Strong</div>
+              </div>
 
-            {/* Fake KPI row */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,padding:"0 20px 16px"}}>
-              {[
-                {label:"Mention Rate",value:"68%",color:"#60a5fa"},
-                {label:"Citation Rate",value:"45%",color:"#a78bfa"},
-                {label:"Sentiment",value:"Positive",color:"#4ade80"}
-              ].map((k,i)=>(
-                <div key={i} style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"10px 12px",border:"1px solid rgba(255,255,255,0.04)"}}>
-                  <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",letterSpacing:".06em",marginBottom:4}}>{k.label}</div>
-                  <div style={{fontSize:16,fontWeight:500,color:k.color,fontFamily:"'Geist-Variable','Outfit'"}}>{k.value}</div>
+              {/* KPIs */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:14}}>
+                {[{l:"Mention Rate",v:"68%",c:"#2563eb"},{l:"Citation Rate",v:"45%",c:"#8b5cf6"},{l:"Sentiment",v:"Positive",c:"#059669"}].map((k,i)=>(
+                  <div key={i} style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px",border:"1px solid #f1f5f9"}}>
+                    <div style={{fontSize:8,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".05em",marginBottom:3}}>{k.l}</div>
+                    <div style={{fontSize:14,fontWeight:500,color:k.c,fontFamily:"'Geist-Variable','Outfit'"}}>{k.v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Query results */}
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:9,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>Query Results</div>
+                <div style={{border:"1px solid #f1f5f9",borderRadius:8,overflow:"hidden"}}>
+                  {[
+                    {q:"Best mobile plans in Malaysia",g:"Cited",m:"Cited"},
+                    {q:"Compare prepaid data packages 2026",g:"Mentioned",m:"Cited"},
+                    {q:"Fastest 5G network coverage",g:"Cited",m:"Mentioned"},
+                    {q:"Affordable postpaid plans for students",g:"Mentioned",m:"Absent"},
+                    {q:"Enterprise mobile solutions provider",g:"Absent",m:"Mentioned"}
+                  ].map((r,i)=>{
+                    const badge=(s)=>({fontSize:8,fontWeight:500,padding:"2px 5px",borderRadius:4,
+                      background:s==="Cited"?"#dcfce7":s==="Mentioned"?"#dbeafe":"#fee2e2",
+                      color:s==="Cited"?"#166534":s==="Mentioned"?"#1e40af":"#991b1b"});
+                    return(
+                      <div key={i} style={{display:"flex",alignItems:"center",padding:"7px 10px",borderBottom:i<4?"1px solid #f1f5f9":"none",gap:6}}>
+                        <div style={{flex:1,fontSize:10,color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.q}</div>
+                        <span style={badge(r.g)}>{r.g}</span>
+                        <span style={badge(r.m)}>{r.m}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
+              </div>
 
-            {/* Fake query results table */}
-            <div style={{padding:"0 20px 20px"}}>
-              <div style={{fontSize:10,color:"#64748b",textTransform:"uppercase",letterSpacing:".06em",marginBottom:8}}>Query Results</div>
-              <div style={{background:"rgba(255,255,255,0.02)",borderRadius:10,border:"1px solid rgba(255,255,255,0.04)",overflow:"hidden"}}>
+              {/* Share of voice bars */}
+              <div>
+                <div style={{fontSize:9,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>Share of Voice</div>
                 {[
-                  {q:"Best mobile plans in Malaysia",gpt:"Cited",gem:"Cited"},
-                  {q:"Compare prepaid data packages 2026",gpt:"Mentioned",gem:"Cited"},
-                  {q:"Fastest 5G network coverage",gpt:"Cited",gem:"Mentioned"},
-                  {q:"Affordable postpaid plans for students",gpt:"Mentioned",gem:"Absent"},
-                  {q:"Enterprise mobile solutions comparison",gpt:"Absent",gem:"Mentioned"}
-                ].map((r,i)=>(
-                  <div key={i} style={{display:"flex",alignItems:"center",padding:"8px 12px",borderBottom:i<4?"1px solid rgba(255,255,255,0.04)":"none",gap:8}}>
-                    <div style={{flex:1,fontSize:11,color:"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.q}</div>
-                    <div style={{display:"flex",gap:4}}>
-                      <span style={{fontSize:9,fontWeight:500,padding:"2px 6px",borderRadius:4,
-                        background:r.gpt==="Cited"?"rgba(34,197,94,0.15)":r.gpt==="Mentioned"?"rgba(96,165,250,0.15)":"rgba(239,68,68,0.15)",
-                        color:r.gpt==="Cited"?"#4ade80":r.gpt==="Mentioned"?"#60a5fa":"#f87171"
-                      }}>{r.gpt}</span>
-                      <span style={{fontSize:9,fontWeight:500,padding:"2px 6px",borderRadius:4,
-                        background:r.gem==="Cited"?"rgba(34,197,94,0.15)":r.gem==="Mentioned"?"rgba(96,165,250,0.15)":"rgba(239,68,68,0.15)",
-                        color:r.gem==="Cited"?"#4ade80":r.gem==="Mentioned"?"#60a5fa":"#f87171"
-                      }}>{r.gem}</span>
+                  {n:"Your Brand",s:38,c:"#2563eb"},
+                  {n:"Competitor A",s:28,c:"#f97316"},
+                  {n:"Competitor B",s:22,c:"#8b5cf6"},
+                  {n:"Competitor C",s:12,c:"#06b6d4"}
+                ].map((c,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                    <div style={{width:64,fontSize:9,color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.n}</div>
+                    <div style={{flex:1,height:4,borderRadius:2,background:"#f1f5f9"}}>
+                      <div style={{width:c.s+"%",height:4,borderRadius:2,background:c.c}}/>
                     </div>
+                    <div style={{fontSize:9,color:"#64748b",minWidth:20,textAlign:"right"}}>{c.s}%</div>
                   </div>
                 ))}
               </div>
             </div>
-
-            {/* Fake competitor bars */}
-            <div style={{padding:"0 20px 20px"}}>
-              <div style={{fontSize:10,color:"#64748b",textTransform:"uppercase",letterSpacing:".06em",marginBottom:8}}>Share of Voice</div>
-              {[
-                {name:"Your Brand",share:38,color:"#2563eb"},
-                {name:"Competitor A",share:28,color:"#f97316"},
-                {name:"Competitor B",share:22,color:"#8b5cf6"},
-                {name:"Competitor C",share:12,color:"#06b6d4"}
-              ].map((c,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                  <div style={{width:70,fontSize:10,color:"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.name}</div>
-                  <div style={{flex:1,height:4,borderRadius:2,background:"rgba(255,255,255,0.06)"}}>
-                    <div style={{width:c.share+"%",height:4,borderRadius:2,background:c.color,transition:"width 1s ease"}}/>
-                  </div>
-                  <div style={{fontSize:10,color:"#94a3b8",minWidth:24,textAlign:"right"}}>{c.share}%</div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </div>
-
-      {/* Bottom accent line */}
-      <div style={{position:"absolute",bottom:0,left:0,right:0,height:1,background:"linear-gradient(90deg, transparent, rgba(37,99,235,0.2), transparent)",zIndex:1}}/>
     </div>
   );
 }
