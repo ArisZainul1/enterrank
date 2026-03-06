@@ -450,6 +450,7 @@ async function runRealAudit(cd, onProgress){
   const topicList=topics.join(", ");
   const engineSystemPrompt=`You are an AEO (Answer Engine Optimization) analyst. Respond ONLY with valid JSON, no markdown fences, no explanations.`;
   const accumulated = {};
+  let queryArchetypeMap = {};
 
   // ── Step 1: Crawl brand website AND competitor websites ──
   onProgress("Crawling brand website...",3);
@@ -542,7 +543,7 @@ Return JSON only:
   const queryGenParsed = safeJSON(queryGenRaw) || { queries: [] };
 
   // Extract queries from the structured response
-  const queryArchetypeMap={};
+  queryArchetypeMap={};
   if (Array.isArray(queryGenParsed.queries)) {
     queryGenParsed.queries.forEach(item => {
       if (typeof item === "string") {
