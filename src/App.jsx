@@ -1063,6 +1063,7 @@ Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentenc
   }})(),
   // ── Pain Points — scored from REAL crawl data ──
   (async()=>{try{
+    console.log("BRANDCRAWL_SHAPE:", JSON.stringify({topKeys: brandCrawl ? Object.keys(brandCrawl) : "null", hasMainPage: !!brandCrawl?.mainPage, topLevelSchemas: brandCrawl?.schemas || "NONE", mainPageSchemas: brandCrawl?.mainPage?.schemas || "NONE", deepSchemas: brandCrawl?.mainPage?.mainPage?.schemas || "NONE"}));
     const scored=scoreCrawlData(brandCrawl);
     if(scored&&scored.categories){
       mergedPainPoints=scored.categories.map(c=>({label:c.label,score:c.score,severity:c.score<30?"critical":c.score<60?"warning":"good",evidence:c.evidence}));
