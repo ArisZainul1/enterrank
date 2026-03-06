@@ -2250,7 +2250,7 @@ function LandingPage({ onGetStarted }) {
 }
 
 /* ─── LOGIN FORM ─── */
-function LoginForm({ onLogin, onSignUp, error, loading }) {
+function LoginForm({ onLogin, onSignUp, error, loading, onBack }) {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
@@ -2300,7 +2300,7 @@ function LoginForm({ onLogin, onSignUp, error, loading }) {
 
           {/* Logo + title */}
           <div style={{textAlign:"center",marginBottom:32}}>
-            <svg width="36" height="36" viewBox="0 0 28 28" style={{margin:"0 auto 14px",display:"block"}}><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
+            <svg width="36" height="36" viewBox="0 0 28 28" style={{margin:"0 auto 14px",display:"block",cursor:"pointer"}} onClick={onBack}><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
             <div style={{fontSize:20,fontWeight:500,color:"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>{isSignUp ? "Create your account" : "Welcome back"}</div>
             <div style={{fontSize:13,color:"#94a3b8",marginTop:4}}>{isSignUp ? "Get started with EnterRank" : "Sign in to EnterRank"}</div>
           </div>
@@ -2380,8 +2380,6 @@ function LoginForm({ onLogin, onSignUp, error, loading }) {
           </div>
         </div>
 
-        {/* Footer */}
-        <div style={{textAlign:"center",marginTop:20,fontSize:11,color:"#94a3b8"}}>EnterRank by Entermind</div>
       </div>
     </div>
   );
@@ -5864,7 +5862,7 @@ export default function App(){
 
   if(showLanding&&!authed)return <LandingPage onGetStarted={()=>setShowLanding(false)}/>;
 
-  if(!authed)return <LoginForm onLogin={handleLogin} onSignUp={handleSignUp} error={loginError} loading={loggingIn}/>;
+  if(!authed)return <LoginForm onLogin={handleLogin} onSignUp={handleSignUp} error={loginError} loading={loggingIn} onBack={() => setShowLanding(true)}/>;
 
   if(screen==="hub")return(<>
     <ProjectHub onSelect={handleSelectProject} onNew={handleNewProject} onLogout={handleLogout}/>
