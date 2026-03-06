@@ -2167,18 +2167,23 @@ function LandingPage({ onGetStarted }) {
               {/* Main dashboard content */}
               <div style={{flex:1,padding:18,overflowY:"hidden"}}>
                 {/* Score */}
-                <div style={{textAlign:"center",marginBottom:12}}>
-                  <div style={{fontSize:8,color:"#94a3b8",letterSpacing:".08em",textTransform:"uppercase",marginBottom:4}}>GEO Visibility Score</div>
-                  <div style={{fontSize:36,fontWeight:500,color:"#0f172a",fontFamily:"'Outfit',-apple-system,sans-serif",lineHeight:1}}>72<span style={{fontSize:14,color:"#94a3b8"}}>%</span></div>
-                  <div style={{display:"inline-block",fontSize:8,fontWeight:500,padding:"2px 7px",borderRadius:100,background:"#dcfce7",color:"#166534",marginTop:3}}>Strong</div>
+                <div style={{textAlign:"center",marginBottom:10,paddingTop:8}}>
+                  <div style={{fontSize:7,color:"#94a3b8",letterSpacing:".06em",textTransform:"uppercase",marginBottom:4}}>Engine Visibility Score</div>
+                  <div style={{fontSize:32,fontWeight:500,color:"#0f172a",fontFamily:"'Outfit',-apple-system,sans-serif",lineHeight:1}}>72<span style={{fontSize:12,color:"#94a3b8"}}>%</span></div>
+                  <div style={{display:"inline-block",fontSize:7,fontWeight:500,padding:"2px 6px",borderRadius:100,background:"#dcfce7",color:"#166534",marginTop:3}}>Strong</div>
                 </div>
 
                 {/* KPIs */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5,marginBottom:10}}>
-                  {[{l:"Mention Rate",v:"68%",c:"#2563eb"},{l:"Citation Rate",v:"45%",c:"#8b5cf6"},{l:"Sentiment",v:"Positive",c:"#059669"}].map((k,i)=>(
-                    <div key={i} style={{background:"#f8fafc",borderRadius:6,padding:"6px 8px",border:"1px solid #f1f5f9"}}>
-                      <div style={{fontSize:7,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".05em",marginBottom:2}}>{k.l}</div>
-                      <div style={{fontSize:12,fontWeight:500,color:k.c,fontFamily:"'Outfit',-apple-system,sans-serif"}}>{k.v}</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4,marginBottom:10}}>
+                  {[
+                    {l:"Mention Rate",v:"68%",c:"#2563eb"},
+                    {l:"Citation Rate",v:"45%",c:"#8b5cf6"},
+                    {l:"Sentiment",v:"Positive",c:"#059669"},
+                    {l:"Best Engine",v:"ChatGPT",c:"#10A37F"}
+                  ].map((k,i)=>(
+                    <div key={i} style={{background:"#f8fafc",borderRadius:6,padding:"6px 6px",border:"1px solid #f1f5f9",textAlign:"center"}}>
+                      <div style={{fontSize:6,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".04em",marginBottom:2}}>{k.l}</div>
+                      <div style={{fontSize:k.l==="Best Engine"?9:11,fontWeight:500,color:k.c,fontFamily:"'Outfit',-apple-system,sans-serif"}}>{k.v}</div>
                     </div>
                   ))}
                 </div>
@@ -3376,7 +3381,7 @@ function DashboardPage({r,history,goTo}){
     <div style={{marginBottom:32}}>
       {/* Overall Score — circular ring */}
       <div style={{textAlign:"center",marginBottom:24}}>
-        <div style={{fontSize:13,fontWeight:500,color:C.muted,marginBottom:12}}>GEO Visibility Score</div>
+        <div style={{fontSize:13,fontWeight:500,color:C.muted,marginBottom:12}}>Engine Visibility Score</div>
         <div style={{position:"relative",width:140,height:140,margin:"0 auto"}}>
           <svg viewBox="0 0 140 140" style={{width:140,height:140}}>
             <circle cx="70" cy="70" r="62" fill="none" stroke={C.borderSoft} strokeWidth="6"/>
