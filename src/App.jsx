@@ -1751,18 +1751,23 @@ function exportPDF(r){
     });y+=5;
   });
 
-  // ── USER ARCHETYPES ──
-  checkPage(30);sectionHeader("User Archetypes");
-  (r.stakeholders||[]).forEach(sg=>{
-    checkPage(12);doc.setFontSize(10);doc.setFont("helvetica","bold");doc.setTextColor(...accent);doc.text((sg.icon||"")+" "+(sg.group||""),margin,y);y+=6;
-    (sg.archetypes||[]).forEach(a=>{
-      checkPage(18);doc.setFontSize(9);doc.setFont("helvetica","bold");doc.setTextColor(...dark);doc.text(a.name||"",margin+2,y);y+=4;
-      doc.setFontSize(8);doc.setFont("helvetica","normal");doc.setTextColor(...muted);
-      if(a.demo){doc.text(a.demo+(a.size?" \u00B7 ~"+a.size+"% of searches":"")+(a.brandVisibility?" \u00B7 "+a.brandVisibility+"% visibility":""),margin+4,y);y+=4;}
-      if(a.behavior){const lines=doc.splitTextToSize("Behaviour: "+a.behavior,contentW-10);doc.text(lines,margin+4,y);y+=lines.length*3.5+1;}
-      y+=3;
-    });
+  // ── QUERY CATEGORIES ──
+  checkPage(30);sectionHeader("Query Categories");
+  const qcGptQueries = gptE.queries || [];
+  const qcGemQueries = gemE.queries || [];
+  const qcAll = (r.searchQueries || qcGptQueries.map(q => q.query)).map((query, i) => {
+    const qText = typeof query === "string" ? query : query.query;
+    const gptMatch = qcGptQueries.find(q => q.query === qText) || qcGptQueries[i];
+    const gemMatch = qcGemQueries.find(q => q.query === qText) || qcGemQueries[i];
+    const bestStatus = (gptMatch?.status === "Cited" || gemMatch?.status === "Cited") ? "Cited" : (gptMatch?.status === "Mentioned" || gemMatch?.status === "Mentioned") ? "Mentioned" : "Absent";
+    const cat = (() => { const q = qText.toLowerCase(); if (/best|top\s+\d|recommend|which\s+(is|are)|should\s+i/i.test(q)) return "Recommendation"; if (/vs|compar|versus|difference/i.test(q)) return "Comparison"; if (/how\s+(to|do|does|can|much)|guide|tutorial/i.test(q)) return "How-To"; if (/buy|price|cost|plan|package|subscription/i.test(q)) return "Transactional"; if (/review|rating|experience|worth/i.test(q)) return "Evaluation"; if (/what\s+(is|are)|explain|meaning/i.test(q)) return "Informational"; return "General"; })();
+    return [qText, cat, gptMatch?.status || "Absent", gemMatch?.status || "Absent"];
   });
+  if (qcAll.length > 0) {
+    doc.autoTable({ startY: y, head: [["Query", "Category", "ChatGPT", "Gemini"]], body: qcAll, margin: { left: margin, right: margin }, styles: { fontSize: 7, cellPadding: 3 }, headStyles: { fillColor: accent, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 8 }, columnStyles: { 0: { cellWidth: contentW - 70 }, 1: { cellWidth: 25 }, 2: { cellWidth: 22, halign: "center" }, 3: { cellWidth: 23, halign: "center" } },
+      didParseCell: function(data) { if (data.section === "body" && (data.column.index === 2 || data.column.index === 3)) { const val = data.cell.raw; if (val === "Cited") data.cell.styles.textColor = green; else if (val === "Mentioned") data.cell.styles.textColor = accent; else data.cell.styles.textColor = red; data.cell.styles.fontStyle = "bold"; } }
+    }); y = doc.lastAutoTable.finalY + 10;
+  }
 
   // ── TARGET CHANNELS ──
   checkPage(30);sectionHeader("Target Channels");
@@ -2105,7 +2110,7 @@ function LoginForm({onSubmit,error,loading}){
 const NAV_ITEMS=[
   {group:"Analysis",items:[
     {id:"dashboard",label:"Dashboard",icon:"grid"},
-    {id:"archetypes",label:"User Archetypes",icon:"users"},
+    {id:"archetypes",label:"Query Categories",icon:"grid"},
     {id:"sentiment",label:"Sentiment Analysis",icon:"heart"},
     {id:"intent",label:"Query Results",icon:"route"},
   ]},
@@ -3274,6 +3279,170 @@ function DashboardPage({r,history,goTo}){
     </div>
 
   </div>);
+}
+
+
+/* ─── PAGE: QUERY CATEGORIES ─── */
+function QueryCategoriesPage({ r }) {
+  const [selectedCat, setSelectedCat] = useState(null);
+
+  const gptQueries = r.engines[0]?.queries || [];
+  const gemQueries = r.engines[1]?.queries || [];
+  const allQueries = (r.searchQueries || gptQueries.map(q => q.query)).map((query, i) => {
+    const qText = typeof query === "string" ? query : query.query;
+    const gptMatch = gptQueries.find(q => q.query === qText) || gptQueries[i];
+    const gemMatch = gemQueries.find(q => q.query === qText) || gemQueries[i];
+    return {
+      query: qText,
+      gptStatus: gptMatch?.status || "Absent",
+      gemStatus: gemMatch?.status || "Absent",
+      bestStatus: (gptMatch?.status === "Cited" || gemMatch?.status === "Cited") ? "Cited" : (gptMatch?.status === "Mentioned" || gemMatch?.status === "Mentioned") ? "Mentioned" : "Absent"
+    };
+  });
+
+  const categorize = (query) => {
+    const q = query.toLowerCase();
+    if (/\bbest\b|top\s+\d|recommend|which\s+(is|are)|should\s+i/i.test(q)) return "Recommendation";
+    if (/\bvs\b|compar|versus|difference\s+between|or\b.*\bor\b/i.test(q)) return "Comparison";
+    if (/\bhow\s+(to|do|does|can|much)|guide|tutorial|step/i.test(q)) return "How-To";
+    if (/\bbuy\b|price|cost|plan|package|subscription|where\s+to|deal/i.test(q)) return "Transactional";
+    if (/\breview|rating|experience|worth|reliable|complaint/i.test(q)) return "Evaluation";
+    if (/\bwhat\s+(is|are)|explain|meaning|definition|overview/i.test(q)) return "Informational";
+    return "General";
+  };
+
+  const categorized = {};
+  allQueries.forEach(q => {
+    const cat = categorize(q.query);
+    if (!categorized[cat]) categorized[cat] = [];
+    categorized[cat].push(q);
+  });
+
+  const categoryColors = {
+    "Recommendation": "#2563eb",
+    "Comparison": "#8b5cf6",
+    "How-To": "#059669",
+    "Transactional": "#d97706",
+    "Evaluation": "#dc2626",
+    "Informational": "#0ea5e9",
+    "General": "#6b7280"
+  };
+
+  const categoryDescs = {
+    "Recommendation": "Queries asking AI to recommend or suggest brands",
+    "Comparison": "Queries comparing brands, products, or features",
+    "How-To": "Queries seeking instructions or guides",
+    "Transactional": "Queries with purchase or pricing intent",
+    "Evaluation": "Queries seeking reviews, ratings, or assessments",
+    "Informational": "Queries seeking general knowledge or definitions",
+    "General": "Other industry-related queries"
+  };
+
+  const categories = Object.entries(categorized).map(([name, queries]) => {
+    const cited = queries.filter(q => q.bestStatus === "Cited").length;
+    const mentioned = queries.filter(q => q.bestStatus === "Mentioned").length;
+    const absent = queries.filter(q => q.bestStatus === "Absent").length;
+    const winRate = Math.round(((cited + mentioned) / queries.length) * 100);
+    return { name, queries, cited, mentioned, absent, total: queries.length, winRate, color: categoryColors[name] || "#6b7280", desc: categoryDescs[name] || "" };
+  }).sort((a, b) => b.total - a.total);
+
+  const totalQueries = allQueries.length;
+  const totalCited = allQueries.filter(q => q.bestStatus === "Cited").length;
+  const totalMentioned = allQueries.filter(q => q.bestStatus === "Mentioned").length;
+  const totalAbsent = allQueries.filter(q => q.bestStatus === "Absent").length;
+
+  const statusBadge = (status) => {
+    const bg = status === "Cited" ? "#dcfce7" : status === "Mentioned" ? "#dbeafe" : "#fee2e2";
+    const cl = status === "Cited" ? "#166534" : status === "Mentioned" ? "#1e40af" : "#991b1b";
+    return { background: bg, color: cl, padding: "3px 8px", borderRadius: 6, fontSize: 11, fontWeight: 500, display: "inline-block" };
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 500, color: C.text, margin: 0, fontFamily: "'Geist-Variable','Outfit'" }}>Query Categories</h2>
+        <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>How {r.clientData.brand} performs across different types of AI queries</p>
+      </div>
+
+      {/* Summary stats */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        {[
+          { label: "Total Queries Tested", value: totalQueries, color: C.text },
+          { label: "Cited", value: totalCited, sub: Math.round(totalCited / totalQueries * 100) + "%", color: "#166534" },
+          { label: "Mentioned", value: totalMentioned, sub: Math.round(totalMentioned / totalQueries * 100) + "%", color: "#1e40af" },
+          { label: "Absent", value: totalAbsent, sub: Math.round(totalAbsent / totalQueries * 100) + "%", color: "#991b1b" }
+        ].map((s, i) => (
+          <div key={i} style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "16px 18px", textAlign: "center" }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>{s.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 500, fontFamily: "'Geist-Variable','Outfit'", color: s.color }}>{s.value}</div>
+            {s.sub && <div style={{ fontSize: 11, color: s.color, marginTop: 2 }}>{s.sub}</div>}
+          </div>
+        ))}
+      </div>
+
+      {/* Category cards */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {categories.map((cat, ci) => {
+          const isOpen = selectedCat === ci;
+          return (
+            <div key={ci} style={{ background: "#fff", border: "1px solid " + (isOpen ? cat.color + "40" : C.border), borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
+              <div onClick={() => setSelectedCat(isOpen ? null : ci)} style={{ padding: "16px 20px", cursor: "pointer", display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ width: 4, height: 36, borderRadius: 2, background: cat.color, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: C.text }}>{cat.name}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{cat.desc}</div>
+                </div>
+                <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 11, color: C.muted }}>Queries</div>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: C.text }}>{cat.total}</div>
+                  </div>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 11, color: C.muted }}>Win Rate</div>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: cat.winRate >= 60 ? "#166534" : cat.winRate >= 30 ? "#92400e" : "#991b1b" }}>{cat.winRate}%</div>
+                  </div>
+                  <div style={{ width: 80, height: 6, borderRadius: 3, background: C.bg, overflow: "hidden", display: "flex" }}>
+                    <div style={{ width: (cat.cited / cat.total * 100) + "%", height: "100%", background: "#16a34a" }} />
+                    <div style={{ width: (cat.mentioned / cat.total * 100) + "%", height: "100%", background: "#2563eb" }} />
+                    <div style={{ width: (cat.absent / cat.total * 100) + "%", height: "100%", background: "#ef4444" }} />
+                  </div>
+                  <span style={{ fontSize: 10, color: C.muted }}>{isOpen ? "▲" : "▼"}</span>
+                </div>
+              </div>
+
+              {isOpen && (
+                <div style={{ padding: "0 20px 16px", borderTop: "1px solid " + C.borderSoft }}>
+                  <div style={{ paddingTop: 12 }}>
+                    {cat.queries.map((q, qi) => (
+                      <div key={qi} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: qi < cat.queries.length - 1 ? "1px solid " + C.borderSoft : "none" }}>
+                        <div style={{ flex: 1, fontSize: 12, color: C.sub, lineHeight: 1.5 }}>{q.query}</div>
+                        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                          <span style={statusBadge(q.gptStatus)}>GPT: {q.gptStatus}</span>
+                          <span style={statusBadge(q.gemStatus)}>Gem: {q.gemStatus}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 12, padding: "10px 14px", background: cat.winRate >= 60 ? "#f0fdf4" : cat.winRate >= 30 ? "#fffbeb" : "#fef2f2", borderRadius: 8, fontSize: 12, color: C.sub, lineHeight: 1.5 }}>
+                    {cat.winRate >= 60
+                      ? `Strong performance on ${cat.name.toLowerCase()} queries. ${r.clientData.brand} is well-positioned when users ask AI engines for ${cat.desc.toLowerCase().replace("queries ", "")}.`
+                      : cat.winRate >= 30
+                        ? `Mixed results on ${cat.name.toLowerCase()} queries. ${r.clientData.brand} appears in some responses but is missing from ${cat.absent} out of ${cat.total} queries in this category.`
+                        : `Weak visibility on ${cat.name.toLowerCase()} queries. AI engines rarely mention ${r.clientData.brand} when users ask for ${cat.desc.toLowerCase().replace("queries ", "")}. Priority area for content creation.`
+                    }
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ marginTop: 16, fontSize: 11, color: C.muted, padding: "0 4px" }}>
+        Categories assigned by query intent analysis. Win rate = queries where {r.clientData.brand} is Cited or Mentioned on at least one engine.
+      </div>
+    </div>
+  );
 }
 
 /* ─── PAGE: ARCHETYPES (stakeholder-grouped) ─── */
@@ -5369,7 +5538,7 @@ export default function App(){
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={runAuditProgressive} history={history}/>}
         {step==="dashboard"&&!results&&auditInProgress&&<AuditLoadingInline progress={dashboardLoadProgress} stage={auditStage}/>}
         {step==="dashboard"&&results&&<DashboardPage r={results} history={history} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }}/>}
-        {step==="archetypes"&&results&&(sectionReady.archetypes||!auditInProgress)&&<ArchetypesPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} onUpdate={setResults}/>}
+        {step==="archetypes"&&results&&(sectionReady.archetypes||!auditInProgress)&&<QueryCategoriesPage r={results}/>}
         {step==="sentiment"&&results&&(sectionReady.sentiment||!auditInProgress)&&<SentimentPage r={results}/>}
         {step==="intent"&&results&&(sectionReady.intent||!auditInProgress)&&<IntentPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }}/>}
         {step==="playbook"&&results&&(sectionReady.playbook||!auditInProgress)&&<PlaybookPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject}/>}
