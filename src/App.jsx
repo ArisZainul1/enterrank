@@ -1968,6 +1968,44 @@ function generatePartial(cd, partial) {
   try { return generateAll(cd, safeApiData); } catch(e) { console.error("generatePartial error:", e); return null; }
 }
 
+/* ─── LANDING PAGE ─── */
+function LandingPage({ onGetStarted }) {
+  return (
+    <div style={{minHeight:"100vh",background:"#f8f9fb",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden",fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif"}}>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+      <style>{`
+        @keyframes floatOrb1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-20px) scale(1.05)}}
+        @keyframes floatOrb2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-20px,25px) scale(1.08)}}
+        @keyframes scanLine{0%,100%{opacity:0;transform:translateY(0)}50%{opacity:1;transform:translateY(40px)}}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+      `}</style>
+      {/* Animated background */}
+      <div style={{position:"absolute",inset:0,overflow:"hidden",zIndex:0}}>
+        <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(rgba(37,99,235,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.03) 1px, transparent 1px)",backgroundSize:"60px 60px"}}/>
+        <div style={{position:"absolute",top:"20%",left:"30%",width:400,height:400,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.06) 0%, transparent 70%)",animation:"floatOrb1 8s ease-in-out infinite"}}/>
+        <div style={{position:"absolute",bottom:"20%",right:"25%",width:300,height:300,borderRadius:"50%",background:"radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 70%)",animation:"floatOrb2 10s ease-in-out infinite"}}/>
+        <div style={{position:"absolute",top:"40%",left:0,right:0,height:1,background:"linear-gradient(90deg, transparent, rgba(37,99,235,0.06), transparent)",animation:"scanLine 6s ease-in-out infinite"}}/>
+      </div>
+      {/* Content */}
+      <div style={{position:"relative",zIndex:1,textAlign:"center",animation:"fadeIn .8s ease-out"}}>
+        <div style={{marginBottom:32}}>
+          <svg width="48" height="48" viewBox="0 0 28 28" style={{margin:"0 auto 16px"}}><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
+        </div>
+        <h1 style={{fontSize:52,fontWeight:500,fontFamily:"'Outfit'",color:"#111827",letterSpacing:"-.04em",margin:"0 0 8px",lineHeight:1.1}}>EnterRank</h1>
+        <div style={{fontSize:14,color:"#6b7280",marginBottom:8,fontWeight:400,letterSpacing:".01em"}}>by Entermind</div>
+        <p style={{fontSize:18,color:"#4b5563",margin:"0 0 40px",fontWeight:400,maxWidth:400,lineHeight:1.5}}>AI Engine Auditing & Optimisation Platform</p>
+        <button
+          onClick={onGetStarted}
+          style={{padding:"14px 40px",background:"#2563eb",color:"#fff",border:"none",borderRadius:10,fontSize:15,fontWeight:500,cursor:"pointer",fontFamily:"'Outfit'",letterSpacing:".01em",transition:"all .2s",boxShadow:"0 4px 14px rgba(37,99,235,0.25)"}}
+          onMouseEnter={e => { e.target.style.background = "#1d4ed8"; e.target.style.boxShadow = "0 6px 20px rgba(37,99,235,0.35)"; }}
+          onMouseLeave={e => { e.target.style.background = "#2563eb"; e.target.style.boxShadow = "0 4px 14px rgba(37,99,235,0.25)"; }}
+        >Audit Now</button>
+      </div>
+      <div style={{position:"absolute",bottom:24,fontSize:11,color:"#9ca3af",zIndex:1}}>Powered by ChatGPT & Gemini APIs</div>
+    </div>
+  );
+}
+
 /* ─── LOGIN FORM ─── */
 function LoginForm({onSubmit,error,loading}){
   const[email,setEmail]=useState("");const[pw,setPw]=useState("");const[showPw,setShowPw]=useState(false);
@@ -4905,6 +4943,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
 export default function App(){
   const isLocal=typeof window!=="undefined"&&window.location.hostname==="localhost";
   const[authed,setAuthed]=useState(()=>{if(isLocal)return true;try{return sessionStorage.getItem("enterrank_token")?true:false;}catch(e){return false;}});
+  const[showLanding,setShowLanding]=useState(true);
   const[screen,setScreen]=useState(isLocal?"dashboard":"hub");
   const[activeProject,setActiveProject]=useState(null);
   const[step,setStep]=useState("input");
@@ -5021,6 +5060,8 @@ export default function App(){
   };
 
   const handleBackToHub=()=>{setScreen("hub");setResults(null);setStep("input");};
+
+  if(showLanding&&!authed)return <LandingPage onGetStarted={()=>setShowLanding(false)}/>;
 
   if(!authed)return(<div style={{minHeight:"100vh",background:"#fff",fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",alignItems:"center",justifyContent:"center"}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
