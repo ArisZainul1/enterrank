@@ -3377,11 +3377,19 @@ function DashboardPage({r,history,goTo}){
 
     {/* ═══ TIER 1: THE HEADLINE ═══ */}
     <div style={{marginBottom:32}}>
-      {/* Overall Score — big and center */}
+      {/* Overall Score — circular ring */}
       <div style={{textAlign:"center",marginBottom:24}}>
-        <div style={{fontSize:13,fontWeight:500,color:C.muted,marginBottom:8}}>GEO Visibility Score</div>
-        <div style={{fontSize:56,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text,letterSpacing:"-.04em",lineHeight:1}}>{r.overall}<span style={{fontSize:24,color:C.muted,fontWeight:400}}>%</span></div>
-        <div style={{marginTop:8}}>
+        <div style={{fontSize:13,fontWeight:500,color:C.muted,marginBottom:12}}>GEO Visibility Score</div>
+        <div style={{position:"relative",width:140,height:140,margin:"0 auto"}}>
+          <svg viewBox="0 0 140 140" style={{width:140,height:140}}>
+            <circle cx="70" cy="70" r="62" fill="none" stroke={C.borderSoft} strokeWidth="6"/>
+            <circle cx="70" cy="70" r="62" fill="none" stroke={r.overall>=80?C.green:r.overall>=60?C.accent:r.overall>=40?C.amber:C.red} strokeWidth="6" strokeLinecap="round" strokeDasharray={2*Math.PI*62} strokeDashoffset={2*Math.PI*62*(1-r.overall/100)} transform="rotate(-90 70 70)" style={{transition:"stroke-dashoffset 1s ease"}}/>
+          </svg>
+          <div style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+            <div style={{fontSize:42,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text,letterSpacing:"-.03em",lineHeight:1}}>{r.overall}<span style={{fontSize:18,color:C.muted,fontWeight:400}}>%</span></div>
+          </div>
+        </div>
+        <div style={{marginTop:10}}>
           <span style={{fontSize:12,fontWeight:500,padding:"4px 14px",borderRadius:100,background:r.overall>=80?"#dcfce7":r.overall>=60?"#dbeafe":r.overall>=40?"#fef3c7":r.overall>=20?"#ffedd5":"#fee2e2",color:r.overall>=80?"#166534":r.overall>=60?"#1e40af":r.overall>=40?"#92400e":r.overall>=20?"#9a3412":"#991b1b"}}>{r.scoreLabel}</span>
         </div>
       </div>
@@ -3397,7 +3405,7 @@ function DashboardPage({r,history,goTo}){
           <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 18px",textAlign:"center"}}>
             <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:8}}>{kpi.label}</div>
             <div style={{display:"flex",alignItems:"baseline",gap:6,justifyContent:"center"}}>
-              <span style={{fontSize:kpi.label==="Sentiment Score"?18:22,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:kpi.color}}>{kpi.value}</span>
+              <span style={{fontSize:20,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:kpi.color}}>{kpi.value}</span>
               {kpi.prev!=null&&kpi.label!=="Best Engine"&&delta(parseInt(kpi.value),kpi.prev)}
               {kpi.sub&&<span style={{fontSize:12,color:C.muted}}>{kpi.sub}</span>}
             </div>
