@@ -2139,7 +2139,7 @@ function LandingPage({ onGetStarted }) {
                 <div style={{width:10,height:10,borderRadius:"50%",background:"#f59e0b"}}/>
                 <div style={{width:10,height:10,borderRadius:"50%",background:"#22c55e"}}/>
               </div>
-              <img src="/enterank-logo.svg" alt="EnterRank" style={{height:14,opacity:0.5}}/>
+              <div style={{fontSize:10,color:"#94a3b8",fontFamily:"'Space Mono',monospace"}}>rank.entermind.ai/dashboard</div>
               <div style={{width:40}}/>
             </div>
 
