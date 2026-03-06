@@ -2380,9 +2380,9 @@ function LoginForm({ onLogin, onSignUp, error, loading, onBack }) {
 const NAV_ITEMS=[
   {group:"Analysis",items:[
     {id:"dashboard",label:"Dashboard",icon:"grid"},
-    {id:"archetypes",label:"Query Categories",icon:"grid"},
     {id:"sentiment",label:"Sentiment Analysis",icon:"heart"},
-    {id:"intent",label:"Query Results",icon:"route"},
+    {id:"archetypes",label:"Query Categories",icon:"grid"},
+    {id:"visibility",label:"Visibility Map",icon:"activity"},
   ]},
   {group:"Strategy",items:[
     {id:"channels",label:"Target Channels",icon:"broadcast"},
@@ -2412,7 +2412,7 @@ const SidebarIcon=({name,size=18,color="#9ca3af"})=>{
 
 function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,setCollapsed,sectionReady={},auditInProgress=false}){
   const [hoveredNav, setHoveredNav] = useState(null);
-  const sectionMap = { dashboard:"dashboard", archetypes:"archetypes", sentiment:"sentiment", intent:"intent", playbook:"playbook", channels:"channels", contenthub:"contenthub", roadmap:"roadmap" };
+  const sectionMap = { dashboard:"dashboard", archetypes:"archetypes", sentiment:"sentiment", intent:"intent", visibility:"visibility", playbook:"playbook", channels:"channels", contenthub:"contenthub", roadmap:"roadmap" };
   const sideW=collapsed?60:220;
   return(<div style={{position:"fixed",left:0,top:0,bottom:0,width:sideW,background:"#fff",borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",transition:"width .2s ease",zIndex:100,overflow:"hidden"}}>
     {/* Logo area */}
@@ -3781,6 +3781,59 @@ function DashboardPage({r,history,goTo}){
 /* ─── PAGE: QUERY CATEGORIES ─── */
 function QueryCategoriesPage({ r }) {
   const [selectedCat, setSelectedCat] = useState(null);
+  const [testQuery, setTestQuery] = useState("");
+  const [testingPrompt, setTestingPrompt] = useState(false);
+  const [testResults, setTestResults] = useState(null);
+  const [testedPrompts, setTestedPrompts] = useState([]);
+
+  const handleTestPrompt = async () => {
+    if (!testQuery.trim() || testingPrompt) return;
+    setTestingPrompt(true);
+    setTestResults(null);
+    const query = testQuery.trim();
+    try {
+      const brand = r.clientData?.brand || "";
+      const website = r.clientData?.website || "";
+      const region = r.clientData?.region || "";
+      const neutralSys = "You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.";
+      const [gptResult, gemResult] = await Promise.all([
+        callOpenAISearch(query, region),
+        callGemini(query, neutralSys)
+      ]);
+      const gptText = typeof gptResult === "string" ? gptResult : (gptResult?.response || gptResult?.text || "");
+      const gemText = typeof gemResult === "string" ? gemResult : (gemResult?.response || gemResult?.text || "");
+      const gptCitations = gptResult?.citations || [];
+      const classifyText = (text, citations) => {
+        if (!text || text.length < 20) return "Absent";
+        const escaped = brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const nameRegex = new RegExp('\\b' + escaped + '\\b', 'i');
+        let domain = "";
+        if (website) { try { domain = new URL(website.startsWith("http") ? website : "https://" + website).hostname.replace("www.", ""); } catch(e) {} }
+        const nameFound = nameRegex.test(text);
+        const urlCited = domain && citations && citations.length > 0 && citations.some(c => (c.url || "").toLowerCase().includes(domain.toLowerCase()));
+        const textUrlFound = domain && text.toLowerCase().includes(domain.toLowerCase());
+        if (!nameFound && !urlCited && !textUrlFound) return "Absent";
+        if (urlCited || textUrlFound) return "Cited";
+        const citedPatterns = [
+          new RegExp('(?:recommend|suggest|would\\s+recommend).*?' + escaped, 'i'),
+          new RegExp(escaped + '.*?(?:is\\s+(?:a\\s+)?(?:great|excellent|top|best|leading))', 'i'),
+          new RegExp('(?:best|top|leading).*?' + escaped, 'i')
+        ];
+        if (citedPatterns.some(p => p.test(text))) return "Cited";
+        return "Mentioned";
+      };
+      const gptStatus = classifyText(gptText, gptCitations);
+      const gemStatus = classifyText(gemText, []);
+      const result = { query, gptStatus, gemStatus, gptText: gptText.slice(0, 500), gemText: gemText.slice(0, 500) };
+      setTestResults(result);
+      setTestedPrompts(prev => [result, ...prev]);
+      setTestQuery("");
+    } catch(e) {
+      console.error("Test prompt failed:", e);
+      setTestResults({ query, gptStatus: "Error", gemStatus: "Error", error: true });
+    }
+    setTestingPrompt(false);
+  };
 
   const gptQueries = r.engines[0]?.queries || [];
   const gemQueries = r.engines[1]?.queries || [];
@@ -3937,6 +3990,37 @@ function QueryCategoriesPage({ r }) {
 
       <div style={{ marginTop: 16, fontSize: 11, color: C.muted, padding: "0 4px" }}>
         Categories assigned by query intent analysis. Win rate = queries where {r.clientData.brand} is Cited or Mentioned on at least one engine.
+      </div>
+
+      {/* Test a Prompt */}
+      <div style={{ marginTop: 32, borderTop: "1px solid " + C.borderSoft, paddingTop: 24 }}>
+        <div style={{ fontSize: 16, fontWeight: 500, color: C.text, fontFamily: "'Satoshi',-apple-system,sans-serif", marginBottom: 4 }}>Test a Prompt</div>
+        <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>Enter any query to see how AI engines respond for {r.clientData?.brand || "your brand"}</div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <input value={testQuery} onChange={e => setTestQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && handleTestPrompt()} placeholder="e.g. What are the best mobile plans in Malaysia?" style={{ flex: 1, padding: "11px 14px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 13, color: C.text, outline: "none", background: "#fff", fontFamily: "inherit", transition: "all .15s" }}/>
+          <button onClick={handleTestPrompt} disabled={!testQuery.trim() || testingPrompt} style={{ padding: "11px 20px", background: testQuery.trim() && !testingPrompt ? C.accent : "#e2e8f0", color: testQuery.trim() && !testingPrompt ? "#fff" : "#94a3b8", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: testQuery.trim() && !testingPrompt ? "pointer" : "not-allowed", fontFamily: "'Satoshi',-apple-system,sans-serif", transition: "all .15s", whiteSpace: "nowrap" }}>{testingPrompt ? "Testing..." : "Test"}</button>
+        </div>
+        {testResults && !testResults.error && (
+          <div style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 10, padding: "14px 16px", marginBottom: 12 }}>
+            <div style={{ fontSize: 12, color: C.sub, marginBottom: 8 }}>{testResults.query}</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 6, background: testResults.gptStatus === "Cited" ? "#dcfce7" : testResults.gptStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: testResults.gptStatus === "Cited" ? "#166534" : testResults.gptStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>ChatGPT: {testResults.gptStatus}</span>
+              <span style={{ fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 6, background: testResults.gemStatus === "Cited" ? "#dcfce7" : testResults.gemStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: testResults.gemStatus === "Cited" ? "#166534" : testResults.gemStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>Gemini: {testResults.gemStatus}</span>
+            </div>
+          </div>
+        )}
+        {testedPrompts.length > 1 && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>Previously tested</div>
+            {testedPrompts.slice(1, 6).map((tp, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid " + C.borderSoft, fontSize: 11 }}>
+                <div style={{ flex: 1, color: C.sub }}>{tp.query}</div>
+                <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: tp.gptStatus === "Cited" ? "#dcfce7" : tp.gptStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: tp.gptStatus === "Cited" ? "#166534" : tp.gptStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>{tp.gptStatus}</span>
+                <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: tp.gemStatus === "Cited" ? "#dcfce7" : tp.gemStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: tp.gemStatus === "Cited" ? "#166534" : tp.gemStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>{tp.gemStatus}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -5732,7 +5816,7 @@ export default function App(){
   const[data,setData]=useState({brand:"",industry:"",website:"",region:"",topics:[],competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}],archetypes:[]});
   const[results,setResults]=useState(null);
   const[history,setHistory]=useState([]);
-  const [sectionReady, setSectionReady] = useState({ dashboard:true, archetypes:true, sentiment:true, intent:true, playbook:true, channels:true, contenthub:true, roadmap:true });
+  const [sectionReady, setSectionReady] = useState({ dashboard:true, archetypes:true, sentiment:true, intent:true, visibility:true, playbook:true, channels:true, contenthub:true, roadmap:true });
   const [auditInProgress, setAuditInProgress] = useState(false);
   const [auditProgress, setAuditProgress] = useState(0);
   const [dashboardLoadProgress, setDashboardLoadProgress] = useState(0);
@@ -6115,7 +6199,6 @@ export default function App(){
         {step==="dashboard"&&results&&<DashboardPage r={results} history={history} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }}/>}
         {step==="archetypes"&&results&&(sectionReady.archetypes||!auditInProgress)&&<QueryCategoriesPage r={results}/>}
         {step==="sentiment"&&results&&(sectionReady.sentiment||!auditInProgress)&&<SentimentPage r={results}/>}
-        {step==="intent"&&results&&(sectionReady.intent||!auditInProgress)&&<IntentPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }}/>}
         {step==="playbook"&&results&&(sectionReady.playbook||!auditInProgress)&&<PlaybookPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject}/>}
         {step==="channels"&&results&&(sectionReady.channels||!auditInProgress)&&<ChannelsPage r={results}/>}
         {step==="contenthub"&&results&&(sectionReady.contenthub||!auditInProgress)&&<ContentHubPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject} onUpdate={setResults}/>}
