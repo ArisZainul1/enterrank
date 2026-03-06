@@ -25,7 +25,7 @@ function Field({label,value,onChange,placeholder,onBlur:onBlurCb}){return(<div s
 function InfoTip({text}){const[show,setShow]=useState(false);return(<span style={{position:"relative",display:"inline-flex",marginLeft:4,cursor:"help"}} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}><span style={{width:14,height:14,borderRadius:"50%",background:C.bg,border:`1px solid ${C.border}`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.muted,fontWeight:600}}>?</span>{show&&<div style={{position:"absolute",bottom:"calc(100% + 6px)",left:"50%",transform:"translateX(-50%)",width:240,padding:"8px 10px",background:C.text,color:"#fff",borderRadius:8,fontSize:11,lineHeight:1.5,zIndex:999,boxShadow:"0 8px 24px rgba(0,0,0,.2)",pointerEvents:"none"}}><div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%) rotate(45deg)",width:8,height:8,background:C.text}}/>{text}</div>}</span>);}
 function SectionNote({text}){return <div style={{padding:"10px 14px",background:`${C.accent}04`,border:`1px solid ${C.accent}10`,borderRadius:C.rs,marginBottom:16,display:"flex",gap:8,alignItems:"flex-start"}}><span style={{fontSize:12,color:C.sub,lineHeight:1.6}}>{text}</span></div>;}
 function NavBtn({onClick,label}){return <div style={{display:"flex",justifyContent:"flex-end",marginTop:20}}><button onClick={onClick} style={{padding:"10px 22px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{label}</button></div>;}
-function Logo(){return(<div style={{display:"flex",alignItems:"center",gap:9}}><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg><div><span style={{fontWeight:800,fontSize:16,color:C.text,letterSpacing:"-.03em",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>EnterRank</span><span style={{fontSize:9,color:C.muted,marginLeft:6,fontWeight:500,textTransform:"uppercase",letterSpacing:".08em"}}>by Entermind</span></div></div>);}
+function Logo(){return(<div style={{display:"flex",alignItems:"center",gap:9}}><img src="/enterank-icon.svg" alt="EnterRank" style={{width:28,height:28}}/><div><span style={{fontWeight:800,fontSize:16,color:C.text,letterSpacing:"-.03em",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>EnterRank</span><span style={{fontSize:9,color:C.muted,marginLeft:6,fontWeight:500,textTransform:"uppercase",letterSpacing:".08em"}}>by Entermind</span></div></div>);}
 function BRow({name,score,color,bold,diff}){return(<div style={{display:"flex",alignItems:"center",gap:12}}><span style={{minWidth:120,fontSize:12,fontWeight:bold?600:400,color:bold?C.accent:C.sub}}>{name}</span><div style={{flex:1}}><Bar value={score} color={color} h={8}/></div><span style={{minWidth:26,textAlign:"right",fontSize:13,fontWeight:700,color:bold?C.text:C.sub}}>{score}</span>{diff!==undefined&&<span style={{fontSize:11,fontWeight:600,color:diff>0?C.red:C.green,minWidth:32,textAlign:"right"}}>{diff>0?`+${diff}`:diff}</span>}</div>);}
 function SC(s){return s==="critical"?C.red:s==="warning"?C.amber:C.green;}
 
@@ -2068,9 +2068,8 @@ function LandingPage({ onGetStarted }) {
 
       {/* Top bar */}
       <div style={{position:"relative",zIndex:2,padding:"24px 48px",display:"flex",alignItems:"center",gap:10}}>
-        <svg width="32" height="32" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
-        <span style={{fontSize:16,fontWeight:500,color:"#0f172a",fontFamily:"'Outfit',-apple-system,sans-serif",letterSpacing:"-.01em"}}>EnterRank</span>
-        <span style={{fontSize:12,color:"#94a3b8",marginLeft:2}}>by Entermind</span>
+        <img src="/enterank-logo.svg" alt="EnterRank" style={{height:28}}/>
+        <span style={{fontSize:11,color:"#94a3b8",marginLeft:8}}>by Entermind</span>
       </div>
 
       {/* Main content */}
@@ -2145,7 +2144,7 @@ function LandingPage({ onGetStarted }) {
               <div style={{width:110,background:"#f8fafc",borderRight:"1px solid #f1f5f9",padding:"12px 0",flexShrink:0}}>
                 <div style={{padding:"6px 12px",marginBottom:6}}>
                   <div style={{display:"flex",alignItems:"center",gap:5}}>
-                    <svg width="14" height="14" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
+                    <img src="/enterank-icon.svg" alt="ER" style={{width:14,height:14}}/>
                     <span style={{fontSize:9,fontWeight:500,color:"#0f172a",fontFamily:"'Outfit',-apple-system,sans-serif"}}>EnterRank</span>
                   </div>
                 </div>
@@ -2284,7 +2283,7 @@ function LoginForm({ onLogin, onSignUp, error, loading, onBack }) {
 
           {/* Logo + title */}
           <div style={{textAlign:"center",marginBottom:32}}>
-            <svg width="36" height="36" viewBox="0 0 28 28" style={{margin:"0 auto 14px",display:"block",cursor:"pointer"}} onClick={onBack}><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
+            <img src="/enterank-icon.svg" alt="EnterRank" style={{width:40,height:40,display:"block",margin:"0 auto 14px",cursor:"pointer"}} onClick={onBack}/>
             <div style={{fontSize:20,fontWeight:500,color:"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>{isSignUp ? "Create your account" : "Welcome back"}</div>
             <div style={{fontSize:13,color:"#94a3b8",marginTop:4}}>{isSignUp ? "Get started with EnterRank" : "Sign in to EnterRank"}</div>
           </div>
@@ -2411,7 +2410,7 @@ function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,s
   return(<div style={{position:"fixed",left:0,top:0,bottom:0,width:sideW,background:"#fff",borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",transition:"width .2s ease",zIndex:100,overflow:"hidden"}}>
     {/* Logo area */}
     <div style={{padding:collapsed?"16px 12px":"16px 20px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:10}}>
-      <svg width="28" height="28" viewBox="0 0 28 28" style={{flexShrink:0}}><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
+      <img src="/enterank-icon.svg" alt="EnterRank" style={{width:28,height:28,flexShrink:0}}/>
       {!collapsed&&<div style={{overflow:"hidden",whiteSpace:"nowrap"}}>
         <div style={{fontSize:11,color:C.muted,display:"flex",alignItems:"center",gap:4}}>
           {!isLocal&&<span onClick={onBack} style={{cursor:"pointer",color:C.accent,fontSize:11}}>←</span>}
