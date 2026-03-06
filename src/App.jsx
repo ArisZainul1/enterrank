@@ -214,6 +214,7 @@ async function crawlWebsite(url){
     const res=await fetch("/api/crawl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url})});
     const data=await res.json();
     if(data.error&&!data.domain)return null;
+    console.log("RAW_CRAWL_RESULT:", JSON.stringify({topKeys: Object.keys(data || {}), schemas: data?.schemas || "NONE", mainPageSchemas: data?.mainPage?.schemas || "NONE", technicalSignals: data?.technicalSignals ? Object.keys(data.technicalSignals) : "NONE", hasSchemaField: "schemas" in (data || {}), schemaValues: data?.schemas || data?.mainPage?.schemas || data?.technicalSignals?.schemas || "NOWHERE", aeoSchemaTypes: data?.aeoSignals?.schemaTypes || "NONE"}));
     return{mainPage:data};
   }catch(e){console.error("Crawl error for "+url+":",e);return null;}
 }
