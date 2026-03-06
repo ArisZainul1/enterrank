@@ -21,8 +21,8 @@ function BrandLogo({name,website,size=22,color}){
 function TagInput({label,tags,setTags,placeholder}){const[input,setInput]=useState("");const add=()=>{const v=input.trim();if(v&&!tags.includes(v)){setTags([...tags,v]);setInput("");}};return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label}</label><div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,minHeight:40,alignItems:"center"}}>{tags.map((tag,i)=>(<span key={i} style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",background:`${C.accent}15`,color:C.accent,borderRadius:100,fontSize:12,fontWeight:500}}>{tag}<span onClick={()=>setTags(tags.filter((_,j)=>j!==i))} style={{cursor:"pointer",opacity:.6,fontSize:14}}>×</span></span>))}<input value={input} onChange={e=>setInput(e.target.value)} placeholder={tags.length===0?placeholder:""} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}} style={{border:"none",background:"transparent",outline:"none",fontSize:13,color:C.text,flex:1,minWidth:80,fontFamily:"inherit"}}/></div><span style={{fontSize:10,color:C.muted}}>Press Enter to add</span></div>);}
 function normalizeUrl(url){if(!url||typeof url!=="string")return "";url=url.trim();if(!url)return "";if(url.startsWith("https://"))return url;if(url.startsWith("http://"))return url.replace("http://","https://");return "https://"+url;}
 const formatAuditDate=(d)=>{const date=d instanceof Date?d:new Date(d);return date.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});};
-function Field({label,value,onChange,placeholder,onBlur:onBlurCb}){return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label.endsWith(" *")?<>{label.slice(0,-2)}<span style={{color:C.red}}> *</span></>:label}</label><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,color:C.text,fontSize:14,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>{e.target.style.borderColor=C.border;if(onBlurCb)onBlurCb(e);}}/></div>);}
-function InfoTip({text}){const[show,setShow]=useState(false);return(<span style={{position:"relative",display:"inline-flex",marginLeft:4,cursor:"help"}} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}><span style={{width:14,height:14,borderRadius:"50%",background:C.bg,border:`1px solid ${C.border}`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.muted,fontWeight:600}}>?</span>{show&&<div style={{position:"absolute",bottom:"calc(100% + 6px)",left:"50%",transform:"translateX(-50%)",width:240,padding:"10px 12px",background:C.text,color:"#fff",borderRadius:8,fontSize:11,lineHeight:1.5,zIndex:999,boxShadow:"0 8px 24px rgba(0,0,0,.2)",pointerEvents:"none"}}><div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%) rotate(45deg)",width:8,height:8,background:C.text}}/>{text}</div>}</span>);}
+function Field({label,value,onChange,placeholder,onBlur:onBlurCb}){return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label.endsWith(" *")?<>{label.slice(0,-2)}<span style={{color:C.red}}> *</span></>:label}</label><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,color:C.text,fontSize:14,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>{e.target.style.borderColor=C.border;if(onBlurCb)onBlurCb(e);}}/></div>);}
+function InfoTip({text}){const[show,setShow]=useState(false);return(<span style={{position:"relative",display:"inline-flex",marginLeft:4,cursor:"help"}} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}><span style={{width:14,height:14,borderRadius:"50%",background:C.bg,border:`1px solid ${C.border}`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.muted,fontWeight:600}}>?</span>{show&&<div style={{position:"absolute",bottom:"calc(100% + 6px)",left:"50%",transform:"translateX(-50%)",width:240,padding:"8px 10px",background:C.text,color:"#fff",borderRadius:8,fontSize:11,lineHeight:1.5,zIndex:999,boxShadow:"0 8px 24px rgba(0,0,0,.2)",pointerEvents:"none"}}><div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%) rotate(45deg)",width:8,height:8,background:C.text}}/>{text}</div>}</span>);}
 function SectionNote({text}){return <div style={{padding:"10px 14px",background:`${C.accent}04`,border:`1px solid ${C.accent}10`,borderRadius:C.rs,marginBottom:16,display:"flex",gap:8,alignItems:"flex-start"}}><span style={{fontSize:12,color:C.sub,lineHeight:1.6}}>{text}</span></div>;}
 function NavBtn({onClick,label}){return <div style={{display:"flex",justifyContent:"flex-end",marginTop:20}}><button onClick={onClick} style={{padding:"10px 22px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Geist-Variable','Outfit'"}}>{label}</button></div>;}
 function Logo(){return(<div style={{display:"flex",alignItems:"center",gap:9}}><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill={C.accent}/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg><div><span style={{fontWeight:800,fontSize:16,color:C.text,letterSpacing:"-.03em",fontFamily:"'Geist-Variable','Outfit'"}}>EnterRank</span><span style={{fontSize:9,color:C.muted,marginLeft:6,fontWeight:500,textTransform:"uppercase",letterSpacing:".08em"}}>by Entermind</span></div></div>);}
@@ -2797,9 +2797,9 @@ Return JSON only:
           <label style={{fontSize:12,fontWeight:500,color:C.sub}}>Website</label>
         </div>
         {(data.competitors||[]).map((comp,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:8}}>
-          <input value={comp.name} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],name:e.target.value};setData({...data,competitors:c});}} placeholder={fieldsLocked?"Auto-detected":`Competitor ${i+1}`} style={{padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
+          <input value={comp.name} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],name:e.target.value};setData({...data,competitors:c});}} placeholder={fieldsLocked?"Auto-detected":`Competitor ${i+1}`} style={{padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <input value={comp.website} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],website:e.target.value};setData({...data,competitors:c});}} placeholder={fieldsLocked?"Auto-detected":"competitor.com"} style={{flex:1,padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
+            <input value={comp.website} onChange={e=>{const c=[...data.competitors];c[i]={...c[i],website:e.target.value};setData({...data,competitors:c});}} placeholder={fieldsLocked?"Auto-detected":"competitor.com"} style={{flex:1,padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,fontSize:14,color:C.text,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
             <span onClick={()=>{const c=data.competitors.filter((_,j)=>j!==i);setData({...data,competitors:c});}} style={{cursor:"pointer",color:C.muted,fontSize:16,opacity:0.5,flexShrink:0,lineHeight:1}}>×</span>
           </div>
         </div>))}
@@ -2847,16 +2847,15 @@ function DashboardPage({r,history,goTo}){
   const missingChannels=channels.filter(ch=>ch.status==="Not Present"||ch.statusLabel==="Not Present");
 
   const diags=[];
-  if(bestEngine.score-worstEngine.score>15)diags.push({icon:"\u26A1",severity:"warning",text:`${bestEngine.score-worstEngine.score}pt gap between ${bestEngine.name} (${bestEngine.score}%) and ${worstEngine.name} (${worstEngine.score}%).`});
-  if(avgCitations<10)diags.push({icon:"\uD83D\uDD17",severity:"critical",text:`${avgCitations}% citation rate. Users get answers about your space but aren't sent to your site.`});
-  else if(avgCitations<25)diags.push({icon:"\uD83D\uDD17",severity:"warning",text:`${avgCitations}% citation rate \u2014 ${100-avgCitations}% of mentions don't link back to you.`});
-  if(avgMentions<15)diags.push({icon:"\uD83D\uDCAC",severity:"critical",text:`${avgMentions}% mention rate across engines. ${r.clientData.brand} isn't part of the AI conversation yet.`});
-  else if(avgMentions<35)diags.push({icon:"\uD83D\uDCAC",severity:"warning",text:`Mentioned in ~1 of ${Math.round(100/avgMentions)} relevant responses (${avgMentions}%).`});
-  if(criticalCats.length>0)diags.push({icon:"\uD83D\uDEA8",severity:"critical",text:`${criticalCats.map(c=>c.label.split("/")[0].trim()+" "+c.score+"%").join(", ")} \u2014 ${criticalCats.length>1?"these need":"needs"} immediate attention.`});
-  if(weakestCat.score<30)diags.push({icon:"\uD83D\uDCC9",severity:"critical",text:`${weakestCat.label.split("/")[0].trim()} at ${weakestCat.score}% \u2014 lowest category score.`});
-  if(compsAhead.length>0){const compMsgs=compsAhead.map(c=>{const cr=Math.round(((c.mentionRate||0)+(c.citationRate||0))/2);return c.name+" "+cr+"%";});diags.push({icon:"\uD83C\uDFC1",severity:compsAhead.length>1?"critical":"warning",text:`${compMsgs.join(", ")} ${compsAhead.length>1?"are":"is"} scoring above you (${brandAvgRate}%) on real visibility metrics.`});}
-  if(missingChannels.length>0)diags.push({icon:"\uD83D\uDCE1",severity:"warning",text:`Not found on ${missingChannels.length} distribution channel${missingChannels.length>1?"s":""}.`});
-  if(strongestCat.score>60)diags.push({icon:"\u2705",severity:"good",text:`${strongestCat.label.split("/")[0].trim()} is your strongest signal at ${strongestCat.score}%.`});
+  if(bestEngine.score-worstEngine.score>15)diags.push({severity:"warning",text:`${bestEngine.score-worstEngine.score}pt gap between ${bestEngine.name} (${bestEngine.score}%) and ${worstEngine.name} (${worstEngine.score}%).`,action:`Focus content optimisation on ${worstEngine.name} — review its strengths/weaknesses for specific gaps.`});
+  if(avgCitations<10)diags.push({severity:"critical",text:`${avgCitations}% citation rate — AI engines discuss your space but rarely link to your site.`,action:"Implement FAQ schema, add product comparison tables, and create definitive guides that AI engines can cite directly."});
+  else if(avgCitations<25)diags.push({severity:"warning",text:`${avgCitations}% citation rate — ${100-avgCitations}% of mentions don't link back to you.`,action:"Add structured data (FAQ, HowTo schema) and authoritative long-form content to increase citation likelihood."});
+  if(avgMentions<15)diags.push({severity:"critical",text:`${avgMentions}% mention rate — your brand is largely invisible to AI engines.`,action:"Prioritise entity disambiguation: update Wikipedia, Crunchbase, and knowledge graph presence. Create category-defining content."});
+  else if(avgMentions<35)diags.push({severity:"warning",text:`${avgMentions}% mention rate — mentioned in roughly 1 in ${Math.round(100/avgMentions)} queries.`,action:"Create content targeting the specific queries where you're absent. See Query Categories for gaps."});
+  if(criticalCats.length>0)diags.push({severity:"critical",text:`${criticalCats.map(c=>c.label.split("/")[0].trim()).join(", ")} ${criticalCats.length>1?"are":"is"} critically weak (under 30%).`,action:`${criticalCats[0].label.split("/")[0].trim()}: ${criticalCats[0].evidence?.[0]||"Needs immediate attention"}.`});
+  if(compsAhead.length>0)diags.push({severity:"warning",text:`${compsAhead.map(c=>c.name).join(", ")} ${compsAhead.length>1?"are":"is"} scoring above you on visibility.`,action:"Expand into competitor comparison content and target queries where competitors are Cited but you're Absent."});
+  if(missingChannels.length>3)diags.push({severity:"warning",text:`Not found on ${missingChannels.length} distribution channels.`,action:"Establish presence on missing channels — see Target Channels for the full list and verification status."});
+  if(strongestCat&&strongestCat.score>60)diags.push({severity:"good",text:`${strongestCat.label.split("/")[0].trim()} is your strongest signal at ${strongestCat.score}%.`,action:"Maintain and build on this advantage — it's a competitive differentiator."});
   const sevOrder={critical:0,warning:1,info:2,good:3};
   diags.sort((a,b)=>(sevOrder[a.severity]??2)-(sevOrder[b.severity]??2));
   const sevColors={critical:"#ef4444",warning:"#f59e0b",good:"#22c55e"};
@@ -2953,9 +2952,9 @@ function DashboardPage({r,history,goTo}){
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:5}}>
           {diags.slice(0,4).map((d,i)=>(
-            <div key={i} style={{display:"flex",gap:8,padding:"8px 10px",background:`${sevColors[d.severity]||C.accent}05`,borderRadius:8,border:`1px solid ${sevColors[d.severity]||C.accent}10`,alignItems:"flex-start"}}>
+            <div key={i} style={{display:"flex",gap:8,padding:"10px 12px",background:`${sevColors[d.severity]||C.accent}05`,borderRadius:8,border:`1px solid ${sevColors[d.severity]||C.accent}10`,alignItems:"flex-start"}}>
               <div style={{width:6,height:6,borderRadius:3,background:sevColors[d.severity]||C.accent,flexShrink:0,marginTop:5}}/>
-              <span style={{fontSize:12,color:C.sub,lineHeight:1.5}}>{d.text}</span>
+              <div><div style={{fontSize:12,color:C.sub,lineHeight:1.5}}>{d.text}</div>{d.action&&<div style={{fontSize:11,color:sevColors[d.severity]||C.accent,marginTop:3,lineHeight:1.4,fontWeight:500}}>{d.action}</div>}</div>
             </div>
           ))}
         </div>
@@ -2965,16 +2964,22 @@ function DashboardPage({r,history,goTo}){
       <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 20px"}}>
         <div style={{fontSize:14,fontWeight:500,color:C.text,marginBottom:12}}>Category Health</div>
         {painPointsReady?(
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {r.painPoints.map((pp,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:11,color:C.sub,minWidth:100,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{pp.label.split("/")[0].trim()}</span>
-                <div style={{flex:1,height:6,borderRadius:3,background:C.bg}}>
-                  <div style={{width:Math.max(2,pp.score)+"%",height:6,borderRadius:3,background:pp.severity==="critical"?C.red:pp.severity==="warning"?C.amber:C.green,transition:"width .6s ease"}}/>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {r.painPoints.map((pp,i)=>{
+              const topEvidence=(pp.evidence||[]).find(e=>!e.startsWith("Baseline")&&!e.startsWith("No "))||(pp.evidence||[])[0]||"";
+              return (
+                <div key={i}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:11,color:C.sub,minWidth:100,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{pp.label.split("/")[0].trim()}</span>
+                    <div style={{flex:1,height:6,borderRadius:3,background:C.bg}}>
+                      <div style={{width:Math.max(2,pp.score)+"%",height:6,borderRadius:3,background:pp.severity==="critical"?C.red:pp.severity==="warning"?C.amber:C.green,transition:"width .6s ease"}}/>
+                    </div>
+                    <span style={{fontSize:12,fontWeight:500,color:C.text,minWidth:32,textAlign:"right"}}>{pp.score}%</span>
+                  </div>
+                  {topEvidence&&<div style={{fontSize:10,color:C.muted,marginTop:2,paddingLeft:108,lineHeight:1.4}}>{topEvidence}</div>}
                 </div>
-                <span style={{fontSize:12,fontWeight:500,color:C.text,minWidth:32,textAlign:"right"}}>{pp.score}%</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ):(
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -3079,7 +3084,7 @@ function DashboardPage({r,history,goTo}){
                               const theirs=cp.score||0;
                               const catDiff=theirs-yours;
                               return(
-                                <div key={j} style={{padding:"10px 12px",background:"#fff",borderRadius:8,border:"1px solid "+C.borderSoft}}>
+                                <div key={j} style={{padding:"8px 10px",background:"#fff",borderRadius:8,border:"1px solid "+C.borderSoft}}>
                                   <div style={{fontSize:10,color:C.muted,marginBottom:6}}>{cp.label.split("/")[0].trim()}</div>
                                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
                                     <span style={{fontSize:11,color:C.accent,fontWeight:500}}>You: {yours}%</span>
