@@ -1970,38 +1970,93 @@ function generatePartial(cd, partial) {
 
 /* ─── LANDING PAGE ─── */
 function LandingPage({ onGetStarted }) {
+  const [hoverCTA, setHoverCTA] = React.useState(false);
   return (
-    <div style={{minHeight:"100vh",background:"#f8f9fb",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden",fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif"}}>
-      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <div style={{minHeight:"100vh",background:"#fafbfc",display:"flex",flexDirection:"column",fontFamily:"'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif",position:"relative",overflow:"hidden"}}>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
       <style>{`
-        @keyframes floatOrb1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-20px) scale(1.05)}}
-        @keyframes floatOrb2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-20px,25px) scale(1.08)}}
-        @keyframes scanLine{0%,100%{opacity:0;transform:translateY(0)}50%{opacity:1;transform:translateY(40px)}}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes floatA{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-12px) rotate(1deg)}}
+        @keyframes floatB{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(8px) rotate(-0.5deg)}}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes slideIn{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
+        @keyframes pulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
+        @keyframes gridMove{0%{background-position:0 0}100%{background-position:60px 60px}}
       `}</style>
-      {/* Animated background */}
-      <div style={{position:"absolute",inset:0,overflow:"hidden",zIndex:0}}>
-        <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(rgba(37,99,235,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.03) 1px, transparent 1px)",backgroundSize:"60px 60px"}}/>
-        <div style={{position:"absolute",top:"20%",left:"30%",width:400,height:400,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.06) 0%, transparent 70%)",animation:"floatOrb1 8s ease-in-out infinite"}}/>
-        <div style={{position:"absolute",bottom:"20%",right:"25%",width:300,height:300,borderRadius:"50%",background:"radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 70%)",animation:"floatOrb2 10s ease-in-out infinite"}}/>
-        <div style={{position:"absolute",top:"40%",left:0,right:0,height:1,background:"linear-gradient(90deg, transparent, rgba(37,99,235,0.06), transparent)",animation:"scanLine 6s ease-in-out infinite"}}/>
+      {/* Background elements */}
+      <div style={{position:"absolute",inset:0,zIndex:0}}>
+        <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(rgba(37,99,235,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.04) 1px, transparent 1px)",backgroundSize:"60px 60px",animation:"gridMove 20s linear infinite"}}/>
+        <div style={{position:"absolute",top:-200,right:-100,width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.07) 0%, transparent 65%)"}}/>
+        <div style={{position:"absolute",bottom:-150,left:-80,width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 65%)"}}/>
       </div>
-      {/* Content */}
-      <div style={{position:"relative",zIndex:1,textAlign:"center",animation:"fadeIn .8s ease-out"}}>
-        <div style={{marginBottom:32}}>
-          <svg width="48" height="48" viewBox="0 0 28 28" style={{margin:"0 auto 16px"}}><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
+      {/* Main content */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",zIndex:1,padding:"60px 24px 40px"}}>
+        {/* Logo + brand */}
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:48,animation:"fadeUp 0.6s ease-out"}}>
+          <svg width="36" height="36" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 14L12 8L17 14L12 20Z" fill="white" opacity=".9"/><path d="M13 14L18 8L23 14L18 20Z" fill="white" opacity=".5"/></svg>
+          <span style={{fontSize:15,fontWeight:500,color:"#6b7280",fontFamily:"'Outfit'",letterSpacing:".02em"}}>EnterRank <span style={{color:"#d1d5db"}}>by</span> Entermind</span>
         </div>
-        <h1 style={{fontSize:52,fontWeight:500,fontFamily:"'Outfit'",color:"#111827",letterSpacing:"-.04em",margin:"0 0 8px",lineHeight:1.1}}>EnterRank</h1>
-        <div style={{fontSize:14,color:"#6b7280",marginBottom:8,fontWeight:400,letterSpacing:".01em"}}>by Entermind</div>
-        <p style={{fontSize:18,color:"#4b5563",margin:"0 0 40px",fontWeight:400,maxWidth:400,lineHeight:1.5}}>AI Engine Auditing & Optimisation Platform</p>
-        <button
-          onClick={onGetStarted}
-          style={{padding:"14px 40px",background:"#2563eb",color:"#fff",border:"none",borderRadius:10,fontSize:15,fontWeight:500,cursor:"pointer",fontFamily:"'Outfit'",letterSpacing:".01em",transition:"all .2s",boxShadow:"0 4px 14px rgba(37,99,235,0.25)"}}
-          onMouseEnter={e => { e.target.style.background = "#1d4ed8"; e.target.style.boxShadow = "0 6px 20px rgba(37,99,235,0.35)"; }}
-          onMouseLeave={e => { e.target.style.background = "#2563eb"; e.target.style.boxShadow = "0 4px 14px rgba(37,99,235,0.25)"; }}
-        >Audit Now</button>
+        {/* Hero headline */}
+        <div style={{textAlign:"center",maxWidth:720,animation:"fadeUp 0.8s ease-out"}}>
+          <div style={{fontSize:13,fontWeight:500,color:"#2563eb",letterSpacing:".08em",textTransform:"uppercase",marginBottom:20,fontFamily:"'Space Mono'"}}>{"Audit \u00b7 Analyse \u00b7 Optimise"}</div>
+          <h1 style={{fontSize:56,fontWeight:500,fontFamily:"'Outfit'",color:"#0f172a",letterSpacing:"-.045em",margin:"0 0 20px",lineHeight:1.08}}>
+            See how AI engines<br/>
+            <span style={{color:"#2563eb"}}>see your brand</span>
+          </h1>
+          <p style={{fontSize:17,color:"#64748b",margin:"0 0 36px",lineHeight:1.65,maxWidth:520,marginLeft:"auto",marginRight:"auto"}}>
+            End-to-end AI engine auditing and optimisation. Test real queries on ChatGPT and Gemini, measure visibility, and build your strategy to get cited.
+          </p>
+          {/* CTA */}
+          <button
+            onClick={onGetStarted}
+            onMouseEnter={() => setHoverCTA(true)}
+            onMouseLeave={() => setHoverCTA(false)}
+            style={{
+              padding:"16px 44px",
+              background:hoverCTA?"#1d4ed8":"#2563eb",
+              color:"#fff",
+              border:"none",
+              borderRadius:12,
+              fontSize:15,
+              fontWeight:500,
+              cursor:"pointer",
+              fontFamily:"'Outfit'",
+              letterSpacing:".01em",
+              transition:"all .25s ease",
+              boxShadow:hoverCTA?"0 8px 30px rgba(37,99,235,0.35)":"0 4px 16px rgba(37,99,235,0.2)",
+              transform:hoverCTA?"translateY(-1px)":"translateY(0)"
+            }}
+          >Run Audit Now</button>
+        </div>
+        {/* Feature cards */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20,maxWidth:780,width:"100%",marginTop:64}}>
+          {[
+            {title:"Real Engine Testing",desc:"Every query tested live on ChatGPT and Gemini APIs. No estimates, no simulations \u2014 real AI responses classified and scored.",icon:(<svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect x="2" y="6" width="24" height="16" rx="3" stroke="#2563eb" strokeWidth="1.5" fill="none"/><path d="M8 14l3 3 6-6" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>)},
+            {title:"Competitive Intelligence",desc:"Crawl competitor websites, compare GEO signals, and benchmark your visibility against the brands fighting for the same queries.",icon:(<svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="10" cy="14" r="6" stroke="#2563eb" strokeWidth="1.5" fill="none"/><circle cx="18" cy="14" r="6" stroke="#2563eb" strokeWidth="1.5" fill="none" opacity="0.5"/></svg>)},
+            {title:"Actionable Strategy",desc:"Category scoring, content recommendations, and a 90-day roadmap \u2014 all grounded in real audit findings, not generic advice.",icon:(<svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M6 20l5-5 4 3 7-9" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/><circle cx="6" cy="20" r="1.5" fill="#2563eb"/><circle cx="11" cy="15" r="1.5" fill="#2563eb"/><circle cx="15" cy="18" r="1.5" fill="#2563eb"/><circle cx="22" cy="9" r="1.5" fill="#2563eb"/></svg>)}
+          ].map((f, i) => (
+            <div key={i} style={{
+              background:"rgba(255,255,255,0.7)",
+              backdropFilter:"blur(8px)",
+              border:"1px solid #e8ecf1",
+              borderRadius:14,
+              padding:"28px 24px",
+              animation:`fadeUp ${0.9 + i * 0.15}s ease-out`,
+              transition:"all .2s ease"
+            }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "#2563eb30"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(37,99,235,0.06)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "#e8ecf1"; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              <div style={{marginBottom:14}}>{f.icon}</div>
+              <div style={{fontSize:14,fontWeight:500,color:"#0f172a",marginBottom:6,fontFamily:"'Outfit'"}}>{f.title}</div>
+              <div style={{fontSize:12,color:"#64748b",lineHeight:1.65}}>{f.desc}</div>
+            </div>
+          ))}
+        </div>
       </div>
-      <div style={{position:"absolute",bottom:24,fontSize:11,color:"#9ca3af",zIndex:1}}>Powered by ChatGPT & Gemini APIs</div>
+      {/* Footer */}
+      <div style={{textAlign:"center",padding:"20px 0 28px",position:"relative",zIndex:1}}>
+        <div style={{fontSize:11,color:"#9ca3af",letterSpacing:".02em"}}>{"Powered by ChatGPT & Gemini APIs \u00b7 Built by Entermind"}</div>
+      </div>
     </div>
   );
 }
