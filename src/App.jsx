@@ -117,6 +117,19 @@ async function callWithRetry(fn, maxRetries=3, baseDelayMs=1000){
   }
   return null;
 }
+async function runInBatches(tasks, batchSize = 3, delayMs = 500) {
+  const results = [];
+  for (let i = 0; i < tasks.length; i += batchSize) {
+    const batch = tasks.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(fn => fn()));
+    results.push(...batchResults);
+    if (i + batchSize < tasks.length) {
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+  return results;
+}
+
 
 function validateResponse(raw,minLength=10){
   if(!raw)return null;
@@ -635,52 +648,42 @@ Return JSON only:
     return { status: "Mentioned", confidence: "low" };
   }
 
-  // Send queries in parallel batches (used for Gemini)
+  // Send queries in throttled batches (used for Gemini)
   async function runQueryBatches(callFn, queries, batchSize, delayMs, engineLabel) {
-    const results = [];
-    for (let i = 0; i < queries.length; i += batchSize) {
-      const batch = queries.slice(i, i + batchSize);
-      onProgress(`Testing on ${engineLabel}...`, 15 + Math.round((i / queries.length) * 25));
-      const batchResults = await Promise.all(
-        batch.map(async (query) => {
-          const response = await callFn(query, "You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.");
-          return { query, response: response || "", citations: [] };
-        })
-      );
-      results.push(...batchResults);
-      if (i + batchSize < queries.length && delayMs > 0) {
-        await new Promise(r => setTimeout(r, delayMs));
+    const gemTasks = queries.map((q, i) => async () => {
+      try {
+        onProgress("Testing on " + engineLabel + "... (" + (i + 1) + "/" + queries.length + ")", 28 + Math.round((i / queries.length) * 12));
+        const result = await callFn(q, "You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.");
+        return typeof result === "string" ? { query: q, response: result, citations: [] } : (result || { query: q, response: "", citations: [] });
+      } catch(e) {
+        console.error(engineLabel + " query failed:", q, e.message);
+        return { query: q, response: "", citations: [] };
       }
-    }
-    return results;
+    });
+    return runInBatches(gemTasks, batchSize, delayMs);
   }
 
   // ChatGPT batch runner using Responses API with web search
   async function runGptSearchBatches(queries, searchRegion, batchSize, delayMs) {
-    const results = [];
-    for (let i = 0; i < queries.length; i += batchSize) {
-      const batch = queries.slice(i, i + batchSize);
-      onProgress(`Testing on ChatGPT...`, 15 + Math.round((i / queries.length) * 25));
-      const batchResults = await Promise.all(
-        batch.map(async (query) => {
-          const result = await callOpenAISearch(query, searchRegion);
-          return { query, response: result.text || "", citations: result.citations || [] };
-        })
-      );
-      results.push(...batchResults);
-      if (i + batchSize < queries.length && delayMs > 0) {
-        await new Promise(r => setTimeout(r, delayMs));
+    const gptTasks = queries.map((q, i) => async () => {
+      try {
+        onProgress("Testing on ChatGPT... (" + (i + 1) + "/" + queries.length + ")", 15 + Math.round((i / queries.length) * 12));
+        const result = await callOpenAISearch(q, searchRegion);
+        return { query: q, response: result?.text || "", citations: result?.citations || [] };
+      } catch(e) {
+        console.error("ChatGPT query failed:", q, e.message);
+        return { query: q, response: "", citations: [] };
       }
-    }
-    return results;
+    });
+    return runInBatches(gptTasks, batchSize, delayMs);
   }
 
   // Run both engines simultaneously
   let gptResponses=[],gemResponses=[];
   try{
     const [gR,gmR]=await Promise.all([
-      runGptSearchBatches(searchQueries, region, 3, 1500).catch(e=>{console.error("ChatGPT testing failed:",e.message);return[];}),
-      runQueryBatches(callGemini, searchQueries, 2, 5000, "Gemini").catch(e=>{console.error("Gemini testing failed:",e.message);return[];})
+      runGptSearchBatches(searchQueries, region, 3, 500).catch(e=>{console.error("ChatGPT testing failed:",e.message);return[];}),
+      runQueryBatches(callGemini, searchQueries, 4, 300, "Gemini").catch(e=>{console.error("Gemini testing failed:",e.message);return[];})
     ]);
     gptResponses=gR||[];gemResponses=gmR||[];
     if(gptResponses.length===0&&gemResponses.length===0)onProgress("Warning: both engine tests failed, continuing with limited data...",42);
