@@ -2491,6 +2491,7 @@ function NewAuditPage({data,setData,onRun,history=[]}){
   const[availableArchetypes,setAvailableArchetypes]=useState([]);
   const[selectedArchetypes,setSelectedArchetypes]=useState([]);
   const[generatingArchetypes,setGeneratingArchetypes]=useState(false);
+  const[draggedArch,setDraggedArch]=useState(null);
   const[editingArch,setEditingArch]=useState(null);
   const[editArchData,setEditArchData]=useState({name:"",description:"",demographics:""});
   const[addingArch,setAddingArch]=useState(false);
@@ -2709,9 +2710,9 @@ Return JSON only:
       const prompt=`For "${data.brand}" in "${data.industry}" (${data.region||"Global"}).
 Website: ${data.website||"unknown"}
 Competitors: ${compNamesStr||"none"}
-${crawlSummary?"Website content:\n"+crawlSummary.slice(0,600):""}
+${crawlSummary?"Website content:\n"+crawlSummary.slice(0,400):""}
 
-Generate 6 distinct audience archetypes — real customer segments who would search for ${data.industry} products/services on AI engines (ChatGPT, Gemini) in ${data.region||"their region"}.
+Generate 5 distinct audience archetypes — real customer segments who would search for ${data.industry} products/services on AI engines (ChatGPT, Gemini) in ${data.region||"their region"}.
 
 Requirements:
 - Each archetype must be SPECIFIC to ${data.industry} in ${data.region}, not generic personas
@@ -2724,7 +2725,7 @@ Return JSON only:
       const raw=await callOpenAI(prompt,"You are a market research expert specializing in AI search behavior. Return ONLY valid JSON arrays, no markdown fences.");
       const parsed=safeJSON(raw);
       if(parsed&&Array.isArray(parsed)&&parsed.length>0){
-        const cleaned=parsed.filter(a=>a.name&&a.description).slice(0,8).map((a,i)=>({id:"arch-"+Date.now()+"-"+i,name:a.name.trim(),description:a.description.trim(),demographics:(a.demographics||"").trim()}));
+        const cleaned=parsed.filter(a=>a.name&&a.description).slice(0,6).map((a,i)=>({id:"arch-"+Date.now()+"-"+i,name:a.name.trim(),description:a.description.trim(),demographics:(a.demographics||"").trim()}));
         setAvailableArchetypes(cleaned);
       }else{setAvailableArchetypes([]);}
     }catch(e){console.error("Archetype generation failed:",e);}
@@ -2855,13 +2856,13 @@ Return JSON only:
           <div style={{fontSize:13,color:C.sub}}>Generating audience archetypes for {data.brand}...</div>
         </div>
       ):(
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,alignItems:"stretch"}}>
           {/* LEFT PANEL: Available Archetypes */}
           <div>
             <div style={{fontSize:12,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:10}}>Available Archetypes</div>
-            <div style={{display:"flex",flexDirection:"column",gap:8,minHeight:200}}>
+            <div style={{display:"flex",flexDirection:"column",gap:8,minHeight:300}}>
               {availableArchetypes.filter(a=>!selectedArchetypes.find(s=>s.id===a.id)).map((arch)=>(
-                <div key={arch.id} draggable onDragStart={(e)=>e.dataTransfer.setData("archId",arch.id)} style={{padding:"14px 16px",background:"#fff",border:"1px solid "+C.border,borderRadius:10,cursor:"grab",transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.accent+"40";e.currentTarget.style.boxShadow="0 2px 8px rgba(37,99,235,0.06)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.boxShadow="none";}}>
+                <div key={arch.id} draggable onDragStart={(e)=>{e.dataTransfer.setData("archId",arch.id);e.dataTransfer.effectAllowed="move";setDraggedArch(arch.id);setTimeout(()=>{e.target.style.opacity="0.4";e.target.style.transform="scale(0.98)";},0);}} onDragEnd={(e)=>{setDraggedArch(null);e.target.style.opacity="1";e.target.style.transform="scale(1)";}} style={{padding:"14px 16px",background:draggedArch===arch.id?C.accent+"06":"#fff",border:"1px solid "+(draggedArch===arch.id?C.accent+"30":C.border),borderRadius:10,cursor:"grab",transition:"all .2s ease, opacity .15s ease, transform .15s ease",transform:draggedArch===arch.id?"scale(0.97)":"scale(1)",boxShadow:draggedArch===arch.id?"0 4px 16px rgba(0,0,0,0.08)":"none",position:"relative",opacity:draggedArch===arch.id?0.3:1}} onMouseEnter={e=>{if(!draggedArch){e.currentTarget.style.borderColor=C.accent+"40";e.currentTarget.style.boxShadow="0 2px 8px rgba(37,99,235,0.06)";}}} onMouseLeave={e=>{if(!draggedArch){e.currentTarget.style.borderColor=C.border;e.currentTarget.style.boxShadow="none";}}}>
                   {editingArch===arch.id?(
                     <div style={{display:"flex",flexDirection:"column",gap:6}}>
                       <input value={editArchData.name} onChange={e=>setEditArchData({...editArchData,name:e.target.value})} style={{padding:"6px 10px",border:"1px solid "+C.border,borderRadius:6,fontSize:12,color:C.text,outline:"none"}} placeholder="Archetype name"/>
@@ -2912,16 +2913,16 @@ Return JSON only:
           <div>
             <div style={{fontSize:12,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:10}}>Focus Archetypes <span style={{color:C.sub,textTransform:"none",letterSpacing:0}}>({selectedArchetypes.length}/3)</span></div>
             <div
-              onDragOver={(e)=>{e.preventDefault();e.currentTarget.style.background=C.accent+"04";}}
-              onDragLeave={(e)=>{e.currentTarget.style.background="transparent";}}
+              onDragOver={(e)=>{e.preventDefault();e.dataTransfer.dropEffect="move";e.currentTarget.style.background=C.accent+"08";e.currentTarget.style.borderColor=C.accent;e.currentTarget.style.borderStyle="solid";}}
+              onDragLeave={(e)=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor=selectedArchetypes.length===0?C.border:C.accent+"30";e.currentTarget.style.borderStyle="dashed";}}
               onDrop={(e)=>{
-                e.preventDefault();e.currentTarget.style.background="transparent";
+                e.preventDefault();e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor=selectedArchetypes.length===0?C.border:C.accent+"30";e.currentTarget.style.borderStyle="dashed";
                 const archId=e.dataTransfer.getData("archId");
                 if(!archId)return;if(selectedArchetypes.length>=3)return;
                 const arch=availableArchetypes.find(a=>a.id===archId);
                 if(arch&&!selectedArchetypes.find(s=>s.id===archId)){setSelectedArchetypes(prev=>[...prev,arch]);}
               }}
-              style={{minHeight:200,border:"2px dashed "+(selectedArchetypes.length===0?C.border:C.accent+"30"),borderRadius:12,padding:12,display:"flex",flexDirection:"column",gap:8,transition:"all .2s"}}
+              style={{minHeight:300,flex:1,overflowY:"auto",maxHeight:500,border:"2px dashed "+(selectedArchetypes.length===0?C.border:C.accent+"30"),borderRadius:12,padding:12,display:"flex",flexDirection:"column",gap:8,transition:"all .2s"}}
             >
               {selectedArchetypes.length===0&&(
                 <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
@@ -2932,7 +2933,7 @@ Return JSON only:
                 </div>
               )}
               {selectedArchetypes.map((arch,i)=>(
-                <div key={arch.id} draggable onDragStart={(e)=>e.dataTransfer.setData("reorderId",String(i))} onDragOver={(e)=>e.preventDefault()} onDrop={(e)=>{e.preventDefault();e.stopPropagation();const fromStr=e.dataTransfer.getData("reorderId");if(fromStr==="")return;const from=parseInt(fromStr);if(isNaN(from))return;const newOrder=[...selectedArchetypes];const[moved]=newOrder.splice(from,1);newOrder.splice(i,0,moved);setSelectedArchetypes(newOrder);}} style={{padding:"12px 14px",background:C.accent+"06",border:"1px solid "+C.accent+"20",borderRadius:10,cursor:"grab",display:"flex",alignItems:"center",gap:10}}>
+                <div key={arch.id} draggable onDragStart={(e)=>e.dataTransfer.setData("reorderId",String(i))} onDragOver={(e)=>e.preventDefault()} onDrop={(e)=>{e.preventDefault();e.stopPropagation();const fromStr=e.dataTransfer.getData("reorderId");if(fromStr==="")return;const from=parseInt(fromStr);if(isNaN(from))return;const newOrder=[...selectedArchetypes];const[moved]=newOrder.splice(from,1);newOrder.splice(i,0,moved);setSelectedArchetypes(newOrder);}} style={{padding:"12px 14px",background:C.accent+"06",border:"1px solid "+C.accent+"20",borderRadius:10,cursor:"grab",display:"flex",alignItems:"center",gap:10,animation:"fadeInUp 0.25s ease-out"}}>
                   <div style={{width:24,height:24,borderRadius:8,background:C.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:500,flexShrink:0}}>{i+1}</div>
                   <div style={{flex:1}}>
                     <div style={{fontSize:13,fontWeight:500,color:C.text}}>{arch.name}</div>
