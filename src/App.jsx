@@ -2709,7 +2709,6 @@ function NewAuditPage({data,setData,onRun,history=[]}){
   const[availableArchetypes,setAvailableArchetypes]=useState([]);
   const[selectedArchetypes,setSelectedArchetypes]=useState([]);
   const[generatingArchetypes,setGeneratingArchetypes]=useState(false);
-  const[draggedArch,setDraggedArch]=useState(null);
   const[editingArch,setEditingArch]=useState(null);
   const[editArchData,setEditArchData]=useState({name:"",description:"",demographics:""});
   const[addingArch,setAddingArch]=useState(false);
@@ -3065,7 +3064,7 @@ Return JSON only:
     <div style={{maxWidth:800,margin:"0 auto"}}>
       <div style={{marginBottom:24,textAlign:"center"}}>
         <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Target Audience</h2>
-        <p style={{color:C.sub,fontSize:13,marginTop:4}}>Select up to 3 archetypes to focus your audit. Drag to the right panel and rank by priority.</p>
+        <p style={{color:C.sub,fontSize:13,marginTop:4}}>Select up to 3 archetypes to focus your audit. Click to add, drag to reorder.</p>
       </div>
 
       {generatingArchetypes&&availableArchetypes.length===0?(
@@ -3079,10 +3078,14 @@ Return JSON only:
           <div>
             <div style={{fontSize:12,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:10}}>Available Archetypes</div>
             <div style={{display:"flex",flexDirection:"column",gap:8,minHeight:300}}>
-              {availableArchetypes.filter(a=>!selectedArchetypes.find(s=>s.id===a.id)).map((arch)=>(
-                <div key={arch.id} draggable onDragStart={(e)=>{e.dataTransfer.setData("archId",arch.id);e.dataTransfer.effectAllowed="move";setDraggedArch(arch.id);setTimeout(()=>{e.target.style.opacity="0.4";e.target.style.transform="scale(0.98)";},0);}} onDragEnd={(e)=>{setDraggedArch(null);e.target.style.opacity="1";e.target.style.transform="scale(1)";}} style={{padding:"14px 16px",background:draggedArch===arch.id?C.accent+"06":"#fff",border:"1px solid "+(draggedArch===arch.id?C.accent+"30":C.border),borderRadius:10,cursor:"grab",transition:"all .2s ease, opacity .15s ease, transform .15s ease",transform:draggedArch===arch.id?"scale(0.97)":"scale(1)",boxShadow:draggedArch===arch.id?"0 4px 16px rgba(0,0,0,0.08)":"none",position:"relative",opacity:draggedArch===arch.id?0.3:1}} onMouseEnter={e=>{if(!draggedArch){e.currentTarget.style.borderColor=C.accent+"40";e.currentTarget.style.boxShadow="0 2px 8px rgba(37,99,235,0.06)";}}} onMouseLeave={e=>{if(!draggedArch){e.currentTarget.style.borderColor=C.border;e.currentTarget.style.boxShadow="none";}}}>
+              {availableArchetypes.map((arch)=>{
+                const isSelected=!!selectedArchetypes.find(s=>s.id===arch.id);
+                const isFull=selectedArchetypes.length>=3;
+                return(
+                <div key={arch.id} onClick={()=>{if(isSelected||isFull||editingArch===arch.id)return;setSelectedArchetypes(prev=>[...prev,arch]);}} style={{padding:"14px 16px",background:isSelected?C.accent+"06":"#fff",border:"1px solid "+(isSelected?C.accent+"30":C.border),borderRadius:10,cursor:isSelected?"default":isFull?"not-allowed":"pointer",transition:"all .25s ease",opacity:isSelected?0.4:isFull?0.5:1,position:"relative"}}>
+                  {isSelected&&<div style={{position:"absolute",top:10,right:10,fontSize:9,fontWeight:500,color:C.accent,background:C.accent+"10",padding:"2px 8px",borderRadius:4}}>Added</div>}
                   {editingArch===arch.id?(
-                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    <div style={{display:"flex",flexDirection:"column",gap:6}} onClick={e=>e.stopPropagation()}>
                       <input value={editArchData.name} onChange={e=>setEditArchData({...editArchData,name:e.target.value})} style={{padding:"6px 10px",border:"1px solid "+C.border,borderRadius:6,fontSize:12,color:C.text,outline:"none"}} placeholder="Archetype name"/>
                       <input value={editArchData.description} onChange={e=>setEditArchData({...editArchData,description:e.target.value})} style={{padding:"6px 10px",border:"1px solid "+C.border,borderRadius:6,fontSize:11,color:C.sub,outline:"none"}} placeholder="Description"/>
                       <input value={editArchData.demographics} onChange={e=>setEditArchData({...editArchData,demographics:e.target.value})} style={{padding:"6px 10px",border:"1px solid "+C.border,borderRadius:6,fontSize:11,color:C.sub,outline:"none"}} placeholder="Demographics"/>
@@ -3095,17 +3098,20 @@ Return JSON only:
                     <>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                         <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>{arch.name}</div>
-                        <div style={{display:"flex",gap:4}}>
-                          <span onClick={(e)=>{e.stopPropagation();setEditingArch(arch.id);setEditArchData({name:arch.name,description:arch.description,demographics:arch.demographics});}} style={{fontSize:10,color:C.muted,cursor:"pointer",padding:"2px 4px"}}>Edit</span>
-                          <span onClick={(e)=>{e.stopPropagation();setAvailableArchetypes(prev=>prev.filter(a=>a.id!==arch.id));}} style={{fontSize:10,color:C.red,cursor:"pointer",padding:"2px 4px"}}>Remove</span>
-                        </div>
+                        {!isSelected&&(
+                          <div style={{display:"flex",gap:4}}>
+                            <span onClick={(e)=>{e.stopPropagation();setEditingArch(arch.id);setEditArchData({name:arch.name,description:arch.description,demographics:arch.demographics});}} style={{fontSize:10,color:C.muted,cursor:"pointer",padding:"2px 4px"}}>Edit</span>
+                            <span onClick={(e)=>{e.stopPropagation();setAvailableArchetypes(prev=>prev.filter(a=>a.id!==arch.id));}} style={{fontSize:10,color:C.red,cursor:"pointer",padding:"2px 4px"}}>Remove</span>
+                          </div>
+                        )}
                       </div>
                       <div style={{fontSize:11,color:C.sub,lineHeight:1.5,marginBottom:4}}>{arch.description}</div>
                       {arch.demographics&&<div style={{fontSize:10,color:C.muted}}>{arch.demographics}</div>}
                     </>
                   )}
                 </div>
-              ))}
+                );
+              })}
               {addingArch?(
                 <div style={{padding:"14px 16px",background:"#fff",border:"1px dashed "+C.accent+"40",borderRadius:10}}>
                   <div style={{display:"flex",flexDirection:"column",gap:6}}>
@@ -3131,37 +3137,28 @@ Return JSON only:
           <div>
             <div style={{fontSize:12,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:10}}>Focus Archetypes <span style={{color:C.sub,textTransform:"none",letterSpacing:0}}>({selectedArchetypes.length}/3)</span></div>
             <div
-              onDragOver={(e)=>{e.preventDefault();e.dataTransfer.dropEffect="move";e.currentTarget.style.background=C.accent+"08";e.currentTarget.style.borderColor=C.accent;e.currentTarget.style.borderStyle="solid";}}
-              onDragLeave={(e)=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor=selectedArchetypes.length===0?C.border:C.accent+"30";e.currentTarget.style.borderStyle="dashed";}}
-              onDrop={(e)=>{
-                e.preventDefault();e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor=selectedArchetypes.length===0?C.border:C.accent+"30";e.currentTarget.style.borderStyle="dashed";
-                const archId=e.dataTransfer.getData("archId");
-                if(!archId)return;if(selectedArchetypes.length>=3)return;
-                const arch=availableArchetypes.find(a=>a.id===archId);
-                if(arch&&!selectedArchetypes.find(s=>s.id===archId)){setSelectedArchetypes(prev=>[...prev,arch]);}
-              }}
-              style={{minHeight:300,flex:1,overflowY:"auto",maxHeight:500,border:"2px dashed "+(selectedArchetypes.length===0?C.border:C.accent+"30"),borderRadius:12,padding:12,display:"flex",flexDirection:"column",gap:8,transition:"all .2s"}}
+              style={{minHeight:300,flex:1,overflowY:"auto",maxHeight:500,border:"1px solid "+(selectedArchetypes.length===0?C.border:C.accent+"20"),borderRadius:12,padding:12,display:"flex",flexDirection:"column",gap:8,transition:"all .2s",background:selectedArchetypes.length===0?C.bg+"40":"transparent"}}
             >
               {selectedArchetypes.length===0&&(
                 <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
                   <div style={{textAlign:"center",color:C.muted}}>
-                    <div style={{fontSize:13,marginBottom:4}}>Drag archetypes here</div>
+                    <div style={{fontSize:13,marginBottom:4}}>Click archetypes to add</div>
                     <div style={{fontSize:11}}>Select up to 3 to focus your audit</div>
                   </div>
                 </div>
               )}
               {selectedArchetypes.map((arch,i)=>(
-                <div key={arch.id} draggable onDragStart={(e)=>e.dataTransfer.setData("reorderId",String(i))} onDragOver={(e)=>e.preventDefault()} onDrop={(e)=>{e.preventDefault();e.stopPropagation();const fromStr=e.dataTransfer.getData("reorderId");if(fromStr==="")return;const from=parseInt(fromStr);if(isNaN(from))return;const newOrder=[...selectedArchetypes];const[moved]=newOrder.splice(from,1);newOrder.splice(i,0,moved);setSelectedArchetypes(newOrder);}} style={{padding:"12px 14px",background:C.accent+"06",border:"1px solid "+C.accent+"20",borderRadius:10,cursor:"grab",display:"flex",alignItems:"center",gap:10,animation:"fadeInUp 0.25s ease-out"}}>
+                <div key={arch.id} draggable onDragStart={(e)=>{e.dataTransfer.setData("reorderId",String(i));e.dataTransfer.effectAllowed="move";setTimeout(()=>{e.target.style.opacity="0.4";},0);}} onDragEnd={(e)=>{e.target.style.opacity="1";}} onDragOver={(e)=>{e.preventDefault();e.currentTarget.style.borderColor=C.accent;}} onDragLeave={(e)=>{e.currentTarget.style.borderColor=C.accent+"20";}} onDrop={(e)=>{e.preventDefault();e.stopPropagation();e.currentTarget.style.borderColor=C.accent+"20";const fromStr=e.dataTransfer.getData("reorderId");if(fromStr==="")return;const from=parseInt(fromStr);if(isNaN(from)||from===i)return;const newOrder=[...selectedArchetypes];const[moved]=newOrder.splice(from,1);newOrder.splice(i,0,moved);setSelectedArchetypes(newOrder);}} style={{padding:"12px 14px",background:C.accent+"04",border:"1px solid "+C.accent+"20",borderRadius:10,cursor:"grab",display:"flex",alignItems:"center",gap:10,animation:"fadeInUp 0.25s ease-out",transition:"border-color .15s ease"}}>
                   <div style={{width:24,height:24,borderRadius:8,background:C.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:500,flexShrink:0}}>{i+1}</div>
                   <div style={{flex:1}}>
                     <div style={{fontSize:13,fontWeight:500,color:C.text}}>{arch.name}</div>
                     <div style={{fontSize:10,color:C.muted}}>{arch.demographics}</div>
                   </div>
-                  <span onClick={()=>setSelectedArchetypes(prev=>prev.filter(a=>a.id!==arch.id))} style={{fontSize:14,color:C.muted,cursor:"pointer",padding:"4px",flexShrink:0}}>x</span>
+                  <span onClick={(e)=>{e.stopPropagation();setSelectedArchetypes(prev=>prev.filter(a=>a.id!==arch.id));}} style={{fontSize:14,color:C.muted,cursor:"pointer",padding:"4px",flexShrink:0}}>x</span>
                 </div>
               ))}
               {selectedArchetypes.length>0&&selectedArchetypes.length<3&&(
-                <div style={{fontSize:10,color:C.muted,textAlign:"center",padding:4}}>Drag {3-selectedArchetypes.length} more to fill your focus</div>
+                <div style={{fontSize:10,color:C.muted,textAlign:"center",padding:4}}>Click {3-selectedArchetypes.length} more to add</div>
               )}
             </div>
           </div>
