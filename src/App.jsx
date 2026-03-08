@@ -2967,20 +2967,22 @@ Website: ${data.website||"unknown"}
 Competitors: ${compNamesStr||"none"}
 ${crawlSummary?"Website content:\n"+crawlSummary.slice(0,400):""}
 
-Generate 5 distinct audience archetypes — real customer segments who would search for ${data.industry} products/services on AI engines (ChatGPT, Gemini) in ${data.region||"their region"}.
+Generate 6 distinct audience archetypes — real customer segments who would search for ${data.industry} products/services on AI engines (ChatGPT, Gemini) in ${data.region||"their region"}.
 
 Requirements:
+- Generate EXACTLY 3 everyday consumer archetypes AND 3 specialist/stakeholder archetypes
+- EVERYDAY CONSUMERS (first 3): Regular people who search AI engines for ${data.industry} products/services in daily life. Think: families, students, budget-conscious shoppers, rewards/loyalty chasers, first-time buyers, commuters. These represent the HIGHEST VOLUME of AI queries.
+- SPECIALIST STAKEHOLDERS (last 3): Professional or niche segments with specific ${data.industry} needs. Think: procurement managers, investors, industry analysts, business owners, researchers.
 - Each archetype must be SPECIFIC to ${data.industry} in ${data.region}, not generic personas
-- Include a mix: some high-value segments, some high-volume segments, some niche segments
-- Think about WHO actually types queries into ChatGPT about ${data.industry} — students, professionals, decision-makers, researchers, etc.
 - Demographics should include age range and 1-2 defining characteristics
+- Everyday consumers should reflect how REAL PEOPLE casually search AI engines — "best X near me", "X vs Y which is better", "cheapest X in ${data.region}"
 
 Return JSON only:
 [{"name":"<specific archetype name>","description":"<1-2 sentences about their AI search behavior>","demographics":"<age range, key characteristic>"}]`;
       const raw=await callOpenAI(prompt,"You are a market research expert specializing in AI search behavior. Return ONLY valid JSON arrays, no markdown fences.");
       const parsed=safeJSON(raw);
       if(parsed&&Array.isArray(parsed)&&parsed.length>0){
-        const cleaned=parsed.filter(a=>a.name&&a.description).slice(0,6).map((a,i)=>({id:"arch-"+Date.now()+"-"+i,name:a.name.trim(),description:a.description.trim(),demographics:(a.demographics||"").trim()}));
+        const cleaned=parsed.filter(a=>a.name&&a.description).slice(0,7).map((a,i)=>({id:"arch-"+Date.now()+"-"+i,name:a.name.trim(),description:a.description.trim(),demographics:(a.demographics||"").trim()}));
         setAvailableArchetypes(cleaned);
       }else{setAvailableArchetypes([]);}
     }catch(e){console.error("Archetype generation failed:",e);}
