@@ -1620,6 +1620,108 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
   accumulated.guidelineData = true;
   try{onProgress("All sections ready...", null, {...accumulated});}catch(emitErr){console.error("Emission 4 failed:",emitErr);}
 
+  // ── Step: Generate narrative summaries ──
+  let narratives = {};
+  try {
+    onProgress("Generating insights...", 97);
+
+    const bestEngine = gptData.score >= gemData.score ? { name: "ChatGPT", score: gptData.score } : { name: "Gemini", score: gemData.score };
+    const worstEngine = gptData.score < gemData.score ? { name: "ChatGPT", score: gptData.score } : { name: "Gemini", score: gemData.score };
+    const nCompNames = (compData?.competitors || []).map(c => c.name).filter(n => n).slice(0, 5);
+    const compScoresArr = nCompNames.map(name => {
+      const vis = compScoresMap?.[name];
+      return { name, score: vis ? Math.round(((vis.avgMentionRate||0) + (vis.avgCitationRate||0)) / 2) : 0 };
+    }).sort((a, b) => b.score - a.score);
+    const topCompetitor = compScoresArr[0] || { name: "competitors", score: 0 };
+
+    const overallScore = Math.round(((gptData.score || 0) + (gemData.score || 0)) / 2);
+    const avgMentions = Math.round(((gptData.mentionRate || 0) + (gemData.mentionRate || 0)) / 2);
+    const avgCitations = Math.round(((gptData.citationRate || 0) + (gemData.citationRate || 0)) / 2);
+
+    const sentLabel = (sentimentData?.brand?.avg || 50) >= 55 ? "positive" : (sentimentData?.brand?.avg || 50) >= 45 ? "neutral" : "negative";
+    const themeNames = (sentimentSignals?.themes || []).slice(0, 5).map(t => `${t.name} (${t.sentiment})`).join(", ");
+
+    const catBreakdown = {};
+    (searchQueries || []).forEach((q, i) => {
+      const qText = typeof q === "string" ? q : q.query;
+      const qLower = (qText||"").toLowerCase();
+      let cat = "General";
+      if (/\bbest\b|top\s+\d|recommend|which\s+(is|are)|should\s+i/i.test(qLower)) cat = "Recommendation";
+      else if (/\bvs\b|compar|versus|difference/i.test(qLower)) cat = "Comparison";
+      else if (/\bhow\s+(to|do|does|can|much)|guide|tutorial/i.test(qLower)) cat = "How-To";
+      else if (/\bbuy\b|price|cost|plan|package|subscription/i.test(qLower)) cat = "Transactional";
+      else if (/\breview|rating|experience|worth/i.test(qLower)) cat = "Evaluation";
+      else if (/\bwhat\s+(is|are)|explain|meaning/i.test(qLower)) cat = "Informational";
+      if (!catBreakdown[cat]) catBreakdown[cat] = { total: 0, visible: 0 };
+      catBreakdown[cat].total++;
+      const gptQ = (gptData.queries || [])[i];
+      const gemQ = (gemData.queries || [])[i];
+      if ((gptQ && gptQ.status !== "Absent") || (gemQ && gemQ.status !== "Absent")) catBreakdown[cat].visible++;
+    });
+    const catSummary = Object.entries(catBreakdown).map(([cat, d]) => `${cat}: ${d.visible}/${d.total} visible`).join(", ");
+
+    const ppSummary = (mergedPainPoints || []).map(pp => `${(pp.label||"").split("/")[0].trim()}: ${pp.score}%`).join(", ");
+    const weakPPs = (mergedPainPoints || []).filter(pp => pp.score < 40).map(pp => (pp.label||"").split("/")[0].trim());
+    const strongPPs = (mergedPainPoints || []).filter(pp => pp.score >= 60).map(pp => (pp.label||"").split("/")[0].trim());
+
+    const absentQueries = (searchQueries || []).filter((q, i) => {
+      const gptQ = (gptData.queries || [])[i];
+      const gemQ = (gemData.queries || [])[i];
+      return (!gptQ || gptQ.status === "Absent") && (!gemQ || gemQ.status === "Absent");
+    }).map(q => typeof q === "string" ? q : q.query).slice(0, 5);
+
+    const citationDomains = [...new Set(
+      (citationSources?.all || []).map(c => { try { return new URL(c.url).hostname.replace("www.",""); } catch(e) { return ""; } }).filter(Boolean)
+    )].slice(0, 10);
+
+    const narrativePrompt = `You are a senior strategy consultant writing an AI visibility report for "${brand}" in ${industry} (${region}).
+
+AUDIT DATA:
+- Overall visibility score: ${overallScore}%
+- ${bestEngine.name}: ${bestEngine.score}% | ${worstEngine.name}: ${worstEngine.score}%
+- Mention rate: ${avgMentions}% | Citation rate: ${avgCitations}%
+- Top competitor: ${topCompetitor.name} at ${topCompetitor.score}%
+- All competitors: ${compScoresArr.map(c => c.name + " (" + c.score + "%)").join(", ") || "none"}
+- Sentiment: ${sentLabel}
+- Key themes: ${themeNames || "none detected"}
+- Query categories: ${catSummary}
+- Queries where brand is ABSENT on both engines: ${absentQueries.join(" | ") || "none"}
+- Website health: ${ppSummary || "not scored"}
+- Weak areas: ${weakPPs.join(", ") || "none"}
+- Strong areas: ${strongPPs.join(", ") || "none"}
+- Citation sources referencing brand: ${citationDomains.join(", ") || "none found"}
+
+Generate narrative summaries in consultant tone — professional, direct, strategic. No jargon. Speak to a CEO, not a technical SEO person.
+
+Return JSON only:
+{
+  "dashboard": "<3-4 sentences. Start with what the score means in context. Compare to top competitor. Highlight the biggest gap or opportunity. End with the single most important thing to focus on.>",
+  "dashboardLabel": "<5-8 words contextualizing the score label>",
+  "sentiment": "<3-4 sentences. Describe HOW AI engines talk about the brand. What narrative are they pushing? How does this compare to competitors? What perception gap exists?>",
+  "queryCategories": "<3-4 sentences. Which types of queries is the brand winning? Which is it losing? What does this mean for customer discovery? Where should content efforts focus?>",
+  "categoryHealth": "<3-4 sentences. Translate technical scores into business language. Which website signals are helping visibility? Which gaps are holding the brand back? Be specific about what is missing.>",
+  "citationSources": "<2-3 sentences. What types of sources are AI engines pulling from? Are they authoritative? Are there obvious sources missing that competitors likely have?>",
+  "competitiveLandscape": "<2-3 sentences. How does the brand compare overall? Who is the biggest threat? What are competitors doing differently that is working?>"
+}
+
+Rules:
+- Every sentence must reference SPECIFIC data from the audit — never generic advice
+- Use the brand name, not "the brand" or "your brand"
+- Compare to competitors BY NAME where possible
+- Do NOT use technical jargon (no "schema markup", "E-E-A-T", "structured data" — translate these into plain business language)
+- Do NOT use exclamation marks or overly positive/negative tone — be matter-of-fact
+- If a score is low but the brand is competing against industry giants, acknowledge that context
+- Keep each narrative to 3-4 sentences maximum`;
+
+    const narrativeRaw = await callOpenAI(narrativePrompt, "You are a senior strategy consultant. Return ONLY valid JSON, no markdown fences.");
+    narratives = safeJSON(narrativeRaw) || {};
+  } catch(e) {
+    console.error("Narrative generation failed:", e);
+    narratives = {};
+  }
+
+  accumulated.narratives = narratives || {};
+
   try {
     return {
       engineData:{
@@ -1645,7 +1747,8 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
       queryArchetypeMap:typeof queryArchetypeMap!=="undefined"?queryArchetypeMap:{},
       channelSourceData:typeof channelSourceData!=="undefined"?channelSourceData:{sourceChannels:[],opportunities:[]},
       citationSources:typeof citationSources!=="undefined"?citationSources:{gpt:[],gemini:[],all:[]},
-      guidelinesData:typeof guidelinesData!=="undefined"?guidelinesData:null
+      guidelinesData:typeof guidelinesData!=="undefined"?guidelinesData:null,
+      narratives:typeof narratives!=="undefined"?narratives:{}
     };
   } catch(returnError) {
     console.error("CRITICAL: runRealAudit return assembly failed:",returnError);
@@ -2042,7 +2145,8 @@ function generateAll(cd, apiData){
     return{shares,totalMentions,totalCitations,totalQueries:totalQueries*2};
   })();
   const citationSources=(hasApi&&apiData.citationSources)?apiData.citationSources:{gpt:[],gemini:[],all:[]};
-  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,queryArchetypeMap,channelSourceData,citationSources,sovData,clientData:cd};
+  const narratives=(hasApi&&apiData.narratives)?apiData.narratives:{};
+  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,queryArchetypeMap,channelSourceData,citationSources,narratives,sovData,clientData:cd};
 }
 
 function generatePartial(cd, partial) {
@@ -2066,7 +2170,8 @@ function generatePartial(cd, partial) {
     searchQueries: partial.searchQueries || [],
     queryArchetypeMap: partial.queryArchetypeMap || {},
     channelSourceData: partial.channelSourceData || { sourceChannels: [], opportunities: [] },
-    citationSources: partial.citationSources || { gpt: [], gemini: [], all: [] }
+    citationSources: partial.citationSources || { gpt: [], gemini: [], all: [] },
+    narratives: partial.narratives || {}
   };
   try { return generateAll(cd, safeApiData); } catch(e) { console.error("generatePartial error:", e); return null; }
 }
