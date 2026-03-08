@@ -193,6 +193,21 @@ async function callGemini(prompt, systemPrompt="You are an expert AEO analyst.")
   });
 }
 
+async function callGeminiWithCitations(prompt, systemPrompt="You are an expert AEO analyst."){
+  try{
+    const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
+    if(!res.ok)return{text:"",citations:[]};
+    const data=await res.json();
+    return{
+      text:data.text||(typeof data==="string"?data:""),
+      citations:data.citations||[]
+    };
+  }catch(e){
+    console.error("Gemini with citations failed:",e);
+    return{text:"",citations:[]};
+  }
+}
+
 async function callOpenAISearch(query, region){
   return callWithRetry(async()=>{
     const controller=new AbortController();

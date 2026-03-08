@@ -1,11 +1,11 @@
 // /api/gemini.js — Vercel Serverless Function
-// Proxies requests to the Google Gemini API
+// Proxies requests to the Google Gemini API (gemini-3-flash-preview with Google Search grounding)
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
+
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -18,20 +18,23 @@ export default async function handler(req, res) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 55000);
 
+    const requestBody = {
+      systemInstruction: { parts: [{ text: systemPrompt || 'You are a helpful assistant.' }] },
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 4000,
+        responseMimeType: 'text/plain',
+      },
+      tools: [{ google_search: {} }],
+    };
+
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_AI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GOOGLE_AI_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt || 'You are a helpful assistant.' }] },
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 4000,
-            responseMimeType: 'text/plain',
-          },
-        }),
+        body: JSON.stringify(requestBody),
         signal: controller.signal,
       }
     );
@@ -47,11 +50,27 @@ export default async function handler(req, res) {
     // Handle safety blocks — return empty text instead of error
     const finishReason = data.candidates?.[0]?.finishReason;
     if (finishReason === "SAFETY" || data.promptFeedback?.blockReason) {
-      return res.status(200).json({ text: "", blocked: true });
+      return res.status(200).json({ text: "", citations: [], blocked: true });
     }
 
     const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
-    return res.status(200).json({ text });
+
+    // Extract grounding citations from groundingMetadata
+    const citations = [];
+    try {
+      const metadata = data.candidates?.[0]?.groundingMetadata;
+      if (metadata && metadata.groundingChunks) {
+        metadata.groundingChunks.forEach(chunk => {
+          if (chunk.web && chunk.web.uri) {
+            citations.push({ url: chunk.web.uri, title: chunk.web.title || "" });
+          }
+        });
+      }
+    } catch(e) {
+      // Grounding metadata not available — that's fine
+    }
+
+    return res.status(200).json({ text, citations });
   } catch (error) {
     console.error('Gemini proxy error:', error);
     return res.status(500).json({ error: error.name === 'AbortError' ? 'Request timed out' : 'Internal server error' });
