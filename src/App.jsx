@@ -2418,6 +2418,7 @@ const NAV_ITEMS=[
     {id:"sentiment",label:"Sentiment Analysis",icon:"heart"},
     {id:"archetypes",label:"Query Categories",icon:"grid"},
     {id:"visibility",label:"Visibility Map",icon:"activity"},
+    {id:"citations",label:"Citation Sources",icon:"link"},
   ]},
   {group:"Strategy",items:[
     {id:"channels",label:"Target Channels",icon:"broadcast"},
@@ -2441,13 +2442,14 @@ const SidebarIcon=({name,size=18,color="#9ca3af"})=>{
     book:<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke={color} strokeWidth="1.5" fill="none"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke={color} strokeWidth="1.5" fill="none"/></>,
     heart:<><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" stroke={color} strokeWidth="1.5" fill="none" strokeLinejoin="round"/></>,
     activity:<><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>,
+    link:<><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>,
     filetext:<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke={color} strokeWidth="1.5" fill="none"/><polyline points="14 2 14 8 20 8" stroke={color} strokeWidth="1.5" fill="none"/><line x1="16" y1="13" x2="8" y2="13" stroke={color} strokeWidth="1.5"/><line x1="16" y1="17" x2="8" y2="17" stroke={color} strokeWidth="1.5"/><line x1="10" y1="9" x2="8" y2="9" stroke={color} strokeWidth="1.5"/></>};
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none">{p[name]||null}</svg>;
 };
 
 function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,setCollapsed,sectionReady={},auditInProgress=false}){
   const [hoveredNav, setHoveredNav] = useState(null);
-  const sectionMap = { dashboard:"dashboard", archetypes:"archetypes", sentiment:"sentiment", intent:"intent", visibility:"visibility", playbook:"playbook", channels:"channels", contenthub:"contenthub", roadmap:"roadmap" };
+  const sectionMap = { dashboard:"dashboard", archetypes:"archetypes", sentiment:"sentiment", intent:"intent", visibility:"visibility", citations:"citations", playbook:"playbook", channels:"channels", contenthub:"contenthub", roadmap:"roadmap" };
   const sideW=collapsed?60:220;
   return(<div style={{position:"fixed",left:0,top:0,bottom:0,width:sideW,background:"#fff",borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",transition:"width .2s ease",zIndex:100,overflow:"hidden"}}>
     {/* Logo area */}
@@ -4457,6 +4459,146 @@ function IntentPage({r,goTo}){
   </div>);
 }
 
+/* ─── PAGE: CITATION SOURCES ─── */
+function CitationSourcesPage({ r }) {
+  const [activeTab, setActiveTab] = useState("all");
+  const [expandedDomain, setExpandedDomain] = useState(null);
+
+  const cs = r?.citationSources || { gpt: [], gemini: [], all: [] };
+  const brandName = r?.clientData?.brand || "Your brand";
+
+  // Build sources list from the actual data shape
+  const sources = (cs.all || []).map(s => ({
+    ...s,
+    engine: s.engine === "chatgpt" ? "ChatGPT" : s.engine === "gemini" ? "Gemini" : s.engine,
+    domain: (() => { try { return new URL(s.url).hostname.replace("www.", ""); } catch(e) { return "unknown"; } })()
+  }));
+
+  // Filter by tab
+  const filtered = activeTab === "all" ? sources
+    : activeTab === "chatgpt" ? sources.filter(s => s.engine === "ChatGPT")
+    : sources.filter(s => s.engine === "Gemini");
+
+  // Group by domain
+  const domainMap = {};
+  filtered.forEach(s => {
+    const d = s.domain;
+    if (!domainMap[d]) domainMap[d] = { domain: d, entries: [], chatgpt: 0, gemini: 0 };
+    domainMap[d].entries.push(s);
+    if (s.engine === "ChatGPT") domainMap[d].chatgpt++;
+    else domainMap[d].gemini++;
+  });
+
+  const domains = Object.values(domainMap).sort((a, b) => b.entries.length - a.entries.length);
+  const totalSources = sources.length;
+  const uniqueDomains = new Set(sources.map(s => s.domain)).size;
+  const chatgptSources = sources.filter(s => s.engine === "ChatGPT").length;
+  const geminiSources = sources.filter(s => s.engine === "Gemini").length;
+
+  return (
+    <div>
+      <div style={{ marginBottom: 32 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 500, color: C.text, margin: 0, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>Citation Sources</h2>
+        <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Where AI engines pull their information from when discussing {brandName}</p>
+      </div>
+
+      {/* Summary stats */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        {[
+          { label: "Total Citations", value: totalSources, color: C.text },
+          { label: "Unique Domains", value: uniqueDomains, color: C.accent },
+          { label: "From ChatGPT", value: chatgptSources, color: "#10A37F" },
+          { label: "From Gemini", value: geminiSources, color: "#4285F4" }
+        ].map((s, i) => (
+          <div key={i} style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "16px 18px", textAlign: "center" }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>{s.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 500, fontFamily: "'Satoshi',-apple-system,sans-serif", color: s.color }}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tab filter */}
+      <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "1px solid " + C.border }}>
+        {[
+          { id: "all", label: "All Sources" },
+          { id: "chatgpt", label: "ChatGPT Sources" },
+          { id: "gemini", label: "Gemini Sources" }
+        ].map(tab => (
+          <button key={tab.id} onClick={() => { setActiveTab(tab.id); setExpandedDomain(null); }} style={{
+            padding: "8px 16px", fontSize: 12, fontWeight: activeTab === tab.id ? 500 : 400,
+            color: activeTab === tab.id ? C.text : C.muted, background: "none", border: "none",
+            borderBottom: activeTab === tab.id ? "2px solid " + C.accent : "2px solid transparent",
+            cursor: "pointer", fontFamily: "'Satoshi',-apple-system,sans-serif", transition: "all .15s"
+          }}>{tab.label}</button>
+        ))}
+      </div>
+
+      {/* Domain list */}
+      {domains.length > 0 ? (
+        <div style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, overflow: "hidden" }}>
+          {/* Header */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 80px", padding: "10px 20px", borderBottom: "1px solid " + C.border, background: C.bg }}>
+            <span style={{ fontSize: 11, fontWeight: 500, color: C.muted }}>Source Domain</span>
+            <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "center" }}>Citations</span>
+            <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "center" }}>ChatGPT</span>
+            <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "center" }}>Gemini</span>
+          </div>
+
+          {/* Rows */}
+          {domains.map((d, i) => {
+            const isOpen = expandedDomain === i;
+            return (
+              <div key={i}>
+                <div onClick={() => setExpandedDomain(isOpen ? null : i)} style={{
+                  display: "grid", gridTemplateColumns: "1fr 80px 80px 80px", padding: "14px 20px",
+                  borderBottom: i < domains.length - 1 || isOpen ? "1px solid " + C.borderSoft : "none",
+                  cursor: "pointer", transition: "background .15s",
+                  background: isOpen ? C.bg : "transparent"
+                }}
+                  onMouseEnter={e => { if (!isOpen) e.currentTarget.style.background = C.bg; }}
+                  onMouseLeave={e => { if (!isOpen) e.currentTarget.style.background = isOpen ? C.bg : "transparent"; }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <svg width="10" height="10" viewBox="0 0 10 10" style={{ transition: "transform .15s", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}><path d="M3 1l4 4-4 4" stroke={C.muted} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: C.accent }}>{d.domain}</span>
+                  </div>
+                  <div style={{ textAlign: "center", fontSize: 13, fontWeight: 500, color: C.text }}>{d.entries.length}</div>
+                  <div style={{ textAlign: "center", fontSize: 13, color: d.chatgpt > 0 ? "#10A37F" : C.muted }}>{d.chatgpt || "-"}</div>
+                  <div style={{ textAlign: "center", fontSize: 13, color: d.gemini > 0 ? "#4285F4" : C.muted }}>{d.gemini || "-"}</div>
+                </div>
+
+                {/* Expanded: show individual citations */}
+                {isOpen && (
+                  <div style={{ padding: "8px 20px 16px 40px", background: C.bg, borderBottom: i < domains.length - 1 ? "1px solid " + C.borderSoft : "none" }}>
+                    {d.entries.map((entry, ei) => (
+                      <div key={ei} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 12px", background: "#fff", borderRadius: 8, border: "1px solid " + C.borderSoft, marginBottom: 4 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <a href={entry.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: C.accent, textDecoration: "none", lineHeight: 1.5, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.title || entry.url}</a>
+                          <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>Query: {entry.query}</div>
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: entry.engine === "ChatGPT" ? "#10A37F15" : "#4285F415", color: entry.engine === "ChatGPT" ? "#10A37F" : "#4285F4", flexShrink: 0 }}>{entry.engine}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "40px 20px", textAlign: "center" }}>
+          <div style={{ fontSize: 13, color: C.muted }}>No citation sources found. This may indicate AI engines answered from training data rather than web sources.</div>
+        </div>
+      )}
+
+      {/* Methodology note */}
+      <div style={{ marginTop: 16, fontSize: 11, color: C.muted, padding: "0 4px", lineHeight: 1.5 }}>
+        Citation sources are extracted from real-time web searches performed by ChatGPT and Gemini during the audit. These are the actual URLs each engine referenced when generating its response.
+      </div>
+    </div>
+  );
+}
+
 /* ─── PAGE: BRAND PLAYBOOK ─── */
 function PlaybookPage({r,goTo,activeProject}){
   const TABS=[{id:"voice",label:"Brand Voice"},{id:"taglines",label:"Taglines"},{id:"visual",label:"Visual CI"},{id:"compliance",label:"Compliance"},{id:"products",label:"Products"},{id:"positioning",label:"Positioning"}];
@@ -6020,7 +6162,7 @@ export default function App(){
   const[data,setData]=useState({brand:"",industry:"",website:"",region:"",topics:[],competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}],archetypes:[]});
   const[results,setResults]=useState(null);
   const[history,setHistory]=useState([]);
-  const [sectionReady, setSectionReady] = useState({ dashboard:true, archetypes:true, sentiment:true, intent:true, visibility:true, playbook:true, channels:true, contenthub:true, roadmap:true });
+  const [sectionReady, setSectionReady] = useState({ dashboard:true, archetypes:true, sentiment:true, intent:true, visibility:true, citations:true, playbook:true, channels:true, contenthub:true, roadmap:true });
   const [auditInProgress, setAuditInProgress] = useState(false);
   const [auditProgress, setAuditProgress] = useState(0);
   const [dashboardLoadProgress, setDashboardLoadProgress] = useState(0);
@@ -6405,6 +6547,7 @@ export default function App(){
         {step==="archetypes"&&results&&(sectionReady.archetypes||!auditInProgress)&&<QueryCategoriesPage r={results}/>}
         {step==="sentiment"&&results&&(sectionReady.sentiment||!auditInProgress)&&<SentimentPage r={results}/>}
         {step==="visibility"&&results&&<VisibilityMapPage r={results}/>}
+        {step==="citations"&&results&&<CitationSourcesPage r={results}/>}
         {step==="playbook"&&results&&(sectionReady.playbook||!auditInProgress)&&<PlaybookPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject}/>}
         {step==="channels"&&results&&(sectionReady.channels||!auditInProgress)&&<ChannelsPage r={results}/>}
         {step==="contenthub"&&results&&(sectionReady.contenthub||!auditInProgress)&&<ContentHubPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject} onUpdate={setResults}/>}
