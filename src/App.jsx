@@ -680,7 +680,7 @@ Return JSON only:
       try {
         onProgress("Testing on " + engineLabel + "... (" + (i + 1) + "/" + queries.length + ")", 28 + Math.round((i / queries.length) * 12));
         const result = await callFn(q, "You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.");
-        return typeof result === "string" ? { query: q, response: result, citations: [] } : (result || { query: q, response: "", citations: [] });
+        return typeof result === "string" ? { query: q, response: result, citations: [] } : { query: q, response: result?.text || result?.response || "", citations: result?.citations || [] };
       } catch(e) {
         console.error(engineLabel + " query failed:", q, e.message);
         return { query: q, response: "", citations: [] };
@@ -709,7 +709,7 @@ Return JSON only:
   try{
     const [gR,gmR]=await Promise.all([
       runGptSearchBatches(searchQueries, region, 3, 500).catch(e=>{console.error("ChatGPT testing failed:",e.message);return[];}),
-      runQueryBatches(callGemini, searchQueries, 4, 300, "Gemini").catch(e=>{console.error("Gemini testing failed:",e.message);return[];})
+      runQueryBatches(callGeminiWithCitations, searchQueries, 4, 300, "Gemini").catch(e=>{console.error("Gemini testing failed:",e.message);return[];})
     ]);
     gptResponses=gR||[];gemResponses=gmR||[];
     if(gptResponses.length===0&&gemResponses.length===0)onProgress("Warning: both engine tests failed, continuing with limited data...",42);
@@ -739,7 +739,7 @@ Return JSON only:
             ambiguousCases.push({ brandName: det.brandName, queryIndex: qi, query: r.query, excerpt });
           }
         }
-        return { query: r.query, status: classification.status, confidence: classification.confidence };
+        return { query: r.query, status: classification.status, confidence: classification.confidence, citations: r.citations || [] };
       });
       const total = queries.length || 1;
       const cited = queries.filter(q => q.status === "Cited").length;
@@ -881,6 +881,22 @@ Return JSON only:
   accumulated.brandCrawlData = brandCrawl || null;
   accumulated.compCrawlData = compCrawlsRaw || {};
   accumulated.compVisibilityData = compScoresMap || {};
+  // Collect citation URLs from both engines
+  const citationSources = { gpt: [], gemini: [], all: [] };
+  try {
+    const seen = new Set();
+    (gptResponses || []).forEach(r => {
+      (r.citations || []).forEach(c => {
+        if (c.url && !seen.has(c.url)) { seen.add(c.url); citationSources.gpt.push({ url: c.url, title: c.title || "", query: r.query }); citationSources.all.push({ url: c.url, title: c.title || "", engine: "chatgpt", query: r.query }); }
+      });
+    });
+    (gemResponses || []).forEach(r => {
+      (r.citations || []).forEach(c => {
+        if (c.url && !seen.has(c.url)) { seen.add(c.url); citationSources.gemini.push({ url: c.url, title: c.title || "", query: r.query }); citationSources.all.push({ url: c.url, title: c.title || "", engine: "gemini", query: r.query }); }
+      });
+    });
+  } catch(e) { console.error("Citation collection failed:", e); }
+  accumulated.citationSources = citationSources;
   try{onProgress("Engine data ready — analyzing sentiment...", null, {...accumulated});}catch(emitErr){console.error("Emission 1 failed:",emitErr);}
 
   // ── Parallel Group: Sentiment + Signals + Source Channels + Competitors + Pain Points ──
@@ -1143,6 +1159,7 @@ Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentenc
   accumulated.queryArchetypeMap = queryArchetypeMap || {};
   accumulated.brandCrawlData = brandCrawl || null;
   accumulated.compCrawlData = compCrawlsRaw || {};
+  accumulated.citationSources = citationSources;
   try{onProgress("Dashboard ready — loading remaining sections...", 68, {...accumulated});}catch(emitErr){console.error("Emission 2 failed:",emitErr);}
 
   // ── Parallel Group: Archetypes + Intent + Channels ──
@@ -1627,6 +1644,7 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
       searchQueries:typeof searchQueries!=="undefined"?searchQueries:[],
       queryArchetypeMap:typeof queryArchetypeMap!=="undefined"?queryArchetypeMap:{},
       channelSourceData:typeof channelSourceData!=="undefined"?channelSourceData:{sourceChannels:[],opportunities:[]},
+      citationSources:typeof citationSources!=="undefined"?citationSources:{gpt:[],gemini:[],all:[]},
       guidelinesData:typeof guidelinesData!=="undefined"?guidelinesData:null
     };
   } catch(returnError) {
@@ -2023,7 +2041,8 @@ function generateAll(cd, apiData){
     allBrandNames.forEach(name=>{shares[name]={mentionCount:mentionCounts[name],citationCount:citationCounts[name],mentionShare:Math.round((mentionCounts[name]/totalMentions)*100),citationShare:Math.round((citationCounts[name]/totalCitations)*100)};});
     return{shares,totalMentions,totalCitations,totalQueries:totalQueries*2};
   })();
-  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,queryArchetypeMap,channelSourceData,sovData,clientData:cd};
+  const citationSources=(hasApi&&apiData.citationSources)?apiData.citationSources:{gpt:[],gemini:[],all:[]};
+  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,queryArchetypeMap,channelSourceData,citationSources,sovData,clientData:cd};
 }
 
 function generatePartial(cd, partial) {
@@ -2046,7 +2065,8 @@ function generatePartial(cd, partial) {
     compCrawlData: partial.compCrawlData || {},
     searchQueries: partial.searchQueries || [],
     queryArchetypeMap: partial.queryArchetypeMap || {},
-    channelSourceData: partial.channelSourceData || { sourceChannels: [], opportunities: [] }
+    channelSourceData: partial.channelSourceData || { sourceChannels: [], opportunities: [] },
+    citationSources: partial.citationSources || { gpt: [], gemini: [], all: [] }
   };
   try { return generateAll(cd, safeApiData); } catch(e) { console.error("generatePartial error:", e); return null; }
 }
@@ -3813,10 +3833,10 @@ function QueryCategoriesPage({ r }) {
       const neutralSys = "You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.";
       const [gptResult, gemResult] = await Promise.all([
         callOpenAISearch(query, region),
-        callGemini(query, neutralSys)
+        callGeminiWithCitations(query, neutralSys)
       ]);
       const gptText = typeof gptResult === "string" ? gptResult : (gptResult?.response || gptResult?.text || "");
-      const gemText = typeof gemResult === "string" ? gemResult : (gemResult?.response || gemResult?.text || "");
+      const gemText = typeof gemResult === "string" ? gemResult : (gemResult?.text || gemResult?.response || "");
       const gptCitations = gptResult?.citations || [];
       const classifyText = (text, citations) => {
         if (!text || text.length < 20) return "Absent";
@@ -3838,7 +3858,7 @@ function QueryCategoriesPage({ r }) {
         return "Mentioned";
       };
       const gptStatus = classifyText(gptText, gptCitations);
-      const gemStatus = classifyText(gemText, []);
+      const gemStatus = classifyText(gemText, gemResult?.citations || []);
       const result = { query, gptStatus, gemStatus, gptText: gptText.slice(0, 500), gemText: gemText.slice(0, 500) };
       setTestResults(result);
       setTestedPrompts(prev => [result, ...prev]);
@@ -4337,12 +4357,12 @@ function IntentPage({r,goTo}){
     try{
       const[gptResult,gemResult]=await Promise.all([
         callOpenAISearch(query,region),
-        callGemini(query,"You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.")
+        callGeminiWithCitations(query,"You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.")
       ]);
       const gptText=gptResult?.text||gptResult||"";
-      const gemText=gemResult||"";
+      const gemText=gemResult?.text||gemResult||"";
       const gptClass=classifyText(gptText,brand,website,gptResult?.citations||[]);
-      const gemClass=classifyText(gemText,brand,website,[]);
+      const gemClass=classifyText(gemText,brand,website,gemResult?.citations||[]);
       const result={
         gpt:gptClass,
         gem:gemClass,
