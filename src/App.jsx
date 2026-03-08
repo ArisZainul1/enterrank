@@ -2417,7 +2417,6 @@ const NAV_ITEMS=[
     {id:"dashboard",label:"Dashboard",icon:"grid"},
     {id:"sentiment",label:"Sentiment Analysis",icon:"heart"},
     {id:"archetypes",label:"Query Categories",icon:"grid"},
-    {id:"visibility",label:"Visibility Map",icon:"activity"},
     {id:"citations",label:"Citation Sources",icon:"link"},
   ]},
   {group:"Strategy",items:[
@@ -2449,7 +2448,7 @@ const SidebarIcon=({name,size=18,color="#9ca3af"})=>{
 
 function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,setCollapsed,sectionReady={},auditInProgress=false}){
   const [hoveredNav, setHoveredNav] = useState(null);
-  const sectionMap = { dashboard:"dashboard", archetypes:"archetypes", sentiment:"sentiment", intent:"intent", visibility:"visibility", citations:"citations", playbook:"playbook", channels:"channels", contenthub:"contenthub", roadmap:"roadmap" };
+  const sectionMap = { dashboard:"dashboard", archetypes:"archetypes", sentiment:"sentiment", intent:"intent", citations:"citations", playbook:"playbook", channels:"channels", contenthub:"contenthub", roadmap:"roadmap" };
   const sideW=collapsed?60:220;
   return(<div style={{position:"fixed",left:0,top:0,bottom:0,width:sideW,background:"#fff",borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",transition:"width .2s ease",zIndex:100,overflow:"hidden"}}>
     {/* Logo area */}
@@ -6162,7 +6161,7 @@ export default function App(){
   const[data,setData]=useState({brand:"",industry:"",website:"",region:"",topics:[],competitors:[{name:"",website:""},{name:"",website:""},{name:"",website:""}],archetypes:[]});
   const[results,setResults]=useState(null);
   const[history,setHistory]=useState([]);
-  const [sectionReady, setSectionReady] = useState({ dashboard:true, archetypes:true, sentiment:true, intent:true, visibility:true, citations:true, playbook:true, channels:true, contenthub:true, roadmap:true });
+  const [sectionReady, setSectionReady] = useState({ dashboard:true, archetypes:true, sentiment:true, intent:true, citations:true, playbook:true, channels:true, contenthub:true, roadmap:true });
   const [auditInProgress, setAuditInProgress] = useState(false);
   const [auditProgress, setAuditProgress] = useState(0);
   const [dashboardLoadProgress, setDashboardLoadProgress] = useState(0);
@@ -6354,7 +6353,7 @@ export default function App(){
     setAuditStage("Preparing audit...");
     setStep("dashboard");
     setResults(null);
-    setSectionReady({ dashboard:false, archetypes:false, sentiment:false, intent:false, visibility:false, playbook:false, channels:false, contenthub:false, roadmap:false });
+    setSectionReady({ dashboard:false, archetypes:false, sentiment:false, intent:false, citations:false, playbook:false, channels:false, contenthub:false, roadmap:false });
 
     try {
       const apiData = await runRealAudit(auditData, (msg, pct, partialData) => {
@@ -6379,7 +6378,7 @@ export default function App(){
               dashboard: !!(partialData.engineData && partialData.competitorData),
               sentiment: !!(partialData.sentimentData && partialData.sentimentSignals),
               archetypes: !!(partialData.archData && partialData.archData.length > 0),
-              visibility: !!(partialData.engineData && partialData.competitorData),
+              citations: !!(partialData.engineData && partialData.citationSources),
               intent: !!(partialData.intentData && partialData.intentData.length > 0),
               channels: !!(partialData.channelData && partialData.channelData.channels && partialData.channelData.channels.length > 0),
               contenthub: !!(partialData.contentGridData && partialData.contentGridData.length > 0),
@@ -6397,7 +6396,7 @@ export default function App(){
       setAuditStage("");
       const r = generateAll(auditData, apiData);
       setResults(() => r);
-      setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, visibility:true, playbook:true, channels:true, contenthub:true, roadmap:true });
+      setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, citations:true, playbook:true, channels:true, contenthub:true, roadmap:true });
 
       const entry={date:formatAuditDate(new Date()),brand:auditData.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
 
@@ -6457,7 +6456,7 @@ export default function App(){
       console.error("Progressive audit error:", e);
       setAuditInProgress(false);
       setAuditStage("");
-      setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, visibility:true, playbook:true, channels:true, contenthub:true, roadmap:true });
+      setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, citations:true, playbook:true, channels:true, contenthub:true, roadmap:true });
     }
   };
 
@@ -6546,7 +6545,6 @@ export default function App(){
         {step==="dashboard"&&results&&<DashboardPage r={results} history={history} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }}/>}
         {step==="archetypes"&&results&&(sectionReady.archetypes||!auditInProgress)&&<QueryCategoriesPage r={results}/>}
         {step==="sentiment"&&results&&(sectionReady.sentiment||!auditInProgress)&&<SentimentPage r={results}/>}
-        {step==="visibility"&&results&&<VisibilityMapPage r={results}/>}
         {step==="citations"&&results&&<CitationSourcesPage r={results}/>}
         {step==="playbook"&&results&&(sectionReady.playbook||!auditInProgress)&&<PlaybookPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject}/>}
         {step==="channels"&&results&&(sectionReady.channels||!auditInProgress)&&<ChannelsPage r={results}/>}
