@@ -4071,8 +4071,14 @@ function QueryCategoriesPage({ r }) {
     <div>
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ fontSize: 22, fontWeight: 500, color: C.text, margin: 0, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>Query Categories</h2>
-        <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>How {r.clientData.brand} performs across different types of AI queries</p>
+        <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Which customer questions lead to {r.clientData.brand} — and which don't</p>
       </div>
+
+      {r.narratives?.queryCategories && (
+        <div style={{ marginBottom: 24, padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, fontSize: 13, color: C.sub, lineHeight: 1.7 }}>
+          {r.narratives.queryCategories}
+        </div>
+      )}
 
       {/* Summary stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
@@ -4622,8 +4628,14 @@ function CitationSourcesPage({ r }) {
     <div>
       <div style={{ marginBottom: 32 }}>
         <h2 style={{ fontSize: 22, fontWeight: 500, color: C.text, margin: 0, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>Citation Sources</h2>
-        <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Where AI engines pull their information from when discussing {brandName}</p>
+        <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>The sources AI engines trust when talking about {brandName}</p>
       </div>
+
+      {r.narratives?.citationSources && (
+        <div style={{ marginBottom: 24, padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, fontSize: 13, color: C.sub, lineHeight: 1.7 }}>
+          {r.narratives.citationSources}
+        </div>
+      )}
 
       {/* Summary stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
@@ -5074,8 +5086,14 @@ function SentimentPage({r}){
   return(<div>
     <div style={{marginBottom:32}}>
       <h2 style={{fontSize:22,fontWeight:500,color:C.text,letterSpacing:"-.02em",margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Sentiment Analysis</h2>
-      <p style={{fontSize:13,color:"#6b7280",marginTop:4}}>How AI engines perceive and portray {brandName}</p>
+      <p style={{fontSize:13,color:"#6b7280",marginTop:4}}>How AI engines describe and position {brandName} to potential customers</p>
     </div>
+
+    {r.narratives?.sentiment && (
+      <div style={{ marginBottom: 24, padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, fontSize: 13, color: C.sub, lineHeight: 1.7 }}>
+        {r.narratives.sentiment}
+      </div>
+    )}
 
     {/* Top section: Label + bar + competitor comparison */}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:32}}>
