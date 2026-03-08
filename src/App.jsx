@@ -3535,9 +3535,15 @@ function DashboardPage({r,history,goTo}){
           </div>
         </div>
         <div style={{marginTop:10}}>
-          <span style={{fontSize:12,fontWeight:500,padding:"4px 14px",borderRadius:100,background:r.overall>=80?"#dcfce7":r.overall>=60?"#dbeafe":r.overall>=40?"#fef3c7":r.overall>=20?"#ffedd5":"#fee2e2",color:r.overall>=80?"#166534":r.overall>=60?"#1e40af":r.overall>=40?"#92400e":r.overall>=20?"#9a3412":"#991b1b"}}>{r.scoreLabel}</span>
+          <span style={{fontSize:12,fontWeight:500,padding:"4px 16px",borderRadius:100,maxWidth:300,textAlign:"center",background:r.overall>=80?"#dcfce7":r.overall>=60?"#dbeafe":r.overall>=40?"#fef3c7":r.overall>=20?"#ffedd5":"#fee2e2",color:r.overall>=80?"#166534":r.overall>=60?"#1e40af":r.overall>=40?"#92400e":r.overall>=20?"#9a3412":"#991b1b"}}>{r.narratives?.dashboardLabel||r.scoreLabel}</span>
         </div>
       </div>
+
+      {r.narratives?.dashboard && (
+        <div style={{ maxWidth: 640, margin: "0 auto 24px", padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, fontSize: 13, color: C.sub, lineHeight: 1.7, textAlign: "left" }}>
+          {r.narratives.dashboard}
+        </div>
+      )}
 
       {/* 4 KPI cards in a row */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
@@ -3581,7 +3587,7 @@ function DashboardPage({r,history,goTo}){
       {/* Key Findings */}
       <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 20px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-          <span style={{fontSize:14,fontWeight:500,color:C.text}}>Key Findings</span>
+          <span style={{fontSize:14,fontWeight:500,color:C.text}}>Key Findings and Actions</span>
           <span style={{fontSize:11,color:C.muted}}>{diags.filter(d=>d.severity==="critical").length} critical · {diags.filter(d=>d.severity==="warning").length} warnings</span>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:5}}>
@@ -3596,7 +3602,12 @@ function DashboardPage({r,history,goTo}){
 
       {/* Category Health */}
       <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 20px"}}>
-        <div style={{fontSize:14,fontWeight:500,color:C.text,marginBottom:12}}>Category Health</div>
+        <div style={{fontSize:14,fontWeight:500,color:C.text,marginBottom:12}}>Website Readiness</div>
+        {r.narratives?.categoryHealth && (
+          <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6, marginBottom: 14, padding: "10px 12px", background: C.bg, borderRadius: 8 }}>
+            {r.narratives.categoryHealth}
+          </div>
+        )}
         {painPointsReady?(
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             {r.painPoints.map((pp,i)=>{
@@ -3636,6 +3647,12 @@ function DashboardPage({r,history,goTo}){
       <div style={{marginBottom:32}}>
         <div style={{fontSize:16,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text,marginBottom:4}}>Competitive Landscape</div>
         <div style={{fontSize:12,color:C.muted,marginBottom:16}}>{r.clientData.brand} vs competitors across AI engines</div>
+
+        {r.narratives?.competitiveLandscape && (
+          <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6, marginBottom: 16, padding: "10px 12px", background: C.bg, borderRadius: 8 }}>
+            {r.narratives.competitiveLandscape}
+          </div>
+        )}
 
         {competitorsReady?(<>
         {/* Share of Voice — 3 donuts stacked */}
