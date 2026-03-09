@@ -1635,6 +1635,7 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
   if(!brandCrawl?.subPages?.blog)missingEEAT.push("Blog/content hub");
   if(!brandCrawl?.subPages?.faq)missingEEAT.push("FAQ page");
 
+  const aiCrawlerSummaryForRoadmap=(()=>{try{const ac=brandCrawl?.mainPage?.aiCrawlerAccess;if(!ac)return null;const r=ac.robotsTxt;const l=ac.llmsTxt;let s=r?.found?ac.summary:"robots.txt not found";if(r?.found){const blocked=(r.crawlers||[]).filter(c=>c.blocked);if(blocked.length>0)s+=": "+blocked.map(c=>`${c.agent} (${c.engine})`).join(", ");}s+=l?.found?" | llms.txt present":" | llms.txt not found";return s;}catch(e){return null;}})();
   const roadmapPrompt=`Create a 90-day AEO roadmap for "${brand}" in ${industry}, specifically for improving visibility in ${region}.
 
 AUDIT FINDINGS TO ADDRESS:
@@ -1644,6 +1645,7 @@ AUDIT FINDINGS TO ADDRESS:
 - Warning categories: ${weakCats||"none"}
 - Missing channels: ${channelGaps||"none"}
 - Website issues from crawl: ${crawlSummary.slice(0,500)}
+- AI crawler access: ${aiCrawlerSummaryForRoadmap||"not checked"}
 - Top competitor advantages: ${(compData.competitors||[]).slice(0,3).map(c=>`${c.name} (${c.score}%): ${c.topStrength||"N/A"}`).join("; ")}
 
 SPECIFIC QUERY GAPS (content MUST target these):
@@ -1655,6 +1657,10 @@ ${missingSchemaList.length>0?missingSchemaList.map(s=>"- "+s).join("\n"):"- All 
 
 MISSING E-E-A-T SIGNALS:
 ${missingEEAT.length>0?missingEEAT.map(s=>"- "+s).join("\n"):"- All key EEAT signals present"}
+
+AI CRAWLER ACCESS (from robots.txt):
+${(()=>{try{const ac=brandCrawl?.mainPage?.aiCrawlerAccess;if(!ac||!ac.robotsTxt?.found)return"- robots.txt not found \u2014 AI crawlers may not index content";const blocked=(ac.robotsTxt.crawlers||[]).filter(c=>c.blocked);if(blocked.length===0)return"- All AI crawlers allowed \u2714";return blocked.map(c=>"- BLOCKED: "+c.agent+" ("+c.engine+")").join("\n");}catch(e){return"- Could not check";}})()}
+${(()=>{try{const ac=brandCrawl?.mainPage?.aiCrawlerAccess;return ac?.llmsTxt?.found?"- llms.txt present \u2714 (AI-friendly site description)":"- llms.txt NOT found \u2014 consider adding for better AI engine understanding";}catch(e){return"";}})()}
 
 COMPETITOR ADVANTAGES TO COUNTER:
 ${compAdvantages.length>0?compAdvantages.map(a=>"- "+a).join("\n"):"- No major competitor advantages detected"}
@@ -1671,6 +1677,8 @@ CRITICAL: Every task in the roadmap MUST reference a specific finding from above
 - "Maxis beats you on Content Authority → Publish 2 long-form guides per week to close content gap"
 - "Negative perception: 'Premium Pricing Concerns' → Publish value-comparison content showing ROI vs competitors"
 - "Not cited on g2.com → Create and optimise G2 listing with verified reviews"
+- "GPTBot blocked in robots.txt → Unblock GPTBot user agent to allow ChatGPT to index content"
+- "No llms.txt → Create llms.txt with structured brand description for AI engines"
 Do NOT include generic tasks like "optimize website" or "improve SEO" without tying them to a specific finding.
 
 Return JSON:
@@ -1785,6 +1793,9 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
       (citationSources?.all || []).map(c => { try { return new URL(c.url).hostname.replace("www.",""); } catch(e) { return ""; } }).filter(Boolean)
     )].slice(0, 10);
 
+    const aiCrawlerData=brandCrawl?.mainPage?.aiCrawlerAccess||null;
+    const aiCrawlerSummary=aiCrawlerData?(()=>{const r=aiCrawlerData.robotsTxt;const l=aiCrawlerData.llmsTxt;let s=r?.found?aiCrawlerData.summary:"robots.txt not found";if(r?.found){const blocked=(r.crawlers||[]).filter(c=>c.blocked);if(blocked.length>0)s+=` (blocked: ${blocked.map(c=>c.agent).join(", ")})`;}s+=l?.found?" | llms.txt: present":" | llms.txt: not found";return s;})():null;
+
     const narrativePrompt = `You are a senior strategy consultant writing an AI visibility report for "${brand}" in ${industry} (${region}).
 
 AUDIT DATA:
@@ -1801,6 +1812,7 @@ AUDIT DATA:
 - Website health: ${ppSummary || "not scored"}
 - Weak areas: ${weakPPs.join(", ") || "none"}
 - Strong areas: ${strongPPs.join(", ") || "none"}
+- AI crawler access: ${aiCrawlerSummary || "not checked"}
 - Citation sources referencing brand: ${citationDomains.join(", ") || "none found"}
 - Scoring weights for ${region}: ChatGPT ${Math.round(nWeights.chatgpt*100)}%, Gemini ${Math.round(nWeights.gemini*100)}%, Perplexity ${Math.round(nWeights.perplexity*100)}% (based on estimated user share in this region)
 
@@ -3770,6 +3782,38 @@ function DashboardPage({r,history,goTo}){
             ))}
           </div>
         )}
+
+        {/* AI Crawler Access */}
+        {(()=>{
+          const ac=r.brandCrawl?.aiCrawlerAccess;
+          if(!ac||!ac.robotsTxt)return null;
+          const rt=ac.robotsTxt;
+          const lt=ac.llmsTxt;
+          const blocked=(rt.crawlers||[]).filter(c=>c.blocked);
+          const allowed=(rt.crawlers||[]).filter(c=>!c.blocked);
+          return(
+            <div style={{marginTop:16,padding:"12px 14px",background:C.bg,borderRadius:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+                <span style={{fontSize:12,fontWeight:500,color:C.text}}>AI Crawler Access</span>
+                <InfoTip text="Checks your robots.txt to see which AI engine crawlers are allowed to index your site. Blocked crawlers cannot read your content, which may reduce your visibility on that engine. llms.txt is a new standard that helps AI engines understand your site."/>
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+                {rt.found?(rt.crawlers||[]).map((c,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 8px",borderRadius:6,fontSize:10,fontWeight:500,background:c.blocked?"#fef2f2":"#f0fdf4",color:c.blocked?C.red:C.green,border:"1px solid "+(c.blocked?"#fecaca":"#bbf7d0")}}>
+                    <span style={{width:6,height:6,borderRadius:3,background:c.blocked?C.red:C.green}}/>{c.agent}
+                  </div>
+                )):(
+                  <div style={{fontSize:11,color:C.muted}}>robots.txt not found</div>
+                )}
+              </div>
+              <div style={{display:"flex",gap:12,fontSize:11,color:C.sub}}>
+                {rt.found&&<span>{allowed.length} allowed, {blocked.length} blocked</span>}
+                <span style={{color:lt?.found?C.green:C.muted}}>{lt?.found?"✓ llms.txt found":"✗ No llms.txt"}</span>
+              </div>
+              {blocked.length>0&&<div style={{fontSize:10,color:C.red,marginTop:6,lineHeight:1.4}}>Blocked crawlers: {blocked.map(c=>`${c.agent} (${c.engine})`).join(", ")} — these engines may not index your content.</div>}
+            </div>
+          );
+        })()}
       </div>
     </div>
 

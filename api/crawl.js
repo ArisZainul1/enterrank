@@ -60,10 +60,130 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── 1. Fetch homepage via both Jina (content) and raw (technical signals) ──
-    const [homepageJina, homepageRaw] = await Promise.all([
+    // Helper: fetch robots.txt and parse AI crawler rules
+    async function fetchRobotsTxt(siteUrl) {
+      const robotsUrl = siteUrl.replace(/\/+$/, "") + "/robots.txt";
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
+        const r = await fetch(robotsUrl, {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; EnterRankBot/1.0)" },
+          signal: controller.signal, redirect: "follow"
+        });
+        clearTimeout(timeout);
+        if (!r.ok) return { found: false, raw: "", crawlers: [] };
+        const text = await r.text();
+        if (!text || text.length < 10 || text.includes("<!DOCTYPE") || text.includes("<html")) {
+          return { found: false, raw: "", crawlers: [] };
+        }
+
+        // Known AI crawlers to check
+        const aiCrawlers = [
+          { agent: "GPTBot", engine: "OpenAI (ChatGPT)" },
+          { agent: "ChatGPT-User", engine: "OpenAI (ChatGPT)" },
+          { agent: "Google-Extended", engine: "Google (Gemini)" },
+          { agent: "anthropic-ai", engine: "Anthropic (Claude)" },
+          { agent: "ClaudeBot", engine: "Anthropic (Claude)" },
+          { agent: "Claude-Web", engine: "Anthropic (Claude)" },
+          { agent: "PerplexityBot", engine: "Perplexity" },
+          { agent: "CCBot", engine: "Common Crawl" },
+          { agent: "Bytespider", engine: "ByteDance" },
+          { agent: "cohere-ai", engine: "Cohere" }
+        ];
+
+        // Parse robots.txt into sections
+        const lines = text.split("\n").map(l => l.trim());
+        let currentAgents = [];
+        const rules = []; // {agents: [], disallow: bool}
+
+        for (const line of lines) {
+          if (line.startsWith("#") || !line) continue;
+          const lower = line.toLowerCase();
+          if (lower.startsWith("user-agent:")) {
+            const agent = line.split(":").slice(1).join(":").trim();
+            if (currentAgents.length === 0 || rules.length === 0 || rules[rules.length - 1].agents !== currentAgents) {
+              currentAgents = [agent];
+              rules.push({ agents: currentAgents, disallowAll: false, allowSome: false });
+            } else {
+              currentAgents.push(agent);
+            }
+          } else if (lower.startsWith("disallow:") && currentAgents.length > 0) {
+            const path = line.split(":").slice(1).join(":").trim();
+            if (path === "/" || path === "/*") {
+              rules[rules.length - 1].disallowAll = true;
+            }
+          } else if (lower.startsWith("allow:") && currentAgents.length > 0) {
+            rules[rules.length - 1].allowSome = true;
+          }
+        }
+
+        // Check each AI crawler
+        const crawlerResults = aiCrawlers.map(crawler => {
+          // Find rules that apply to this crawler
+          let blocked = false;
+          let explicitly = false;
+          for (const rule of rules) {
+            const matchesAgent = rule.agents.some(a =>
+              a === "*" || a.toLowerCase() === crawler.agent.toLowerCase()
+            );
+            const matchesExact = rule.agents.some(a =>
+              a.toLowerCase() === crawler.agent.toLowerCase()
+            );
+            if (matchesExact && rule.disallowAll) {
+              blocked = true;
+              explicitly = true;
+            } else if (matchesAgent && rule.disallowAll && !explicitly) {
+              blocked = true;
+            }
+          }
+          return {
+            agent: crawler.agent,
+            engine: crawler.engine,
+            blocked,
+            explicitly
+          };
+        });
+
+        return {
+          found: true,
+          raw: text.slice(0, 3000),
+          crawlers: crawlerResults,
+          blockedCount: crawlerResults.filter(c => c.blocked).length,
+          totalChecked: crawlerResults.length
+        };
+      } catch (e) {
+        return { found: false, raw: "", crawlers: [], error: e.message };
+      }
+    }
+
+    // Helper: check for llms.txt
+    async function fetchLlmsTxt(siteUrl) {
+      const llmsUrl = siteUrl.replace(/\/+$/, "") + "/llms.txt";
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
+        const r = await fetch(llmsUrl, {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; EnterRankBot/1.0)" },
+          signal: controller.signal, redirect: "follow"
+        });
+        clearTimeout(timeout);
+        if (!r.ok) return { found: false };
+        const text = await r.text();
+        if (!text || text.length < 10 || text.includes("<!DOCTYPE") || text.includes("<html")) {
+          return { found: false };
+        }
+        return { found: true, content: text.slice(0, 2000), length: text.length };
+      } catch (e) {
+        return { found: false };
+      }
+    }
+
+    // ── 1. Fetch homepage + robots.txt + llms.txt in parallel ──
+    const [homepageJina, homepageRaw, robotsData, llmsData] = await Promise.all([
       jinaFetch(baseUrl),
-      rawFetch(baseUrl)
+      rawFetch(baseUrl),
+      fetchRobotsTxt(baseUrl),
+      fetchLlmsTxt(baseUrl)
     ]);
 
     // ── 2. Extract technical signals from raw HTML ──
@@ -206,6 +326,19 @@ export default async function handler(req, res) {
         imageCount: technicalSignals.imageCount,
         tableCount: technicalSignals.tableCount,
         listCount: technicalSignals.listCount
+      },
+
+      // AI Crawler Access (from robots.txt + llms.txt)
+      aiCrawlerAccess: {
+        robotsTxt: robotsData,
+        llmsTxt: llmsData,
+        summary: (() => {
+          if (!robotsData.found) return "No robots.txt found";
+          const blocked = robotsData.crawlers.filter(c => c.blocked);
+          if (blocked.length === 0) return "All AI crawlers allowed";
+          if (blocked.length === robotsData.crawlers.length) return "All AI crawlers blocked";
+          return `${blocked.length}/${robotsData.crawlers.length} AI crawlers blocked`;
+        })()
       },
 
       // AEO readiness signals
