@@ -1883,14 +1883,15 @@ function exportPDF(r){
   // ── EXECUTIVE SUMMARY ──
   sectionHeader("Executive Summary");
   const overallScore=r.overall||0;
-  const gptE=r.engines[0]||{},gemE=r.engines[1]||{};
-  const avgMention=Math.round(((gptE.mentionRate||0)+(gemE.mentionRate||0))/2);
-  const avgCitation=Math.round(((gptE.citationRate||0)+(gemE.citationRate||0))/2);
+  const gptE=r.engines[0]||{},gemE=r.engines[1]||{},pplxE=r.engines[2]||{};
+  const avgMention=Math.round(((gptE.mentionRate||0)+(gemE.mentionRate||0)+(pplxE.mentionRate||0))/3);
+  const avgCitation=Math.round(((gptE.citationRate||0)+(gemE.citationRate||0)+(pplxE.citationRate||0))/3);
   kvLine("Overall Visibility Score",overallScore+"%",overallScore>=60?green:overallScore>=30?amber:red);
   kvLine("Average Mention Rate",avgMention+"%");
   kvLine("Average Citation Rate",avgCitation+"%");
   kvLine("ChatGPT Mentions / Citations",(gptE.mentionRate||0)+"% / "+(gptE.citationRate||0)+"%");
   kvLine("Gemini Mentions / Citations",(gemE.mentionRate||0)+"% / "+(gemE.citationRate||0)+"%");
+  kvLine("Perplexity Mentions / Citations",(pplxE.mentionRate||0)+"% / "+(pplxE.citationRate||0)+"%");
   y+=5;
 
   // Key findings (inline diagnostics)
@@ -1915,19 +1916,21 @@ function exportPDF(r){
   sectionHeader("Query Results");
   const gptQueries=gptE.queries||[];
   const gemQueries=gemE.queries||[];
+  const pplxQueries=pplxE.queries||[];
   const searchQueries=r.searchQueries||gptQueries.map(q=>q.query||q);
   const queryTableData=searchQueries.map((q,i)=>{
     const qText=typeof q==="string"?q:q.query||q;
     const gptStatus=gptQueries[i]?.status||"Absent";
     const gemStatus=gemQueries[i]?.status||"Absent";
-    return[qText,gptStatus,gemStatus];
+    const pplxStatus=pplxQueries[i]?.status||"Absent";
+    return[qText,gptStatus,gemStatus,pplxStatus];
   });
   if(queryTableData.length>0){
-    doc.autoTable({startY:y,head:[["Query","ChatGPT","Gemini"]],body:queryTableData,margin:{left:margin,right:margin},
+    doc.autoTable({startY:y,head:[["Query","ChatGPT","Gemini","Perplexity"]],body:queryTableData,margin:{left:margin,right:margin},
       styles:{fontSize:7,cellPadding:3},headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold",fontSize:8},
-      columnStyles:{0:{cellWidth:contentW-50},1:{cellWidth:25,halign:"center"},2:{cellWidth:25,halign:"center"}},
+      columnStyles:{0:{cellWidth:contentW-75},1:{cellWidth:25,halign:"center"},2:{cellWidth:25,halign:"center"},3:{cellWidth:25,halign:"center"}},
       didParseCell:function(data){
-        if(data.section==="body"&&(data.column.index===1||data.column.index===2)){
+        if(data.section==="body"&&(data.column.index===1||data.column.index===2||data.column.index===3)){
           const val=data.cell.raw;
           if(val==="Cited")data.cell.styles.textColor=green;
           else if(val==="Mentioned")data.cell.styles.textColor=accent;
@@ -4005,12 +4008,14 @@ function QueryCategoriesPage({ r }) {
       const website = r.clientData?.website || "";
       const region = r.clientData?.region || "";
       const neutralSys = "You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.";
-      const [gptResult, gemResult] = await Promise.all([
+      const [gptResult, gemResult, pplxResult] = await Promise.all([
         callOpenAISearch(query, region),
-        callGeminiWithCitations(query, neutralSys)
+        callGeminiWithCitations(query, neutralSys),
+        callPerplexity(query, neutralSys)
       ]);
       const gptText = typeof gptResult === "string" ? gptResult : (gptResult?.response || gptResult?.text || "");
       const gemText = typeof gemResult === "string" ? gemResult : (gemResult?.text || gemResult?.response || "");
+      const pplxText = typeof pplxResult === "string" ? pplxResult : (pplxResult?.text || pplxResult?.response || "");
       const gptCitations = gptResult?.citations || [];
       const classifyText = (text, citations) => {
         if (!text || text.length < 20) return "Absent";
@@ -4033,28 +4038,32 @@ function QueryCategoriesPage({ r }) {
       };
       const gptStatus = classifyText(gptText, gptCitations);
       const gemStatus = classifyText(gemText, gemResult?.citations || []);
-      const result = { query, gptStatus, gemStatus, gptText: gptText.slice(0, 500), gemText: gemText.slice(0, 500) };
+      const pplxStatus = classifyText(pplxText, pplxResult?.citations || []);
+      const result = { query, gptStatus, gemStatus, pplxStatus, gptText: gptText.slice(0, 500), gemText: gemText.slice(0, 500), pplxText: pplxText.slice(0, 500) };
       setTestResults(result);
       setTestedPrompts(prev => [result, ...prev]);
       setTestQuery("");
     } catch(e) {
       console.error("Test prompt failed:", e);
-      setTestResults({ query, gptStatus: "Error", gemStatus: "Error", error: true });
+      setTestResults({ query, gptStatus: "Error", gemStatus: "Error", pplxStatus: "Error", error: true });
     }
     setTestingPrompt(false);
   };
 
   const gptQueries = r.engines[0]?.queries || [];
   const gemQueries = r.engines[1]?.queries || [];
+  const pplxQueries = r.engines[2]?.queries || [];
   const allQueries = (r.searchQueries || gptQueries.map(q => q.query)).map((query, i) => {
     const qText = typeof query === "string" ? query : query.query;
     const gptMatch = gptQueries.find(q => q.query === qText) || gptQueries[i];
     const gemMatch = gemQueries.find(q => q.query === qText) || gemQueries[i];
+    const pplxMatch = pplxQueries.find(q => q.query === qText) || pplxQueries[i];
     return {
       query: qText,
       gptStatus: gptMatch?.status || "Absent",
       gemStatus: gemMatch?.status || "Absent",
-      bestStatus: (gptMatch?.status === "Cited" || gemMatch?.status === "Cited") ? "Cited" : (gptMatch?.status === "Mentioned" || gemMatch?.status === "Mentioned") ? "Mentioned" : "Absent",
+      pplxStatus: pplxMatch?.status || "Absent",
+      bestStatus: (gptMatch?.status === "Cited" || gemMatch?.status === "Cited" || pplxMatch?.status === "Cited") ? "Cited" : (gptMatch?.status === "Mentioned" || gemMatch?.status === "Mentioned" || pplxMatch?.status === "Mentioned") ? "Mentioned" : "Absent",
       archetype: (r.queryArchetypeMap||{})[qText]||""
     };
   });
@@ -4184,6 +4193,7 @@ function QueryCategoriesPage({ r }) {
                         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                           <span style={statusBadge(q.gptStatus)}>GPT: {q.gptStatus}</span>
                           <span style={statusBadge(q.gemStatus)}>Gem: {q.gemStatus}</span>
+                          <span style={statusBadge(q.pplxStatus)}>Pplx: {q.pplxStatus}</span>
                         </div>
                       </div>
                     ))}
@@ -4221,6 +4231,7 @@ function QueryCategoriesPage({ r }) {
             <div style={{ display: "flex", gap: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 6, background: testResults.gptStatus === "Cited" ? "#dcfce7" : testResults.gptStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: testResults.gptStatus === "Cited" ? "#166534" : testResults.gptStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>ChatGPT: {testResults.gptStatus}</span>
               <span style={{ fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 6, background: testResults.gemStatus === "Cited" ? "#dcfce7" : testResults.gemStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: testResults.gemStatus === "Cited" ? "#166534" : testResults.gemStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>Gemini: {testResults.gemStatus}</span>
+              <span style={{ fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 6, background: testResults.pplxStatus === "Cited" ? "#dcfce7" : testResults.pplxStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: testResults.pplxStatus === "Cited" ? "#166534" : testResults.pplxStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>Perplexity: {testResults.pplxStatus}</span>
             </div>
           </div>
         )}
@@ -4232,6 +4243,7 @@ function QueryCategoriesPage({ r }) {
                 <div style={{ flex: 1, color: C.sub }}>{tp.query}</div>
                 <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: tp.gptStatus === "Cited" ? "#dcfce7" : tp.gptStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: tp.gptStatus === "Cited" ? "#166534" : tp.gptStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>{tp.gptStatus}</span>
                 <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: tp.gemStatus === "Cited" ? "#dcfce7" : tp.gemStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: tp.gemStatus === "Cited" ? "#166534" : tp.gemStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>{tp.gemStatus}</span>
+                <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: tp.pplxStatus === "Cited" ? "#dcfce7" : tp.pplxStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: tp.pplxStatus === "Cited" ? "#166534" : tp.pplxStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>{tp.pplxStatus}</span>
               </div>
             ))}
           </div>
@@ -4306,15 +4318,18 @@ function VisibilityMapPage({ r }) {
   const [expandedCat, setExpandedCat] = useState(null);
   const gptQueries = r.engines[0]?.queries || [];
   const gemQueries = r.engines[1]?.queries || [];
+  const pplxQueries = r.engines[2]?.queries || [];
   const allQueries = (r.searchQueries || gptQueries.map(q => q.query)).map((query, i) => {
     const qText = typeof query === "string" ? query : query.query;
     const gptMatch = gptQueries.find(q => q.query === qText) || gptQueries[i];
     const gemMatch = gemQueries.find(q => q.query === qText) || gemQueries[i];
+    const pplxMatch = pplxQueries.find(q => q.query === qText) || pplxQueries[i];
     return {
       query: qText,
       gptStatus: gptMatch?.status || "Absent",
       gemStatus: gemMatch?.status || "Absent",
-      bestStatus: (gptMatch?.status === "Cited" || gemMatch?.status === "Cited") ? "Cited" : (gptMatch?.status === "Mentioned" || gemMatch?.status === "Mentioned") ? "Mentioned" : "Absent"
+      pplxStatus: pplxMatch?.status || "Absent",
+      bestStatus: (gptMatch?.status === "Cited" || gemMatch?.status === "Cited" || pplxMatch?.status === "Cited") ? "Cited" : (gptMatch?.status === "Mentioned" || gemMatch?.status === "Mentioned" || pplxMatch?.status === "Mentioned") ? "Mentioned" : "Absent"
     };
   });
   const categorize = (query) => {
@@ -4480,6 +4495,7 @@ function IntentPage({r,goTo}){
   // Build combined query data from engines
   const gptQueries=r.engines[0]?.queries||[];
   const gemQueries=r.engines[1]?.queries||[];
+  const pplxQueries=r.engines[2]?.queries||[];
   const allSearchQueries=r.searchQueries||gptQueries.map(q=>q.query);
 
   const normalizeStatus=(s)=>{if(!s)return"Absent";const l=s.trim().toLowerCase();if(l==="cited")return"Cited";if(l==="mentioned")return"Mentioned";return"Absent";};
@@ -4487,7 +4503,8 @@ function IntentPage({r,goTo}){
     const qText=typeof query==="string"?query:query.query;
     const gptMatch=gptQueries.find(q=>q.query===qText)||gptQueries[i];
     const gemMatch=gemQueries.find(q=>q.query===qText)||gemQueries[i];
-    return{query:qText,gptStatus:normalizeStatus(gptMatch?.status),gemStatus:normalizeStatus(gemMatch?.status),archetype:(r.queryArchetypeMap||{})[qText]||""};
+    const pplxMatch=pplxQueries.find(q=>q.query===qText)||pplxQueries[i];
+    return{query:qText,gptStatus:normalizeStatus(gptMatch?.status),gemStatus:normalizeStatus(gemMatch?.status),pplxStatus:normalizeStatus(pplxMatch?.status),archetype:(r.queryArchetypeMap||{})[qText]||""};
   });
 
   // Status badge helper
@@ -4535,26 +4552,31 @@ function IntentPage({r,goTo}){
     const website=r.clientData.website;
     const region=r.clientData.region;
     try{
-      const[gptResult,gemResult]=await Promise.all([
+      const[gptResult,gemResult,pplxResult]=await Promise.all([
         callOpenAISearch(query,region),
-        callGeminiWithCitations(query,"You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.")
+        callGeminiWithCitations(query,"You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them."),
+        callPerplexity(query,"You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.")
       ]);
       const gptText=gptResult?.text||gptResult||"";
       const gemText=gemResult?.text||gemResult||"";
+      const pplxText=pplxResult?.text||pplxResult||"";
       const gptClass=classifyText(gptText,brand,website,gptResult?.citations||[]);
       const gemClass=classifyText(gemText,brand,website,gemResult?.citations||[]);
+      const pplxClass=classifyText(pplxText,brand,website,pplxResult?.citations||[]);
       const result={
         gpt:gptClass,
         gem:gemClass,
+        pplx:pplxClass,
         gptSnippet:(typeof gptText==="string"?gptText:"").slice(0,300),
-        gemSnippet:(typeof gemText==="string"?gemText:"").slice(0,300)
+        gemSnippet:(typeof gemText==="string"?gemText:"").slice(0,300),
+        pplxSnippet:(typeof pplxText==="string"?pplxText:"").slice(0,300)
       };
       setTestResults(result);
       setTestedPrompts(prev=>[{query,...result},...prev].slice(0,10));
       setTestQuery("");
     }catch(e){
       console.error("Test prompt failed:",e);
-      setTestResults({gpt:"Error",gem:"Error",gptSnippet:"API call failed",gemSnippet:"API call failed"});
+      setTestResults({gpt:"Error",gem:"Error",pplx:"Error",gptSnippet:"API call failed",gemSnippet:"API call failed",pplxSnippet:"API call failed"});
     }
     setTestingPrompt(false);
   }
@@ -4563,13 +4585,13 @@ function IntentPage({r,goTo}){
     {/* Header */}
     <div style={{marginBottom:32}}>
       <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Query Results</h2>
-      <p style={{color:"#6b7280",fontSize:13,marginTop:4}}>Audit query results across ChatGPT and Gemini for {r.clientData.brand}</p>
+      <p style={{color:"#6b7280",fontSize:13,marginTop:4}}>Audit query results across ChatGPT, Gemini, and Perplexity for {r.clientData.brand}</p>
     </div>
 
     {/* Overall summary */}
     <div style={{padding:"20px 24px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:14,marginBottom:32}}>
       <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Query Visibility Summary</div>
-      <div style={{fontSize:12,color:C.muted,marginTop:2}}>{combinedQueries.length} prompts tested across both engines</div>
+      <div style={{fontSize:12,color:C.muted,marginTop:2}}>{combinedQueries.length} prompts tested across all engines</div>
     </div>
 
     {/* Audit Query Results — flat table */}
@@ -4577,22 +4599,24 @@ function IntentPage({r,goTo}){
 
     {combinedQueries.length===0?<div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:24,textAlign:"center",color:C.muted,fontSize:13}}>No query data available. Run an audit to see results.</div>
     :<div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,overflow:"hidden"}}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 110px 110px",padding:"12px 20px",borderBottom:"1px solid "+C.border,fontSize:11,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em"}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 100px 100px 100px",padding:"12px 20px",borderBottom:"1px solid "+C.border,fontSize:11,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em"}}>
         <span>Query</span>
         <span style={{textAlign:"center"}}>ChatGPT</span>
         <span style={{textAlign:"center"}}>Gemini</span>
+        <span style={{textAlign:"center"}}>Perplexity</span>
       </div>
-      {combinedQueries.map((q,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 110px 110px",padding:"14px 20px",alignItems:"center",borderBottom:i<combinedQueries.length-1?"1px solid "+C.border+"30":"none",background:i%2===0?"transparent":C.border+"10"}}>
+      {combinedQueries.map((q,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 100px 100px 100px",padding:"14px 20px",alignItems:"center",borderBottom:i<combinedQueries.length-1?"1px solid "+C.border+"30":"none",background:i%2===0?"transparent":C.border+"10"}}>
         <span style={{fontSize:13,lineHeight:1.5,color:C.text,paddingRight:12}}>{q.query}{q.archetype&&<span style={{display:"inline-block",fontSize:9,fontWeight:500,padding:"2px 7px",borderRadius:4,background:C.accent+"10",color:C.accent,marginLeft:8,verticalAlign:"middle",whiteSpace:"nowrap"}}>{q.archetype}</span>}</span>
         <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gptStatus)}</div>
         <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gemStatus)}</div>
+        <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.pplxStatus)}</div>
       </div>))}
     </div>}
 
     {/* Section B: Test a Prompt */}
     <div style={{marginTop:40,padding:24,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
       <div style={{fontSize:15,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em",color:C.text,marginBottom:4}}>Test a Prompt</div>
-      <p style={{fontSize:12,color:C.muted,marginBottom:16,marginTop:0}}>Type any search query to test whether {r.clientData.brand} gets cited or mentioned on ChatGPT and Gemini.</p>
+      <p style={{fontSize:12,color:C.muted,marginBottom:16,marginTop:0}}>Type any search query to test whether {r.clientData.brand} gets cited or mentioned on ChatGPT, Gemini, and Perplexity.</p>
 
       <div style={{display:"flex",gap:8}}>
         <input value={testQuery} onChange={e=>setTestQuery(e.target.value)}
@@ -4611,7 +4635,7 @@ function IntentPage({r,goTo}){
       </div>
 
       {/* Test results */}
-      {testResults&&<div style={{marginTop:16,display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+      {testResults&&<div style={{marginTop:16,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
         <div style={{padding:14,borderRadius:10,border:`1px solid ${C.border}`}}>
           <div style={{fontSize:11,color:C.muted,marginBottom:6}}>ChatGPT (with web search)</div>
           {statusBadge(testResults.gpt)}
@@ -4622,15 +4646,21 @@ function IntentPage({r,goTo}){
           {statusBadge(testResults.gem)}
           {testResults.gemSnippet&&<p style={{fontSize:11,color:C.muted,lineHeight:1.5,maxHeight:100,overflow:"auto",margin:"8px 0 0"}}>{testResults.gemSnippet}</p>}
         </div>
+        <div style={{padding:14,borderRadius:10,border:`1px solid ${C.border}`}}>
+          <div style={{fontSize:11,color:C.muted,marginBottom:6}}>Perplexity</div>
+          {statusBadge(testResults.pplx)}
+          {testResults.pplxSnippet&&<p style={{fontSize:11,color:C.muted,lineHeight:1.5,maxHeight:100,overflow:"auto",margin:"8px 0 0"}}>{testResults.pplxSnippet}</p>}
+        </div>
       </div>}
 
       {/* History of tested prompts */}
       {testedPrompts.length>0&&<div style={{marginTop:16}}>
         <div style={{fontSize:11,color:C.muted,marginBottom:8}}>Previously tested</div>
-        {testedPrompts.map((tp,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 110px 110px",gap:8,padding:"8px 0",borderBottom:`1px solid ${C.border}30`,alignItems:"center"}}>
+        {testedPrompts.map((tp,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 100px 100px 100px",gap:8,padding:"8px 0",borderBottom:`1px solid ${C.border}30`,alignItems:"center"}}>
           <span style={{fontSize:12,color:C.text}}>{tp.query}</span>
           <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(tp.gpt)}</div>
           <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(tp.gem)}</div>
+          <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(tp.pplx)}</div>
         </div>))}
       </div>}
     </div>
@@ -4648,23 +4678,25 @@ function CitationSourcesPage({ r }) {
   // Build sources list from the actual data shape
   const sources = (cs.all || []).map(s => ({
     ...s,
-    engine: s.engine === "chatgpt" ? "ChatGPT" : s.engine === "gemini" ? "Gemini" : s.engine,
+    engine: s.engine === "chatgpt" ? "ChatGPT" : s.engine === "gemini" ? "Gemini" : s.engine === "perplexity" ? "Perplexity" : s.engine,
     domain: (() => { try { return new URL(s.url).hostname.replace("www.", ""); } catch(e) { return "unknown"; } })()
   }));
 
   // Filter by tab
   const filtered = activeTab === "all" ? sources
     : activeTab === "chatgpt" ? sources.filter(s => s.engine === "ChatGPT")
-    : sources.filter(s => s.engine === "Gemini");
+    : activeTab === "gemini" ? sources.filter(s => s.engine === "Gemini")
+    : sources.filter(s => s.engine === "Perplexity");
 
   // Group by domain
   const domainMap = {};
   filtered.forEach(s => {
     const d = s.domain;
-    if (!domainMap[d]) domainMap[d] = { domain: d, entries: [], chatgpt: 0, gemini: 0 };
+    if (!domainMap[d]) domainMap[d] = { domain: d, entries: [], chatgpt: 0, gemini: 0, perplexity: 0 };
     domainMap[d].entries.push(s);
     if (s.engine === "ChatGPT") domainMap[d].chatgpt++;
-    else domainMap[d].gemini++;
+    else if (s.engine === "Gemini") domainMap[d].gemini++;
+    else domainMap[d].perplexity++;
   });
 
   const domains = Object.values(domainMap).sort((a, b) => b.entries.length - a.entries.length);
@@ -4672,6 +4704,7 @@ function CitationSourcesPage({ r }) {
   const uniqueDomains = new Set(sources.map(s => s.domain)).size;
   const chatgptSources = sources.filter(s => s.engine === "ChatGPT").length;
   const geminiSources = sources.filter(s => s.engine === "Gemini").length;
+  const pplxSources = sources.filter(s => s.engine === "Perplexity").length;
 
   return (
     <div>
@@ -4687,12 +4720,13 @@ function CitationSourcesPage({ r }) {
       )}
 
       {/* Summary stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginBottom: 24 }}>
         {[
           { label: "Total Citations", value: totalSources, color: C.text },
           { label: "Unique Domains", value: uniqueDomains, color: C.accent },
           { label: "From ChatGPT", value: chatgptSources, color: "#10A37F" },
-          { label: "From Gemini", value: geminiSources, color: "#4285F4" }
+          { label: "From Gemini", value: geminiSources, color: "#4285F4" },
+          { label: "From Perplexity", value: pplxSources, color: "#20808D" }
         ].map((s, i) => (
           <div key={i} style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "16px 18px", textAlign: "center" }}>
             <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>{s.label}</div>
@@ -4706,7 +4740,8 @@ function CitationSourcesPage({ r }) {
         {[
           { id: "all", label: "All Sources" },
           { id: "chatgpt", label: "ChatGPT Sources" },
-          { id: "gemini", label: "Gemini Sources" }
+          { id: "gemini", label: "Gemini Sources" },
+          { id: "perplexity", label: "Perplexity Sources" }
         ].map(tab => (
           <button key={tab.id} onClick={() => { setActiveTab(tab.id); setExpandedDomain(null); }} style={{
             padding: "8px 16px", fontSize: 12, fontWeight: activeTab === tab.id ? 500 : 400,
@@ -4721,11 +4756,12 @@ function CitationSourcesPage({ r }) {
       {domains.length > 0 ? (
         <div style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, overflow: "hidden" }}>
           {/* Header */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 80px", padding: "10px 20px", borderBottom: "1px solid " + C.border, background: C.bg }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 70px 70px 70px 70px", padding: "10px 20px", borderBottom: "1px solid " + C.border, background: C.bg }}>
             <span style={{ fontSize: 11, fontWeight: 500, color: C.muted }}>Source Domain</span>
             <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "center" }}>Citations</span>
             <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "center" }}>ChatGPT</span>
             <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "center" }}>Gemini</span>
+            <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "center" }}>Perplexity</span>
           </div>
 
           {/* Rows */}
@@ -4734,7 +4770,7 @@ function CitationSourcesPage({ r }) {
             return (
               <div key={i}>
                 <div onClick={() => setExpandedDomain(isOpen ? null : i)} style={{
-                  display: "grid", gridTemplateColumns: "1fr 80px 80px 80px", padding: "14px 20px",
+                  display: "grid", gridTemplateColumns: "1fr 70px 70px 70px 70px", padding: "14px 20px",
                   borderBottom: i < domains.length - 1 || isOpen ? "1px solid " + C.borderSoft : "none",
                   cursor: "pointer", transition: "background .15s",
                   background: isOpen ? C.bg : "transparent"
@@ -4749,6 +4785,7 @@ function CitationSourcesPage({ r }) {
                   <div style={{ textAlign: "center", fontSize: 13, fontWeight: 500, color: C.text }}>{d.entries.length}</div>
                   <div style={{ textAlign: "center", fontSize: 13, color: d.chatgpt > 0 ? "#10A37F" : C.muted }}>{d.chatgpt || "-"}</div>
                   <div style={{ textAlign: "center", fontSize: 13, color: d.gemini > 0 ? "#4285F4" : C.muted }}>{d.gemini || "-"}</div>
+                  <div style={{ textAlign: "center", fontSize: 13, color: d.perplexity > 0 ? "#20808D" : C.muted }}>{d.perplexity || "-"}</div>
                 </div>
 
                 {/* Expanded: show individual citations */}
@@ -4760,7 +4797,7 @@ function CitationSourcesPage({ r }) {
                           <a href={entry.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: C.accent, textDecoration: "none", lineHeight: 1.5, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.title || entry.url}</a>
                           <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>Query: {entry.query}</div>
                         </div>
-                        <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: entry.engine === "ChatGPT" ? "#10A37F15" : "#4285F415", color: entry.engine === "ChatGPT" ? "#10A37F" : "#4285F4", flexShrink: 0 }}>{entry.engine}</span>
+                        <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: entry.engine === "ChatGPT" ? "#10A37F15" : entry.engine === "Gemini" ? "#4285F415" : "#20808D15", color: entry.engine === "ChatGPT" ? "#10A37F" : entry.engine === "Gemini" ? "#4285F4" : "#20808D", flexShrink: 0 }}>{entry.engine}</span>
                       </div>
                     ))}
                   </div>
@@ -4777,7 +4814,7 @@ function CitationSourcesPage({ r }) {
 
       {/* Methodology note */}
       <div style={{ marginTop: 16, fontSize: 11, color: C.muted, padding: "0 4px", lineHeight: 1.5 }}>
-        Citation sources are extracted from real-time web searches performed by ChatGPT and Gemini during the audit. These are the actual URLs each engine referenced when generating its response.
+        Citation sources are extracted from real-time web searches performed by ChatGPT, Gemini, and Perplexity during the audit. These are the actual URLs each engine referenced when generating its response.
       </div>
     </div>
   );
