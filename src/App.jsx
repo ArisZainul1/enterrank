@@ -875,13 +875,14 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
   compNames.filter(n => n).forEach(name => {
     const gv = gptVisibility[name] || { mentionRate: 0, citationRate: 0 };
     const gm = gemVisibility[name] || { mentionRate: 0, citationRate: 0 };
+    const pv = pplxVisibility[name] || emptyVis;
     compScoresMap[name] = {
       gpt: { mentionRate: gv.mentionRate, citationRate: gv.citationRate, score: Math.round(gv.mentionRate * 0.5 + gv.citationRate * 0.5) },
       gemini: { mentionRate: gm.mentionRate, citationRate: gm.citationRate, score: Math.round(gm.mentionRate * 0.5 + gm.citationRate * 0.5) },
-      perplexity: { mentionRate: (pplxVisibility[cname]||emptyVis).mentionRate, citationRate: (pplxVisibility[cname]||emptyVis).citationRate, score: Math.round(((pplxVisibility[cname]||emptyVis).mentionRate * 0.5 + (pplxVisibility[cname]||emptyVis).citationRate * 0.5)) },
-      avgMentionRate: Math.round((gv.mentionRate + gm.mentionRate + (pplxVisibility[cname]||emptyVis).mentionRate) / 3),
-      avgCitationRate: Math.round((gv.citationRate + gm.citationRate + (pplxVisibility[cname]||emptyVis).citationRate) / 3),
-      avgScore: Math.round(((gv.mentionRate * 0.5 + gv.citationRate * 0.5) + (gm.mentionRate * 0.5 + gm.citationRate * 0.5) + ((pplxVisibility[cname]||emptyVis).mentionRate * 0.5 + (pplxVisibility[cname]||emptyVis).citationRate * 0.5)) / 3)
+      perplexity: { mentionRate: pv.mentionRate, citationRate: pv.citationRate, score: Math.round(pv.mentionRate * 0.5 + pv.citationRate * 0.5) },
+      avgMentionRate: Math.round((gv.mentionRate + gm.mentionRate + pv.mentionRate) / 3),
+      avgCitationRate: Math.round((gv.citationRate + gm.citationRate + pv.citationRate) / 3),
+      avgScore: Math.round(((gv.mentionRate * 0.5 + gv.citationRate * 0.5) + (gm.mentionRate * 0.5 + gm.citationRate * 0.5) + (pv.mentionRate * 0.5 + pv.citationRate * 0.5)) / 3)
     };
   });
 
