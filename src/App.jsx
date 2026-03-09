@@ -3655,11 +3655,13 @@ function DashboardPage({r,history,goTo}){
         </div>
       </div>
 
-      {r.narratives?.dashboard && (
-        <div style={{ maxWidth: 640, margin: "0 auto 24px", padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, fontSize: 13, color: C.sub, lineHeight: 1.7, textAlign: "left" }}>
-          {r.narratives.dashboard}
-        </div>
-      )}
+      <div style={{ maxWidth: 640, margin: "0 auto 24px", padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, minHeight: 80 }}>
+        {r.narratives?.dashboard ? (
+          <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.7, textAlign: "left" }}>{r.narratives.dashboard}</div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 48 }}><div style={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>Generating insights...</div></div>
+        )}
+      </div>
 
       {/* 4 KPI cards in a row */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
@@ -3719,11 +3721,13 @@ function DashboardPage({r,history,goTo}){
       {/* Category Health */}
       <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 20px"}}>
         <div style={{fontSize:14,fontWeight:500,color:C.text,marginBottom:12}}>Website Readiness</div>
-        {r.narratives?.categoryHealth && (
-          <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6, marginBottom: 14, padding: "10px 12px", background: C.bg, borderRadius: 8 }}>
-            {r.narratives.categoryHealth}
-          </div>
-        )}
+        <div style={{ marginBottom: 14, padding: "10px 12px", background: C.bg, borderRadius: 8, minHeight: 60 }}>
+          {r.narratives?.categoryHealth ? (
+            <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6 }}>{r.narratives.categoryHealth}</div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 48 }}><div style={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>Generating insights...</div></div>
+          )}
+        </div>
         {painPointsReady?(
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             {r.painPoints.map((pp,i)=>{
@@ -3764,11 +3768,13 @@ function DashboardPage({r,history,goTo}){
         <div style={{fontSize:16,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text,marginBottom:4}}>Competitive Landscape</div>
         <div style={{fontSize:12,color:C.muted,marginBottom:16}}>{r.clientData.brand} vs competitors across AI engines</div>
 
-        {r.narratives?.competitiveLandscape && (
-          <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6, marginBottom: 16, padding: "10px 12px", background: C.bg, borderRadius: 8 }}>
-            {r.narratives.competitiveLandscape}
-          </div>
-        )}
+        <div style={{ marginBottom: 16, padding: "10px 12px", background: C.bg, borderRadius: 8, minHeight: 60 }}>
+          {r.narratives?.competitiveLandscape ? (
+            <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6 }}>{r.narratives.competitiveLandscape}</div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 48 }}><div style={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>Generating insights...</div></div>
+          )}
+        </div>
 
         {competitorsReady?(<>
         {/* Share of Voice — 3 donuts stacked */}
@@ -4196,11 +4202,13 @@ function QueryCategoriesPage({ r }) {
         <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Which customer questions lead to {r.clientData.brand} — and which don't</p>
       </div>
 
-      {r.narratives?.queryCategories && (
-        <div style={{ marginBottom: 24, padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, fontSize: 13, color: C.sub, lineHeight: 1.7 }}>
-          {r.narratives.queryCategories}
-        </div>
-      )}
+      <div style={{ marginBottom: 24, padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, minHeight: 70 }}>
+        {r.narratives?.queryCategories ? (
+          <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.7 }}>{r.narratives.queryCategories}</div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 48 }}><div style={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>Generating insights...</div></div>
+        )}
+      </div>
 
       {/* Summary stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
@@ -4777,11 +4785,13 @@ function CitationSourcesPage({ r }) {
         <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>The sources AI engines trust when talking about {brandName}</p>
       </div>
 
-      {r.narratives?.citationSources && (
-        <div style={{ marginBottom: 24, padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, fontSize: 13, color: C.sub, lineHeight: 1.7 }}>
-          {r.narratives.citationSources}
-        </div>
-      )}
+      <div style={{ marginBottom: 24, padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, minHeight: 70 }}>
+        {r.narratives?.citationSources ? (
+          <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.7 }}>{r.narratives.citationSources}</div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 48 }}><div style={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>Generating insights...</div></div>
+        )}
+      </div>
 
       {/* Summary stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginBottom: 24 }}>
@@ -5239,11 +5249,13 @@ function SentimentPage({r}){
       <p style={{fontSize:13,color:"#6b7280",marginTop:4}}>How AI engines describe and position {brandName} to potential customers</p>
     </div>
 
-    {r.narratives?.sentiment && (
-      <div style={{ marginBottom: 24, padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, fontSize: 13, color: C.sub, lineHeight: 1.7 }}>
-        {r.narratives.sentiment}
-      </div>
-    )}
+    <div style={{ marginBottom: 24, padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, minHeight: 70 }}>
+      {r.narratives?.sentiment ? (
+        <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.7 }}>{r.narratives.sentiment}</div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 48 }}><div style={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>Generating insights...</div></div>
+      )}
+    </div>
 
     {/* Top section: Label + bar + competitor comparison */}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:32}}>
