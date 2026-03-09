@@ -2233,25 +2233,30 @@ function generateAll(cd, apiData){
   const searchQueries=(hasApi&&apiData.searchQueries)?apiData.searchQueries:[];
   const queryArchetypeMap=(hasApi&&apiData.queryArchetypeMap)?apiData.queryArchetypeMap:{};
   const channelSourceData=(hasApi&&apiData.channelSourceData)?apiData.channelSourceData:{sourceChannels:[],opportunities:[]};
-  // Share of Voice (Profound method)
+  // Share of Voice — unified counting method (no rate→count round-trip bias)
   const sovData=(()=>{
     const brandName=cd.brand;
-    const allBrandNames=[brandName,...competitors.map(c=>c.name)];
-    const allEngineData=(hasApi&&apiData.engineData)?(apiData.engineData.engines||[]):[];
-    const allEngineQueries=allEngineData.map(e=>e.queries||[]);
-    const totalQueries=Math.max(...allEngineQueries.map(q=>q.length),1);
+    const sovEngines=engines||[];
     const mentionCounts={};const citationCounts={};
-    allBrandNames.forEach(name=>{mentionCounts[name]=0;citationCounts[name]=0;});
-    let brandMentionCount=0,brandCitationCount=0;
-    allEngineQueries.forEach(qs=>{brandMentionCount+=qs.filter(q=>q.status==="Cited"||q.status==="Mentioned").length;brandCitationCount+=qs.filter(q=>q.status==="Cited").length;});
-    mentionCounts[brandName]=brandMentionCount;citationCounts[brandName]=brandCitationCount;
+    // Brand: count directly from engine query statuses
+    let brandMentions=0,brandCitations=0;
+    sovEngines.forEach(engine=>{(engine.queries||[]).forEach(q=>{if(q.status==="Cited"||q.status==="Mentioned")brandMentions++;if(q.status==="Cited")brandCitations++;});});
+    mentionCounts[brandName]=brandMentions;citationCounts[brandName]=brandCitations;
+    // Competitors: use per-engine rates applied to per-engine query counts (same basis as brand)
     const cVis=(hasApi&&apiData.compVisibilityData)?apiData.compVisibilityData:{};
-    competitors.forEach(c=>{const cv=cVis[c.name];if(cv){const gM=Math.round((cv.gpt?.mentionRate||0)/100*totalQueries);const geM=Math.round((cv.gemini?.mentionRate||0)/100*totalQueries);const pM=Math.round((cv.perplexity?.mentionRate||cv.avgMentionRate||0)/100*totalQueries);const gC=Math.round((cv.gpt?.citationRate||0)/100*totalQueries);const geC=Math.round((cv.gemini?.citationRate||0)/100*totalQueries);const pC=Math.round((cv.perplexity?.citationRate||cv.avgCitationRate||0)/100*totalQueries);mentionCounts[c.name]=gM+geM+pM;citationCounts[c.name]=gC+geC+pC;}});
+    competitors.forEach(c=>{const name=c.name;if(!name)return;let compM=0,compC=0;const cv=cVis[name];
+      if(cv){sovEngines.forEach(engine=>{const eid=engine.id;let mRate=0,cRate=0;
+        if(eid==="chatgpt"&&cv.gpt){mRate=cv.gpt.mentionRate||0;cRate=cv.gpt.citationRate||0;}
+        else if(eid==="gemini"&&cv.gemini){mRate=cv.gemini.mentionRate||0;cRate=cv.gemini.citationRate||0;}
+        else if(eid==="perplexity"&&cv.perplexity){mRate=cv.perplexity.mentionRate||0;cRate=cv.perplexity.citationRate||0;}
+        const eqCount=(engine.queries||[]).length||1;
+        compM+=Math.round(mRate/100*eqCount);compC+=Math.round(cRate/100*eqCount);});}
+      mentionCounts[name]=compM;citationCounts[name]=compC;});
     const totalMentions=Object.values(mentionCounts).reduce((a,b)=>a+b,0)||1;
     const totalCitations=Object.values(citationCounts).reduce((a,b)=>a+b,0)||1;
-    const shares={};
-    allBrandNames.forEach(name=>{shares[name]={mentionCount:mentionCounts[name],citationCount:citationCounts[name],mentionShare:Math.round((mentionCounts[name]/totalMentions)*100),citationShare:Math.round((citationCounts[name]/totalCitations)*100)};});
-    return{shares,totalMentions,totalCitations,totalQueries:totalQueries*allEngineData.length};
+    const shares={};const allNames=[brandName,...competitors.map(c=>c.name).filter(n=>n)];
+    allNames.forEach(name=>{shares[name]={mentionCount:mentionCounts[name]||0,citationCount:citationCounts[name]||0,mentionShare:Math.round(((mentionCounts[name]||0)/totalMentions)*100),citationShare:Math.round(((citationCounts[name]||0)/totalCitations)*100),isBrand:name===brandName};});
+    return{shares,totalMentions,totalCitations,totalQueries:sovEngines.reduce((sum,e)=>(e.queries||[]).length,0)};
   })();
   const citationSources=(hasApi&&apiData.citationSources)?apiData.citationSources:{gpt:[],gemini:[],all:[]};
   const narratives=(hasApi&&apiData.narratives)?apiData.narratives:{};
