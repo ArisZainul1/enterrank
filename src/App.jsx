@@ -225,6 +225,18 @@ async function callOpenAISearch(query, region){
   })||{text:"",citations:[]};
 }
 
+async function callPerplexity(query, systemPrompt){
+  try{
+    const res=await fetch("/api/perplexity",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:query,systemPrompt:systemPrompt||""})});
+    if(!res.ok)return{text:"",citations:[]};
+    const data=await res.json();
+    return{text:data.result||"",citations:(data.citations||[]).map(c=>({url:c.url||c,title:c.title||""}))};
+  }catch(e){
+    console.error("Perplexity call failed:",e);
+    return{text:"",citations:[]};
+  }
+}
+
 // Call a specific engine by name, with fallback to OpenAI
 async function callEngine(engine, prompt, systemPrompt){
   if(engine==="openai") return await callOpenAI(prompt, systemPrompt);
@@ -704,25 +716,38 @@ Return JSON only:
     return runInBatches(gptTasks, batchSize, delayMs);
   }
 
-  // Run both engines simultaneously
-  let gptResponses=[],gemResponses=[];
+  // Run all three engines simultaneously
+  let gptResponses=[],gemResponses=[],pplxResponses=[];
   try{
-    const [gR,gmR]=await Promise.all([
+    const [gR,gmR,pR]=await Promise.all([
       runGptSearchBatches(searchQueries, region, 3, 500).catch(e=>{console.error("ChatGPT testing failed:",e.message);return[];}),
-      runQueryBatches(callGeminiWithCitations, searchQueries, 4, 300, "Gemini").catch(e=>{console.error("Gemini testing failed:",e.message);return[];})
+      runQueryBatches(callGeminiWithCitations, searchQueries, 4, 300, "Gemini").catch(e=>{console.error("Gemini testing failed:",e.message);return[];}),
+      (async()=>{
+        const pplxTasks=searchQueries.map((q,i)=>async()=>{
+          try{
+            onProgress("Testing on Perplexity... ("+(i+1)+"/"+searchQueries.length+")",40+Math.round((i/searchQueries.length)*10));
+            const result=await callPerplexity(q,"You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.");
+            return{query:q,response:result.text||"",citations:result.citations||[]};
+          }catch(e){
+            console.error("Perplexity query failed:",q,e.message);
+            return{query:q,response:"",citations:[]};
+          }
+        });
+        return runInBatches(pplxTasks,3,500);
+      })().catch(e=>{console.error("Perplexity testing failed:",e.message);return[];})
     ]);
-    gptResponses=gR||[];gemResponses=gmR||[];
-    if(gptResponses.length===0&&gemResponses.length===0)onProgress("Warning: both engine tests failed, continuing with limited data...",42);
-    else if(gptResponses.length===0)onProgress("Warning: ChatGPT testing failed, continuing with Gemini data...",42);
-    else if(gemResponses.length===0)onProgress("Warning: Gemini testing failed, continuing with ChatGPT data...",42);
+    gptResponses=gR||[];gemResponses=gmR||[];pplxResponses=pR||[];
+    const failedEngines=[!gptResponses.length&&"ChatGPT",!gemResponses.length&&"Gemini",!pplxResponses.length&&"Perplexity"].filter(Boolean);
+    if(failedEngines.length>=2)onProgress("Warning: "+failedEngines.join(" and ")+" testing failed, continuing with limited data...",50);
+    else if(failedEngines.length===1)onProgress("Warning: "+failedEngines[0]+" testing failed, continuing with other engines...",50);
   }catch(stepError){
     console.error("Engine testing failed:",stepError.message);
-    onProgress("Warning: engine testing encountered an issue, continuing...",42);
+    onProgress("Warning: engine testing encountered an issue, continuing...",50);
   }
 
   // ── Step 4: Classify responses — scan real text for brand names and URLs ──
   onProgress("Analyzing responses for brand visibility...", 45);
-  let gptVisibility={},gemVisibility={};
+  let gptVisibility={},gemVisibility={},pplxVisibility={};
   const emptyVis={mentionRate:0,citationRate:0,queries:searchQueries.map(q=>({query:q,status:"Absent",confidence:"fallback"}))};
   try{
 
@@ -755,8 +780,10 @@ Return JSON only:
 
   const gptVisRaw = computeVisibility(gptResponses, brandDetectors);
   const gemVisRaw = computeVisibility(gemResponses, brandDetectors);
+  const pplxVisRaw = computeVisibility(pplxResponses, brandDetectors);
   gptVisibility = gptVisRaw.result;
   gemVisibility = gemVisRaw.result;
+  pplxVisibility = pplxVisRaw.result;
 
   // Batch reclassify ambiguous cases via AI
   async function batchReclassify(ambiguousCases, callFn, visibility) {
@@ -802,6 +829,7 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
   if (gemVisRaw.ambiguousCases.length > 0) {
     onProgress("Verifying Gemini citations...", 49);
     await batchReclassify(gemVisRaw.ambiguousCases, callGemini, gemVisibility);
+    await batchReclassify(pplxVisRaw.ambiguousCases, callOpenAI, pplxVisibility);
   }
   }catch(stepError){
     console.error("Visibility computation failed:",stepError.message);
@@ -818,9 +846,10 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
     compScoresMap[name] = {
       gpt: { mentionRate: gv.mentionRate, citationRate: gv.citationRate, score: Math.round(gv.mentionRate * 0.5 + gv.citationRate * 0.5) },
       gemini: { mentionRate: gm.mentionRate, citationRate: gm.citationRate, score: Math.round(gm.mentionRate * 0.5 + gm.citationRate * 0.5) },
-      avgMentionRate: Math.round((gv.mentionRate + gm.mentionRate) / 2),
-      avgCitationRate: Math.round((gv.citationRate + gm.citationRate) / 2),
-      avgScore: Math.round(((gv.mentionRate * 0.5 + gv.citationRate * 0.5) + (gm.mentionRate * 0.5 + gm.citationRate * 0.5)) / 2)
+      perplexity: { mentionRate: (pplxVisibility[cname]||emptyVis).mentionRate, citationRate: (pplxVisibility[cname]||emptyVis).citationRate, score: Math.round(((pplxVisibility[cname]||emptyVis).mentionRate * 0.5 + (pplxVisibility[cname]||emptyVis).citationRate * 0.5)) },
+      avgMentionRate: Math.round((gv.mentionRate + gm.mentionRate + (pplxVisibility[cname]||emptyVis).mentionRate) / 3),
+      avgCitationRate: Math.round((gv.citationRate + gm.citationRate + (pplxVisibility[cname]||emptyVis).citationRate) / 3),
+      avgScore: Math.round(((gv.mentionRate * 0.5 + gv.citationRate * 0.5) + (gm.mentionRate * 0.5 + gm.citationRate * 0.5) + ((pplxVisibility[cname]||emptyVis).mentionRate * 0.5 + (pplxVisibility[cname]||emptyVis).citationRate * 0.5)) / 3)
     };
   });
 
@@ -829,6 +858,7 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
 
   const brandGptVis = gptVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
   const brandGemVis = gemVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
+  const brandPplxVis = pplxVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
 
   let swGpt={},swGem={};
   try{
@@ -872,9 +902,19 @@ Return JSON only:
     weaknesses: swGem.weaknesses || ["Analysis unavailable"]
   };
 
+  const pplxData = {
+    score: Math.round(brandPplxVis.mentionRate * 0.5 + brandPplxVis.citationRate * 0.5),
+    mentionRate: brandPplxVis.mentionRate,
+    citationRate: brandPplxVis.citationRate,
+    queries: brandPplxVis.queries || [],
+    strengths: ["Analysis via Perplexity"],
+    weaknesses: ["Analysis via Perplexity"]
+  };
+
   accumulated.engineData = { engines: [
     {id:"chatgpt", ...gptData, queries:(gptData.queries||[]).slice(0,8)},
-    {id:"gemini", ...gemData, queries:(gemData.queries||[]).slice(0,8)}
+    {id:"gemini", ...gemData, queries:(gemData.queries||[]).slice(0,8)},
+    {id:"perplexity", ...pplxData, queries:(pplxData.queries||[]).slice(0,8)}
   ], painPoints: null };
   accumulated.searchQueries = searchQueries || [];
   accumulated.queryArchetypeMap = queryArchetypeMap || {};
@@ -893,6 +933,11 @@ Return JSON only:
     (gemResponses || []).forEach(r => {
       (r.citations || []).forEach(c => {
         if (c.url && !seen.has(c.url)) { seen.add(c.url); citationSources.gemini.push({ url: c.url, title: c.title || "", query: r.query }); citationSources.all.push({ url: c.url, title: c.title || "", engine: "gemini", query: r.query }); }
+      });
+    });
+    (pplxResponses || []).forEach(r => {
+      (r.citations || []).forEach(c => {
+        if (c.url && !seen.has(c.url)) { seen.add(c.url); citationSources.perplexity = citationSources.perplexity || []; citationSources.perplexity.push({ url: c.url, title: c.title || "", query: r.query }); citationSources.all.push({ url: c.url, title: c.title || "", engine: "perplexity", query: r.query }); }
       });
     });
   } catch(e) { console.error("Citation collection failed:", e); }
@@ -934,7 +979,8 @@ Return JSON only:
   (async()=>{try{
     const gptTexts=(gptResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"ChatGPT"})).filter(r=>r.text.length>50);
     const gemTexts=(gemResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"Gemini"})).filter(r=>r.text.length>50);
-    const allTexts=[...gptTexts,...gemTexts];
+    const pplxTexts=(pplxResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"Perplexity"})).filter(r=>r.text.length>50);
+    const allTexts=[...gptTexts,...gemTexts,...pplxTexts];
     const brandLower=brand.toLowerCase();
     const relevantTexts=allTexts.filter(r=>r.text.toLowerCase().includes(brandLower));
     if(relevantTexts.length===0){sentimentSignals={themes:[],summary:"Brand not found in AI engine responses."};return;}
@@ -1133,12 +1179,13 @@ Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentenc
       const brandEsc=brand.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
       const brandRe=new RegExp('\\b'+brandEsc+'\\b','i');
       const basicQuotes=[];
-      [...(gptResponses||[]).slice(0,8),...(gemResponses||[]).slice(0,8)].forEach(resp=>{
+      [...(gptResponses||[]).slice(0,8),...(gemResponses||[]).slice(0,8),...(pplxResponses||[]).slice(0,8)].forEach(resp=>{
         const text=typeof resp==='string'?resp:resp?.response||'';
         const sentences=text.split(/[.!?]+/).filter(s=>brandRe.test(s)&&s.trim().length>20&&s.trim().length<200);
         if(sentences.length>0){
           const isGpt=(gptResponses||[]).includes(resp);
-          basicQuotes.push({text:sentences[0].trim(),engine:isGpt?'ChatGPT':'Gemini',sentiment:allPos.some(w=>sentences[0].toLowerCase().includes(w))?'positive':allNeg.some(w=>sentences[0].toLowerCase().includes(w))?'negative':'neutral'});
+          const isPplx=(pplxResponses||[]).includes(resp);
+          basicQuotes.push({text:sentences[0].trim(),engine:isGpt?'ChatGPT':isPplx?'Perplexity':'Gemini',sentiment:allPos.some(w=>sentences[0].toLowerCase().includes(w))?'positive':allNeg.some(w=>sentences[0].toLowerCase().includes(w))?'negative':'neutral'});
         }
       });
       if(basicQuotes.length>0)sentimentSignals.quotes=basicQuotes.slice(0,5);
@@ -1151,7 +1198,8 @@ Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentenc
   accumulated.channelSourceData = channelSourceData || { sourceChannels:[], opportunities:[] };
   accumulated.engineData = { engines: [
     {id:"chatgpt", ...gptData, queries:(gptData.queries||[]).slice(0,8)},
-    {id:"gemini", ...gemData, queries:(gemData.queries||[]).slice(0,8)}
+    {id:"gemini", ...gemData, queries:(gemData.queries||[]).slice(0,8)},
+    {id:"perplexity", ...pplxData, queries:(pplxData.queries||[]).slice(0,8)}
   ], painPoints: mergedPainPoints.length > 0 ? mergedPainPoints.slice(0,6) : null };
   accumulated.competitorData = compData || { competitors: [] };
   accumulated.compVisibilityData = compScoresMap || {};
@@ -1491,7 +1539,7 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
   (async()=>{
   onProgress("Creating 90-day roadmap from audit data...",89);
   try{
-  const overallScore=Math.round(((gptData.score||0)+(gemData.score||0))/2);
+  const overallScore=Math.round(((gptData.score||0)+(gemData.score||0)+(pplxData.score||0))/3);
   const criticalCats=(mergedPainPoints||[]).filter(p=>p.severity==="critical").map(p=>p.label).join(", ");
   const weakCats=(mergedPainPoints||[]).filter(p=>p.severity==="warning").map(p=>p.label).join(", ");
   const channelGaps=(chData.channels||[]).filter(c=>c.status==="Not Present").map(c=>c.channel).join(", ");
@@ -1634,9 +1682,9 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
     }).sort((a, b) => b.score - a.score);
     const topCompetitor = compScoresArr[0] || { name: "competitors", score: 0 };
 
-    const overallScore = Math.round(((gptData.score || 0) + (gemData.score || 0)) / 2);
-    const avgMentions = Math.round(((gptData.mentionRate || 0) + (gemData.mentionRate || 0)) / 2);
-    const avgCitations = Math.round(((gptData.citationRate || 0) + (gemData.citationRate || 0)) / 2);
+    const overallScore = Math.round(((gptData.score || 0) + (gemData.score || 0) + (pplxData.score || 0)) / 3);
+    const avgMentions = Math.round(((gptData.mentionRate || 0) + (gemData.mentionRate || 0) + (pplxData.mentionRate || 0)) / 3);
+    const avgCitations = Math.round(((gptData.citationRate || 0) + (gemData.citationRate || 0) + (pplxData.citationRate || 0)) / 3);
 
     const sentLabel = (sentimentData?.brand?.avg || 50) >= 55 ? "positive" : (sentimentData?.brand?.avg || 50) >= 45 ? "neutral" : "negative";
     const themeNames = (sentimentSignals?.themes || []).slice(0, 5).map(t => `${t.name} (${t.sentiment})`).join(", ");
@@ -1727,7 +1775,8 @@ Rules:
       engineData:{
         engines:[
           {id:"chatgpt",...(typeof gptData!=="undefined"&&gptData?gptData:{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}),queries:((typeof gptData!=="undefined"&&gptData?gptData.queries:null)||[])},
-          {id:"gemini",...(typeof gemData!=="undefined"&&gemData?gemData:{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}),queries:((typeof gemData!=="undefined"&&gemData?gemData.queries:null)||[])}
+          {id:"gemini",...(typeof gemData!=="undefined"&&gemData?gemData:{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}),queries:((typeof gemData!=="undefined"&&gemData?gemData.queries:null)||[])},
+          {id:"perplexity",...(typeof pplxData!=="undefined"&&pplxData?pplxData:{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}),queries:((typeof pplxData!=="undefined"&&pplxData?pplxData.queries:null)||[])}
         ],
         painPoints:typeof mergedPainPoints!=="undefined"&&mergedPainPoints&&mergedPainPoints.length>0?mergedPainPoints.slice(0,6):[]
       },
@@ -1753,7 +1802,7 @@ Rules:
   } catch(returnError) {
     console.error("CRITICAL: runRealAudit return assembly failed:",returnError);
     return {
-      engineData:{engines:[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"gemini",name:"Gemini",color:"#4285F4",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}],painPoints:[]},
+      engineData:{engines:[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"gemini",name:"Gemini",color:"#4285F4",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"perplexity",name:"Perplexity",color:"#20808D",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}],painPoints:[]},
       sentimentData:{brand:{gpt:50,gemini:50,avg:50,summary:""},competitors:[]},
       sentimentSignals:{positive:[],negative:[],quotes:[],competitorSentiment:[],rawSnippets:[]},
       competitorData:{competitors:[]},
@@ -1780,7 +1829,7 @@ Rules:
     return{
       error:true,
       errorMessage:fatalError.message||"The audit encountered an unexpected error. Please try again.",
-      engineData:{engines:[{id:"chatgpt",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"gemini",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}],painPoints:[]},
+      engineData:{engines:[{id:"chatgpt",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"gemini",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"perplexity",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}],painPoints:[]},
       competitorData:{competitors:[]},archData:[],intentData:null,channelData:{channels:[]},contentGridData:[],roadmapData:null,contentData:[],sentimentData:{brand:{gpt:50,gemini:50,avg:50,summary:"Audit failed"},competitors:[]},brandCrawlData:null,compCrawlData:{},compVisibilityData:{},searchQueries:[]
     };
   }
@@ -2059,7 +2108,8 @@ function generateAll(cd, apiData){
   const normComps=(cd.competitors||[]).map(c=>typeof c==="string"?{name:c,website:""}:c).filter(c=>c.name&&c.name.trim());
   cd={...cd, competitors:normComps, competitorNames:normComps.map(c=>c.name)};
   const hasApi=apiData&&apiData.engineData;
-  const engineMeta=[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",Logo:ChatGPTLogo},{id:"gemini",name:"Gemini",color:"#4285F4",Logo:GeminiLogo}];
+  const PerplexityLogo=()=><svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="#20808D" strokeWidth="1.5"/><path d="M5 5l6 6M11 5l-6 6" stroke="#20808D" strokeWidth="1.5" strokeLinecap="round"/></svg>;
+  const engineMeta=[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",Logo:ChatGPTLogo},{id:"gemini",name:"Gemini",color:"#4285F4",Logo:GeminiLogo},{id:"perplexity",name:"Perplexity",color:"#20808D",Logo:PerplexityLogo}];
   const badP=["specific strength","specific weakness","data unavailable","REPLACE WITH","as a language model","as an ai","limited knowledge"];
   const fB=(arr,fb)=>{if(!arr||!Array.isArray(arr))return fb;const f=arr.filter(s=>s&&typeof s==="string"&&!badP.some(bp=>s.toLowerCase().includes(bp))&&s.length>10);return f.length>=2?f:fb;};
   const engines=engineMeta.map((e,i)=>{
@@ -2127,22 +2177,21 @@ function generateAll(cd, apiData){
   const sovData=(()=>{
     const brandName=cd.brand;
     const allBrandNames=[brandName,...competitors.map(c=>c.name)];
-    const gptQ=(hasApi&&apiData.engineData)?(apiData.engineData.engines||[]).find(e=>e.id==="chatgpt"||e.name==="ChatGPT"):null;
-    const gemQ=(hasApi&&apiData.engineData)?(apiData.engineData.engines||[]).find(e=>e.id==="gemini"||e.name==="Gemini"):null;
-    const gptQueries=gptQ?.queries||[];const gemQueries=gemQ?.queries||[];
-    const totalQueries=Math.max(gptQueries.length,gemQueries.length,1);
+    const allEngineData=(hasApi&&apiData.engineData)?(apiData.engineData.engines||[]):[];
+    const allEngineQueries=allEngineData.map(e=>e.queries||[]);
+    const totalQueries=Math.max(...allEngineQueries.map(q=>q.length),1);
     const mentionCounts={};const citationCounts={};
     allBrandNames.forEach(name=>{mentionCounts[name]=0;citationCounts[name]=0;});
-    const brandMentionCount=gptQueries.filter(q=>q.status==="Cited"||q.status==="Mentioned").length+gemQueries.filter(q=>q.status==="Cited"||q.status==="Mentioned").length;
-    const brandCitationCount=gptQueries.filter(q=>q.status==="Cited").length+gemQueries.filter(q=>q.status==="Cited").length;
+    let brandMentionCount=0,brandCitationCount=0;
+    allEngineQueries.forEach(qs=>{brandMentionCount+=qs.filter(q=>q.status==="Cited"||q.status==="Mentioned").length;brandCitationCount+=qs.filter(q=>q.status==="Cited").length;});
     mentionCounts[brandName]=brandMentionCount;citationCounts[brandName]=brandCitationCount;
     const cVis=(hasApi&&apiData.compVisibilityData)?apiData.compVisibilityData:{};
-    competitors.forEach(c=>{const cv=cVis[c.name];if(cv){const gM=Math.round((cv.gpt?.mentionRate||0)/100*totalQueries);const geM=Math.round((cv.gemini?.mentionRate||0)/100*totalQueries);const gC=Math.round((cv.gpt?.citationRate||0)/100*totalQueries);const geC=Math.round((cv.gemini?.citationRate||0)/100*totalQueries);mentionCounts[c.name]=gM+geM;citationCounts[c.name]=gC+geC;}});
+    competitors.forEach(c=>{const cv=cVis[c.name];if(cv){const gM=Math.round((cv.gpt?.mentionRate||0)/100*totalQueries);const geM=Math.round((cv.gemini?.mentionRate||0)/100*totalQueries);const pM=Math.round((cv.perplexity?.mentionRate||cv.avgMentionRate||0)/100*totalQueries);const gC=Math.round((cv.gpt?.citationRate||0)/100*totalQueries);const geC=Math.round((cv.gemini?.citationRate||0)/100*totalQueries);const pC=Math.round((cv.perplexity?.citationRate||cv.avgCitationRate||0)/100*totalQueries);mentionCounts[c.name]=gM+geM+pM;citationCounts[c.name]=gC+geC+pC;}});
     const totalMentions=Object.values(mentionCounts).reduce((a,b)=>a+b,0)||1;
     const totalCitations=Object.values(citationCounts).reduce((a,b)=>a+b,0)||1;
     const shares={};
     allBrandNames.forEach(name=>{shares[name]={mentionCount:mentionCounts[name],citationCount:citationCounts[name],mentionShare:Math.round((mentionCounts[name]/totalMentions)*100),citationShare:Math.round((citationCounts[name]/totalCitations)*100)};});
-    return{shares,totalMentions,totalCitations,totalQueries:totalQueries*2};
+    return{shares,totalMentions,totalCitations,totalQueries:totalQueries*allEngineData.length};
   })();
   const citationSources=(hasApi&&apiData.citationSources)?apiData.citationSources:{gpt:[],gemini:[],all:[]};
   const narratives=(hasApi&&apiData.narratives)?apiData.narratives:{};
