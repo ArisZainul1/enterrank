@@ -536,11 +536,11 @@ async function runRealAudit(cd, onProgress){
   // ── Step 2: Generate high-quality search queries from key topics ──
   onProgress("Generating search queries from your topics...", 8);
   let searchQueries = [];
-  const topicsToUse = topics.slice(0, 10);
+  const topicsToUse = topics.slice(0, 12);
   try{
   const queryGenPrompt = `You are an expert in AI engine optimization (AEO/GEO). Your job is to generate realistic, high-quality search queries that real users would type into ChatGPT or Gemini.
 
-I need exactly 2 search queries for each of these topics. Each query must approach the topic from a DIFFERENT angle.
+I need 2-3 search queries for each of these topics (aim for at least 15 total). Each query must approach the topic from a DIFFERENT angle.
 
 Industry: ${industry}
 Region: ${region}
@@ -559,7 +559,7 @@ IMPORTANT RULES FOR QUERY GENERATION:
 ${(()=>{const archs=cd.archetypes||[];if(archs.length===0)return"";return"Target Audience Archetypes (ranked by priority):\n"+archs.map((a,i)=>`${i+1}. ${a.name}${a.demographics?" ("+a.demographics+")":""}: ${a.description||""}`).join("\n")+"\n\nIMPORTANT: For each query, tag it with the archetype name that would most likely ask that query.\n";})()}Topics:
 ${topicsToUse.map((t, i) => `${i + 1}. ${t}`).join("\n")}
 
-For each topic, generate 2 queries using DIFFERENT angles from this list:
+For each topic, generate 2-3 queries using DIFFERENT angles from this list:
 - Comparison/versus: "Compare X vs Y for [use case]"
 - Best-of with specific criteria: "What are the best X with [specific feature] in [region]?"
 - Purchase intent: "Where to buy X in [region]?" or "Which X is worth buying right now?"
@@ -579,7 +579,7 @@ Rules:
 - Make queries specific to ${region} where relevant (mention cities, local context)
 - All queries must be in English
 - Each query should be 15-25 words long — detailed enough to get a substantive AI response
-- The 2 queries per topic MUST use different angles — never repeat the same structure
+- The queries per topic MUST use different angles — never repeat the same structure
 - When including a year in any query, ALWAYS use ${new Date().getFullYear()}. NEVER use 2023, 2024, or any past year.
 
 BAD examples (too generic):
@@ -595,7 +595,7 @@ GOOD examples (specific, varied angles):
 - "Where to buy authentic heat-not-burn devices and consumables online in Malaysia?"
 
 Return JSON only:
-{"queries": [${topicsToUse.map((t, i) => `\n  {"topic": "${t.replace(/"/g, '\\"')}", "q1": "first query for this topic", "q1_archetype": "archetype name or empty", "q2": "second query for this topic", "q2_archetype": "archetype name or empty"}`).join(",")}
+{"queries": [${topicsToUse.map((t, i) => `\n  {"topic": "${t.replace(/"/g, '\\"')}", "q1": "first query", "q1_archetype": "archetype or empty", "q2": "second query", "q2_archetype": "archetype or empty", "q3": "third query (optional)", "q3_archetype": "archetype or empty"}`).join(",")}
 ]}`;
 
   const queryGenRaw = await callOpenAI4o(queryGenPrompt, "You are an AEO/GEO search query expert. Generate highly specific, realistic search queries. Return ONLY valid JSON, no markdown fences.");
@@ -610,17 +610,18 @@ Return JSON only:
       } else if (item && typeof item === "object") {
         if (item.q1) {searchQueries.push(item.q1);if(item.q1_archetype)queryArchetypeMap[item.q1]=item.q1_archetype;}
         if (item.q2) {searchQueries.push(item.q2);if(item.q2_archetype)queryArchetypeMap[item.q2]=item.q2_archetype;}
+        if (item.q3) {searchQueries.push(item.q3);if(item.q3_archetype)queryArchetypeMap[item.q3]=item.q3_archetype;}
       }
     });
   }
-  searchQueries = searchQueries.filter(q => typeof q === "string" && q.length > 15).slice(0, 20);
+  searchQueries = searchQueries.filter(q => typeof q === "string" && q.length > 15).slice(0, 15);
 
   // Fallback if generation failed
   if (searchQueries.length < 4) {
     searchQueries = topicsToUse.flatMap(t => [
       `What are the best ${t} options with the highest ratings in ${region}?`,
       `Compare the top ${t} providers by features, pricing and customer reviews in ${region}`
-    ]).slice(0, 20);
+    ]).slice(0, 15);
   }
 
   // Post-generation: strip any brand/competitor names that leaked through
@@ -641,7 +642,7 @@ Return JSON only:
     searchQueries=topicsToUse.flatMap(t=>[
       `What are the best ${t} options with the highest ratings in ${region}?`,
       `Compare the top ${t} providers by features, pricing and customer reviews in ${region}`
-    ]).slice(0,20);
+    ]).slice(0,15);
   }
 
   // ── Step 3: Test all queries on both engines with real responses ──
@@ -3010,7 +3011,7 @@ COMPETITORS: ${compNamesStr||"None specified"}
 
 ${crawlSummary?"BRAND WEBSITE CONTENT (this tells you what the brand ACTUALLY sells):\n"+crawlSummary:""}
 
-Generate exactly 10 search queries that a REAL CONSUMER would type into ChatGPT or Google when looking for products or services that ${data.brand||"Brand"} actually provides.
+Generate exactly 12 search queries that a REAL CONSUMER would type into ChatGPT or Google when looking for products or services that ${data.brand||"Brand"} actually provides.
 
 STRICT RULES:
 1. Every query MUST be for a product or service that ${data.brand||"Brand"} actually sells or offers. Check the website content above.
@@ -3019,17 +3020,17 @@ STRICT RULES:
 4. Queries should be diverse across the brand's ACTUAL service categories. Mix comparison queries, best-of queries, how-to queries, and recommendation queries.
 5. Include the region naturally where relevant (e.g. 'in ${region||"Global"}' or '${region||"Global"} ${new Date().getFullYear()}').
 6. Each query should be 10-25 words, natural language, like a real person asking ChatGPT.
-7. At least 6 out of 10 queries should be about the brand's PRIMARY product category.
+7. At least 7 out of 12 queries should be about the brand's PRIMARY product category.
 8. Do NOT mention ${data.brand||"Brand"} by name in any query — these should be generic category queries where ${data.brand||"Brand"} SHOULD appear in the answer.
 ${compNamesStr?"9. Do NOT mention these competitor names: "+compNamesStr:""}
 All queries must be in English.
 
 Return JSON only:
-{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5", "query 6", "query 7", "query 8", "query 9", "query 10"]}`;
+{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5", "query 6", "query 7", "query 8", "query 9", "query 10", "query 11", "query 12"]}`;
       const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.");
       const result=safeJSON(raw);
       if(result&&result.topics&&Array.isArray(result.topics)){
-        const validTopics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,10);
+        const validTopics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,12);
         if(validTopics.length>0){
           setData(prev=>{
             const hasExisting=(prev.topics||[]).some(t=>(typeof t==="string"?t:"").trim().length>3);
@@ -3100,7 +3101,7 @@ COMPETITORS: ${compNamesStr||"None specified"}
 
 ${crawlSummary?"BRAND WEBSITE CONTENT (this tells you what the brand ACTUALLY sells):\n"+crawlSummary:""}
 
-Generate exactly 10 search queries that a REAL CONSUMER would type into ChatGPT or Google when looking for products or services that ${data.brand||"Brand"} actually provides.
+Generate exactly 12 search queries that a REAL CONSUMER would type into ChatGPT or Google when looking for products or services that ${data.brand||"Brand"} actually provides.
 
 STRICT RULES:
 1. Every query MUST be for a product or service that ${data.brand||"Brand"} actually sells or offers. Check the website content above.
@@ -3110,18 +3111,18 @@ STRICT RULES:
 5. Include the region naturally where relevant (e.g. 'in ${data.region||"Global"}' or '${data.region||"Global"} ${new Date().getFullYear()}').
 6. When including a year in any query, ALWAYS use ${new Date().getFullYear()}. NEVER use 2023, 2024, or any past year.
 7. Each query should be 10-25 words, natural language, like a real person asking ChatGPT.
-8. At least 6 out of 10 queries should be about the brand's PRIMARY product category.
+8. At least 7 out of 12 queries should be about the brand's PRIMARY product category.
 9. Do NOT mention ${data.brand||"Brand"} by name in any query — these should be generic category queries where ${data.brand||"Brand"} SHOULD appear in the answer.
 ${compNamesStr?"10. Do NOT mention these competitor names: "+compNamesStr:""}
 All queries must be in English.
 
 Return JSON only:
-{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5", "query 6", "query 7", "query 8", "query 9", "query 10"]}`;
+{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5", "query 6", "query 7", "query 8", "query 9", "query 10", "query 11", "query 12"]}`;
       const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.");
       const parsed=safeJSON(raw);
       const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(topics&&Array.isArray(topics)&&topics.length>0){
-        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,10)}));
+        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,12)}));
         setAuditStep("topics");
       }else{
         setError("Failed to generate topics. Please try again.");
@@ -3171,7 +3172,7 @@ Return JSON only:
       const newTopics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(newTopics&&Array.isArray(newTopics)&&newTopics.length>0){
         const cleaned=newTopics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,5);
-        setData(d=>({...d,topics:[...d.topics,...cleaned].slice(0,10)}));
+        setData(d=>({...d,topics:[...d.topics,...cleaned].slice(0,12)}));
       }
     }catch(e){console.error("Regenerate error:",e);}
     setGenTopics(false);
@@ -3248,10 +3249,10 @@ ${crawlSummary?"BRAND WEBSITE CONTENT:\n"+crawlSummary.slice(0,600)+"\n":""}
 TARGET AUDIENCE ARCHETYPES (ranked by priority):
 ${archContext}
 
-Generate exactly 10 search topics that these archetypes would actually search for on AI engines (ChatGPT, Gemini).
+Generate exactly 12 search topics that these archetypes would actually search for on AI engines (ChatGPT, Gemini).
 
 CRITICAL RULES:
-1. Topics must be weighted by archetype priority — archetype #1 should influence ~4 topics, #2 ~3 topics, #3 ~3 topics
+1. Topics must be weighted by archetype priority — archetype #1 should influence ~5 topics, #2 ~4 topics, #3 ~3 topics
 2. Each topic should reflect what that archetype ACTUALLY searches for
 3. Topics must be about products/services ${data.brand} actually offers (check website content)
 4. Do NOT mention ${data.brand} by name — these are generic queries where ${data.brand} SHOULD appear
@@ -3266,7 +3267,7 @@ Return JSON only:
       const parsed=safeJSON(raw);
       const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(topics&&Array.isArray(topics)&&topics.length>0){
-        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,10)}));
+        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,12)}));
       }else{setError("Failed to generate topics. Please try again.");}
     }catch(e){console.error("Topic generation from archetypes failed:",e);setError("Failed to generate topics. Check your API connection.");}
     setGenTopics(false);
