@@ -3642,7 +3642,7 @@ function DashboardPage({r,history,goTo}){
     <div style={{marginBottom:32}}>
       {/* Overall Score — circular ring */}
       <div style={{textAlign:"center",marginBottom:24}}>
-        <div style={{fontSize:13,fontWeight:500,color:C.muted,marginBottom:12}}>Engine Visibility Score</div>
+        <div style={{fontSize:13,fontWeight:500,color:C.muted,marginBottom:12}}>Engine Visibility Score<InfoTip text={"Weighted average of your visibility across " + (r.engines||[]).length + " AI engines, adjusted for estimated user share in " + (r.clientData?.region||"your region") + ". Each query is tested live with web search enabled."}/></div>
         <div style={{position:"relative",width:140,height:140,margin:"0 auto"}}>
           <svg viewBox="0 0 140 140" style={{width:140,height:140}}>
             <circle cx="70" cy="70" r="62" fill="none" stroke={C.borderSoft} strokeWidth="6"/>
@@ -3668,13 +3668,13 @@ function DashboardPage({r,history,goTo}){
       {/* 4 KPI cards in a row */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
         {[
-          {label:"Mention Rate",value:avgMentions+"%",prev:prev?.mentions,color:C.accent},
-          {label:"Citation Rate",value:avgCitations+"%",prev:prev?.citations,color:"#8b5cf6"},
-          {label:"Sentiment Score",value:sentimentReady?(avgSentiment>=55?"Positive":avgSentiment>=45?"Neutral":"Negative"):"...",prev:null,color:sentimentReady?(avgSentiment>=55?C.green:avgSentiment>=45?C.amber:C.red):C.muted},
-          {label:"Best Engine",value:bestEngine.name,sub:bestEngine.score+"%",color:bestEngine.name==="ChatGPT"?"#10A37F":"#4285F4"}
+          {label:"Mention Rate",value:avgMentions+"%",prev:prev?.mentions,color:C.accent,tip:"Percentage of queries where your brand appears in the AI engine's response — either Cited or Mentioned. Tested across all engines with live web search."},
+          {label:"Citation Rate",value:avgCitations+"%",prev:prev?.citations,color:"#8b5cf6",tip:"Percentage of queries where the AI engine specifically recommends, links to, or endorses your brand. A citation is stronger than a mention."},
+          {label:"Sentiment Score",value:sentimentReady?(avgSentiment>=55?"Positive":avgSentiment>=45?"Neutral":"Negative"):"...",prev:null,color:sentimentReady?(avgSentiment>=55?C.green:avgSentiment>=45?C.amber:C.red):C.muted,tip:"Derived from actual language patterns in AI engine responses about your brand. Analysed from real response text, not an AI-generated rating."},
+          {label:"Best Engine",value:bestEngine.name,sub:bestEngine.score+"%",color:bestEngine.name==="ChatGPT"?"#10A37F":"#4285F4",tip:"The engine where your brand scores highest. Visibility is weighted by estimated user share in your region."}
         ].map((kpi,i)=>(
           <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 18px",textAlign:"center"}}>
-            <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:8}}>{kpi.label}</div>
+            <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:8}}>{kpi.label}{kpi.tip&&<InfoTip text={kpi.tip}/>}</div>
             <div style={{display:"flex",alignItems:"baseline",gap:6,justifyContent:"center"}}>
               <span style={{fontSize:20,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:kpi.color}}>{kpi.value}</span>
               {kpi.prev!=null&&kpi.label!=="Best Engine"&&delta(parseInt(kpi.value),kpi.prev)}
@@ -3689,7 +3689,7 @@ function DashboardPage({r,history,goTo}){
         {r.engines.map((e,i)=>(
           <React.Fragment key={i}>
             <div style={{textAlign:"center"}}>
-              <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>{e.name} <span style={{fontSize:10,fontWeight:400,color:C.muted}}>({Math.round((dWeights[e.id]||0)*100)}%)</span></div>
+              <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>{e.name} <span style={{fontSize:10,fontWeight:400,color:C.muted}}>({Math.round((dWeights[e.id]||0)*100)}%)</span>{i===0&&<InfoTip text="Engine weights reflect estimated user share in your region. A higher weight means more users see that engine's results, so it impacts your overall score more."/>}</div>
               <div style={{display:"flex",gap:16,fontSize:11,color:C.sub,justifyContent:"center"}}>
                 <span>Score: <span style={{fontWeight:500,color:C.text}}>{e.score}%</span></span>
                 <span>Mentions: <span style={{fontWeight:500,color:C.text}}>{e.mentionRate}%</span></span>
@@ -3722,7 +3722,7 @@ function DashboardPage({r,history,goTo}){
 
       {/* Category Health */}
       <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 20px"}}>
-        <div style={{fontSize:14,fontWeight:500,color:C.text,marginBottom:12}}>Website Readiness</div>
+        <div style={{fontSize:14,fontWeight:500,color:C.text,marginBottom:12}}>Website Readiness<InfoTip text="Scored from a live crawl of your website. Checks for schema markup, content structure, authority signals, and technical factors that AI engines use when deciding whether to cite a source."/></div>
         <div style={{ marginBottom: 14, padding: "10px 12px", background: C.bg, borderRadius: 8, minHeight: 60 }}>
           {r.narratives?.categoryHealth ? (
             <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6 }}>{r.narratives.categoryHealth}</div>
@@ -3767,7 +3767,7 @@ function DashboardPage({r,history,goTo}){
     {/* ═══ TIER 3: COMPARISON ═══ */}
     {r.competitors.length>0&&(
       <div style={{marginBottom:32}}>
-        <div style={{fontSize:16,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text,marginBottom:4}}>Competitive Landscape</div>
+        <div style={{fontSize:16,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text,marginBottom:4}}>Competitive Landscape<InfoTip text="Your brand's mentions as a share of all brand mentions across every tested query and engine. Formula: your mentions divided by total mentions for all brands."/></div>
         <div style={{fontSize:12,color:C.muted,marginBottom:16}}>{r.clientData.brand} vs competitors across AI engines</div>
 
         <div style={{ marginBottom: 16, padding: "10px 12px", background: C.bg, borderRadius: 8, minHeight: 60 }}>
