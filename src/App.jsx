@@ -6,6 +6,38 @@ import "jspdf-autotable";
 const ChatGPTLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.998 5.998 0 0 0-3.998 2.9 6.042 6.042 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" fill="#10A37F"/></svg>);
 const GeminiLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M12 24C12 20.8174 10.7357 17.7652 8.48528 15.5147C6.23484 13.2643 3.18261 12 0 12C3.18261 12 6.23484 10.7357 8.48528 8.48528C10.7357 6.23484 12 3.18261 12 0C12 3.18261 13.2643 6.23484 15.5147 8.48528C17.7652 10.7357 20.8174 12 24 12C20.8174 12 17.7652 13.2643 15.5147 15.5147C13.2643 17.7652 12 20.8174 12 24Z" fill="url(#gG2)"/><defs><linearGradient id="gG2" x1="0" y1="12" x2="24" y2="12"><stop stopColor="#4285F4"/><stop offset=".5" stopColor="#9B72CB"/><stop offset="1" stopColor="#D96570"/></linearGradient></defs></svg>);
 const C={bg:"#f8f9fb",surface:"#ffffff",border:"#e8ecf1",borderSoft:"#f0f2f5",text:"#111827",sub:"#4b5563",muted:"#9ca3af",accent:"#2563eb",green:"#059669",amber:"#d97706",red:"#dc2626",r:12,rs:8};
+const ENGINE_WEIGHTS={
+  "Global":{chatgpt:0.75,gemini:0.22,perplexity:0.03},
+  "United States":{chatgpt:0.75,gemini:0.17,perplexity:0.08},
+  "United Kingdom":{chatgpt:0.72,gemini:0.20,perplexity:0.08},
+  "Malaysia":{chatgpt:0.65,gemini:0.30,perplexity:0.05},
+  "Singapore":{chatgpt:0.62,gemini:0.32,perplexity:0.06},
+  "Indonesia":{chatgpt:0.60,gemini:0.35,perplexity:0.05},
+  "India":{chatgpt:0.70,gemini:0.25,perplexity:0.05},
+  "Australia":{chatgpt:0.70,gemini:0.22,perplexity:0.08},
+  "Germany":{chatgpt:0.68,gemini:0.25,perplexity:0.07},
+  "France":{chatgpt:0.68,gemini:0.25,perplexity:0.07},
+  "Japan":{chatgpt:0.72,gemini:0.23,perplexity:0.05},
+  "South Korea":{chatgpt:0.65,gemini:0.28,perplexity:0.07},
+  "Brazil":{chatgpt:0.75,gemini:0.20,perplexity:0.05},
+  "Canada":{chatgpt:0.73,gemini:0.18,perplexity:0.09},
+  "UAE":{chatgpt:0.65,gemini:0.28,perplexity:0.07},
+  "Saudi Arabia":{chatgpt:0.65,gemini:0.28,perplexity:0.07},
+  "Philippines":{chatgpt:0.63,gemini:0.32,perplexity:0.05},
+  "Thailand":{chatgpt:0.62,gemini:0.33,perplexity:0.05},
+  "Vietnam":{chatgpt:0.60,gemini:0.35,perplexity:0.05},
+  "Europe":{chatgpt:0.68,gemini:0.24,perplexity:0.08},
+  "Southeast Asia":{chatgpt:0.62,gemini:0.32,perplexity:0.06},
+  "Middle East":{chatgpt:0.65,gemini:0.28,perplexity:0.07},
+  "Asia Pacific":{chatgpt:0.67,gemini:0.27,perplexity:0.06}
+};
+function getEngineWeights(region){
+  if(!region)return ENGINE_WEIGHTS["Global"];
+  const rl=region.toLowerCase();
+  for(const[key,weights]of Object.entries(ENGINE_WEIGHTS)){if(key.toLowerCase()===rl)return weights;}
+  for(const[key,weights]of Object.entries(ENGINE_WEIGHTS)){if(rl.includes(key.toLowerCase())||key.toLowerCase().includes(rl))return weights;}
+  return ENGINE_WEIGHTS["Global"];
+}
 function Ring({score,size=100,color,sw=5}){const r2=(size-sw*2)/2,ci=2*Math.PI*r2;const col=color||(score>=70?C.green:score>=40?C.amber:C.red);return(<div style={{position:"relative",width:size,height:size}}><svg width={size} height={size}><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={C.borderSoft} strokeWidth={sw}/><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={col} strokeWidth={sw} strokeDasharray={ci} strokeDashoffset={ci-(score/100)*ci} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`} style={{transition:"stroke-dashoffset 1.2s ease-out"}}/></svg><div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:size*.26,fontWeight:700,color:C.text,lineHeight:1,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{score}%</span></div></div>);}
 function Bar({value,color=C.accent,h=5}){return <div style={{width:"100%",height:h,background:C.borderSoft,borderRadius:h}}><div style={{width:`${Math.max(2,value)}%`,height:"100%",background:color,borderRadius:h,transition:"width .8s ease-out"}}/></div>;}
 function Pill({children,color=C.accent,filled}){return <span style={{display:"inline-flex",padding:"3px 10px",borderRadius:100,fontSize:11,fontWeight:600,background:filled?color:`${color}10`,color:filled?"#fff":color}}>{children}</span>;}
@@ -1688,9 +1720,10 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
     }).sort((a, b) => b.score - a.score);
     const topCompetitor = compScoresArr[0] || { name: "competitors", score: 0 };
 
-    const overallScore = Math.round(((gptData.score || 0) + (gemData.score || 0) + (pplxData.score || 0)) / 3);
-    const avgMentions = Math.round(((gptData.mentionRate || 0) + (gemData.mentionRate || 0) + (pplxData.mentionRate || 0)) / 3);
-    const avgCitations = Math.round(((gptData.citationRate || 0) + (gemData.citationRate || 0) + (pplxData.citationRate || 0)) / 3);
+    const nWeights = getEngineWeights(region);
+    const overallScore = Math.round((gptData.score||0)*nWeights.chatgpt + (gemData.score||0)*nWeights.gemini + (pplxData.score||0)*nWeights.perplexity);
+    const avgMentions = Math.round((gptData.mentionRate||0)*nWeights.chatgpt + (gemData.mentionRate||0)*nWeights.gemini + (pplxData.mentionRate||0)*nWeights.perplexity);
+    const avgCitations = Math.round((gptData.citationRate||0)*nWeights.chatgpt + (gemData.citationRate||0)*nWeights.gemini + (pplxData.citationRate||0)*nWeights.perplexity);
 
     const sentLabel = (sentimentData?.brand?.avg || 50) >= 55 ? "positive" : (sentimentData?.brand?.avg || 50) >= 45 ? "neutral" : "negative";
     const themeNames = (sentimentSignals?.themes || []).slice(0, 5).map(t => `${t.name} (${t.sentiment})`).join(", ");
@@ -1747,6 +1780,7 @@ AUDIT DATA:
 - Weak areas: ${weakPPs.join(", ") || "none"}
 - Strong areas: ${strongPPs.join(", ") || "none"}
 - Citation sources referencing brand: ${citationDomains.join(", ") || "none found"}
+- Scoring weights for ${region}: ChatGPT ${Math.round(nWeights.chatgpt*100)}%, Gemini ${Math.round(nWeights.gemini*100)}%, Perplexity ${Math.round(nWeights.perplexity*100)}% (based on estimated user share in this region)
 
 Generate narrative summaries in consultant tone — professional, direct, strategic. No jargon. Speak to a CEO, not a technical SEO person.
 
@@ -1806,7 +1840,8 @@ Rules:
       channelSourceData:typeof channelSourceData!=="undefined"?channelSourceData:{sourceChannels:[],opportunities:[]},
       citationSources:typeof citationSources!=="undefined"?citationSources:{gpt:[],gemini:[],all:[]},
       guidelinesData:typeof guidelinesData!=="undefined"?guidelinesData:null,
-      narratives:typeof narratives!=="undefined"?narratives:{}
+      narratives:typeof narratives!=="undefined"?narratives:{},
+      engineWeights:getEngineWeights(region)
     };
   } catch(returnError) {
     console.error("CRITICAL: runRealAudit return assembly failed:",returnError);
@@ -2130,7 +2165,8 @@ function generateAll(cd, apiData){
     return{...e,score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["No API data received"]};
   });
   engines.forEach(e=>{e.score=Math.round(e.mentionRate*0.5+e.citationRate*0.5);});
-  const overall=Math.round(engines.reduce((a,e)=>a+e.score,0)/engines.length);
+  const gWeights=getEngineWeights(cd.region);
+  const overall=Math.round(engines.reduce((sum,e)=>{const w=gWeights[e.id]||(1/engines.length);return sum+(e.score*w);},0));
   const getScoreLabel=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
   const getScoreDesc=(s,b)=>s>=80?b+" is dominant — frequently cited and recommended.":s>=60?b+" has strong visibility — regularly mentioned.":s>=40?b+" has moderate visibility — rarely cited as primary source.":s>=20?b+" has weak visibility — occasionally mentioned.":b+" is invisible to AI engines.";
   const painCats=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
@@ -2207,7 +2243,8 @@ function generateAll(cd, apiData){
   })();
   const citationSources=(hasApi&&apiData.citationSources)?apiData.citationSources:{gpt:[],gemini:[],all:[]};
   const narratives=(hasApi&&apiData.narratives)?apiData.narratives:{};
-  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,queryArchetypeMap,channelSourceData,citationSources,narratives,sovData,clientData:cd};
+  const engineWeights=hasApi?(apiData.engineWeights||gWeights):gWeights;
+  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,queryArchetypeMap,channelSourceData,citationSources,narratives,sovData,engineWeights,clientData:cd};
 }
 
 function generatePartial(cd, partial) {
@@ -3508,11 +3545,12 @@ function DashboardPage({r,history,goTo}){
   const[expandedComp,setExpandedComp]=useState(null);
 
   // ── Metric calculations ──
-  const avgMentions=Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length);
-  const avgCitations=Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length);
+  const dWeights=r.engineWeights||getEngineWeights(r.clientData?.region);
+  const avgMentions=Math.round(r.engines.reduce((sum,e)=>{const w=dWeights[e.id]||(1/r.engines.length);return sum+(e.mentionRate*w);},0));
+  const avgCitations=Math.round(r.engines.reduce((sum,e)=>{const w=dWeights[e.id]||(1/r.engines.length);return sum+(e.citationRate*w);},0));
   const avgSentiment=r.sentiment?.brand?.avg||50;
   const prev=history.length>1?history[history.length-2]:null;
-  const prevSentiment=prev?.sentimentPerEngine?Math.round((prev.sentimentPerEngine.gpt+prev.sentimentPerEngine.gemini)/2):null;
+  const prevSentiment=prev?.sentimentPerEngine?Math.round(((prev.sentimentPerEngine.gpt||50)+(prev.sentimentPerEngine.gemini||50)+(prev.sentimentPerEngine.perplexity||50))/3):null;
 
   // ── Data readiness flags (for progressive loading placeholders) ──
   const painPointsReady=r.painPoints&&r.painPoints.some(p=>p.score>0||(p.evidence&&p.evidence.length>0));
@@ -3630,7 +3668,7 @@ function DashboardPage({r,history,goTo}){
         {r.engines.map((e,i)=>(
           <React.Fragment key={i}>
             <div style={{textAlign:"center"}}>
-              <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>{e.name}</div>
+              <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>{e.name} <span style={{fontSize:10,fontWeight:400,color:C.muted}}>({Math.round((dWeights[e.id]||0)*100)}%)</span></div>
               <div style={{display:"flex",gap:16,fontSize:11,color:C.sub,justifyContent:"center"}}>
                 <span>Score: <span style={{fontWeight:500,color:C.text}}>{e.score}%</span></span>
                 <span>Mentions: <span style={{fontWeight:500,color:C.text}}>{e.mentionRate}%</span></span>
@@ -6635,7 +6673,7 @@ export default function App(){
       setResults(() => r);
       setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, citations:true, playbook:true, channels:true, contenthub:true, roadmap:true });
 
-      const entry={date:formatAuditDate(new Date()),brand:auditData.brand,overall:r.overall,engines:r.engines.map(e=>e.score),mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0]?.mentionRate||0,gemini:r.engines[1]?.mentionRate||0,perplexity:r.engines[2]?.mentionRate||0},citationsPerEngine:{gpt:r.engines[0]?.citationRate||0,gemini:r.engines[1]?.citationRate||0,perplexity:r.engines[2]?.citationRate||0},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini,perplexity:r.sentiment.brand.perplexity||50},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
+      const entry={date:formatAuditDate(new Date()),brand:auditData.brand,overall:r.overall,engines:r.engines.map(e=>e.score),mentions:Math.round(r.engines.reduce((sum,e)=>{const w=(r.engineWeights||{})[e.id]||(1/r.engines.length);return sum+(e.mentionRate*w);},0)),citations:Math.round(r.engines.reduce((sum,e)=>{const w=(r.engineWeights||{})[e.id]||(1/r.engines.length);return sum+(e.citationRate*w);},0)),mentionsPerEngine:{gpt:r.engines[0]?.mentionRate||0,gemini:r.engines[1]?.mentionRate||0,perplexity:r.engines[2]?.mentionRate||0},citationsPerEngine:{gpt:r.engines[0]?.citationRate||0,gemini:r.engines[1]?.citationRate||0,perplexity:r.engines[2]?.citationRate||0},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini,perplexity:r.sentiment.brand.perplexity||50},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
 
       try{localStorage.setItem('enterrank_lastAudit',JSON.stringify(apiData));}catch(e){}
 
@@ -6705,7 +6743,7 @@ export default function App(){
       setResults(r);setStep("dashboard");return;
     }
     const r=generateAll(data, apiData);setResults(r);
-    const entry={date:formatAuditDate(new Date()),brand:data.brand,overall:r.overall,engines:r.engines.map(e=>e.score),mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0]?.mentionRate||0,gemini:r.engines[1]?.mentionRate||0,perplexity:r.engines[2]?.mentionRate||0},citationsPerEngine:{gpt:r.engines[0]?.citationRate||0,gemini:r.engines[1]?.citationRate||0,perplexity:r.engines[2]?.citationRate||0},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini,perplexity:r.sentiment.brand.perplexity||50},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
+    const entry={date:formatAuditDate(new Date()),brand:data.brand,overall:r.overall,engines:r.engines.map(e=>e.score),mentions:Math.round(r.engines.reduce((sum,e)=>{const w=(r.engineWeights||{})[e.id]||(1/r.engines.length);return sum+(e.mentionRate*w);},0)),citations:Math.round(r.engines.reduce((sum,e)=>{const w=(r.engineWeights||{})[e.id]||(1/r.engines.length);return sum+(e.citationRate*w);},0)),mentionsPerEngine:{gpt:r.engines[0]?.mentionRate||0,gemini:r.engines[1]?.mentionRate||0,perplexity:r.engines[2]?.mentionRate||0},citationsPerEngine:{gpt:r.engines[0]?.citationRate||0,gemini:r.engines[1]?.citationRate||0,perplexity:r.engines[2]?.citationRate||0},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini,perplexity:r.sentiment.brand.perplexity||50},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
     setStep("dashboard");
 
     // Save to localStorage as backup
