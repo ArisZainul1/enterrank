@@ -947,7 +947,7 @@ Return JSON only:
   // ── Parallel Group: Sentiment + Signals + Source Channels + Competitors + Pain Points ──
   onProgress("Analyzing sentiment, competitors, and categories...", 55);
   const painCatLabels=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
-  let sentimentData={brand:{gpt:50,gemini:50,avg:50,summary:"Sentiment analysis unavailable"},competitors:compNames.map(n=>({name:n,gpt:50,gemini:50,avg:50,summary:""}))};
+  let sentimentData={brand:{gpt:50,gemini:50,perplexity:50,avg:50,summary:"Sentiment analysis unavailable"},competitors:compNames.map(n=>({name:n,gpt:50,gemini:50,perplexity:50,avg:50,summary:""}))};
   let sentimentSignals={positive:[],negative:[],quotes:[],competitorSentiment:[],rawSnippets:[]};
   let channelSourceData={sourceChannels:[],opportunities:[]};
   let compData={competitors:[]};
@@ -959,17 +959,22 @@ Return JSON only:
   (async()=>{try{
     const brandGptSent=analyzeSentimentFromResponses(gptResponses,brand);
     const brandGemSent=analyzeSentimentFromResponses(gemResponses,brand);
-    const brandAvg=Math.round((brandGptSent.score+brandGemSent.score)/2);
+    const brandPplxSent=analyzeSentimentFromResponses(pplxResponses,brand);
+    const allBrandSents=[brandGptSent,brandGemSent,brandPplxSent];
+    const brandAvg=Math.round(allBrandSents.reduce((a,s)=>a+s.score,0)/allBrandSents.length);
     const compSentiments=compNames.filter(n=>n).map(cname=>{
       const gs=analyzeSentimentFromResponses(gptResponses,cname);
       const gm=analyzeSentimentFromResponses(gemResponses,cname);
-      const avg=Math.round((gs.score+gm.score)/2);
-      return{name:cname,gpt:gs.score,gemini:gm.score,avg,summary:`${avg>=55?"Positive":avg>=45?"Neutral":"Negative"} tone across ${gs.positive+gm.positive+gs.negative+gm.negative} sentiment signals in AI responses.`,sentiment:avg>=55?"positive":avg>=45?"neutral":"negative"};
+      const gp=analyzeSentimentFromResponses(pplxResponses,cname);
+      const allSents=[gs,gm,gp];
+      const avg=Math.round(allSents.reduce((a,s)=>a+s.score,0)/allSents.length);
+      const totalSigs=allSents.reduce((a,s)=>a+s.positive+s.negative,0);
+      return{name:cname,gpt:gs.score,gemini:gm.score,perplexity:gp.score,avg,summary:`${avg>=55?"Positive":avg>=45?"Neutral":"Negative"} tone across ${totalSigs} sentiment signals in AI responses.`,sentiment:avg>=55?"positive":avg>=45?"neutral":"negative"};
     });
     const summaryLabel=brandAvg>=70?"predominantly positive":brandAvg>=55?"moderately positive":brandAvg>=45?"neutral":brandAvg>=30?"moderately negative":"predominantly negative";
-    const totalSignals=brandGptSent.positive+brandGemSent.positive+brandGptSent.negative+brandGemSent.negative;
+    const totalSignals=allBrandSents.reduce((a,s)=>a+s.positive+s.negative,0);
     sentimentData={
-      brand:{gpt:brandGptSent.score,gemini:brandGemSent.score,avg:brandAvg,summary:`AI engines portray ${brand} in a ${summaryLabel} light based on ${totalSignals} sentiment signals detected in actual response text.`},
+      brand:{gpt:brandGptSent.score,gemini:brandGemSent.score,perplexity:brandPplxSent.score,avg:brandAvg,summary:`AI engines portray ${brand} in a ${summaryLabel} light based on ${totalSignals} sentiment signals detected in actual response text.`},
       competitors:compSentiments
     };
   }catch(stepError){
@@ -1673,8 +1678,9 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
   try {
     onProgress("Generating insights...", 97);
 
-    const bestEngine = gptData.score >= gemData.score ? { name: "ChatGPT", score: gptData.score } : { name: "Gemini", score: gemData.score };
-    const worstEngine = gptData.score < gemData.score ? { name: "ChatGPT", score: gptData.score } : { name: "Gemini", score: gemData.score };
+    const allEngineScores = [{name:"ChatGPT",score:gptData.score||0},{name:"Gemini",score:gemData.score||0},{name:"Perplexity",score:pplxData.score||0}].sort((a,b)=>b.score-a.score);
+    const bestEngine = allEngineScores[0];
+    const worstEngine = allEngineScores[allEngineScores.length-1];
     const nCompNames = (compData?.competitors || []).map(c => c.name).filter(n => n).slice(0, 5);
     const compScoresArr = nCompNames.map(name => {
       const vis = compScoresMap?.[name];
@@ -1704,7 +1710,8 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
       catBreakdown[cat].total++;
       const gptQ = (gptData.queries || [])[i];
       const gemQ = (gemData.queries || [])[i];
-      if ((gptQ && gptQ.status !== "Absent") || (gemQ && gemQ.status !== "Absent")) catBreakdown[cat].visible++;
+      const pplxQ = (pplxData.queries || [])[i];
+      if ((gptQ && gptQ.status !== "Absent") || (gemQ && gemQ.status !== "Absent") || (pplxQ && pplxQ.status !== "Absent")) catBreakdown[cat].visible++;
     });
     const catSummary = Object.entries(catBreakdown).map(([cat, d]) => `${cat}: ${d.visible}/${d.total} visible`).join(", ");
 
@@ -1715,7 +1722,8 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
     const absentQueries = (searchQueries || []).filter((q, i) => {
       const gptQ = (gptData.queries || [])[i];
       const gemQ = (gemData.queries || [])[i];
-      return (!gptQ || gptQ.status === "Absent") && (!gemQ || gemQ.status === "Absent");
+      const pplxQ = (pplxData.queries || [])[i];
+      return (!gptQ || gptQ.status === "Absent") && (!gemQ || gemQ.status === "Absent") && (!pplxQ || pplxQ.status === "Absent");
     }).map(q => typeof q === "string" ? q : q.query).slice(0, 5);
 
     const citationDomains = [...new Set(
@@ -1726,14 +1734,15 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
 
 AUDIT DATA:
 - Overall visibility score: ${overallScore}%
-- ${bestEngine.name}: ${bestEngine.score}% | ${worstEngine.name}: ${worstEngine.score}%
+- ChatGPT: ${gptData.score||0}% | Gemini: ${gemData.score||0}% | Perplexity: ${pplxData.score||0}%
+- Best engine: ${bestEngine.name} (${bestEngine.score}%) | Weakest: ${worstEngine.name} (${worstEngine.score}%)
 - Mention rate: ${avgMentions}% | Citation rate: ${avgCitations}%
 - Top competitor: ${topCompetitor.name} at ${topCompetitor.score}%
 - All competitors: ${compScoresArr.map(c => c.name + " (" + c.score + "%)").join(", ") || "none"}
 - Sentiment: ${sentLabel}
 - Key themes: ${themeNames || "none detected"}
 - Query categories: ${catSummary}
-- Queries where brand is ABSENT on both engines: ${absentQueries.join(" | ") || "none"}
+- Queries where brand is ABSENT on all engines: ${absentQueries.join(" | ") || "none"}
 - Website health: ${ppSummary || "not scored"}
 - Weak areas: ${weakPPs.join(", ") || "none"}
 - Strong areas: ${strongPPs.join(", ") || "none"}
@@ -1787,7 +1796,7 @@ Rules:
       contentGridData:typeof contentData!=="undefined"&&contentData?(contentData.contentTypes||[]).slice(0,10):[],
       roadmapData:typeof roadData!=="undefined"?roadData:null,
       contentData:typeof contentData!=="undefined"&&contentData?(contentData.contentTypes||[]).slice(0,10):[],
-      sentimentData:typeof sentimentData!=="undefined"?sentimentData:{brand:{gpt:50,gemini:50,avg:50,summary:""},competitors:[]},
+      sentimentData:typeof sentimentData!=="undefined"?sentimentData:{brand:{gpt:50,gemini:50,perplexity:50,avg:50,summary:""},competitors:[]},
       sentimentSignals:typeof sentimentSignals!=="undefined"?sentimentSignals:{positive:[],negative:[],quotes:[],competitorSentiment:[],rawSnippets:[]},
       brandCrawlData:typeof brandCrawl!=="undefined"&&brandCrawl?brandCrawl.mainPage||null:null,
       compCrawlData:typeof compCrawlsRaw!=="undefined"?compCrawlsRaw:{},
@@ -1803,7 +1812,7 @@ Rules:
     console.error("CRITICAL: runRealAudit return assembly failed:",returnError);
     return {
       engineData:{engines:[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"gemini",name:"Gemini",color:"#4285F4",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"perplexity",name:"Perplexity",color:"#20808D",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}],painPoints:[]},
-      sentimentData:{brand:{gpt:50,gemini:50,avg:50,summary:""},competitors:[]},
+      sentimentData:{brand:{gpt:50,gemini:50,perplexity:50,avg:50,summary:""},competitors:[]},
       sentimentSignals:{positive:[],negative:[],quotes:[],competitorSentiment:[],rawSnippets:[]},
       competitorData:{competitors:[]},
       compVisibilityData:{},
@@ -1830,7 +1839,7 @@ Rules:
       error:true,
       errorMessage:fatalError.message||"The audit encountered an unexpected error. Please try again.",
       engineData:{engines:[{id:"chatgpt",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"gemini",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"perplexity",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}],painPoints:[]},
-      competitorData:{competitors:[]},archData:[],intentData:null,channelData:{channels:[]},contentGridData:[],roadmapData:null,contentData:[],sentimentData:{brand:{gpt:50,gemini:50,avg:50,summary:"Audit failed"},competitors:[]},brandCrawlData:null,compCrawlData:{},compVisibilityData:{},searchQueries:[]
+      competitorData:{competitors:[]},archData:[],intentData:null,channelData:{channels:[]},contentGridData:[],roadmapData:null,contentData:[],sentimentData:{brand:{gpt:50,gemini:50,perplexity:50,avg:50,summary:"Audit failed"},competitors:[]},brandCrawlData:null,compCrawlData:{},compVisibilityData:{},searchQueries:[]
     };
   }
 }
@@ -2169,7 +2178,7 @@ function generateAll(cd, apiData){
   const contentTypes=(hasApi&&apiData.contentGridData&&Array.isArray(apiData.contentGridData)&&apiData.contentGridData.length>0)?apiData.contentGridData.map(ct=>({type:ct.type||"Content",channels:ct.channels||["Blog"],freq:ct.freq||"Monthly",p:ct.p||"P1",owner:ct.owner||"Content Team",impact:typeof ct.impact==="number"?ct.impact:70,rationale:ct.rationale||ct.description||""})):[];
   const roadmap=(hasApi&&apiData.roadmapData&&apiData.roadmapData.day30)?apiData.roadmapData:null;
   const outputReqs=contentTypes.slice(0,6).map(ct=>({n:ct.freq||"Monthly",u:"",l:ct.type,d:ct.rationale||""}));
-  const sentiment=(hasApi&&apiData.sentimentData)?apiData.sentimentData:{brand:{gpt:50,gemini:50,avg:50,summary:"Not assessed"},competitors:[]};
+  const sentiment=(hasApi&&apiData.sentimentData)?apiData.sentimentData:{brand:{gpt:50,gemini:50,perplexity:50,avg:50,summary:"Not assessed"},competitors:[]};
   const sentimentSignals=(hasApi&&apiData.sentimentSignals)?apiData.sentimentSignals:{positive:[],negative:[],quotes:[],competitorSentiment:[],rawSnippets:[]};
   const brandCrawl=(hasApi&&apiData.brandCrawlData)?apiData.brandCrawlData:null;
   const compCrawlData=(hasApi&&apiData.compCrawlData)?apiData.compCrawlData:{};
@@ -6626,7 +6635,7 @@ export default function App(){
       setResults(() => r);
       setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, citations:true, playbook:true, channels:true, contenthub:true, roadmap:true });
 
-      const entry={date:formatAuditDate(new Date()),brand:auditData.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
+      const entry={date:formatAuditDate(new Date()),brand:auditData.brand,overall:r.overall,engines:r.engines.map(e=>e.score),mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0]?.mentionRate||0,gemini:r.engines[1]?.mentionRate||0,perplexity:r.engines[2]?.mentionRate||0},citationsPerEngine:{gpt:r.engines[0]?.citationRate||0,gemini:r.engines[1]?.citationRate||0,perplexity:r.engines[2]?.citationRate||0},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini,perplexity:r.sentiment.brand.perplexity||50},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
 
       try{localStorage.setItem('enterrank_lastAudit',JSON.stringify(apiData));}catch(e){}
 
@@ -6696,7 +6705,7 @@ export default function App(){
       setResults(r);setStep("dashboard");return;
     }
     const r=generateAll(data, apiData);setResults(r);
-    const entry={date:formatAuditDate(new Date()),brand:data.brand,overall:r.overall,engines:[r.engines[0].score,r.engines[1].score],mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0].mentionRate,gemini:r.engines[1].mentionRate},citationsPerEngine:{gpt:r.engines[0].citationRate,gemini:r.engines[1].citationRate},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
+    const entry={date:formatAuditDate(new Date()),brand:data.brand,overall:r.overall,engines:r.engines.map(e=>e.score),mentions:Math.round(r.engines.reduce((a,e)=>a+e.mentionRate,0)/r.engines.length),citations:Math.round(r.engines.reduce((a,e)=>a+e.citationRate,0)/r.engines.length),mentionsPerEngine:{gpt:r.engines[0]?.mentionRate||0,gemini:r.engines[1]?.mentionRate||0,perplexity:r.engines[2]?.mentionRate||0},citationsPerEngine:{gpt:r.engines[0]?.citationRate||0,gemini:r.engines[1]?.citationRate||0,perplexity:r.engines[2]?.citationRate||0},sentimentPerEngine:{gpt:r.sentiment.brand.gpt,gemini:r.sentiment.brand.gemini,perplexity:r.sentiment.brand.perplexity||50},sentimentAvg:r.sentiment.brand.avg,categories:r.painPoints.map(p=>({label:p.label,score:p.score})),apiData:apiData};
     setStep("dashboard");
 
     // Save to localStorage as backup
