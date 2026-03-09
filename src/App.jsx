@@ -867,11 +867,12 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
     console.error("Visibility computation failed:",stepError.message);
     onProgress("Warning: visibility analysis had an issue, continuing...",50);
     const fallbackBrands=[brand,...compNames.filter(n=>n)];
-    fallbackBrands.forEach(n=>{if(!gptVisibility[n])gptVisibility[n]=emptyVis;if(!gemVisibility[n])gemVisibility[n]=emptyVis;});
+    fallbackBrands.forEach(n=>{if(!gptVisibility[n])gptVisibility[n]=emptyVis;if(!gemVisibility[n])gemVisibility[n]=emptyVis;if(!pplxVisibility[n])pplxVisibility[n]=emptyVis;});
   }
 
   // Build compScoresMap with real data for all competitors
-  const compScoresMap = {};
+  let compScoresMap = {};
+  try{
   compNames.filter(n => n).forEach(name => {
     const gv = gptVisibility[name] || { mentionRate: 0, citationRate: 0 };
     const gm = gemVisibility[name] || { mentionRate: 0, citationRate: 0 };
@@ -885,6 +886,7 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
       avgScore: Math.round(((gv.mentionRate * 0.5 + gv.citationRate * 0.5) + (gm.mentionRate * 0.5 + gm.citationRate * 0.5) + (pv.mentionRate * 0.5 + pv.citationRate * 0.5)) / 3)
     };
   });
+  }catch(e){console.error("Competitor visibility map failed:",e.message||e);}
 
   // ── Step 5: Build engine data objects ──
   onProgress("Analyzing strengths and weaknesses...", 52);
@@ -917,33 +919,37 @@ Return JSON only:
     onProgress("Warning: strengths analysis had an issue, continuing...",55);
   }
 
-  const gptData = {
-    score: Math.round(brandGptVis.mentionRate * 0.5 + brandGptVis.citationRate * 0.5),
-    mentionRate: brandGptVis.mentionRate,
-    citationRate: brandGptVis.citationRate,
-    queries: brandGptVis.queries || [],
-    strengths: swGpt.strengths || ["Analysis unavailable"],
-    weaknesses: swGpt.weaknesses || ["Analysis unavailable"]
-  };
+  let gptData = {score:0,mentionRate:0,citationRate:0,queries:[],strengths:["Analysis unavailable"],weaknesses:["Analysis unavailable"]};
+  let gemData = {score:0,mentionRate:0,citationRate:0,queries:[],strengths:["Analysis unavailable"],weaknesses:["Analysis unavailable"]};
+  let pplxData = {score:0,mentionRate:0,citationRate:0,queries:[],strengths:["Analysis unavailable"],weaknesses:["Analysis unavailable"]};
+  try{
+    gptData = {
+      score: Math.round(brandGptVis.mentionRate * 0.5 + brandGptVis.citationRate * 0.5),
+      mentionRate: brandGptVis.mentionRate,
+      citationRate: brandGptVis.citationRate,
+      queries: brandGptVis.queries || [],
+      strengths: swGpt.strengths || ["Analysis unavailable"],
+      weaknesses: swGpt.weaknesses || ["Analysis unavailable"]
+    };
+    gemData = {
+      score: Math.round(brandGemVis.mentionRate * 0.5 + brandGemVis.citationRate * 0.5),
+      mentionRate: brandGemVis.mentionRate,
+      citationRate: brandGemVis.citationRate,
+      queries: brandGemVis.queries || [],
+      strengths: swGem.strengths || ["Analysis unavailable"],
+      weaknesses: swGem.weaknesses || ["Analysis unavailable"]
+    };
+    pplxData = {
+      score: Math.round(brandPplxVis.mentionRate * 0.5 + brandPplxVis.citationRate * 0.5),
+      mentionRate: brandPplxVis.mentionRate,
+      citationRate: brandPplxVis.citationRate,
+      queries: brandPplxVis.queries || [],
+      strengths: ["Analysis via Perplexity"],
+      weaknesses: ["Analysis via Perplexity"]
+    };
+  }catch(e){console.error("Engine data construction failed:",e.message||e);}
 
-  const gemData = {
-    score: Math.round(brandGemVis.mentionRate * 0.5 + brandGemVis.citationRate * 0.5),
-    mentionRate: brandGemVis.mentionRate,
-    citationRate: brandGemVis.citationRate,
-    queries: brandGemVis.queries || [],
-    strengths: swGem.strengths || ["Analysis unavailable"],
-    weaknesses: swGem.weaknesses || ["Analysis unavailable"]
-  };
-
-  const pplxData = {
-    score: Math.round(brandPplxVis.mentionRate * 0.5 + brandPplxVis.citationRate * 0.5),
-    mentionRate: brandPplxVis.mentionRate,
-    citationRate: brandPplxVis.citationRate,
-    queries: brandPplxVis.queries || [],
-    strengths: ["Analysis via Perplexity"],
-    weaknesses: ["Analysis via Perplexity"]
-  };
-
+  try{
   accumulated.engineData = { engines: [
     {id:"chatgpt", ...gptData, queries:(gptData.queries||[]).slice(0,8)},
     {id:"gemini", ...gemData, queries:(gemData.queries||[]).slice(0,8)},
@@ -954,8 +960,9 @@ Return JSON only:
   accumulated.brandCrawlData = brandCrawl || null;
   accumulated.compCrawlData = compCrawlsRaw || {};
   accumulated.compVisibilityData = compScoresMap || {};
+  }catch(e){console.error("First emission data assembly failed:",e.message||e);}
   // Collect citation URLs from both engines
-  const citationSources = { gpt: [], gemini: [], all: [] };
+  let citationSources = { gpt: [], gemini: [], all: [] };
   try {
     const seen = new Set();
     (gptResponses || []).forEach(r => {
@@ -1231,21 +1238,23 @@ Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentenc
   }
 
   // Emit combined partial data after parallel group completes
-  accumulated.sentimentData = sentimentData || null;
-  accumulated.sentimentSignals = sentimentSignals || null;
-  accumulated.channelSourceData = channelSourceData || { sourceChannels:[], opportunities:[] };
-  accumulated.engineData = { engines: [
-    {id:"chatgpt", ...gptData, queries:(gptData.queries||[]).slice(0,8)},
-    {id:"gemini", ...gemData, queries:(gemData.queries||[]).slice(0,8)},
-    {id:"perplexity", ...pplxData, queries:(pplxData.queries||[]).slice(0,8)}
-  ], painPoints: mergedPainPoints.length > 0 ? mergedPainPoints.slice(0,6) : null };
-  accumulated.competitorData = compData || { competitors: [] };
-  accumulated.compVisibilityData = compScoresMap || {};
-  accumulated.searchQueries = searchQueries || [];
-  accumulated.queryArchetypeMap = queryArchetypeMap || {};
-  accumulated.brandCrawlData = brandCrawl || null;
-  accumulated.compCrawlData = compCrawlsRaw || {};
-  accumulated.citationSources = citationSources;
+  try{
+    accumulated.sentimentData = sentimentData || null;
+    accumulated.sentimentSignals = sentimentSignals || null;
+    accumulated.channelSourceData = channelSourceData || { sourceChannels:[], opportunities:[] };
+    accumulated.engineData = { engines: [
+      {id:"chatgpt", ...gptData, queries:(gptData.queries||[]).slice(0,8)},
+      {id:"gemini", ...gemData, queries:(gemData.queries||[]).slice(0,8)},
+      {id:"perplexity", ...pplxData, queries:(pplxData.queries||[]).slice(0,8)}
+    ], painPoints: mergedPainPoints.length > 0 ? mergedPainPoints.slice(0,6) : null };
+    accumulated.competitorData = compData || { competitors: [] };
+    accumulated.compVisibilityData = compScoresMap || {};
+    accumulated.searchQueries = searchQueries || [];
+    accumulated.queryArchetypeMap = queryArchetypeMap || {};
+    accumulated.brandCrawlData = brandCrawl || null;
+    accumulated.compCrawlData = compCrawlsRaw || {};
+    accumulated.citationSources = citationSources;
+  }catch(e){console.error("Accumulated data assembly failed:",e.message||e);}
   try{onProgress("Dashboard ready — loading remaining sections...", 68, {...accumulated});}catch(emitErr){console.error("Emission 2 failed:",emitErr);}
 
   // ── Parallel Group: Archetypes + Intent + Channels ──
@@ -1701,9 +1710,11 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
 
   onProgress("Compiling final report...",96);
 
-  accumulated.contentGridData = (contentData && contentData.contentTypes) ? contentData.contentTypes.slice(0,10) : [];
-  accumulated.roadmapData = roadData || null;
-  accumulated.guidelineData = true;
+  try{
+    accumulated.contentGridData = (contentData && contentData.contentTypes) ? contentData.contentTypes.slice(0,10) : [];
+    accumulated.roadmapData = roadData || null;
+    accumulated.guidelineData = true;
+  }catch(e){console.error("Content/roadmap emission failed:",e.message||e);}
   try{onProgress("All sections ready...", null, {...accumulated});}catch(emitErr){console.error("Emission 4 failed:",emitErr);}
 
   // ── Step: Generate narrative summaries ──
