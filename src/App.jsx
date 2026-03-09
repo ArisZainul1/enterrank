@@ -2619,7 +2619,7 @@ const NAV_ITEMS=[
   {group:"Analysis",items:[
     {id:"dashboard",label:"Dashboard",icon:"grid"},
     {id:"sentiment",label:"Sentiment Analysis",icon:"heart"},
-    {id:"archetypes",label:"Query Categories",icon:"grid"},
+    {id:"archetypes",label:"Query Categories",icon:"activity"},
     {id:"citations",label:"Citation Sources",icon:"link"},
   ]},
   {group:"Strategy",items:[
