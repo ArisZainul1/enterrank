@@ -1543,7 +1543,7 @@ IMPORTANT: Only mark Not Present if you are CERTAIN after searching. If you find
   const contentPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}.
 
 AUDIT DATA TO BASE RECOMMENDATIONS ON:
-- ChatGPT score: ${gptData.score||0}%, Gemini score: ${gemData.score||0}%
+- ChatGPT score: ${gptData.score||0}%, Gemini score: ${gemData.score||0}%, Perplexity score: ${pplxData.score||0}%
 - Critical AEO categories: ${critCats||"none"}
 - Warning categories: ${warnCats||"none"}
 - Channel gaps: ${chGaps||"none"}
@@ -1593,17 +1593,18 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
   const channelGaps=(chData.channels||[]).filter(c=>c.status==="Not Present").map(c=>c.channel).join(", ");
 
   // Specific query gaps for roadmap
-  const absentOnBoth=searchQueries.filter((_q,i)=>{
+  const absentOnAll=searchQueries.filter((_q,i)=>{
     const gptStatus=(gptVisibility[brand]?.queries||[])[i]?.status||"Absent";
     const gemStatus=(gemVisibility[brand]?.queries||[])[i]?.status||"Absent";
-    return gptStatus==="Absent"&&gemStatus==="Absent";
+    const pplxStatus=(pplxVisibility[brand]?.queries||[])[i]?.status||"Absent";
+    return gptStatus==="Absent"&&gemStatus==="Absent"&&pplxStatus==="Absent";
   }).map(q=>typeof q==="string"?q:q.query).slice(0,5);
 
-  const absentOnOne=searchQueries.filter((_q,i)=>{
-    const gptStatus=(gptVisibility[brand]?.queries||[])[i]?.status||"Absent";
-    const gemStatus=(gemVisibility[brand]?.queries||[])[i]?.status||"Absent";
-    return(gptStatus==="Absent")!==(gemStatus==="Absent");
-  }).map(q=>typeof q==="string"?q:q.query).slice(0,3);
+  const absentOnSome=searchQueries.filter((_q,i)=>{
+    const statuses=[(gptVisibility[brand]?.queries||[])[i]?.status||"Absent",(gemVisibility[brand]?.queries||[])[i]?.status||"Absent",(pplxVisibility[brand]?.queries||[])[i]?.status||"Absent"];
+    const absentCount=statuses.filter(s=>s==="Absent").length;
+    return absentCount>0&&absentCount<3;
+  }).map(q=>typeof q==="string"?q:q.query).slice(0,5);
 
   // Missing schema from crawl
   const detectedSchemas=brandCrawl?.mainPage?.schemas||[];
@@ -1638,7 +1639,7 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
 
 AUDIT FINDINGS TO ADDRESS:
 - Overall visibility score: ${overallScore}%
-- ChatGPT score: ${gptData.score||0}%, Gemini score: ${gemData.score||0}%
+- ChatGPT score: ${gptData.score||0}%, Gemini score: ${gemData.score||0}%, Perplexity score: ${pplxData.score||0}%
 - Critical categories: ${criticalCats||"none"}
 - Warning categories: ${weakCats||"none"}
 - Missing channels: ${channelGaps||"none"}
@@ -1646,8 +1647,8 @@ AUDIT FINDINGS TO ADDRESS:
 - Top competitor advantages: ${(compData.competitors||[]).slice(0,3).map(c=>`${c.name} (${c.score}%): ${c.topStrength||"N/A"}`).join("; ")}
 
 SPECIFIC QUERY GAPS (content MUST target these):
-- Absent on BOTH engines: ${absentOnBoth.length>0?absentOnBoth.map(q=>`"${q}"`).join(", "):"None — good coverage"}
-- Absent on one engine: ${absentOnOne.length>0?absentOnOne.map(q=>`"${q}"`).join(", "):"None"}
+- Absent on ALL engines: ${absentOnAll.length>0?absentOnAll.map(q=>`"${q}"`).join(", "):"None — good coverage"}
+- Absent on some engines: ${absentOnSome.length>0?absentOnSome.map(q=>`"${q}"`).join(", "):"None"}
 
 MISSING SCHEMA MARKUP (technical tasks):
 ${missingSchemaList.length>0?missingSchemaList.map(s=>"- "+s).join("\n"):"- All key schemas detected"}
@@ -1658,10 +1659,18 @@ ${missingEEAT.length>0?missingEEAT.map(s=>"- "+s).join("\n"):"- All key EEAT sig
 COMPETITOR ADVANTAGES TO COUNTER:
 ${compAdvantages.length>0?compAdvantages.map(a=>"- "+a).join("\n"):"- No major competitor advantages detected"}
 
+NEGATIVE BRAND PERCEPTION (address in content/PR):
+${(()=>{try{const neg=(sentimentSignals?.negative||[]).map(t=>typeof t==="string"?t:t.theme||t.name||"").filter(Boolean);return neg.length>0?neg.slice(0,5).map(t=>"- "+t).join("\n"):"- No negative themes detected";}catch(e){return"- No negative themes detected";}})()}
+
+CITATION SOURCE GAPS (platforms to target for PR):
+${(()=>{try{const allSrc=citationSources?.all||[];const brandDomains=new Set();allSrc.forEach(c=>{try{const h=new URL(c.url).hostname.replace("www.","");brandDomains.add(h);}catch(e){}});const compDomains=new Set();(compData.competitors||[]).slice(0,3).forEach(comp=>{const cv=compScoresMap[comp.name];if(!cv)return;});const gaps=[];const topDomains=Object.entries(allSrc.reduce((acc,c)=>{try{const h=new URL(c.url).hostname.replace("www.","");acc[h]=(acc[h]||0)+1;}catch(e){}return acc;},{})).sort((a,b)=>b[1]-a[1]).slice(0,10).map(d=>d[0]);return topDomains.length>0?topDomains.slice(0,5).map(d=>"- "+d+" (cited "+allSrc.filter(c=>{try{return new URL(c.url).hostname.replace("www.","")===d;}catch(e){return false;}}).length+" times)").join("\n"):"- No citation source data available";}catch(e){return"- No citation source data available";}})()}
+
 CRITICAL: Every task in the roadmap MUST reference a specific finding from above. Format each task as "[Finding] → [Action]". For example:
 - "Missing FAQ schema → Implement FAQPage JSON-LD on top 5 service pages"
 - "Absent for 'best prepaid plans in Malaysia' → Create comparison guide targeting this query"
 - "Maxis beats you on Content Authority → Publish 2 long-form guides per week to close content gap"
+- "Negative perception: 'Premium Pricing Concerns' → Publish value-comparison content showing ROI vs competitors"
+- "Not cited on g2.com → Create and optimise G2 listing with verified reviews"
 Do NOT include generic tasks like "optimize website" or "improve SEO" without tying them to a specific finding.
 
 Return JSON:
