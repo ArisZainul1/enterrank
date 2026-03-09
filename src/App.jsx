@@ -512,7 +512,7 @@ async function runRealAudit(cd, onProgress){
   let queryArchetypeMap = {};
 
   // ── Step 1: Crawl brand website AND competitor websites ──
-  onProgress("Crawling brand website...",3);
+  onProgress("Crawling brand website...",2);
   let brandCrawl=null;
   try{brandCrawl=await crawlWebsite(cd.website);}catch(e){console.error("Crawl failed:",e);}
   const crawlSummary=brandCrawl?summariseCrawl(brandCrawl):"No crawl data available.";
@@ -534,7 +534,7 @@ async function runRealAudit(cd, onProgress){
   const compCrawlSummary=Object.entries(compCrawls).map(([name,data])=>`\n--- ${name} ---\n${data}`).join("\n")||"No competitor crawl data.";
 
   // ── Step 2: Generate high-quality search queries from key topics ──
-  onProgress("Generating search queries from your topics...", 10);
+  onProgress("Generating search queries from your topics...", 8);
   let searchQueries = [];
   const topicsToUse = topics.slice(0, 10);
   try{
@@ -637,7 +637,7 @@ Return JSON only:
   }).filter(q => q.length > 10);
   }catch(stepError){
     console.error("Query generation failed:",stepError.message);
-    onProgress("Warning: query generation had an issue, using fallback queries...",12);
+    onProgress("Warning: query generation had an issue, using fallback queries...",9);
     searchQueries=topicsToUse.flatMap(t=>[
       `What are the best ${t} options with the highest ratings in ${region}?`,
       `Compare the top ${t} providers by features, pricing and customer reviews in ${region}`
@@ -722,7 +722,7 @@ Return JSON only:
   async function runQueryBatches(callFn, queries, batchSize, delayMs, engineLabel) {
     const gemTasks = queries.map((q, i) => async () => {
       try {
-        onProgress("Testing on " + engineLabel + "... (" + (i + 1) + "/" + queries.length + ")", 28 + Math.round((i / queries.length) * 12));
+        onProgress("Testing on " + engineLabel + "... (" + (i + 1) + "/" + queries.length + ")", 25 + Math.round((i / queries.length) * 14));
         const result = await callFn(q, "You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.");
         return typeof result === "string" ? { query: q, response: result, citations: [] } : { query: q, response: result?.text || result?.response || "", citations: result?.citations || [] };
       } catch(e) {
@@ -737,7 +737,7 @@ Return JSON only:
   async function runGptSearchBatches(queries, searchRegion, batchSize, delayMs) {
     const gptTasks = queries.map((q, i) => async () => {
       try {
-        onProgress("Testing on ChatGPT... (" + (i + 1) + "/" + queries.length + ")", 15 + Math.round((i / queries.length) * 12));
+        onProgress("Testing on ChatGPT... (" + (i + 1) + "/" + queries.length + ")", 10 + Math.round((i / queries.length) * 14));
         const result = await callOpenAISearch(q, searchRegion);
         return { query: q, response: result?.text || "", citations: result?.citations || [] };
       } catch(e) {
@@ -757,7 +757,7 @@ Return JSON only:
       (async()=>{
         const pplxTasks=searchQueries.map((q,i)=>async()=>{
           try{
-            onProgress("Testing on Perplexity... ("+(i+1)+"/"+searchQueries.length+")",40+Math.round((i/searchQueries.length)*10));
+            onProgress("Testing on Perplexity... ("+(i+1)+"/"+searchQueries.length+")",40+Math.round((i/searchQueries.length)*12));
             const result=await callPerplexity(q,"You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.");
             return{query:q,response:result.text||"",citations:result.citations||[]};
           }catch(e){
@@ -770,15 +770,15 @@ Return JSON only:
     ]);
     gptResponses=gR||[];gemResponses=gmR||[];pplxResponses=pR||[];
     const failedEngines=[!gptResponses.length&&"ChatGPT",!gemResponses.length&&"Gemini",!pplxResponses.length&&"Perplexity"].filter(Boolean);
-    if(failedEngines.length>=2)onProgress("Warning: "+failedEngines.join(" and ")+" testing failed, continuing with limited data...",50);
-    else if(failedEngines.length===1)onProgress("Warning: "+failedEngines[0]+" testing failed, continuing with other engines...",50);
+    if(failedEngines.length>=2)onProgress("Warning: "+failedEngines.join(" and ")+" testing failed, continuing with limited data...",53);
+    else if(failedEngines.length===1)onProgress("Warning: "+failedEngines[0]+" testing failed, continuing with other engines...",53);
   }catch(stepError){
     console.error("Engine testing failed:",stepError.message);
-    onProgress("Warning: engine testing encountered an issue, continuing...",50);
+    onProgress("Warning: engine testing encountered an issue, continuing...",53);
   }
 
   // ── Step 4: Classify responses — scan real text for brand names and URLs ──
-  onProgress("Analyzing responses for brand visibility...", 45);
+  onProgress("Classifying responses...", 55);
   let gptVisibility={},gemVisibility={},pplxVisibility={};
   const emptyVis={mentionRate:0,citationRate:0,queries:searchQueries.map(q=>({query:q,status:"Absent",confidence:"fallback"}))};
   try{
@@ -855,17 +855,17 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
   }
 
   if (gptVisRaw.ambiguousCases.length > 0) {
-    onProgress("Verifying ChatGPT citations...", 47);
+    onProgress("Verifying ChatGPT citations...", 56);
     await batchReclassify(gptVisRaw.ambiguousCases, callOpenAI, gptVisibility);
   }
   if (gemVisRaw.ambiguousCases.length > 0) {
-    onProgress("Verifying Gemini citations...", 49);
+    onProgress("Verifying Gemini citations...", 57);
     await batchReclassify(gemVisRaw.ambiguousCases, callGemini, gemVisibility);
     await batchReclassify(pplxVisRaw.ambiguousCases, callOpenAI, pplxVisibility);
   }
   }catch(stepError){
     console.error("Visibility computation failed:",stepError.message);
-    onProgress("Warning: visibility analysis had an issue, continuing...",50);
+    onProgress("Warning: visibility analysis had an issue, continuing...",58);
     const fallbackBrands=[brand,...compNames.filter(n=>n)];
     fallbackBrands.forEach(n=>{if(!gptVisibility[n])gptVisibility[n]=emptyVis;if(!gemVisibility[n])gemVisibility[n]=emptyVis;if(!pplxVisibility[n])pplxVisibility[n]=emptyVis;});
   }
@@ -889,7 +889,7 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
   }catch(e){console.error("Competitor visibility map failed:",e.message||e);}
 
   // ── Step 5: Build engine data objects ──
-  onProgress("Analyzing strengths and weaknesses...", 52);
+  onProgress("Analyzing strengths and weaknesses...", 59);
 
   const brandGptVis = gptVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
   const brandGemVis = gemVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
@@ -916,7 +916,7 @@ Return JSON only:
   swGem = safeJSON(swGemRaw) || {};
   }catch(stepError){
     console.error("Strengths/weaknesses analysis failed:",stepError.message);
-    onProgress("Warning: strengths analysis had an issue, continuing...",55);
+    onProgress("Warning: strengths analysis had an issue, continuing...",60);
   }
 
   let gptData = {score:0,mentionRate:0,citationRate:0,queries:[],strengths:["Analysis unavailable"],weaknesses:["Analysis unavailable"]};
@@ -985,7 +985,7 @@ Return JSON only:
   try{onProgress("Engine data ready — analyzing sentiment...", null, {...accumulated});}catch(emitErr){console.error("Emission 1 failed:",emitErr);}
 
   // ── Parallel Group: Sentiment + Signals + Source Channels + Competitors + Pain Points ──
-  onProgress("Analyzing sentiment, competitors, and categories...", 55);
+  onProgress("Analyzing sentiment, competitors, and categories...", 62);
   const painCatLabels=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
   let sentimentData={brand:{gpt:50,gemini:50,perplexity:50,avg:50,summary:"Sentiment analysis unavailable"},competitors:compNames.map(n=>({name:n,gpt:50,gemini:50,perplexity:50,avg:50,summary:""}))};
   let sentimentSignals={positive:[],negative:[],quotes:[],competitorSentiment:[],rawSnippets:[]};
@@ -1255,7 +1255,7 @@ Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentenc
     accumulated.compCrawlData = compCrawlsRaw || {};
     accumulated.citationSources = citationSources;
   }catch(e){console.error("Accumulated data assembly failed:",e.message||e);}
-  try{onProgress("Dashboard ready — loading remaining sections...", 68, {...accumulated});}catch(emitErr){console.error("Emission 2 failed:",emitErr);}
+  try{onProgress("Dashboard ready — loading remaining sections...", 70, {...accumulated});}catch(emitErr){console.error("Emission 2 failed:",emitErr);}
 
   // ── Parallel Group: Archetypes + Intent + Channels ──
   let archData={stakeholders:[]};
@@ -1265,7 +1265,7 @@ Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentenc
   await Promise.all([
   // ── Archetypes ──
   (async()=>{
-  onProgress("Generating user archetypes...",70);
+  onProgress("Generating user archetypes...",72);
   try{
   const archPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}, competitors: ${compNames.join(", ")||"none"}.
 
@@ -1313,7 +1313,7 @@ Be accurate for ${region}. All demographics, behaviors, and prompts must reflect
   archData=safeJSON(archRaw)||{stakeholders:[]};
 
   // Now ask Gemini to verify/correct the engine statuses
-  onProgress("Verifying archetype journeys...",74);
+  onProgress("Verifying archetype journeys...",75);
   if(archData.stakeholders&&archData.stakeholders.length>0){
     const allPrompts=[];
     archData.stakeholders.forEach(sg=>(sg.archetypes||[]).forEach(a=>(a.journey||[]).forEach(j=>(j.prompts||[]).forEach(p=>allPrompts.push(p.query)))));
@@ -1343,7 +1343,7 @@ Be accurate. "Cited" = you would link to their website. "Mentioned" = you'd name
   }})(),
   // ── Intent Pathway ──
   (async()=>{
-  onProgress("Testing intent pathway prompts...",72);
+  onProgress("Testing intent pathway prompts...",74);
   try{
   const intentPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}.
 Competitors: ${compNames.join(", ")}.
@@ -1415,7 +1415,7 @@ Rules:
   }})(),
   // ── Channel Verification ──
   (async()=>{
-  onProgress("Verifying channels via web search...",74);
+  onProgress("Detecting distribution channels...",76);
   try{
   let realChannels=null;
   try{realChannels=await verifyChannels(brand, cd.website, industry, region);}catch(e){console.error("Channel verify failed:",e);}
@@ -1463,7 +1463,7 @@ Determine channel presence. Return JSON:
   }
 
   if(unverifiedChannels.length>0||blogMissing){
-    onProgress("Verifying channel presence...",83);
+    onProgress("Verifying channel presence...",80);
     try{
       const channelsToVerify=unverifiedChannels.map(ch=>ch.name||ch.channel).join(", ");
       const website=cd.website||"unknown";
@@ -1525,7 +1525,7 @@ IMPORTANT: Only mark Not Present if you are CERTAIN after searching. If you find
   accumulated.archData = (archData && archData.stakeholders) ? archData.stakeholders : [];
   accumulated.intentData = intentData && intentData.length > 0 ? intentData : null;
   accumulated.channelData = chData ? { channels: (chData.channels||[]).slice(0,12) } : { channels: [] };
-  try{onProgress("Building final recommendations...", 85, {...accumulated});}catch(emitErr){console.error("Emission 3 failed:",emitErr);}
+  try{onProgress("Building final recommendations...", 84, {...accumulated});}catch(emitErr){console.error("Emission 3 failed:",emitErr);}
 
   // ── Parallel Group: Content + Roadmap ──
   let contentData={contentTypes:[]};
@@ -1534,7 +1534,7 @@ IMPORTANT: Only mark Not Present if you are CERTAIN after searching. If you find
   await Promise.all([
   // ── Content Recommendations ──
   (async()=>{
-  onProgress("Building content recommendations...",87);
+  onProgress("Generating content strategy...",86);
   try{
   const critCats=(mergedPainPoints||[]).filter(p=>p.severity==="critical").map(p=>`${p.label} (${p.score}%)`).join(", ");
   const warnCats=(mergedPainPoints||[]).filter(p=>p.severity==="warning").map(p=>`${p.label} (${p.score}%)`).join(", ");
@@ -1584,7 +1584,7 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
   }})(),
   // ── Roadmap ──
   (async()=>{
-  onProgress("Creating 90-day roadmap from audit data...",89);
+  onProgress("Building 90-day roadmap...",88);
   try{
   const overallScore=Math.round(((gptData.score||0)+(gemData.score||0)+(pplxData.score||0))/3);
   const criticalCats=(mergedPainPoints||[]).filter(p=>p.severity==="critical").map(p=>p.label).join(", ");
@@ -1708,7 +1708,7 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
   }})()
   ]);
 
-  onProgress("Compiling final report...",96);
+  onProgress("Compiling final report...",93);
 
   try{
     accumulated.contentGridData = (contentData && contentData.contentTypes) ? contentData.contentTypes.slice(0,10) : [];
@@ -1720,7 +1720,7 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
   // ── Step: Generate narrative summaries ──
   let narratives = {};
   try {
-    onProgress("Generating insights...", 97);
+    onProgress("Writing executive insights...", 95);
 
     const allEngineScores = [{name:"ChatGPT",score:gptData.score||0},{name:"Gemini",score:gemData.score||0},{name:"Perplexity",score:pplxData.score||0}].sort((a,b)=>b.score-a.score);
     const bestEngine = allEngineScores[0];
@@ -1879,6 +1879,7 @@ Rules:
       errorMessage:"Audit completed but result assembly failed: "+(returnError.message||"Unknown error")
     };
   }
+  onProgress("Finalising audit...",99);
  }catch(fatalError){
     console.error("Audit failed:",fatalError);
     onProgress("Audit failed: "+(fatalError.message||"Unknown error"),-1);
@@ -2866,12 +2867,12 @@ function AuditLoadingInline({ progress, stage }) {
   }, [progress]);
 
   const steps = [
-    { label: "Crawling websites", threshold: 5 },
-    { label: "Testing AI engines", threshold: 20 },
-    { label: "Analyzing visibility", threshold: 45 },
-    { label: "Scoring categories", threshold: 65 },
-    { label: "Building insights", threshold: 85 },
-    { label: "Preparing dashboard", threshold: 95 }
+    { label: "Crawling websites", threshold: 2 },
+    { label: "Testing AI engines", threshold: 10 },
+    { label: "Classifying responses", threshold: 53 },
+    { label: "Analyzing competitors & sentiment", threshold: 60 },
+    { label: "Building channels & content", threshold: 82 },
+    { label: "Generating insights", threshold: 95 }
   ];
 
   React.useEffect(() => {
@@ -6665,7 +6666,7 @@ export default function App(){
         if(pct != null) {
           setAuditProgress(prev => {
             const next = Math.max(prev, pct);
-            setDashboardLoadProgress(Math.min(100, Math.round((next / 55) * 100)));
+            setDashboardLoadProgress(next);
             return next;
           });
         }
