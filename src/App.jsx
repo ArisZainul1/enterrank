@@ -3858,7 +3858,7 @@ function DashboardPage({r,history,goTo}){
         </div>
       </div>
 
-      <div style={{ maxWidth: 640, margin: "0 auto 24px", padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, minHeight: 80 }}>
+      <div style={{ margin: "0 0 24px", padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, minHeight: 80 }}>
         {r.narratives?.dashboard ? (
           <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.7, textAlign: "left" }}>{r.narratives.dashboard}</div>
         ) : (
@@ -3885,21 +3885,29 @@ function DashboardPage({r,history,goTo}){
         ))}
       </div>
 
-      {/* Engine comparison — compact inline */}
-      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 20px",display:"flex",gap:24,alignItems:"center",justifyContent:"center"}}>
-        {r.engines.map((e,i)=>(
-          <React.Fragment key={i}>
-            <div style={{textAlign:"center"}}>
-              <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>{e.name} <span style={{fontSize:10,fontWeight:400,color:C.muted}}>({Math.round((dWeights[e.id]||0)*100)}%)</span>{i===0&&<InfoTip text="Engine weights reflect estimated user share in your region. A higher weight means more users see that engine's results, so it impacts your overall score more."/>}</div>
-              <div style={{display:"flex",gap:16,fontSize:11,color:C.sub,justifyContent:"center"}}>
-                <span>Score: <span style={{fontWeight:500,color:C.text}}>{e.score}%</span></span>
-                <span>Mentions: <span style={{fontWeight:500,color:C.text}}>{e.mentionRate}%</span></span>
-                <span>Citations: <span style={{fontWeight:500,color:C.text}}>{e.citationRate}%</span></span>
+      {/* Engine comparison — individual cards */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat("+(r.engines||[]).length+",1fr)",gap:12,marginBottom:24}}>
+        {(r.engines||[]).map((e,i)=>{
+          const w=dWeights[e.id]||0;
+          return (
+            <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 20px",textAlign:"center"}}>
+              <div style={{fontSize:14,fontWeight:500,color:e.color||C.text,marginBottom:2}}>{e.name}</div>
+              <div style={{fontSize:10,color:C.muted,marginBottom:12}}>{w?Math.round(w*100)+"% weight":""}{i===0&&<InfoTip text="Engine weights reflect estimated user share in your region. A higher weight means more users see that engine's results, so it impacts your overall score more."/>}</div>
+              <div style={{fontSize:28,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif",marginBottom:12}}>{e.score}%</div>
+              <div style={{display:"flex",justifyContent:"center",gap:16,fontSize:11,color:C.sub}}>
+                <div style={{textAlign:"center"}}>
+                  <div style={{color:C.muted,marginBottom:2}}>Mentions</div>
+                  <div style={{fontWeight:500,color:C.text}}>{e.mentionRate}%</div>
+                </div>
+                <div style={{width:1,height:24,background:C.borderSoft}}/>
+                <div style={{textAlign:"center"}}>
+                  <div style={{color:C.muted,marginBottom:2}}>Citations</div>
+                  <div style={{fontWeight:500,color:C.text}}>{e.citationRate}%</div>
+                </div>
               </div>
             </div>
-            {i===0&&r.engines.length>1&&<div style={{width:1,height:28,background:C.borderSoft}}/>}
-          </React.Fragment>
-        ))}
+          );
+        })}
       </div>
     </div>
 
@@ -3944,7 +3952,7 @@ function DashboardPage({r,history,goTo}){
                     </div>
                     <span style={{fontSize:12,fontWeight:500,color:C.text,minWidth:32,textAlign:"right"}}>{pp.score}%</span>
                   </div>
-                  {topEvidence&&<div style={{fontSize:10,color:C.muted,marginTop:2,paddingLeft:108,lineHeight:1.4}}>{topEvidence}</div>}
+                  {topEvidence&&<div style={{fontSize:10,color:C.muted,marginTop:2,paddingLeft:128,lineHeight:1.4}}>{topEvidence}</div>}
                 </div>
               );
             })}
