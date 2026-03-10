@@ -5915,11 +5915,16 @@ function ContentHubPage({r,goTo,activeProject,onUpdate}){
 
   const contentTypes=[
     {id:"blog",label:"Blog Article",desc:"Long-form SEO-optimized article (800-1500 words)"},
-    {id:"faq",label:"FAQ Page",desc:"Schema-optimized Q&A content (8-12 questions)"},
-    {id:"social",label:"Social Post",desc:"Platform-specific social media content"},
+    {id:"faq",label:"FAQ Page",desc:"Question & answer format (8-12 questions)"},
+    {id:"comparison",label:"Comparison Page",desc:"Balanced analysis vs competitors"},
+    {id:"howto",label:"How-To Guide",desc:"Step-by-step instructions"},
+    {id:"casestudy",label:"Case Study",desc:"Results-focused success story"},
+    {id:"social",label:"Social Post",desc:"Single platform social content"},
+    {id:"socialseries",label:"Social Series",desc:"Multi-platform post series (5 posts)"},
     {id:"email",label:"Email Newsletter",desc:"Email content with subject line and CTA"},
     {id:"video",label:"Video Script",desc:"Script with scenes, narration, and visual notes"},
-    {id:"landing",label:"Landing Page",desc:"Hero copy, benefits, and conversion-focused content"},
+    {id:"landing",label:"Landing Page",desc:"Conversion-focused copy with CTA"},
+    {id:"pressrelease",label:"Press Release",desc:"Formal newsworthy announcement"},
     {id:"schema",label:"Schema Markup",desc:"JSON-LD structured data snippets"}
   ];
 
@@ -5977,7 +5982,12 @@ CONTENT STRATEGY RULE: This content exists to fill SPECIFIC gaps in ${brand}'s A
       email:`Write an email newsletter about: "${topic}"\n\nThis email should drive traffic to content that improves ${brand}'s AI engine visibility.\n\nStructure:\n- Subject line: under 50 chars, curiosity-driven or value-driven (not clickbait)\n- Preview text: 90 chars that complements the subject line\n- Opening: one sentence that states why this matters NOW\n- Body: 3 short paragraphs max \u2014 each with a specific insight, stat, or update about ${brand}\n- CTA: link to the content piece this email promotes\n- P.S.: one additional value hook\n\nWrite in ${brand}'s voice. Keep it under 300 words total. No filler paragraphs.`,
       video:`Write a video script about: "${topic}"\n\nStructure:\n- Hook (first 3 seconds — attention grabber)\n- Introduction (who this is for and what they'll learn)\n- Main content (3-5 key points with talking points for each)\n- For each section include: [VISUAL] notes for what to show on screen\n- Call to action (what to do next)\n- Estimated duration: 2-4 minutes\n\nFormat each section clearly with timestamps and visual/narration separation.`,
       landing:`Write conversion-focused landing page copy about: "${topic}"\n\nThis page must rank in AI engine citations when users ask about ${topic} in ${region}.\n\nStructure:\n- Hero: headline that answers the core user query + subheadline with ${brand}'s specific differentiator\n- CTA button text (action-oriented, specific)\n- 3 benefit blocks: each with a specific, measurable claim \u2014 not generic benefits\n- Social proof section: format for real testimonials (include suggested structure)\n- "How it works" in exactly 3 steps\n- FAQ: 4-5 questions matching real AI engine queries\n- Final CTA with urgency or value statement\n\nCRITICAL: Every benefit must reference something specific about ${brand}'s products or positioning. No generic "we're the best" claims without supporting evidence.`,
-      schema:`Generate JSON-LD structured data markup for: "${topic}"\n\nProvide these schema types (whichever are relevant):\n- Organization schema\n- Product schema (if product-related)\n- FAQPage schema\n- Article schema\n- BreadcrumbList schema\n- HowTo schema (if process-related)\n\nEach schema should be complete, valid JSON-LD that can be directly pasted into a webpage <script> tag. Include all required and recommended properties.`
+      schema:`Generate JSON-LD structured data markup for: "${topic}"\n\nProvide these schema types (whichever are relevant):\n- Organization schema\n- Product schema (if product-related)\n- FAQPage schema\n- Article schema\n- BreadcrumbList schema\n- HowTo schema (if process-related)\n\nEach schema should be complete, valid JSON-LD that can be directly pasted into a webpage <script> tag. Include all required and recommended properties.`,
+      comparison:`Write a balanced comparison page about: "${topic}"\n\nThis page must help AI engines (ChatGPT, Gemini, Perplexity, Google AI) cite ${brand} when users ask comparison questions.\n\nStructure:\n- Headline framed as a comparison question users would ask\n- Brief overview paragraph explaining what's being compared and why it matters\n- Feature-by-feature comparison sections (5-7 key areas)\n- For each area: factual assessment of ${brand}'s strengths, honest where competitors are strong\n- Summary table or verdict section with a clear recommendation\n- FAQ section with 3-4 common comparison questions\n\nCRITICAL: Be factual and fair. Do not disparage competitors. Focus on ${brand}'s genuine differentiators. AI engines prefer balanced, trustworthy content.`,
+      casestudy:`Write a compelling case study about: "${topic}"\n\nStructure:\n- Title that highlights the key result or transformation\n- Client/Customer context (2-3 sentences — use a realistic scenario if no specific client)\n- The Challenge: What problem was the client facing? Be specific with metrics or pain points\n- The Solution: How ${brand} addressed the challenge. Include specific products, services, or approaches used\n- The Results: Quantifiable outcomes with specific numbers (revenue increase, time saved, efficiency gains)\n- Key Takeaways: 3-4 bullet points summarising what others can learn\n- A quote from the client (use placeholder name if needed)\n\nCRITICAL: Use specific numbers and metrics throughout. AI engines cite content with concrete data points, not vague claims.`,
+      howto:`Write a comprehensive how-to guide about: "${topic}"\n\nStructure:\n- Title formatted as "How to [achieve specific outcome]"\n- Brief intro: what the reader will learn and why it matters (2-3 sentences)\n- Prerequisites or requirements (if any)\n- Step-by-step instructions (6-10 numbered steps)\n  - Each step has a clear heading\n  - 2-4 sentences of explanation per step\n  - Include specific tips or best practices within steps\n- Common Mistakes to Avoid (3-5 bullet points)\n- Summary or next steps\n\nCRITICAL: Make each step actionable and specific. Reference ${brand}'s products or expertise where naturally relevant. AI engines favour step-by-step content for how-to queries.`,
+      pressrelease:`Write a press release about: "${topic}"\n\nUse standard press release format:\n- Headline: newsworthy, factual, under 80 characters\n- Dateline: [City, Date]\n- Lead paragraph: Who, What, When, Where, Why in 2-3 sentences\n- Body paragraph 1: Supporting details and context\n- Body paragraph 2: Additional information, market context, or impact\n- Quote from company spokesperson (use "[Spokesperson Name], [Title] at ${brand}")\n- About ${brand}: Company boilerplate (2-3 sentences about ${brand} in ${industry})\n- Contact: [Placeholder contact information]\n\nCRITICAL: Write in formal, third-person, newsworthy tone. Lead with the most important information. No marketing fluff.`,
+      socialseries:`Create a social media post series about: "${topic}"\n\nWrite 5 social media posts for different platforms:\n\n1. LinkedIn Post (800-1300 chars):\n   - Open with a surprising insight or data point\n   - Professional but conversational tone\n   - End with a question to drive engagement\n\n2. LinkedIn Post (800-1300 chars):\n   - Different angle from Post 1\n   - Include a specific claim about ${brand} or ${industry}\n\n3. Instagram/Facebook Post (under 2200 chars):\n   - More visual-oriented language\n   - Include suggested image/graphic description\n   - 3-5 relevant hashtags\n\n4. Instagram/Facebook Post (under 2200 chars):\n   - Educational or how-to angle\n   - Include carousel/infographic suggestion\n\n5. Twitter/X Post (under 280 chars):\n   - One punchy, quotable insight\n   - 1-2 hashtags\n\nFor each post, include the platform label and suggested hashtags. Make each post stand alone while connecting to the overall theme.`
     };
 
     // Inject audit context into all content prompts
@@ -6086,7 +6096,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
     const channelGaps=(r?.verifiedChannelGaps||[]).slice(0,5);
     const getTypeColor=(type)=>({"Blog Article":"#dbeafe","FAQ Page":"#dcfce7","Comparison Page":"#fef3c7","Landing Page":"#e0e7ff","Press Release":"#fce7f3","Case Study":"#f3e8ff","How-To Guide":"#ccfbf1","Video Script":"#fee2e2","Social Media Post Series":"#cffafe","Technical Documentation":"#f1f5f9","Product/Service Page":"#fef9c3","Email Newsletter":"#ede9fe"}[type]||"#f1f5f9");
     const getTypeTextColor=(type)=>({"Blog Article":"#1e40af","FAQ Page":"#166534","Comparison Page":"#92400e","Landing Page":"#3730a3","Press Release":"#9d174d","Case Study":"#6b21a8","How-To Guide":"#0f766e","Video Script":"#991b1b","Social Media Post Series":"#155e75","Technical Documentation":"#475569","Product/Service Page":"#854d0e","Email Newsletter":"#5b21b6"}[type]||"#475569");
-    const typeToId=(type)=>{const map={"Blog Article":"blog","FAQ Page":"faq","Comparison Page":"blog","Landing Page":"landing","Press Release":"blog","Case Study":"blog","How-To Guide":"blog","Video Script":"video","Social Media Post Series":"social","Technical Documentation":"blog","Product/Service Page":"landing","Email Newsletter":"email"};return map[type]||"blog";};
+    const typeToId=(type)=>{const map={"Blog Article":"blog","FAQ Page":"faq","Comparison Page":"comparison","Landing Page":"landing","Press Release":"pressrelease","Case Study":"casestudy","How-To Guide":"howto","Video Script":"video","Social Media Post Series":"socialseries","Technical Documentation":"blog","Product/Service Page":"landing","Email Newsletter":"email"};return map[type]||"blog";};
 
     // Build absent and mentioned-not-cited queries from all engines
     const absentQueries=[];
@@ -6122,7 +6132,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
 
     // Negative sentiment themes
     negThemes.slice(0,1).forEach(theme=>{
-      suggestions.push({title:"Address: "+theme,type:"Case Study",gap:"Negative sentiment theme: "+theme,description:"Counter this perception with evidence-based content",priority:"medium",genType:"blog"});
+      suggestions.push({title:"Address: "+theme,type:"Case Study",gap:"Negative sentiment theme: "+theme,description:"Counter this perception with evidence-based content",priority:"medium",genType:"casestudy"});
     });
 
     // Platform gaps
@@ -6139,7 +6149,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
       if(suggestions.length>=9)return;
       const topic=item.type||item.topic||item.title||"";
       if(!topic||suggestions.find(s=>s.title===topic))return;
-      suggestions.push({title:topic,type:"Blog Article",gap:item.rationale||"From content strategy grid",description:item.rationale||"Recommended in audit content grid",priority:item.p==="P0"?"high":"medium",genType:"blog"});
+      const gridType=topic.toLowerCase().match(/\b(faq|question)/)?{t:"FAQ Page",g:"faq"}:topic.toLowerCase().match(/\b(video|youtube)/)?{t:"Video Script",g:"video"}:topic.toLowerCase().match(/\b(email|newsletter)/)?{t:"Email Newsletter",g:"email"}:topic.toLowerCase().match(/\b(guide|how)/)?{t:"How-To Guide",g:"howto"}:topic.toLowerCase().match(/\b(case.?study|success)/)?{t:"Case Study",g:"casestudy"}:topic.toLowerCase().match(/\b(social|linkedin|post)/)?{t:"Social Media Post Series",g:"socialseries"}:{t:"Blog Article",g:"blog"};suggestions.push({title:topic,type:gridType.t,gap:item.rationale||"From content strategy grid",description:item.rationale||"Recommended in audit content grid",priority:item.p==="P0"?"high":"medium",genType:gridType.g});
     });
 
     suggestions.sort((a,b)=>(a.priority==="high"?0:1)-(b.priority==="high"?0:1));
@@ -6160,7 +6170,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
               {s.priority==="high"&&<span style={{fontSize:9,fontWeight:500,padding:"2px 6px",borderRadius:4,background:"#fee2e2",color:"#dc2626"}}>High Priority</span>}
             </div>
             {s.gap&&<div style={{fontSize:11,color:C.muted,marginTop:4,fontStyle:"italic"}}>Addresses: {s.gap}</div>}
-            {s.description&&<div style={{fontSize:11,color:C.sub,marginTop:4}}>{s.description}</div>}
+            {s.description&&s.description!==s.gap&&!s.gap?.includes(s.description)&&<div style={{fontSize:11,color:C.sub,marginTop:4}}>{s.description}</div>}
             <div style={{display:"flex",gap:6,marginTop:8}}>
               <span style={{fontSize:10,fontWeight:500,padding:"2px 8px",borderRadius:4,background:getTypeColor(s.type),color:getTypeTextColor(s.type)}}>{s.type}</span>
             </div>
