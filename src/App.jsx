@@ -54,6 +54,8 @@ function Ring({score,size=100,color,sw=5}){const r2=(size-sw*2)/2,ci=2*Math.PI*r
 function Bar({value,color=C.accent,h=5}){return <div style={{width:"100%",height:h,background:C.borderSoft,borderRadius:h}}><div style={{width:`${Math.max(2,value)}%`,height:"100%",background:color,borderRadius:h,transition:"width .8s ease-out"}}/></div>;}
 function Pill({children,color=C.accent,filled}){return <span style={{display:"inline-flex",padding:"3px 10px",borderRadius:100,fontSize:11,fontWeight:600,background:filled?color:`${color}10`,color:filled?"#fff":color}}>{children}</span>;}
 function Card({children,style={},onClick}){return <div onClick={onClick} style={{...CARD.base,...(onClick?{cursor:"pointer"}:{}),...style}}>{children}</div>;}
+
+class ErrorBoundary extends React.Component{constructor(props){super(props);this.state={hasError:false};}static getDerivedStateFromError(){return{hasError:true};}componentDidCatch(error,errorInfo){console.error("Section render error:",error,errorInfo);}render(){if(this.state.hasError){return(<div style={{padding:40,textAlign:"center"}}><div style={{fontSize:14,fontWeight:500,color:"#dc2626",marginBottom:8}}>Something went wrong</div><div style={{fontSize:12,color:"#6b7280",lineHeight:1.6}}>This section could not be loaded. Try refreshing the page or running a new audit.</div><button onClick={()=>this.setState({hasError:false})} style={{marginTop:12,padding:"6px 14px",fontSize:11,background:"none",border:"1px solid #e2e8f0",borderRadius:6,cursor:"pointer",color:"#6b7280",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Try Again</button></div>);}return this.props.children;}}
 function BrandLogo({name,website,size=22,color}){
   const[src,setSrc]=useState(null);
   const[fallback,setFallback]=useState(false);
@@ -3216,7 +3218,7 @@ function AuditLoadingScreen({progress,statusMessage,C}){
 }
 
 /* ─── AUDIT LOADING INLINE (progressive) ─── */
-function AuditLoadingInline({ progress, stage }) {
+function AuditLoadingInline({ progress, stage, error, onClearError }) {
   const [activeStep, setActiveStep] = useState(0);
   const [smoothP, setSmoothP] = useState(0);
 
@@ -3266,14 +3268,24 @@ function AuditLoadingInline({ progress, stage }) {
       </div>
 
       {/* Status text */}
-      <div style={{ textAlign:"center" }}>
-        <div style={{ fontSize:16, fontWeight:500, color:C.text, fontFamily:"'Satoshi',-apple-system,sans-serif", letterSpacing:"-.02em", marginBottom:6 }}>
-          Analyzing your brand
+      {error ? (
+        <div style={{ textAlign:"center", maxWidth:480 }}>
+          <div style={{ padding:"16px 20px", background:"#fef2f2", border:"1px solid #fecaca", borderRadius:10, marginBottom:16 }}>
+            <div style={{ fontSize:14, fontWeight:500, color:"#dc2626", marginBottom:6 }}>Audit Failed</div>
+            <div style={{ fontSize:12, color:"#991b1b", lineHeight:1.6 }}>{error}</div>
+          </div>
+          <button onClick={onClearError} style={{ padding:"8px 16px", fontSize:12, fontWeight:500, background:"#dc2626", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontFamily:"'Satoshi',-apple-system,sans-serif" }}>Back to Configuration</button>
         </div>
-        <div style={{ fontSize:12, color:C.muted }}>
-          {stage || "Warming up the engines..."}
+      ) : (
+        <div style={{ textAlign:"center" }}>
+          <div style={{ fontSize:16, fontWeight:500, color:C.text, fontFamily:"'Satoshi',-apple-system,sans-serif", letterSpacing:"-.02em", marginBottom:6 }}>
+            Analyzing your brand
+          </div>
+          <div style={{ fontSize:12, color:C.muted }}>
+            {stage || "Warming up the engines..."}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Step indicators */}
       <div style={{ width:"100%", display:"flex", flexDirection:"column", gap:0 }}>
@@ -3934,6 +3946,7 @@ Return JSON only:
 
 /* ─── PAGE: DASHBOARD ─── */
 function DashboardPage({r,history,goTo}){
+  if(!r)return <div style={{padding:40,textAlign:"center",color:C.muted}}>No audit data available. Please run an audit first.</div>;
   const[expandedComp,setExpandedComp]=useState(null);
 
   // ── Metric calculations ──
@@ -4494,6 +4507,7 @@ function DashboardPage({r,history,goTo}){
 
 /* ─── PAGE: QUERY CATEGORIES ─── */
 function QueryCategoriesPage({ r }) {
+  if(!r)return <div style={{padding:40,textAlign:"center",color:C.muted}}>No audit data available.</div>;
   const [selectedCat, setSelectedCat] = useState(null);
   const [testQuery, setTestQuery] = useState("");
   const [testingPrompt, setTestingPrompt] = useState(false);
@@ -4778,6 +4792,7 @@ function QueryCategoriesPage({ r }) {
 
 /* ─── PAGE: ARCHETYPES (stakeholder-grouped) ─── */
 function ArchetypesPage({r,goTo,onUpdate}){
+  if(!r)return <div style={{padding:40,textAlign:"center",color:C.muted}}>No audit data available.</div>;
   const[selGroup,setSelGroup]=useState(0);
   const[selArch,setSelArch]=useState(null);
   const[regenArch,setRegenArch]=useState(false);
@@ -5010,6 +5025,7 @@ function VisibilityMapPage({ r }) {
 
 /* ─── PAGE: INTENT PATHWAY ─── */
 function IntentPage({r,goTo}){
+  if(!r)return <div style={{padding:40,textAlign:"center",color:C.muted}}>No audit data available.</div>;
   const[testQuery,setTestQuery]=useState("");
   const[testingPrompt,setTestingPrompt]=useState(false);
   const[testResults,setTestResults]=useState(null);
@@ -5205,6 +5221,7 @@ function IntentPage({r,goTo}){
 
 /* ─── PAGE: CITATION SOURCES ─── */
 function CitationSourcesPage({ r }) {
+  if(!r)return <div style={{padding:40,textAlign:"center",color:C.muted}}>No audit data available.</div>;
   const [activeTab, setActiveTab] = useState("all");
   const [expandedDomain, setExpandedDomain] = useState(null);
   const [hideCompetitors, setHideCompetitors] = useState(true);
@@ -5426,6 +5443,7 @@ function CitationSourcesPage({ r }) {
 
 /* ─── PAGE: BRAND PLAYBOOK ─── */
 function PlaybookPage({r,goTo,activeProject}){
+  if(!r)return <div style={{padding:40,textAlign:"center",color:C.muted}}>No audit data available.</div>;
   const TABS=[{id:"voice",label:"Brand Voice"},{id:"taglines",label:"Taglines"},{id:"visual",label:"Visual CI"},{id:"compliance",label:"Compliance"},{id:"products",label:"Products"},{id:"positioning",label:"Positioning"}];
   const[activeTab,setActiveTab]=useState("voice");
   const[loading,setLoading]=useState(false);
@@ -5758,6 +5776,7 @@ function PlaybookPage({r,goTo,activeProject}){
 
 /* ─── PAGE: SENTIMENT ANALYSIS ─── */
 function SentimentPage({r}){
+  if(!r)return <div style={{padding:40,textAlign:"center",color:C.muted}}>No audit data available.</div>;
   const cleanQuoteText=(text)=>{if(!text)return"";return text.replace(/\[([^\]]*)\]\([^)]*\)/g,"$1").replace(/https?:\/\/[^\s)]+/g,"").replace(/\*\*([^*]*)\*\*/g,"$1").replace(/\*([^*]*)\*/g,"$1").replace(/^#{1,6}\s*/gm,"").replace(/^[-*]{3,}\s*$/gm,"").replace(/^\s*[-*+]\s+/gm,"").replace(/^\s*\d+\.\s+/gm,"").replace(/\(\s*\)/g,"").replace(/\s{2,}/g," ").replace(/^\s*[-\u2013\u2014]+\s*/g,"").replace(/\s*[-\u2013\u2014]+\s*$/g,"").trim();};
   const[activeTab,setActiveTab]=useState("all");
   const[visibleCount,setVisibleCount]=useState(10);
@@ -5921,6 +5940,7 @@ function SentimentPage({r}){
 }
 /* ─── PAGE: TARGET CHANNELS (citation-based) ─── */
 function TargetChannelsPage({r}){
+  if(!r)return <div style={{padding:40,textAlign:"center",color:C.muted}}>No audit data available.</div>;
   const gaps=r.verifiedChannelGaps||[];
   const brandName=r.clientData?.brand||"Your brand";
   return(<div>
@@ -5985,6 +6005,7 @@ function TargetChannelsPage({r}){
 
 /* ─── PAGE: CONTENT HUB ─── */
 function ContentHubPage({r,goTo,activeProject,onUpdate}){
+  if(!r)return <div style={{padding:40,textAlign:"center",color:C.muted}}>No audit data available.</div>;
   const TABS=[{id:"grid",label:"Grid"},{id:"suggested",label:"Suggested"},{id:"create",label:"Create"},{id:"library",label:"Library"}];
   const[activeTab,setActiveTab]=useState("grid");
   const[contentLibrary,setContentLibrary]=useState([]);
@@ -6493,6 +6514,7 @@ function GridPage({r,goTo}){
 
 /* ─── PAGE: 90-DAY ROADMAP (Step 08 with premium PDF) ─── */
 function RoadmapPage({r,onUpdate}){
+  if(!r)return <div style={{padding:40,textAlign:"center",color:C.muted}}>No audit data available.</div>;
   const[regenRoad,setRegenRoad]=useState(false);
   const regenerateRoadmap=async()=>{
     setRegenRoad(true);
@@ -7041,6 +7063,7 @@ export default function App(){
   const [sectionReady, setSectionReady] = useState({ dashboard:true, archetypes:true, sentiment:true, intent:true, citations:true, playbook:true, channels:true, contenthub:true, roadmap:true });
   const [auditInProgress, setAuditInProgress] = useState(false);
   const [auditProgress, setAuditProgress] = useState(0);
+  const [auditError, setAuditError] = useState(null);
   const [dashboardLoadProgress, setDashboardLoadProgress] = useState(0);
   const [auditStage, setAuditStage] = useState("");
 
@@ -7228,6 +7251,7 @@ export default function App(){
     let auditComplete = false;
     setAuditInProgress(true);
     setAuditProgress(0);
+    setAuditError(null);
     setDashboardLoadProgress(0);
     setAuditStage("Preparing audit...");
     setStep("dashboard");
@@ -7328,6 +7352,8 @@ export default function App(){
       console.error("Progressive audit error:", e);
       setAuditInProgress(false);
       setAuditStage("");
+      setAuditProgress(0);
+      setAuditError("Something went wrong during the audit. Please try again. If the issue persists, contact support.");
       setSectionReady({ dashboard:true, archetypes:true, sentiment:true, intent:true, citations:true, playbook:true, channels:true, contenthub:true, roadmap:true });
     }
   };
@@ -7414,17 +7440,17 @@ export default function App(){
       <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto"}}>
         <div key={step} style={{animation:"fadeIn 0.2s ease"}}>
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={runAuditProgressive} history={history}/>}
-        {step==="dashboard"&&!results&&auditInProgress&&<AuditLoadingInline progress={dashboardLoadProgress} stage={auditStage}/>}
-        {step==="dashboard"&&results&&<DashboardPage r={results} history={history} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }}/>}
-        {step==="archetypes"&&results&&(sectionReady.archetypes||!auditInProgress)&&<QueryCategoriesPage r={results}/>}
-        {step==="sentiment"&&results&&(sectionReady.sentiment||!auditInProgress)&&<SentimentPage r={results}/>}
-        {step==="citations"&&results&&<CitationSourcesPage r={results}/>}
-        {step==="playbook"&&results&&(sectionReady.playbook||!auditInProgress)&&<PlaybookPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject}/>}
-        {step==="channels"&&results&&<TargetChannelsPage r={results}/>}
-        {step==="contenthub"&&results&&(sectionReady.contenthub||!auditInProgress)&&<ContentHubPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject} onUpdate={setResults}/>}
-        {step==="roadmap"&&results&&(sectionReady.roadmap||!auditInProgress)&&<RoadmapPage r={results} onUpdate={setResults}/>}
+        {step==="dashboard"&&!results&&(auditInProgress||auditError)&&<AuditLoadingInline progress={dashboardLoadProgress} stage={auditStage} error={auditError} onClearError={()=>{setAuditError(null);setStep("input");}}/>}
+        {step==="dashboard"&&results&&<ErrorBoundary><DashboardPage r={results} history={history} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }}/></ErrorBoundary>}
+        {step==="archetypes"&&results&&(sectionReady.archetypes||!auditInProgress)&&<ErrorBoundary><QueryCategoriesPage r={results}/></ErrorBoundary>}
+        {step==="sentiment"&&results&&(sectionReady.sentiment||!auditInProgress)&&<ErrorBoundary><SentimentPage r={results}/></ErrorBoundary>}
+        {step==="citations"&&results&&<ErrorBoundary><CitationSourcesPage r={results}/></ErrorBoundary>}
+        {step==="playbook"&&results&&(sectionReady.playbook||!auditInProgress)&&<ErrorBoundary><PlaybookPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject}/></ErrorBoundary>}
+        {step==="channels"&&results&&<ErrorBoundary><TargetChannelsPage r={results}/></ErrorBoundary>}
+        {step==="contenthub"&&results&&(sectionReady.contenthub||!auditInProgress)&&<ErrorBoundary><ContentHubPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject} onUpdate={setResults}/></ErrorBoundary>}
+        {step==="roadmap"&&results&&(sectionReady.roadmap||!auditInProgress)&&<ErrorBoundary><RoadmapPage r={results} onUpdate={setResults}/></ErrorBoundary>}
         {step!=="input"&&step!=="dashboard"&&auditInProgress&&!(sectionReady[step])&&results&&(
-          <AuditLoadingInline progress={dashboardLoadProgress} stage={auditStage}/>
+          <AuditLoadingInline progress={dashboardLoadProgress} stage={auditStage} error={auditError} onClearError={()=>{setAuditError(null);setStep("input");}}/>
         )}
         </div>
       </div>
