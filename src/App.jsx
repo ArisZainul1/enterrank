@@ -947,28 +947,80 @@ Return JSON only:
   let mergedPainPoints=painCatLabels.map(l=>({label:l,score:0,severity:"critical"}));
 
   await Promise.all([
-  // ── Sentiment Analysis — derived from real response text ──
+  // ── Sentiment Analysis — comprehensive analysis of ALL responses ──
   (async()=>{try{
-    const brandGptSent=analyzeSentimentFromResponses(gptResponses,brand);
-    const brandGemSent=analyzeSentimentFromResponses(gemResponses,brand);
-    const brandPplxSent=analyzeSentimentFromResponses(pplxResponses,brand);
-    const allBrandSents=[brandGptSent,brandGemSent,brandPplxSent];
-    const brandAvg=Math.round(allBrandSents.reduce((a,s)=>a+s.score,0)/allBrandSents.length);
-    const compSentiments=compNames.filter(n=>n).map(cname=>{
-      const gs=analyzeSentimentFromResponses(gptResponses,cname);
-      const gm=analyzeSentimentFromResponses(gemResponses,cname);
-      const gp=analyzeSentimentFromResponses(pplxResponses,cname);
-      const allSents=[gs,gm,gp];
-      const avg=Math.round(allSents.reduce((a,s)=>a+s.score,0)/allSents.length);
-      const totalSigs=allSents.reduce((a,s)=>a+s.positive+s.negative,0);
-      return{name:cname,gpt:gs.score,gemini:gm.score,perplexity:gp.score,avg,summary:`${avg>=55?"Positive":avg>=45?"Neutral":"Negative"} tone across ${totalSigs} sentiment signals in AI responses.`,sentiment:avg>=55?"positive":avg>=45?"neutral":"negative"};
+    const brandEscaped=brand.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const brandRegex=new RegExp('\\b'+brandEscaped+'\\b','i');
+    const positivePatterns=/\b(recommend|excellent|leading|best|top|innovative|reliable|trusted|strong|great|popular|preferred|outstanding|impressive|affordable|competitive|comprehensive|advanced|superior|premium|award|efficient)\b/i;
+    const negativePatterns=/\b(expensive|poor|slow|lack|behind|weak|complaint|issue|problem|criticism|drawback|limitation|costly|overpriced|disappointing|outdated|unreliable|inferior|struggling)\b/i;
+    const allResponses=[
+      ...(gptResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"ChatGPT",query:r.query||""})),
+      ...(gemResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"Gemini",query:r.query||""})),
+      ...(pplxResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"Perplexity",query:r.query||""})),
+      ...(googleAIResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"Google AI Overview",query:r.query||""}))
+    ];
+    const totalResponses=allResponses.length;
+    const brandMentions=[];
+    allResponses.forEach(resp=>{
+      if(!resp.text||!brandRegex.test(resp.text))return;
+      const sentences=resp.text.split(/(?<=[.!?])\s+/).filter(s=>s.length>10);
+      for(let i=0;i<sentences.length;i++){
+        if(brandRegex.test(sentences[i])){
+          const start=Math.max(0,i-1);
+          const end=Math.min(sentences.length,i+2);
+          const contextWindow=sentences.slice(start,end).join(" ").trim();
+          const posMatch=contextWindow.match(positivePatterns);
+          const negMatch=contextWindow.match(negativePatterns);
+          let sentimentLabel="neutral";
+          if(posMatch&&!negMatch)sentimentLabel="positive";
+          else if(negMatch&&!posMatch)sentimentLabel="negative";
+          else if(posMatch&&negMatch)sentimentLabel="mixed";
+          brandMentions.push({text:contextWindow,engine:resp.engine,query:resp.query,sentiment:sentimentLabel,triggerWord:posMatch?posMatch[0]:(negMatch?negMatch[0]:"")});
+          break;
+        }
+      }
     });
-    const summaryLabel=brandAvg>=70?"predominantly positive":brandAvg>=55?"moderately positive":brandAvg>=45?"neutral":brandAvg>=30?"moderately negative":"predominantly negative";
-    const totalSignals=allBrandSents.reduce((a,s)=>a+s.positive+s.negative,0);
+    const posCount=brandMentions.filter(m=>m.sentiment==="positive").length;
+    const negCount=brandMentions.filter(m=>m.sentiment==="negative").length;
+    const neuCount=brandMentions.filter(m=>m.sentiment==="neutral").length;
+    const mixedCount=brandMentions.filter(m=>m.sentiment==="mixed").length;
+    const mentionCount=brandMentions.length;
+    const avgScore=mentionCount>0?Math.round(50+((posCount-negCount)/mentionCount)*50):50;
     sentimentData={
-      brand:{gpt:brandGptSent.score,gemini:brandGemSent.score,perplexity:brandPplxSent.score,avg:brandAvg,summary:`AI engines portray ${brand} in a ${summaryLabel} light based on ${totalSignals} sentiment signals detected in actual response text.`},
-      competitors:compSentiments
+      brand:{gpt:avgScore,gemini:avgScore,perplexity:avgScore,avg:avgScore,summary:"",posCount,negCount,neuCount,mixedCount,mentionCount,totalResponses,posPercent:mentionCount>0?Math.round((posCount/mentionCount)*100):0,negPercent:mentionCount>0?Math.round((negCount/mentionCount)*100):0,neuPercent:mentionCount>0?Math.round((neuCount/mentionCount)*100):0},
+      competitors:[]
     };
+    // Competitor sentiment
+    const compSentiments=[];
+    (compNames||[]).forEach(compName=>{
+      if(!compName)return;
+      const compEscaped=compName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      const compRegex=new RegExp('\\b'+compEscaped+'\\b','i');
+      let cPos=0,cNeg=0,cNeu=0,cTotal=0;
+      allResponses.forEach(resp=>{
+        if(!resp.text||!compRegex.test(resp.text))return;
+        cTotal++;
+        const sentences=resp.text.split(/(?<=[.!?])\s+/).filter(s=>s.length>10);
+        for(let i=0;i<sentences.length;i++){
+          if(compRegex.test(sentences[i])){
+            const start=Math.max(0,i-1);
+            const end=Math.min(sentences.length,i+2);
+            const context=sentences.slice(start,end).join(" ");
+            const posM=positivePatterns.test(context);
+            const negM=negativePatterns.test(context);
+            if(posM&&!negM)cPos++;
+            else if(negM&&!posM)cNeg++;
+            else cNeu++;
+            break;
+          }
+        }
+      });
+      compSentiments.push({name:compName,avg:cTotal>0?Math.round(50+((cPos-cNeg)/cTotal)*50):50,posCount:cPos,negCount:cNeg,neuCount:cNeu,mentionCount:cTotal,posPercent:cTotal>0?Math.round((cPos/cTotal)*100):0});
+    });
+    sentimentData.competitors=compSentiments;
+    // Store brandMentions for later enrichment of sentimentSignals
+    sentimentData._brandMentions=brandMentions;
+    sentimentData._totalResponses=totalResponses;
   }catch(stepError){
     console.error("Sentiment analysis failed:",stepError.message);
   }})(),
@@ -1164,31 +1216,23 @@ Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentenc
   }})()
   ]);
 
-  // Fallback: if AI-based signal extraction produced empty results, derive from response text
-  if((!sentimentSignals.positive||sentimentSignals.positive.length===0)&&(!sentimentSignals.negative||sentimentSignals.negative.length===0)&&(!sentimentSignals.quotes||sentimentSignals.quotes.length===0)){
-    try{
-      const fbGpt=analyzeSentimentFromResponses(gptResponses,brand);
-      const fbGem=analyzeSentimentFromResponses(gemResponses,brand);
-      const allPos=[...new Set([...fbGpt.posWords,...fbGem.posWords])];
-      const allNeg=[...new Set([...fbGpt.negWords,...fbGem.negWords])];
-      if(allPos.length>0)sentimentSignals.positive=allPos.map(w=>`AI engines describe ${brand} as "${w}"`).slice(0,5);
-      if(allNeg.length>0)sentimentSignals.negative=allNeg.map(w=>`AI engines note "${w}" regarding ${brand}`).slice(0,5);
-      // Extract basic quotes from raw responses
-      const brandEsc=brand.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-      const brandRe=new RegExp('\\b'+brandEsc+'\\b','i');
-      const basicQuotes=[];
-      [...(gptResponses||[]).slice(0,8),...(gemResponses||[]).slice(0,8),...(pplxResponses||[]).slice(0,8)].forEach(resp=>{
-        const text=typeof resp==='string'?resp:resp?.response||'';
-        const sentences=text.split(/[.!?]+/).filter(s=>brandRe.test(s)&&s.trim().length>20&&s.trim().length<200);
-        if(sentences.length>0){
-          const isGpt=(gptResponses||[]).includes(resp);
-          const isPplx=(pplxResponses||[]).includes(resp);
-          basicQuotes.push({text:sentences[0].trim(),engine:isGpt?'ChatGPT':isPplx?'Perplexity':'Gemini',sentiment:allPos.some(w=>sentences[0].toLowerCase().includes(w))?'positive':allNeg.some(w=>sentences[0].toLowerCase().includes(w))?'negative':'neutral'});
-        }
-      });
-      if(basicQuotes.length>0)sentimentSignals.quotes=basicQuotes.slice(0,5);
-    }catch(fbErr){console.error("Sentiment signal fallback failed:",fbErr);}
-  }
+  // Enrich sentimentSignals with brandMentions from comprehensive analysis
+  try{
+    const brandMentions=sentimentData._brandMentions||[];
+    const totalResponses=sentimentData._totalResponses||0;
+    const mentionCount=brandMentions.length;
+    if(brandMentions.length>0){
+      if(!sentimentSignals.positive||sentimentSignals.positive.length===0)sentimentSignals.positive=brandMentions.filter(m=>m.sentiment==="positive");
+      if(!sentimentSignals.negative||sentimentSignals.negative.length===0)sentimentSignals.negative=brandMentions.filter(m=>m.sentiment==="negative");
+      if(!sentimentSignals.quotes||sentimentSignals.quotes.length===0)sentimentSignals.quotes=brandMentions;
+    }
+    sentimentSignals.brandMentions=brandMentions;
+    sentimentSignals.totalResponses=totalResponses;
+    sentimentSignals.mentionCount=mentionCount;
+    sentimentSignals.neutral=brandMentions.filter(m=>m.sentiment==="neutral");
+    delete sentimentData._brandMentions;
+    delete sentimentData._totalResponses;
+  }catch(fbErr){console.error("Sentiment enrichment failed:",fbErr);}
 
   // Emit combined partial data after parallel group completes
   try{
