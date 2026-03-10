@@ -1623,10 +1623,16 @@ ${compAdvantages.length>0?compAdvantages.map(a=>"- "+a).join("\n"):"- No major c
 NEGATIVE BRAND PERCEPTION (address in content/PR):
 ${(()=>{try{const neg=(sentimentSignals?.negative||[]).map(t=>typeof t==="string"?t:t.theme||t.name||"").filter(Boolean);return neg.length>0?neg.slice(0,5).map(t=>"- "+t).join("\n"):"- No negative themes detected";}catch(e){return"- No negative themes detected";}})()}
 
-CITATION SOURCE GAPS (platforms to target for PR):
-${(()=>{try{const allSrc=citationSources?.all||[];const brandDomains=new Set();allSrc.forEach(c=>{try{const h=new URL(c.url).hostname.replace("www.","");brandDomains.add(h);}catch(e){}});const compDomains=new Set();(compData.competitors||[]).slice(0,3).forEach(comp=>{const cv=compScoresMap[comp.name];if(!cv)return;});const gaps=[];const topDomains=Object.entries(allSrc.reduce((acc,c)=>{try{const h=new URL(c.url).hostname.replace("www.","");acc[h]=(acc[h]||0)+1;}catch(e){}return acc;},{})).sort((a,b)=>b[1]-a[1]).slice(0,10).map(d=>d[0]);return topDomains.length>0?topDomains.slice(0,5).map(d=>"- "+d+" (cited "+allSrc.filter(c=>{try{return new URL(c.url).hostname.replace("www.","")===d;}catch(e){return false;}}).length+" times)").join("\n"):"- No citation source data available";}catch(e){return"- No citation source data available";}})()}
+CITATION SOURCE GAPS (authoritative third-party platforms to target):
+IMPORTANT: The following are AUTHORITATIVE third-party sources where AI engines cite content. These are NOT competitor-owned websites. Do NOT recommend partnering with competitor sites or low-quality/irrelevant platforms. Only recommend establishing presence on reputable industry publications, review platforms, and directories.
+${(()=>{try{const allSrc=citationSources?.all||[];const compDomainSet=new Set();(cd.competitors||[]).forEach(c=>{const name=(c.name||"").toLowerCase().replace(/\s+/g,"");const website=c.website||"";if(website){try{const hostname=new URL(website.startsWith("http")?website:"https://"+website).hostname.replace("www.","").toLowerCase();compDomainSet.add(hostname);hostname.split(".").slice(0,-1).forEach(part=>{if(part.length>3)compDomainSet.add(part);});}catch(e){}}if(name.length>3)compDomainSet.add(name);});const isCompDomain=(domain)=>{const dl=domain.toLowerCase();for(const comp of compDomainSet){if(dl.includes(comp)||comp.includes(dl.split(".")[0]))return true;}return false;};const lowQuality=["shopee","lazada","aliexpress","temu","wish.com","priceshop","mudah.my"];const topDomains=Object.entries(allSrc.reduce((acc,c)=>{try{const h=new URL(c.url).hostname.replace("www.","");if(!isCompDomain(h)&&!lowQuality.some(lq=>h.toLowerCase().includes(lq)))acc[h]=(acc[h]||0)+1;}catch(e){}return acc;},{})).sort((a,b)=>b[1]-a[1]).slice(0,8).map(d=>d[0]);return topDomains.length>0?topDomains.slice(0,5).map(d=>"- "+d+" (cited "+allSrc.filter(c=>{try{return new URL(c.url).hostname.replace("www.","")===d;}catch(e){return false;}}).length+" times)").join("\n"):"- No citation source data available";}catch(e){return"- No citation source data available";}})()}
 
-CRITICAL: Every task in the roadmap MUST reference a specific finding from above. Format each task as "[Finding] → [Action]". For example:
+CRITICAL RULES:
+- NEVER recommend the brand get cited on competitor-owned websites (${(cd.competitors||[]).map(c=>c.name).join(", ")} domains)
+- NEVER recommend partnerships with price comparison sites, discount aggregators, or low-quality directories
+- Only recommend authoritative sources: industry publications, review platforms (G2, TrustRadius, Capterra), major news outlets, Wikipedia, LinkedIn, YouTube
+
+Every task in the roadmap MUST reference a specific finding from above. Format each task as "[Finding] → [Action]". For example:
 - "Missing FAQ schema → Implement FAQPage JSON-LD on top 5 service pages"
 - "Absent for 'best prepaid plans in Malaysia' → Create comparison guide targeting this query"
 - "Maxis beats you on Content Authority → Publish 2 long-form guides per week to close content gap"
@@ -5015,9 +5021,35 @@ function IntentPage({r,goTo}){
 function CitationSourcesPage({ r }) {
   const [activeTab, setActiveTab] = useState("all");
   const [expandedDomain, setExpandedDomain] = useState(null);
+  const [hideCompetitors, setHideCompetitors] = useState(true);
 
   const cs = r?.citationSources || { gpt: [], gemini: [], all: [] };
   const brandName = r?.clientData?.brand || "Your brand";
+
+  // Build competitor domain detection
+  const compDomainParts = React.useMemo(() => {
+    const parts = new Set();
+    (r?.competitors || []).forEach(c => {
+      const name = (c.name || "").toLowerCase().replace(/\s+/g, "");
+      const website = c.website || "";
+      if (website) {
+        try {
+          const h = new URL(website.startsWith("http") ? website : "https://" + website).hostname.replace("www.", "").toLowerCase();
+          parts.add(h);
+          h.split(".").slice(0, -1).forEach(p => { if (p.length > 3) parts.add(p); });
+        } catch(e) {}
+      }
+      if (name.length > 3) parts.add(name);
+    });
+    return parts;
+  }, [r?.competitors]);
+  const isCompDomain = (domain) => {
+    const d = (domain || "").toLowerCase();
+    for (const comp of compDomainParts) {
+      if (d.includes(comp) || comp.includes(d.split(".")[0])) return true;
+    }
+    return false;
+  };
 
   // Build sources list from the actual data shape
   const sources = (cs.all || []).map(s => {
@@ -5036,12 +5068,13 @@ function CitationSourcesPage({ r }) {
     };
   }).filter(Boolean);
 
-  // Filter by tab
-  const filtered = activeTab === "all" ? sources
+  // Filter by tab and competitor toggle
+  const tabFiltered = activeTab === "all" ? sources
     : activeTab === "chatgpt" ? sources.filter(s => s.engine === "ChatGPT")
     : activeTab === "gemini" ? sources.filter(s => s.engine === "Gemini")
     : activeTab === "perplexity" ? sources.filter(s => s.engine === "Perplexity")
     : sources.filter(s => s.engine === "Google AI");
+  const filtered = hideCompetitors ? tabFiltered.filter(s => !isCompDomain(s.domain)) : tabFiltered;
 
   // Group by domain
   const domainMap = {};
@@ -5082,7 +5115,7 @@ function CitationSourcesPage({ r }) {
       {/* Summary stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 12, marginBottom: 24 }}>
         {[
-          { label: "Total Citations", value: totalSources, color: C.text },
+          { label: "Unique Sources", value: uniqueDomains, color: C.text },
           { label: "Unique Domains", value: uniqueDomains, color: C.accent },
           { label: "From ChatGPT", value: chatgptSources, color: "#10A37F" },
           { label: "From Gemini", value: geminiSources, color: "#4285F4" },
@@ -5112,6 +5145,20 @@ function CitationSourcesPage({ r }) {
             cursor: "pointer", fontFamily: "'Satoshi',-apple-system,sans-serif", transition: "all .15s"
           }}>{tab.label}</button>
         ))}
+      </div>
+
+      {/* Competitor toggle */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <button onClick={() => setHideCompetitors(!hideCompetitors)} style={{
+          padding: "5px 12px", fontSize: 11, borderRadius: 6,
+          background: hideCompetitors ? "transparent" : "#fee2e2",
+          color: hideCompetitors ? C.muted : "#dc2626",
+          border: "1px solid " + (hideCompetitors ? C.border : "#fecaca"),
+          cursor: "pointer", fontFamily: "inherit", fontWeight: hideCompetitors ? 400 : 500,
+          transition: "all .15s"
+        }}>
+          {hideCompetitors ? "Show Competitor Domains" : "Showing Competitor Domains"}
+        </button>
       </div>
 
       {/* Domain list */}
@@ -5144,6 +5191,7 @@ function CitationSourcesPage({ r }) {
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <svg width="10" height="10" viewBox="0 0 10 10" style={{ transition: "transform .15s", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}><path d="M3 1l4 4-4 4" stroke={C.muted} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     <span style={{ fontSize: 13, fontWeight: 500, color: C.accent }}>{d.domain}</span>
+                    {isCompDomain(d.domain) && <span style={{ fontSize: 9, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: "#fee2e2", color: "#dc2626", marginLeft: 6 }}>Competitor</span>}
                   </div>
                   <div style={{ textAlign: "center", fontSize: 13, fontWeight: 500, color: C.text }}>{d.entries.length}</div>
                   <div style={{ textAlign: "center", fontSize: 13, color: d.chatgpt > 0 ? "#10A37F" : C.muted }}>{d.chatgpt || "-"}</div>
