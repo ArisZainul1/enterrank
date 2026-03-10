@@ -2380,44 +2380,40 @@ function LandingPage({ onGetStarted }) {
 
   /* ── Shared Nav ── */
   function LandingNav() {
-    const linkStyle = { fontSize: 13, fontWeight: 500, color: "#64748b", cursor: "pointer", transition: "color .2s", background: "none", border: "none", fontFamily: "'Satoshi',-apple-system,sans-serif", padding: 0 };
+    const linkStyle = {fontSize:13,fontWeight:500,color:"#64748b",cursor:"pointer",transition:"color .2s",background:"none",border:"none",fontFamily:"'Satoshi',-apple-system,sans-serif",padding:0};
     return (
-      <div style={{ position: "relative", zIndex: 10, padding: "18px 48px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} onClick={() => setView("hero")}>
-          <img src="/enterank-icon.svg" alt="EnterRank" style={{ width: 28, height: 28 }} />
-          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
-            <span style={{ fontSize: 15, fontWeight: 500, color: "#0f172a", fontFamily: "'Satoshi',-apple-system,sans-serif", letterSpacing: "-.01em" }}>EnterRank</span>
-            <span style={{ fontSize: 9, color: "#94a3b8", marginTop: 1 }}>by Entermind AI</span>
+      <div style={{position:"fixed",top:0,left:0,right:0,zIndex:50,padding:"16px 48px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(0,0,0,0.04)",background:"rgba(255,255,255,0.92)",backdropFilter:"blur(12px)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setView("hero")}>
+          <img src="/enterank-icon.svg" alt="EnterRank" style={{width:28,height:28}}/>
+          <div style={{display:"flex",flexDirection:"column",lineHeight:1}}>
+            <span style={{fontSize:15,fontWeight:500,color:"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.01em"}}>EnterRank</span>
+            <span style={{fontSize:9,color:"#94a3b8",marginTop:1}}>by Entermind AI</span>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-          <button onClick={() => setView("hero")} style={{ ...linkStyle, color: view === "hero" ? "#2563eb" : "#64748b" }}>Home</button>
-          <button onClick={() => setView("pricing")} style={{ ...linkStyle, color: view === "pricing" ? "#2563eb" : "#64748b" }}>Pricing</button>
-          <button onClick={() => setView("how")} style={{ ...linkStyle, color: view === "how" ? "#2563eb" : "#64748b" }}>How It Works</button>
-          <button onClick={onGetStarted} style={{ padding: "8px 20px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "'Satoshi',-apple-system,sans-serif", transition: "background .2s" }}>Get Started</button>
+        <div style={{display:"flex",alignItems:"center",gap:32}}>
+          <button onClick={()=>setView("how")} style={{...linkStyle,color:view==="how"?"#2563eb":"#64748b"}}>How It Works</button>
+          <button onClick={()=>setView("pricing")} style={{...linkStyle,color:view==="pricing"?"#2563eb":"#64748b"}}>Pricing</button>
+          <button onClick={onGetStarted} style={{padding:"8px 20px",background:"#2563eb",color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",transition:"background .2s"}}>Run Audit Now</button>
         </div>
       </div>
     );
   }
 
   /* ── Shared Footer ── */
-  function LandingFooter() {
-    return (
-      <div style={{ padding: "20px 48px", borderTop: "1px solid rgba(0,0,0,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(248,250,252,0.5)" }}>
-        <span style={{ fontSize: 12, color: "#94a3b8" }}>© 2025 Entermind AI. All rights reserved.</span>
-        <div style={{ display: "flex", gap: 24 }}>
-          <span style={{ fontSize: 12, color: "#94a3b8", cursor: "pointer" }}>Privacy</span>
-          <span style={{ fontSize: 12, color: "#94a3b8", cursor: "pointer" }}>Terms</span>
-          <span style={{ fontSize: 12, color: "#94a3b8", cursor: "pointer" }}>Contact</span>
-        </div>
+  const LandingFooter = () => (
+    <div style={{padding:"16px 48px",display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:11,color:"#94a3b8",borderTop:"1px solid #f1f5f9"}}>
+      <span>© 2026 Entermind AI. All rights reserved.</span>
+      <div style={{display:"flex",alignItems:"center",gap:16}}>
+        <a href="https://entermind.com/privacy-policy" target="_blank" rel="noopener noreferrer" style={{color:"#94a3b8",textDecoration:"none"}}>Privacy Policy</a>
+        <a href="https://entermind.ai" target="_blank" rel="noopener noreferrer" style={{color:"#2563eb",textDecoration:"none",fontWeight:500}}>Visit Entermind AI →</a>
       </div>
-    );
-  }
+    </div>
+  );
 
   /* ── Hero View ── */
   function HeroView() {
     return (
-      <div style={{ flex: 1, display: "flex", alignItems: "center", position: "relative", zIndex: 1, padding: "0 48px 32px", gap: 48, maxWidth: 1400, margin: "0 auto", width: "100%" }}>
+      <div style={{ minHeight: "calc(100vh - 56px)", display: "flex", alignItems: "center", position: "relative", zIndex: 1, padding: "0 48px 32px", gap: 48, maxWidth: 1400, margin: "0 auto", width: "100%" }}>
         {/* Left column */}
         <div style={{ flex: "0 0 42%", maxWidth: 500 }}>
           <div style={{ fontSize: 11, fontWeight: 500, color: "#2563eb", letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 20, animation: "fadeUp 0.5s ease-out", fontFamily: "'Satoshi',-apple-system,sans-serif" }}>{"Audit · Analyse · Optimise"}</div>
@@ -2557,47 +2553,131 @@ function LandingPage({ onGetStarted }) {
 
   /* ── Pricing View ── */
   function PricingView() {
-    const plans = [
-      { name: "Starter", price: "Free", period: "", desc: "One-time audit to see where you stand", features: ["1 brand audit", "2 AI engines (ChatGPT + Gemini)", "Basic visibility score", "Query category breakdown", "Export PDF report"], cta: "Start Free Audit", highlight: false },
-      { name: "Pro", price: "$49", period: "/month", desc: "Full visibility intelligence for growing brands", features: ["Unlimited audits", "4 AI engines (+ Perplexity & Google AI)", "Competitor analysis (up to 5)", "Sentiment & archetype analysis", "Content hub & playbook", "30/60/90-day roadmap", "Priority support"], cta: "Start Pro Trial", highlight: true },
-      { name: "Agency", price: "$199", period: "/month", desc: "Multi-brand management for agencies", features: ["Everything in Pro", "Up to 20 brand projects", "White-label PDF exports", "Team collaboration (5 seats)", "API access", "Dedicated account manager", "Custom integrations"], cta: "Contact Sales", highlight: false }
+    const [annual, setAnnual] = React.useState(true);
+    const tiers = [
+      {
+        name: "Scout",
+        desc: "For brands getting started with AI visibility",
+        price: annual ? 24 : 29,
+        currency: "$",
+        period: annual ? "/mo (billed annually)" : "/month",
+        myr: annual ? "RM 108/mo" : "RM 130/mo",
+        highlight: false,
+        cta: "Get Started",
+        ctaLink: "signup",
+        features: [
+          "4 audits per month",
+          "3 AI engines (ChatGPT, Gemini, Perplexity)",
+          "10 queries per audit",
+          "Dashboard + PDF export",
+          "1 project workspace",
+          "Email support"
+        ],
+        excluded: [
+          "Google AI Mode engine",
+          "Content Hub & Brand Playbook",
+          "90-Day Roadmap",
+          "Multiple projects"
+        ]
+      },
+      {
+        name: "Strategist",
+        desc: "For brands serious about AI search dominance",
+        price: annual ? 65 : 79,
+        currency: "$",
+        period: annual ? "/mo (billed annually)" : "/month",
+        myr: annual ? "RM 290/mo" : "RM 355/mo",
+        highlight: true,
+        badge: "Most Popular",
+        cta: "Get Started",
+        ctaLink: "signup",
+        features: [
+          "10 audits per month",
+          "4 AI engines (+ Google AI Mode)",
+          "15 queries per audit",
+          "Full dashboard + all analysis pages",
+          "Content Hub + Brand Playbook",
+          "90-Day Roadmap",
+          "Citation Sources tracking",
+          "5 project workspaces",
+          "Priority support"
+        ],
+        excluded: [
+          "White-label reports",
+          "API access",
+          "Team seats"
+        ]
+      },
+      {
+        name: "Command",
+        desc: "For agencies and enterprise teams",
+        price: annual ? 165 : 199,
+        currency: "$",
+        period: annual ? "/mo (billed annually)" : "/month",
+        myr: annual ? "RM 740/mo" : "RM 895/mo",
+        highlight: false,
+        cta: "Contact Sales",
+        ctaLink: "https://entermind.com/contact-us",
+        features: [
+          "Unlimited audits (fair use)",
+          "4 AI engines, 15 queries",
+          "Everything in Strategist",
+          "Unlimited projects",
+          "White-label PDF reports",
+          "API access (coming soon)",
+          "Up to 5 team seats",
+          "Dedicated support"
+        ],
+        excluded: []
+      }
     ];
 
     return (
-      <div style={{ flex: 1, overflowY: "auto", padding: "60px 48px 48px", maxWidth: 1200, margin: "0 auto", width: "100%" }}>
-        <div style={{ textAlign: "center", marginBottom: 48, animation: "fadeUp 0.5s ease-out" }}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: "#2563eb", letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 12, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>Pricing</div>
-          <h2 style={{ fontSize: 36, fontWeight: 500, color: "#0f172a", fontFamily: "'Satoshi',-apple-system,sans-serif", letterSpacing: "-.03em", margin: "0 0 12px" }}>Simple, transparent pricing</h2>
-          <p style={{ fontSize: 15, color: "#64748b", maxWidth: 460, margin: "0 auto" }}>Start with a free audit. Upgrade when you need deeper insights and ongoing monitoring.</p>
+      <div style={{minHeight:"auto",paddingBottom:80,padding:"60px 48px 80px",maxWidth:1200,margin:"0 auto",width:"100%"}}>
+        <div style={{textAlign:"center",marginBottom:40,animation:"fadeUp 0.5s ease-out"}}>
+          <div style={{fontSize:11,fontWeight:500,color:"#2563eb",letterSpacing:".1em",textTransform:"uppercase",marginBottom:12,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Pricing</div>
+          <h2 style={{fontSize:36,fontWeight:500,color:"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.03em",margin:"0 0 12px"}}>Simple, transparent pricing</h2>
+          <p style={{fontSize:15,color:"#64748b",maxWidth:460,margin:"0 auto 24px"}}>Start auditing your AI visibility today. Scale when you're ready.</p>
+          {/* Annual/Monthly toggle */}
+          <div style={{display:"inline-flex",alignItems:"center",gap:12,background:"#f8fafc",borderRadius:100,padding:"4px 6px",border:"1px solid #e2e8f0"}}>
+            <button onClick={()=>setAnnual(true)} style={{padding:"6px 16px",borderRadius:100,border:"none",background:annual?"#fff":"transparent",color:annual?"#0f172a":"#94a3b8",fontSize:12,fontWeight:500,cursor:"pointer",boxShadow:annual?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Annual <span style={{color:"#059669",fontSize:10,fontWeight:500}}>Save 18%</span></button>
+            <button onClick={()=>setAnnual(false)} style={{padding:"6px 16px",borderRadius:100,border:"none",background:!annual?"#fff":"transparent",color:!annual?"#0f172a":"#94a3b8",fontSize:12,fontWeight:500,cursor:"pointer",boxShadow:!annual?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Monthly</button>
+          </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, animation: "fadeUp 0.7s ease-out" }}>
-          {plans.map((plan, i) => (
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:24,animation:"fadeUp 0.7s ease-out"}}>
+          {tiers.map((tier, i) => (
             <div key={i} style={{
-              background: plan.highlight ? "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)" : "#ffffff",
-              borderRadius: 16, padding: "32px 28px", border: plan.highlight ? "none" : "1px solid #e2e8f0",
-              boxShadow: plan.highlight ? "0 20px 60px rgba(37,99,235,0.25)" : "0 2px 8px rgba(0,0,0,0.04)",
-              display: "flex", flexDirection: "column", transform: plan.highlight ? "scale(1.04)" : "none", position: "relative"
+              background:tier.highlight?"linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)":"#ffffff",
+              borderRadius:16,padding:"32px 28px",border:tier.highlight?"none":"1px solid #e2e8f0",
+              boxShadow:tier.highlight?"0 20px 60px rgba(37,99,235,0.25)":"0 2px 8px rgba(0,0,0,0.04)",
+              display:"flex",flexDirection:"column",transform:tier.highlight?"scale(1.04)":"none",position:"relative"
             }}>
-              {plan.highlight && <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", fontSize: 10, fontWeight: 600, color: "#fff", background: "#f59e0b", padding: "3px 14px", borderRadius: 100, letterSpacing: ".04em", textTransform: "uppercase" }}>Most Popular</div>}
-              <div style={{ fontSize: 13, fontWeight: 500, color: plan.highlight ? "rgba(255,255,255,0.8)" : "#64748b", marginBottom: 8 }}>{plan.name}</div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 2, marginBottom: 8 }}>
-                <span style={{ fontSize: 40, fontWeight: 500, color: plan.highlight ? "#fff" : "#0f172a", fontFamily: "'Satoshi',-apple-system,sans-serif", letterSpacing: "-.03em" }}>{plan.price}</span>
-                {plan.period && <span style={{ fontSize: 14, color: plan.highlight ? "rgba(255,255,255,0.6)" : "#94a3b8" }}>{plan.period}</span>}
+              {tier.badge && <div style={{position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",fontSize:10,fontWeight:500,color:"#fff",background:"#f59e0b",padding:"3px 14px",borderRadius:100,letterSpacing:".04em",textTransform:"uppercase"}}>{tier.badge}</div>}
+              <div style={{fontSize:13,fontWeight:500,color:tier.highlight?"rgba(255,255,255,0.8)":"#64748b",marginBottom:8}}>{tier.name}</div>
+              <div style={{display:"flex",alignItems:"baseline",gap:2,marginBottom:4}}>
+                <span style={{fontSize:12,color:tier.highlight?"rgba(255,255,255,0.6)":"#94a3b8"}}>{tier.currency}</span>
+                <span style={{fontSize:40,fontWeight:500,color:tier.highlight?"#fff":"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.03em"}}>{tier.price}</span>
+                <span style={{fontSize:13,color:tier.highlight?"rgba(255,255,255,0.5)":"#94a3b8"}}>{tier.period}</span>
               </div>
-              <p style={{ fontSize: 13, color: plan.highlight ? "rgba(255,255,255,0.7)" : "#64748b", margin: "0 0 20px", lineHeight: 1.5 }}>{plan.desc}</p>
-              <div style={{ flex: 1, marginBottom: 24 }}>
-                {plan.features.map((f, fi) => (
-                  <div key={fi} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 8l3 3 5-6" stroke={plan.highlight ? "#93c5fd" : "#2563eb"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    <span style={{ fontSize: 13, color: plan.highlight ? "rgba(255,255,255,0.9)" : "#475569" }}>{f}</span>
+              <div style={{fontSize:11,color:tier.highlight?"rgba(255,255,255,0.4)":"#cbd5e1",marginBottom:12}}>{tier.myr}</div>
+              <p style={{fontSize:13,color:tier.highlight?"rgba(255,255,255,0.7)":"#64748b",margin:"0 0 20px",lineHeight:1.5}}>{tier.desc}</p>
+              <button onClick={()=>{if(tier.ctaLink==="signup"){onGetStarted();}else{window.open(tier.ctaLink,"_blank");}}} style={{width:"100%",padding:"12px",background:tier.highlight?"#fff":"#f8fafc",color:tier.highlight?"#2563eb":"#0f172a",border:tier.highlight?"none":"1px solid #e2e8f0",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",marginBottom:24,transition:"all .15s"}}>
+                {tier.cta}
+              </button>
+              <div style={{flex:1}}>
+                {tier.features.map((f, fi) => (
+                  <div key={fi} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 8l3 3 5-6" stroke={tier.highlight?"#93c5fd":"#2563eb"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <span style={{fontSize:12,color:tier.highlight?"rgba(255,255,255,0.9)":"#475569"}}>{f}</span>
+                  </div>
+                ))}
+                {tier.excluded.map((ex, ei) => (
+                  <div key={"ex"+ei} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 8h8" stroke={tier.highlight?"rgba(255,255,255,0.25)":"#e2e8f0"} strokeWidth="1.5" strokeLinecap="round"/></svg>
+                    <span style={{fontSize:12,color:tier.highlight?"rgba(255,255,255,0.35)":"#cbd5e1"}}>{ex}</span>
                   </div>
                 ))}
               </div>
-              <button onClick={plan.name === "Agency" ? undefined : onGetStarted} style={{
-                width: "100%", padding: "12px 0", border: plan.highlight ? "2px solid rgba(255,255,255,0.3)" : "1px solid #e2e8f0",
-                borderRadius: 10, background: plan.highlight ? "rgba(255,255,255,0.15)" : "#fff", color: plan.highlight ? "#fff" : "#2563eb",
-                fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "'Satoshi',-apple-system,sans-serif", transition: "all .2s"
-              }}>{plan.cta}</button>
             </div>
           ))}
         </div>
@@ -2768,7 +2848,7 @@ function LandingPage({ onGetStarted }) {
     ];
 
     return (
-      <div style={{minHeight:"100vh",padding:"80px 48px 60px",fontFamily:"'Satoshi',-apple-system,sans-serif",position:"relative",display:"flex",alignItems:"center"}}>
+      <div style={{minHeight:"auto",paddingBottom:80,padding:"80px 48px 60px",fontFamily:"'Satoshi',-apple-system,sans-serif",position:"relative",display:"flex",alignItems:"center"}}>
         <style>{`
           @keyframes pulse{0%,100%{opacity:0.4;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
           @keyframes fadeInUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
@@ -2840,7 +2920,7 @@ function LandingPage({ onGetStarted }) {
   };
 
   return (
-    <div style={{ height: "100vh", overflow: "hidden", background: "#ffffff", display: "flex", flexDirection: "column", fontFamily: "'Satoshi',-apple-system,BlinkMacSystemFont,sans-serif", position: "relative" }}>
+    <div style={{ height: "100vh", background: "#ffffff", display: "flex", flexDirection: "column", fontFamily: "'Satoshi',-apple-system,BlinkMacSystemFont,sans-serif", position: "relative" }}>
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
       <link href="https://fonts.cdnfonts.com/css/satoshi" rel="stylesheet" />
       <style>{`
@@ -2860,10 +2940,12 @@ function LandingPage({ onGetStarted }) {
       </div>
 
       <LandingNav />
-      {view === "hero" && <HeroView />}
-      {view === "pricing" && <PricingView />}
-      {view === "how" && <HowItWorksView />}
-      <LandingFooter />
+      <div style={{overflowY:"auto",height:"calc(100vh - 56px)",marginTop:56}} key={view}>
+        {view === "hero" && <HeroView />}
+        {view === "pricing" && <PricingView />}
+        {view === "how" && <HowItWorksView />}
+        <LandingFooter />
+      </div>
     </div>
   );
 }
