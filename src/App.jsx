@@ -3850,7 +3850,7 @@ function DashboardPage({r,history,goTo}){
     <div style={{marginBottom:32}}>
       {/* Overall Score — circular ring */}
       <div style={{textAlign:"center",marginBottom:24}}>
-        <div style={{fontSize:13,fontWeight:500,color:C.muted,marginBottom:12}}>Engine Visibility Score<InfoTip text={"Weighted average of your visibility across " + (r.engines||[]).length + " AI engines, adjusted for estimated user share in " + (r.clientData?.region||"your region") + ". Each query is tested live with web search enabled."}/></div>
+        <div style={{fontSize:13,fontWeight:500,color:C.muted,marginBottom:12}}>Engine Visibility Score<InfoTip text="Weighted average across all engines. Weights based on estimated regional market share (Q1 2026)."/></div>
         <div style={{position:"relative",width:140,height:140,margin:"0 auto"}}>
           <svg viewBox="0 0 140 140" style={{width:140,height:140}}>
             <circle cx="70" cy="70" r="62" fill="none" stroke={C.borderSoft} strokeWidth="6"/>
@@ -3876,15 +3876,15 @@ function DashboardPage({r,history,goTo}){
       {/* 4 KPI cards in a row */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
         {[
-          {label:"Mention Rate",value:avgMentions+"%",prev:prev?.mentions,color:C.accent,tip:"Percentage of queries where your brand appears in the AI engine's response — either Cited or Mentioned. Tested across all engines with live web search."},
-          {label:"Citation Rate",value:avgCitations+"%",prev:prev?.citations,color:"#8b5cf6",tip:"Percentage of queries where the AI engine specifically recommends, links to, or endorses your brand. A citation is stronger than a mention."},
-          {label:"Sentiment Score",value:sentimentReady?(avgSentiment>=55?"Positive":avgSentiment>=45?"Neutral":"Negative"):"...",prev:null,color:sentimentReady?(avgSentiment>=55?C.green:avgSentiment>=45?C.amber:C.red):C.muted,tip:"Derived from actual language patterns in AI engine responses about your brand. Analysed from real response text, not an AI-generated rating."},
-          {label:"Best Engine",value:(bestEngine.name||"").replace(" Overview",""),sub:bestEngine.score+"%",color:bestEngine.name==="ChatGPT"?"#10A37F":(bestEngine.name||"").includes("Google")?"#EA4335":bestEngine.name==="Perplexity"?"#20808D":"#4285F4",tip:"The engine where your brand scores highest. Visibility is weighted by estimated user share in your region."}
+          {label:"Mention Rate",value:avgMentions+"%",prev:prev?.mentions,color:C.accent,tip:"Percentage of queries where your brand appears in the response. Averaged across all engines, weighted by regional market share."},
+          {label:"Citation Rate",value:avgCitations+"%",prev:prev?.citations,color:"#8b5cf6",tip:"Percentage of queries where AI engines specifically recommend or link to your brand. Citations are stronger than mentions."},
+          {label:"Sentiment Score",value:sentimentReady?(avgSentiment>=55?"Positive":avgSentiment>=45?"Neutral":"Negative"):"...",prev:null,color:sentimentReady?(avgSentiment>=55?C.green:avgSentiment>=45?C.amber:C.red):C.muted,tip:"How AI engines describe your brand. Derived from actual response language, not an AI-generated rating."},
+          {label:"Best Engine",value:bestEngine.name.length>12?(bestEngine.name||"").replace(" Overview",""):bestEngine.name,color:bestEngine.name==="ChatGPT"?"#10A37F":(bestEngine.name||"").includes("Google")?"#EA4335":bestEngine.name==="Perplexity"?"#20808D":"#4285F4",tip:"The AI engine where your brand has the highest visibility score."}
         ].map((kpi,i)=>(
           <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 18px",textAlign:"center"}}>
             <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:8}}>{kpi.label}{kpi.tip&&<InfoTip text={kpi.tip}/>}</div>
             <div style={{display:"flex",alignItems:"baseline",gap:6,justifyContent:"center"}}>
-              <span style={{fontSize:20,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:kpi.color,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%"}}>{kpi.value}</span>
+              <span style={{fontSize:28,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:kpi.color,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%"}}>{kpi.value}</span>
               {kpi.prev!=null&&kpi.label!=="Best Engine"&&delta(parseInt(kpi.value),kpi.prev)}
               {kpi.sub&&<span style={{fontSize:12,color:C.muted}}>{kpi.sub}</span>}
             </div>
@@ -3899,7 +3899,7 @@ function DashboardPage({r,history,goTo}){
           return (
             <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 20px",textAlign:"center"}}>
               <div style={{fontSize:14,fontWeight:500,color:e.color||C.text,marginBottom:2}}>{e.name}</div>
-              <div style={{fontSize:10,color:C.muted,marginBottom:12}}>{w?Math.round(w*100)+"% weight":""}{i===0&&<InfoTip text="Engine weights reflect estimated user share in your region. A higher weight means more users see that engine's results, so it impacts your overall score more."/>}</div>
+              <div style={{fontSize:10,color:C.muted,marginBottom:12}}>{w?Math.round(w*100)+"% weight":""}{i===0&&<InfoTip text="Weights reflect estimated user share in your region. Higher weight = more impact on your overall score."/>}</div>
               <div style={{fontSize:28,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif",marginBottom:12}}>{e.score}%</div>
               <div style={{display:"flex",justifyContent:"center",gap:16,fontSize:11,color:C.sub}}>
                 <div style={{textAlign:"center"}}>
@@ -3938,7 +3938,7 @@ function DashboardPage({r,history,goTo}){
 
       {/* Category Health */}
       <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 20px"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:14,fontWeight:500,color:C.text}}>Website Readiness</span><InfoTip text="Weighted score based on 6 website signal categories. Content Authority (25%) and Structured Data (20%) are weighted highest because they most directly impact AI citation likelihood."/></div>{r.websiteReadinessScore!=null&&<span style={{fontSize:14,fontWeight:500,color:r.websiteReadinessScore>=60?C.green:r.websiteReadinessScore>=35?C.amber:C.red}}>{r.websiteReadinessScore}%</span>}</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:14,fontWeight:500,color:C.text}}>Website Readiness</span><InfoTip text="Scored from a live crawl of your website. Weighted by category importance for AI citations."/></div>{r.websiteReadinessScore!=null&&<span style={{fontSize:14,fontWeight:500,color:r.websiteReadinessScore>=60?C.green:r.websiteReadinessScore>=35?C.amber:C.red}}>{r.websiteReadinessScore}%</span>}</div>
         <div style={{ marginBottom: 14, padding: "10px 12px", background: C.bg, borderRadius: 8, minHeight: 60 }}>
           {r.narratives?.categoryHealth ? (
             <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6 }}>{r.narratives.categoryHealth}</div>
