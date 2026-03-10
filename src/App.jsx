@@ -2374,68 +2374,218 @@ function generatePartial(cd, partial) {
 
 /* ─── LANDING PAGE ─── */
 function LandingPage({ onGetStarted }) {
-  const [view, setView] = React.useState("hero");
+  const [activeSection, setActiveSection] = React.useState("hero");
   const [hoverCTA, setHoverCTA] = React.useState(false);
-  const [mobileMenu, setMobileMenu] = React.useState(false);
+  const [annual, setAnnual] = React.useState(false);
+  const [activeStep, setActiveStep] = React.useState(0);
+  const [autoPlay, setAutoPlay] = React.useState(true);
 
-  /* ── Shared Nav ── */
-  function LandingNav() {
-    const linkStyle = {fontSize:13,fontWeight:500,color:"#64748b",cursor:"pointer",transition:"color .2s",background:"none",border:"none",fontFamily:"'Satoshi',-apple-system,sans-serif",padding:0};
-    return (
-      <div style={{position:"fixed",top:0,left:0,right:0,zIndex:50,padding:"16px 48px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(0,0,0,0.04)",background:"rgba(255,255,255,0.92)",backdropFilter:"blur(12px)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setView("hero")}>
-          <img src="/enterank-icon.svg" alt="EnterRank" style={{width:28,height:28}}/>
-          <div style={{display:"flex",flexDirection:"column",lineHeight:1}}>
-            <span style={{fontSize:15,fontWeight:500,color:"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.01em"}}>EnterRank</span>
-            <span style={{fontSize:9,color:"#94a3b8",marginTop:1}}>by Entermind AI</span>
+  React.useEffect(() => {
+    if (!autoPlay) return;
+    const timer = setInterval(() => {
+      setActiveStep(prev => (prev + 1) % 4);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [autoPlay]);
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      const sections = ["hero", "how", "pricing"];
+      for (const id of [...sections].reverse()) {
+        const el = document.getElementById("section-" + id);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= 100) { setActiveSection(id); break; }
+        }
+      }
+    };
+    const scrollEl = document.getElementById("lp-scroll");
+    if (scrollEl) { scrollEl.addEventListener("scroll", handleScroll, { passive: true }); return () => scrollEl.removeEventListener("scroll", handleScroll); }
+  }, []);
+
+  const scrollTo = (id) => {
+    const el = document.getElementById("section-" + id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const navLinkStyle = (id) => ({fontSize:13,color:activeSection===id?"#2563eb":"#64748b",cursor:"pointer",fontWeight:activeSection===id?500:400,transition:"all .15s",textDecoration:"none"});
+
+  const steps = [
+    {
+      number:"01",title:"Configure",subtitle:"Define your brand context",
+      desc:"Enter your brand, region, and website. EnterRank auto-detects your industry, crawls your website for technical signals, identifies competitors, and generates target audience archetypes. You select and rank the archetypes that matter most \u2014 shaping the entire audit around your actual customer segments.",
+      color:"#2563eb",
+      visual:(
+        <div style={{display:"flex",flexDirection:"column",gap:10,padding:24}}>
+          <div style={{display:"flex",gap:8}}>
+            <div style={{flex:1,padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
+              <div style={{fontSize:9,color:"#94a3b8",marginBottom:2}}>Brand Name</div>
+              <div style={{fontSize:13,color:"#0f172a",fontWeight:500}}>Shell Malaysia</div>
+            </div>
+            <div style={{flex:1,padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
+              <div style={{fontSize:9,color:"#94a3b8",marginBottom:2}}>Region</div>
+              <div style={{fontSize:13,color:"#0f172a",fontWeight:500}}>Malaysia</div>
+            </div>
+          </div>
+          <div style={{padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
+            <div style={{fontSize:9,color:"#94a3b8",marginBottom:4}}>Detected Competitors</div>
+            <div style={{display:"flex",gap:6}}>
+              {["Petronas","BP","Caltex"].map((c,i)=>(<span key={i} style={{fontSize:11,padding:"3px 10px",background:"#fff",borderRadius:6,border:"1px solid #e2e8f0",color:"#374151"}}>{c}</span>))}
+            </div>
+          </div>
+          <div style={{padding:"10px 14px",background:"#eff6ff",borderRadius:8,border:"1px solid #bfdbfe"}}>
+            <div style={{fontSize:9,color:"#2563eb",marginBottom:4}}>Target Archetypes (ranked)</div>
+            <div style={{display:"flex",flexDirection:"column",gap:4}}>
+              {["Daily Commuter","Budget-Conscious Family","Fleet Manager"].map((a,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:6}}>
+                  <span style={{width:18,height:18,borderRadius:6,background:"#2563eb",color:"#fff",fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:500}}>{i+1}</span>
+                  <span style={{fontSize:11,color:"#1e40af"}}>{a}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:32}}>
-          <button onClick={()=>setView("how")} style={{...linkStyle,color:view==="how"?"#2563eb":"#64748b"}}>How It Works</button>
-          <button onClick={()=>setView("pricing")} style={{...linkStyle,color:view==="pricing"?"#2563eb":"#64748b"}}>Pricing</button>
-          <button onClick={onGetStarted} style={{padding:"8px 20px",background:"#2563eb",color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",transition:"background .2s"}}>Run Audit Now</button>
+      )
+    },
+    {
+      number:"02",title:"Test",subtitle:"Live queries on 4 AI engines",
+      desc:"15 targeted queries are sent to ChatGPT, Gemini, Perplexity, and Google AI Mode \u2014 all with web search enabled. These are real API calls to live engines, not cached or simulated. Every response is captured in full, including the citation URLs each engine referenced.",
+      color:"#059669",
+      visual:(
+        <div style={{padding:24}}>
+          <div style={{display:"flex",justifyContent:"center",gap:16,marginBottom:20}}>
+            {[{name:"ChatGPT",color:"#10A37F"},{name:"Gemini",color:"#4285F4"},{name:"Perplexity",color:"#20808D"},{name:"Google AI",color:"#EA4335"}].map((e,i)=>(
+              <div key={i} style={{textAlign:"center"}}>
+                <div style={{width:40,height:40,borderRadius:10,background:e.color+"15",border:"1px solid "+e.color+"30",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 6px"}}>
+                  <div style={{width:12,height:12,borderRadius:"50%",background:e.color}}/>
+                </div>
+                <div style={{fontSize:10,color:e.color,fontWeight:500}}>{e.name}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {["What are the best petrol stations in Malaysia?","Compare Shell vs Petronas fuel quality","Cheapest fuel rewards program 2026"].map((q,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
+                <div style={{width:6,height:6,borderRadius:3,background:i===0?"#059669":"#e2e8f0"}}/>
+                <span style={{fontSize:11,color:"#64748b",flex:1}}>{q}</span>
+                <span style={{fontSize:9,color:"#059669",fontWeight:500}}>{i===0?"Testing...":"Queued"}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{textAlign:"center",marginTop:12,fontSize:10,color:"#94a3b8"}}>15 queries × 4 engines = 60 live data points</div>
         </div>
-      </div>
-    );
-  }
-
-  /* ── Shared Footer ── */
-  const LandingFooter = () => (
-    <div style={{padding:"16px 48px",display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:11,color:"#94a3b8",borderTop:"1px solid #f1f5f9"}}>
-      <span>© 2026 Entermind AI. All rights reserved.</span>
-      <div style={{display:"flex",alignItems:"center",gap:16}}>
-        <a href="https://entermind.com/privacy-policy" target="_blank" rel="noopener noreferrer" style={{color:"#94a3b8",textDecoration:"none"}}>Privacy Policy</a>
-        <a href="https://entermind.ai" target="_blank" rel="noopener noreferrer" style={{color:"#2563eb",textDecoration:"none",fontWeight:500}}>Visit Entermind AI →</a>
-      </div>
-    </div>
-  );
-
-  /* ── Hero View ── */
-  function HeroView() {
-    return (
-      <div style={{ minHeight: "calc(100vh - 56px)", display: "flex", alignItems: "center", position: "relative", zIndex: 1, padding: "0 48px 32px", gap: 48, maxWidth: 1400, margin: "0 auto", width: "100%" }}>
-        {/* Left column */}
-        <div style={{ flex: "0 0 42%", maxWidth: 500 }}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: "#2563eb", letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 20, animation: "fadeUp 0.5s ease-out", fontFamily: "'Satoshi',-apple-system,sans-serif" }}>{"Audit · Analyse · Optimise"}</div>
-          <h1 style={{ fontSize: 50, fontWeight: 500, fontFamily: "'Satoshi',-apple-system,sans-serif", color: "#0f172a", letterSpacing: "-.04em", margin: "0 0 20px", lineHeight: 1.08, animation: "fadeUp 0.7s ease-out" }}>
-            Own Your Brand's<br />
-            <span style={{ color: "#2563eb" }}>AI Visibility</span>
-          </h1>
-          <p style={{ fontSize: 16, color: "#64748b", margin: "0 0 32px", lineHeight: 1.7, maxWidth: 440, animation: "fadeUp 0.9s ease-out" }}>
-            Test real queries on ChatGPT, Gemini, Perplexity, and Google AI. See exactly when AI engines mention, cite, or ignore your brand — and build the strategy to change it.
-          </p>
-          <button onClick={onGetStarted} onMouseEnter={() => setHoverCTA(true)} onMouseLeave={() => setHoverCTA(false)} style={{
-            padding: "15px 32px", background: hoverCTA ? "#1d4ed8" : "#2563eb", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "'Satoshi',-apple-system,sans-serif", transition: "all .25s ease",
-            boxShadow: hoverCTA ? "0 8px 28px rgba(37,99,235,0.3)" : "0 4px 16px rgba(37,99,235,0.15)", transform: hoverCTA ? "translateY(-2px)" : "translateY(0)", display: "flex", alignItems: "center", gap: 8, animation: "fadeUp 1s ease-out"
-          }}>
-            Run Audit Now
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          </button>
+      )
+    },
+    {
+      number:"03",title:"Analyse",subtitle:"Classify, score, and compare",
+      desc:"Every response is classified as Cited (recommended or linked), Mentioned (named but not recommended), or Absent. Scores are weighted by regional engine market share \u2014 because visibility on ChatGPT matters more in some markets than others. Your website is crawled for technical AI-readiness signals.",
+      color:"#8b5cf6",
+      visual:(
+        <div style={{padding:24}}>
+          <div style={{display:"flex",gap:8,marginBottom:16}}>
+            {[{label:"Cited",count:8,color:"#dcfce7",textColor:"#166534"},{label:"Mentioned",count:4,color:"#dbeafe",textColor:"#1e40af"},{label:"Absent",count:3,color:"#fee2e2",textColor:"#991b1b"}].map((s,i)=>(
+              <div key={i} style={{flex:1,textAlign:"center",padding:"12px 8px",background:s.color,borderRadius:8}}>
+                <div style={{fontSize:20,fontWeight:500,color:s.textColor}}>{s.count}</div>
+                <div style={{fontSize:10,color:s.textColor}}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:10,color:"#64748b"}}>Shell Malaysia</span><span style={{fontSize:10,fontWeight:500,color:"#0f172a"}}>62%</span></div>
+            <div style={{height:6,borderRadius:3,background:"#e2e8f0"}}><div style={{width:"62%",height:6,borderRadius:3,background:"#2563eb"}}/></div>
+          </div>
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:10,color:"#64748b"}}>Petronas</span><span style={{fontSize:10,fontWeight:500,color:"#0f172a"}}>78%</span></div>
+            <div style={{height:6,borderRadius:3,background:"#e2e8f0"}}><div style={{width:"78%",height:6,borderRadius:3,background:"#f97316"}}/></div>
+          </div>
+          <div style={{textAlign:"center",marginTop:12,fontSize:10,color:"#94a3b8"}}>Weighted by regional engine market share</div>
         </div>
+      )
+    },
+    {
+      number:"04",title:"Optimise",subtitle:"Actionable strategy backed by evidence",
+      desc:"Every insight traces back to real data. Your dashboard shows what AI engines say about you, which sources they cite, where competitors win, and exactly what to fix. The 90-day roadmap and content strategy are built from your specific audit findings \u2014 not generic advice.",
+      color:"#d97706",
+      visual:(
+        <div style={{padding:24}}>
+          <div style={{padding:"12px 16px",background:"#f0fdf4",borderRadius:8,borderLeft:"3px solid #059669",marginBottom:10}}>
+            <div style={{fontSize:10,fontWeight:500,color:"#166534",marginBottom:2}}>Key Finding</div>
+            <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Shell Malaysia is absent from 40% of recommendation queries. Petronas is cited in all of them.</div>
+          </div>
+          <div style={{padding:"12px 16px",background:"#eff6ff",borderRadius:8,borderLeft:"3px solid #2563eb",marginBottom:10}}>
+            <div style={{fontSize:10,fontWeight:500,color:"#1e40af",marginBottom:2}}>Action</div>
+            <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Create comparison guide targeting "best petrol station" queries with pricing data and rewards breakdown.</div>
+          </div>
+          <div style={{padding:"12px 16px",background:"#fef3c7",borderRadius:8,borderLeft:"3px solid #d97706"}}>
+            <div style={{fontSize:10,fontWeight:500,color:"#92400e",marginBottom:2}}>Citation Gap</div>
+            <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Competitors cited via Lowyat.net and PaulTan.org. Shell has no presence on either platform.</div>
+          </div>
+        </div>
+      )
+    }
+  ];
 
-        {/* Right column -- dashboard preview */}
-        <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", animation: "slideInRight 1s ease-out" }}>
-          <div style={{
+  const tiers = [
+    {name:"Scout",desc:"For brands getting started with AI visibility",price:annual?24:29,period:annual?"/mo (billed annually)":"/month",myr:annual?"RM 108/mo":"RM 130/mo",highlight:false,cta:"Get Started",ctaAction:()=>onGetStarted(),features:["4 audits per month","3 AI engines (ChatGPT, Gemini, Perplexity)","10 queries per audit","Dashboard + PDF export","1 project workspace","Email support"],excluded:["Google AI Mode engine","Content Hub & Brand Playbook","90-Day Roadmap","Multiple projects"]},
+    {name:"Strategist",desc:"For brands serious about AI search dominance",price:annual?65:79,period:annual?"/mo (billed annually)":"/month",myr:annual?"RM 290/mo":"RM 355/mo",highlight:true,badge:"Most Popular",cta:"Get Started",ctaAction:()=>onGetStarted(),features:["10 audits per month","4 AI engines (+ Google AI Mode)","15 queries per audit","Full dashboard + all analysis pages","Content Hub + Brand Playbook","90-Day Roadmap","Citation Sources tracking","5 project workspaces","Priority support"],excluded:["White-label reports","API access","Team seats"]},
+    {name:"Command",desc:"For agencies and enterprise teams",price:annual?165:199,period:annual?"/mo (billed annually)":"/month",myr:annual?"RM 740/mo":"RM 895/mo",highlight:false,cta:"Contact Sales",ctaAction:()=>window.open("https://entermind.com/contact-us","_blank"),features:["Unlimited audits (fair use)","4 AI engines, 15 queries","Everything in Strategist","Unlimited projects","White-label PDF reports","API access (coming soon)","Up to 5 team seats","Dedicated support"],excluded:[]}
+  ];
+
+  return (
+    <div style={{fontFamily:"'Satoshi',-apple-system,BlinkMacSystemFont,sans-serif",background:"#ffffff",height:"100vh",overflow:"hidden"}}>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+      <link href="https://fonts.cdnfonts.com/css/satoshi" rel="stylesheet"/>
+      <style>{`
+        @keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes floatDash{0%,100%{transform:perspective(1400px) rotateY(-12deg) rotateX(5deg) translateY(0)}50%{transform:perspective(1400px) rotateY(-12deg) rotateX(5deg) translateY(-10px)}}
+        @keyframes slideInRight{from{opacity:0;transform:translateX(80px)}to{opacity:1;transform:translateX(0)}}
+        @keyframes pulse{0%,100%{opacity:0.4;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
+      `}</style>
+
+      {/* ===== FIXED NAV BAR ===== */}
+      <div style={{position:"fixed",top:0,left:0,right:0,zIndex:50,background:"rgba(255,255,255,0.92)",backdropFilter:"blur(12px)",borderBottom:"1px solid #f1f5f9",padding:"0 48px",height:56,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{display:"flex",alignItems:"center",gap:24}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>scrollTo("hero")}>
+            <img src="/enterank-icon.svg" alt="EnterRank" style={{width:26,height:26}}/>
+            <span style={{fontSize:15,fontWeight:500,color:"#0f172a",letterSpacing:"-.01em"}}>EnterRank</span>
+          </div>
+          <div style={{display:"flex",gap:20,marginLeft:16}}>
+            <span onClick={()=>scrollTo("how")} style={navLinkStyle("how")}>How It Works</span>
+            <span onClick={()=>scrollTo("pricing")} style={navLinkStyle("pricing")}>Pricing</span>
+          </div>
+        </div>
+        <button onClick={onGetStarted} style={{padding:"8px 20px",background:"#2563eb",color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>Get Started</button>
+      </div>
+
+      {/* ===== SCROLLABLE CONTENT ===== */}
+      <div id="lp-scroll" style={{overflowY:"auto",height:"100vh",paddingTop:56}}>
+
+      {/* ===== SECTION 1: HERO ===== */}
+      <div id="section-hero" style={{minHeight:"calc(100vh - 56px)",display:"flex",alignItems:"center",padding:"0 48px",position:"relative"}}>
+        <div style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden"}}>
+          <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle at 1px 1px, rgba(0,0,0,0.02) 1px, transparent 0)",backgroundSize:"32px 32px"}}/>
+          <div style={{position:"absolute",top:"-15%",right:"-5%",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.07) 0%, rgba(99,102,241,0.03) 40%, transparent 65%)",filter:"blur(40px)"}}/>
+          <div style={{position:"absolute",top:"30%",left:"-8%",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle, rgba(59,130,246,0.05) 0%, rgba(147,51,234,0.02) 40%, transparent 65%)",filter:"blur(50px)"}}/>
+          <div style={{position:"absolute",bottom:"-10%",right:"20%",width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle, rgba(14,165,233,0.04) 0%, rgba(37,99,235,0.02) 40%, transparent 65%)",filter:"blur(45px)"}}/>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:48,maxWidth:1400,margin:"0 auto",width:"100%",position:"relative",zIndex:1}}>
+          <div style={{flex:"0 0 42%",maxWidth:500}}>
+            <div style={{fontSize:11,fontWeight:500,color:"#2563eb",letterSpacing:".1em",textTransform:"uppercase",marginBottom:20}}>Audit · Analyse · Optimise</div>
+            <h1 style={{fontSize:50,fontWeight:500,color:"#0f172a",letterSpacing:"-.04em",margin:"0 0 20px",lineHeight:1.08}}>
+              Own Your Brand's<br/><span style={{color:"#2563eb"}}>AI Visibility</span>
+            </h1>
+            <p style={{fontSize:16,color:"#64748b",margin:"0 0 32px",lineHeight:1.7,maxWidth:440}}>
+              Test real queries on ChatGPT, Gemini, Perplexity, and Google AI. See exactly when AI engines mention, cite, or ignore your brand — and build the strategy to change it.
+            </p>
+            <div style={{display:"flex",gap:12}}>
+              <button onClick={onGetStarted} onMouseEnter={()=>setHoverCTA(true)} onMouseLeave={()=>setHoverCTA(false)} style={{padding:"15px 32px",background:hoverCTA?"#1d4ed8":"#2563eb",color:"#fff",border:"none",borderRadius:10,fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit",transition:"all .25s",boxShadow:hoverCTA?"0 8px 28px rgba(37,99,235,0.3)":"0 4px 16px rgba(37,99,235,0.15)",transform:hoverCTA?"translateY(-2px)":"translateY(0)",display:"flex",alignItems:"center",gap:8}}>
+                Run Audit Now <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+              <button onClick={()=>scrollTo("how")} style={{padding:"15px 24px",background:"transparent",color:"#64748b",border:"1px solid #e2e8f0",borderRadius:10,fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>See How It Works</button>
+            </div>
+          </div>
+          <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"center",animation:"slideInRight 1s ease-out"}}>
+            <div style={{
             width:"100%",maxWidth:640,
             background:"#ffffff",
             borderRadius:16,
@@ -2546,353 +2696,34 @@ function LandingPage({ onGetStarted }) {
               </div>
             </div>
           </div>
+          </div>
         </div>
       </div>
-    );
-  }
 
-  /* ── Pricing View ── */
-  function PricingView() {
-    const [annual, setAnnual] = React.useState(true);
-    const tiers = [
-      {
-        name: "Scout",
-        desc: "For brands getting started with AI visibility",
-        price: annual ? 24 : 29,
-        currency: "$",
-        period: annual ? "/mo (billed annually)" : "/month",
-        myr: annual ? "RM 108/mo" : "RM 130/mo",
-        highlight: false,
-        cta: "Get Started",
-        ctaLink: "signup",
-        features: [
-          "4 audits per month",
-          "3 AI engines (ChatGPT, Gemini, Perplexity)",
-          "10 queries per audit",
-          "Dashboard + PDF export",
-          "1 project workspace",
-          "Email support"
-        ],
-        excluded: [
-          "Google AI Mode engine",
-          "Content Hub & Brand Playbook",
-          "90-Day Roadmap",
-          "Multiple projects"
-        ]
-      },
-      {
-        name: "Strategist",
-        desc: "For brands serious about AI search dominance",
-        price: annual ? 65 : 79,
-        currency: "$",
-        period: annual ? "/mo (billed annually)" : "/month",
-        myr: annual ? "RM 290/mo" : "RM 355/mo",
-        highlight: true,
-        badge: "Most Popular",
-        cta: "Get Started",
-        ctaLink: "signup",
-        features: [
-          "10 audits per month",
-          "4 AI engines (+ Google AI Mode)",
-          "15 queries per audit",
-          "Full dashboard + all analysis pages",
-          "Content Hub + Brand Playbook",
-          "90-Day Roadmap",
-          "Citation Sources tracking",
-          "5 project workspaces",
-          "Priority support"
-        ],
-        excluded: [
-          "White-label reports",
-          "API access",
-          "Team seats"
-        ]
-      },
-      {
-        name: "Command",
-        desc: "For agencies and enterprise teams",
-        price: annual ? 165 : 199,
-        currency: "$",
-        period: annual ? "/mo (billed annually)" : "/month",
-        myr: annual ? "RM 740/mo" : "RM 895/mo",
-        highlight: false,
-        cta: "Contact Sales",
-        ctaLink: "https://entermind.com/contact-us",
-        features: [
-          "Unlimited audits (fair use)",
-          "4 AI engines, 15 queries",
-          "Everything in Strategist",
-          "Unlimited projects",
-          "White-label PDF reports",
-          "API access (coming soon)",
-          "Up to 5 team seats",
-          "Dedicated support"
-        ],
-        excluded: []
-      }
-    ];
-
-    return (
-      <div style={{minHeight:"auto",paddingBottom:80,padding:"60px 48px 80px",maxWidth:1200,margin:"0 auto",width:"100%"}}>
-        <div style={{textAlign:"center",marginBottom:40,animation:"fadeUp 0.5s ease-out"}}>
-          <div style={{fontSize:11,fontWeight:500,color:"#2563eb",letterSpacing:".1em",textTransform:"uppercase",marginBottom:12,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Pricing</div>
-          <h2 style={{fontSize:36,fontWeight:500,color:"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.03em",margin:"0 0 12px"}}>Simple, transparent pricing</h2>
-          <p style={{fontSize:15,color:"#64748b",maxWidth:460,margin:"0 auto 24px"}}>Start auditing your AI visibility today. Scale when you're ready.</p>
-          {/* Annual/Monthly toggle */}
-          <div style={{display:"inline-flex",alignItems:"center",gap:12,background:"#f8fafc",borderRadius:100,padding:"4px 6px",border:"1px solid #e2e8f0"}}>
-            <button onClick={()=>setAnnual(true)} style={{padding:"6px 16px",borderRadius:100,border:"none",background:annual?"#fff":"transparent",color:annual?"#0f172a":"#94a3b8",fontSize:12,fontWeight:500,cursor:"pointer",boxShadow:annual?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Annual <span style={{color:"#059669",fontSize:10,fontWeight:500}}>Save 18%</span></button>
-            <button onClick={()=>setAnnual(false)} style={{padding:"6px 16px",borderRadius:100,border:"none",background:!annual?"#fff":"transparent",color:!annual?"#0f172a":"#94a3b8",fontSize:12,fontWeight:500,cursor:"pointer",boxShadow:!annual?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Monthly</button>
-          </div>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:24,animation:"fadeUp 0.7s ease-out"}}>
-          {tiers.map((tier, i) => (
-            <div key={i} style={{
-              background:tier.highlight?"linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)":"#ffffff",
-              borderRadius:16,padding:"32px 28px",border:tier.highlight?"none":"1px solid #e2e8f0",
-              boxShadow:tier.highlight?"0 20px 60px rgba(37,99,235,0.25)":"0 2px 8px rgba(0,0,0,0.04)",
-              display:"flex",flexDirection:"column",transform:tier.highlight?"scale(1.04)":"none",position:"relative"
-            }}>
-              {tier.badge && <div style={{position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",fontSize:10,fontWeight:500,color:"#fff",background:"#f59e0b",padding:"3px 14px",borderRadius:100,letterSpacing:".04em",textTransform:"uppercase"}}>{tier.badge}</div>}
-              <div style={{fontSize:13,fontWeight:500,color:tier.highlight?"rgba(255,255,255,0.8)":"#64748b",marginBottom:8}}>{tier.name}</div>
-              <div style={{display:"flex",alignItems:"baseline",gap:2,marginBottom:4}}>
-                <span style={{fontSize:12,color:tier.highlight?"rgba(255,255,255,0.6)":"#94a3b8"}}>{tier.currency}</span>
-                <span style={{fontSize:40,fontWeight:500,color:tier.highlight?"#fff":"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.03em"}}>{tier.price}</span>
-                <span style={{fontSize:13,color:tier.highlight?"rgba(255,255,255,0.5)":"#94a3b8"}}>{tier.period}</span>
-              </div>
-              <div style={{fontSize:11,color:tier.highlight?"rgba(255,255,255,0.4)":"#cbd5e1",marginBottom:12}}>{tier.myr}</div>
-              <p style={{fontSize:13,color:tier.highlight?"rgba(255,255,255,0.7)":"#64748b",margin:"0 0 20px",lineHeight:1.5}}>{tier.desc}</p>
-              <button onClick={()=>{if(tier.ctaLink==="signup"){onGetStarted();}else{window.open(tier.ctaLink,"_blank");}}} style={{width:"100%",padding:"12px",background:tier.highlight?"#fff":"#f8fafc",color:tier.highlight?"#2563eb":"#0f172a",border:tier.highlight?"none":"1px solid #e2e8f0",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",marginBottom:24,transition:"all .15s"}}>
-                {tier.cta}
-              </button>
-              <div style={{flex:1}}>
-                {tier.features.map((f, fi) => (
-                  <div key={fi} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 8l3 3 5-6" stroke={tier.highlight?"#93c5fd":"#2563eb"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    <span style={{fontSize:12,color:tier.highlight?"rgba(255,255,255,0.9)":"#475569"}}>{f}</span>
-                  </div>
-                ))}
-                {tier.excluded.map((ex, ei) => (
-                  <div key={"ex"+ei} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 8h8" stroke={tier.highlight?"rgba(255,255,255,0.25)":"#e2e8f0"} strokeWidth="1.5" strokeLinecap="round"/></svg>
-                    <span style={{fontSize:12,color:tier.highlight?"rgba(255,255,255,0.35)":"#cbd5e1"}}>{ex}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  /* ── How It Works View ── */
-  const HowItWorksView = () => {
-    const [activeStep, setActiveStep] = React.useState(0);
-    const [autoPlay, setAutoPlay] = React.useState(true);
-
-    React.useEffect(() => {
-      if (!autoPlay) return;
-      const timer = setInterval(() => {
-        setActiveStep(prev => (prev + 1) % 4);
-      }, 4000);
-      return () => clearInterval(timer);
-    }, [autoPlay]);
-
-    const steps = [
-      {
-        number: "01",
-        title: "Configure",
-        subtitle: "Define your brand context",
-        desc: "Enter your brand, region, and website. EnterRank auto-detects your industry, crawls your website for technical signals, identifies competitors, and generates target audience archetypes. You select and rank the archetypes that matter most \u2014 shaping the entire audit around your actual customer segments.",
-        color: "#2563eb",
-        visual: (
-          <div style={{display:"flex",flexDirection:"column",gap:10,padding:24}}>
-            {/* Fake form fields */}
-            <div style={{display:"flex",gap:8}}>
-              <div style={{flex:1,padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
-                <div style={{fontSize:9,color:"#94a3b8",marginBottom:2}}>Brand Name</div>
-                <div style={{fontSize:13,color:"#0f172a",fontWeight:500}}>Shell Malaysia</div>
-              </div>
-              <div style={{flex:1,padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
-                <div style={{fontSize:9,color:"#94a3b8",marginBottom:2}}>Region</div>
-                <div style={{fontSize:13,color:"#0f172a",fontWeight:500}}>Malaysia</div>
-              </div>
-            </div>
-            <div style={{padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
-              <div style={{fontSize:9,color:"#94a3b8",marginBottom:4}}>Detected Competitors</div>
-              <div style={{display:"flex",gap:6}}>
-                {["Petronas","BP","Caltex"].map((c,i)=>(
-                  <span key={i} style={{fontSize:11,padding:"3px 10px",background:"#fff",borderRadius:6,border:"1px solid #e2e8f0",color:"#374151"}}>{c}</span>
-                ))}
-              </div>
-            </div>
-            <div style={{padding:"10px 14px",background:"#eff6ff",borderRadius:8,border:"1px solid #bfdbfe"}}>
-              <div style={{fontSize:9,color:"#2563eb",marginBottom:4}}>Target Archetypes (ranked)</div>
-              <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                {["Daily Commuter","Budget-Conscious Family","Fleet Manager"].map((a,i)=>(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{width:18,height:18,borderRadius:6,background:"#2563eb",color:"#fff",fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:500}}>{i+1}</span>
-                    <span style={{fontSize:11,color:"#1e40af"}}>{a}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )
-      },
-      {
-        number: "02",
-        title: "Test",
-        subtitle: "Live queries on 4 AI engines",
-        desc: "15 targeted queries are sent to ChatGPT, Gemini, Perplexity, and Google AI Mode \u2014 all with web search enabled. These are real API calls to live engines, not cached or simulated. Every response is captured in full, including the citation URLs each engine referenced.",
-        color: "#059669",
-        visual: (
-          <div style={{padding:24}}>
-            <div style={{display:"flex",justifyContent:"center",gap:16,marginBottom:20}}>
-              {[
-                {name:"ChatGPT",color:"#10A37F"},
-                {name:"Gemini",color:"#4285F4"},
-                {name:"Perplexity",color:"#20808D"},
-                {name:"Google AI",color:"#EA4335"}
-              ].map((e,i)=>(
-                <div key={i} style={{textAlign:"center"}}>
-                  <div style={{width:40,height:40,borderRadius:10,background:e.color+"15",border:"1px solid "+e.color+"30",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 6px"}}>
-                    <div style={{width:12,height:12,borderRadius:"50%",background:e.color,animation:activeStep===1?`pulse 1.5s ease-in-out ${i*0.3}s infinite`:"none"}}/>
-                  </div>
-                  <div style={{fontSize:10,color:e.color,fontWeight:500}}>{e.name}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {[
-                "What are the best petrol stations in Malaysia?",
-                "Compare Shell vs Petronas fuel quality",
-                "Cheapest fuel rewards program 2026"
-              ].map((q,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
-                  <div style={{width:6,height:6,borderRadius:3,background:i===0?"#059669":"#e2e8f0"}}/>
-                  <span style={{fontSize:11,color:"#64748b",flex:1}}>{q}</span>
-                  <span style={{fontSize:9,color:"#059669",fontWeight:500}}>{i===0?"Testing...":"Queued"}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{textAlign:"center",marginTop:12,fontSize:10,color:"#94a3b8"}}>15 queries × 4 engines = 60 live data points</div>
-          </div>
-        )
-      },
-      {
-        number: "03",
-        title: "Analyse",
-        subtitle: "Classify, score, and compare",
-        desc: "Every response is classified as Cited (recommended or linked), Mentioned (named but not recommended), or Absent. Scores are weighted by regional engine market share \u2014 because visibility on ChatGPT matters more in some markets than others. Your website is crawled for technical AI-readiness signals.",
-        color: "#8b5cf6",
-        visual: (
-          <div style={{padding:24}}>
-            <div style={{display:"flex",gap:8,marginBottom:16}}>
-              {[
-                {label:"Cited",count:8,color:"#dcfce7",textColor:"#166534"},
-                {label:"Mentioned",count:4,color:"#dbeafe",textColor:"#1e40af"},
-                {label:"Absent",count:3,color:"#fee2e2",textColor:"#991b1b"}
-              ].map((s,i)=>(
-                <div key={i} style={{flex:1,textAlign:"center",padding:"12px 8px",background:s.color,borderRadius:8}}>
-                  <div style={{fontSize:20,fontWeight:500,color:s.textColor}}>{s.count}</div>
-                  <div style={{fontSize:10,color:s.textColor}}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{marginBottom:12}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                <span style={{fontSize:10,color:"#64748b"}}>Shell Malaysia</span>
-                <span style={{fontSize:10,fontWeight:500,color:"#0f172a"}}>62%</span>
-              </div>
-              <div style={{height:6,borderRadius:3,background:"#e2e8f0"}}>
-                <div style={{width:"62%",height:6,borderRadius:3,background:"#2563eb"}}/>
-              </div>
-            </div>
-            <div style={{marginBottom:12}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                <span style={{fontSize:10,color:"#64748b"}}>Petronas</span>
-                <span style={{fontSize:10,fontWeight:500,color:"#0f172a"}}>78%</span>
-              </div>
-              <div style={{height:6,borderRadius:3,background:"#e2e8f0"}}>
-                <div style={{width:"78%",height:6,borderRadius:3,background:"#f97316"}}/>
-              </div>
-            </div>
-            <div style={{textAlign:"center",marginTop:8,fontSize:10,color:"#94a3b8"}}>Weighted by regional engine market share</div>
-          </div>
-        )
-      },
-      {
-        number: "04",
-        title: "Optimise",
-        subtitle: "Actionable strategy backed by evidence",
-        desc: "Every insight traces back to real data. Your dashboard shows what AI engines say about you, which sources they cite, where competitors win, and exactly what to fix. The 90-day roadmap and content strategy are built from your specific audit findings \u2014 not generic advice.",
-        color: "#d97706",
-        visual: (
-          <div style={{padding:24}}>
-            <div style={{padding:"12px 16px",background:"#f0fdf4",borderRadius:8,borderLeft:"3px solid #059669",marginBottom:10}}>
-              <div style={{fontSize:10,fontWeight:500,color:"#166534",marginBottom:2}}>Key Finding</div>
-              <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Shell Malaysia is absent from 40% of recommendation queries. Petronas is cited in all of them.</div>
-            </div>
-            <div style={{padding:"12px 16px",background:"#eff6ff",borderRadius:8,borderLeft:"3px solid #2563eb",marginBottom:10}}>
-              <div style={{fontSize:10,fontWeight:500,color:"#1e40af",marginBottom:2}}>Action</div>
-              <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Create comparison guide targeting "best petrol station" queries with pricing data and rewards breakdown.</div>
-            </div>
-            <div style={{padding:"12px 16px",background:"#fef3c7",borderRadius:8,borderLeft:"3px solid #d97706"}}>
-              <div style={{fontSize:10,fontWeight:500,color:"#92400e",marginBottom:2}}>Citation Gap</div>
-              <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Competitors cited via Lowyat.net and PaulTan.org. Shell has no presence on either platform.</div>
-            </div>
-          </div>
-        )
-      }
-    ];
-
-    return (
-      <div style={{minHeight:"auto",paddingBottom:80,padding:"80px 48px 60px",fontFamily:"'Satoshi',-apple-system,sans-serif",position:"relative",display:"flex",alignItems:"center"}}>
-        <style>{`
-          @keyframes pulse{0%,100%{opacity:0.4;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
-          @keyframes fadeInUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-        `}</style>
-
-        {/* Background */}
-        <div style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden"}}>
-          <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle at 1px 1px, rgba(0,0,0,0.015) 1px, transparent 0)",backgroundSize:"32px 32px"}}/>
-        </div>
-
-        <div style={{position:"relative",zIndex:1,maxWidth:1200,margin:"0 auto",width:"100%"}}>
+      {/* ===== SECTION 2: HOW IT WORKS ===== */}
+      <div id="section-how" style={{padding:"80px 48px",background:"#f8fafc"}}>
+        <div style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{textAlign:"center",marginBottom:48}}>
             <div style={{fontSize:11,fontWeight:500,color:"#2563eb",letterSpacing:".1em",textTransform:"uppercase",marginBottom:12}}>How It Works</div>
             <h2 style={{fontSize:36,fontWeight:500,color:"#0f172a",letterSpacing:"-.03em",margin:"0 0 12px"}}>From query to strategy in minutes</h2>
             <p style={{fontSize:15,color:"#64748b",maxWidth:520,margin:"0 auto"}}>EnterRank tests real queries on 4 live AI engines, classifies every response, and delivers actionable insights grounded in data — not guesses.</p>
           </div>
-
-          {/* Step selector */}
           <div style={{display:"flex",justifyContent:"center",gap:0,marginBottom:40}}>
             {steps.map((step,i)=>(
-              <div key={i} onClick={()=>{setActiveStep(i);setAutoPlay(false);}} style={{
-                display:"flex",alignItems:"center",gap:8,padding:"10px 24px",cursor:"pointer",
-                borderBottom:activeStep===i?"2px solid "+step.color:"2px solid transparent",
-                transition:"all .2s"
-              }}>
+              <div key={i} onClick={()=>{setActiveStep(i);setAutoPlay(false);}} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 24px",cursor:"pointer",borderBottom:activeStep===i?"2px solid "+step.color:"2px solid transparent",transition:"all .2s"}}>
                 <span style={{fontSize:11,fontWeight:500,color:activeStep===i?step.color:"#94a3b8",fontFamily:"'Space Mono',monospace"}}>{step.number}</span>
                 <span style={{fontSize:13,fontWeight:activeStep===i?500:400,color:activeStep===i?"#0f172a":"#94a3b8"}}>{step.title}</span>
               </div>
             ))}
           </div>
-
-          {/* Active step content */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:40,alignItems:"center"}} key={activeStep}>
-            {/* Left — description */}
             <div style={{animation:"fadeInUp .4s ease-out"}}>
               <div style={{fontSize:12,fontWeight:500,color:steps[activeStep].color,marginBottom:8}}>{steps[activeStep].subtitle}</div>
               <h3 style={{fontSize:28,fontWeight:500,color:"#0f172a",margin:"0 0 16px",letterSpacing:"-.02em"}}>{steps[activeStep].title}</h3>
               <p style={{fontSize:14,color:"#64748b",lineHeight:1.8,margin:0}}>{steps[activeStep].desc}</p>
             </div>
-
-            {/* Right — visual */}
             <div style={{animation:"fadeInUp .5s ease-out"}}>
               <div style={{background:"#fff",borderRadius:16,border:"1px solid #e2e8f0",boxShadow:"0 8px 32px rgba(0,0,0,0.04)",overflow:"hidden"}}>
-                {/* Visual header bar */}
                 <div style={{padding:"10px 16px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:6}}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:"#ef4444"}}/>
                   <div style={{width:8,height:8,borderRadius:"50%",background:"#f59e0b"}}/>
@@ -2903,53 +2734,72 @@ function LandingPage({ onGetStarted }) {
               </div>
             </div>
           </div>
-
-          {/* Progress dots */}
           <div style={{display:"flex",justifyContent:"center",gap:8,marginTop:32}}>
-            {steps.map((s,i)=>(
-              <div key={i} onClick={()=>{setActiveStep(i);setAutoPlay(false);}} style={{
-                width:activeStep===i?24:8,height:8,borderRadius:4,
-                background:activeStep===i?s.color:"#e2e8f0",
-                cursor:"pointer",transition:"all .3s"
-              }}/>
+            {steps.map((s,i)=>(<div key={i} onClick={()=>{setActiveStep(i);setAutoPlay(false);}} style={{width:activeStep===i?24:8,height:8,borderRadius:4,background:activeStep===i?s.color:"#e2e8f0",cursor:"pointer",transition:"all .3s"}}/>))}
+          </div>
+        </div>
+      </div>
+
+      {/* ===== SECTION 3: PRICING ===== */}
+      <div id="section-pricing" style={{padding:"80px 48px",background:"#ffffff"}}>
+        <div style={{maxWidth:1100,margin:"0 auto"}}>
+          <div style={{textAlign:"center",marginBottom:48}}>
+            <div style={{fontSize:11,fontWeight:500,color:"#2563eb",letterSpacing:".1em",textTransform:"uppercase",marginBottom:12}}>Pricing</div>
+            <h2 style={{fontSize:36,fontWeight:500,color:"#0f172a",letterSpacing:"-.03em",margin:"0 0 12px"}}>Simple, transparent pricing</h2>
+            <p style={{fontSize:15,color:"#64748b",maxWidth:480,margin:"0 auto"}}>Start with Scout and upgrade as your AI visibility strategy grows. All plans include real-time engine testing.</p>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,marginTop:24}}>
+              <span style={{fontSize:13,color:!annual?"#0f172a":"#94a3b8",fontWeight:!annual?500:400}}>Monthly</span>
+              <div onClick={()=>setAnnual(!annual)} style={{width:44,height:24,borderRadius:12,background:annual?"#2563eb":"#e2e8f0",cursor:"pointer",position:"relative",transition:"all .2s"}}>
+                <div style={{width:18,height:18,borderRadius:9,background:"#fff",position:"absolute",top:3,left:annual?23:3,transition:"all .2s",boxShadow:"0 1px 3px rgba(0,0,0,0.1)"}}/>
+              </div>
+              <span style={{fontSize:13,color:annual?"#0f172a":"#94a3b8",fontWeight:annual?500:400}}>Annual <span style={{fontSize:11,color:"#059669",fontWeight:500}}>Save 17%</span></span>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20,alignItems:"start"}}>
+            {tiers.map((tier,i)=>(
+              <div key={i} style={{background:"#fff",border:tier.highlight?"2px solid #2563eb":"1px solid #e2e8f0",borderRadius:16,padding:"32px 28px",position:"relative",boxShadow:tier.highlight?"0 8px 32px rgba(37,99,235,0.1)":"0 2px 8px rgba(0,0,0,0.03)"}}>
+                {tier.badge && (<div style={{position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",background:"#2563eb",color:"#fff",fontSize:11,fontWeight:500,padding:"4px 14px",borderRadius:100}}>{tier.badge}</div>)}
+                <div style={{fontSize:18,fontWeight:500,color:"#0f172a",marginBottom:4}}>{tier.name}</div>
+                <div style={{fontSize:12,color:"#64748b",marginBottom:20,minHeight:36}}>{tier.desc}</div>
+                <div style={{marginBottom:4}}>
+                  <span style={{fontSize:40,fontWeight:500,color:"#0f172a",letterSpacing:"-.03em"}}>${tier.price}</span>
+                  <span style={{fontSize:13,color:"#94a3b8"}}>{tier.period}</span>
+                </div>
+                <div style={{fontSize:11,color:"#94a3b8",marginBottom:24}}>{tier.myr}</div>
+                <button onClick={tier.ctaAction} style={{width:"100%",padding:"12px",background:tier.highlight?"#2563eb":"#f8fafc",color:tier.highlight?"#fff":"#0f172a",border:tier.highlight?"none":"1px solid #e2e8f0",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"inherit",marginBottom:24}}>{tier.cta}</button>
+                <div style={{fontSize:12,fontWeight:500,color:"#0f172a",marginBottom:10}}>Includes:</div>
+                {tier.features.map((f,fi)=>(<div key={fi} style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:8}}><span style={{color:"#059669",fontSize:14,lineHeight:1,marginTop:1,flexShrink:0}}>{"✓"}</span><span style={{fontSize:12,color:"#374151",lineHeight:1.5}}>{f}</span></div>))}
+                {tier.excluded.length>0&&(<>{React.createElement("div",{style:{borderTop:"1px solid #f1f5f9",margin:"16px 0 12px"}})}{tier.excluded.map((f,fi)=>(<div key={"ex"+fi} style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:6}}><span style={{color:"#d1d5db",fontSize:12,lineHeight:1,marginTop:2,flexShrink:0}}>{"—"}</span><span style={{fontSize:12,color:"#94a3b8",lineHeight:1.5}}>{f}</span></div>))}</>)}
+              </div>
             ))}
           </div>
         </div>
       </div>
-    );
-  };
 
-  return (
-    <div style={{ height: "100vh", background: "#ffffff", display: "flex", flexDirection: "column", fontFamily: "'Satoshi',-apple-system,BlinkMacSystemFont,sans-serif", position: "relative" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
-      <link href="https://fonts.cdnfonts.com/css/satoshi" rel="stylesheet" />
-      <style>{`
-        @keyframes floatDash{0%,100%{transform:perspective(1400px) rotateY(-12deg) rotateX(5deg) translateY(0)}50%{transform:perspective(1400px) rotateY(-12deg) rotateX(5deg) translateY(-10px)}}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes slideInRight{from{opacity:0;transform:translateX(80px)}to{opacity:1;transform:translateX(0)}}
-      `}</style>
-
-      {/* Background gradient mesh */}
-      <div style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden" }}>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle at 1px 1px, rgba(0,0,0,0.02) 1px, transparent 0)", backgroundSize: "32px 32px" }} />
-        <div style={{ position: "absolute", top: "-15%", right: "-5%", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle, rgba(37,99,235,0.07) 0%, rgba(99,102,241,0.03) 40%, transparent 65%)", filter: "blur(40px)" }} />
-        <div style={{ position: "absolute", top: "30%", left: "-8%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(59,130,246,0.05) 0%, rgba(147,51,234,0.02) 40%, transparent 65%)", filter: "blur(50px)" }} />
-        <div style={{ position: "absolute", bottom: "-10%", right: "20%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(14,165,233,0.04) 0%, rgba(37,99,235,0.02) 40%, transparent 65%)", filter: "blur(45px)" }} />
-        <div style={{ position: "absolute", bottom: "-20%", left: "10%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(168,85,247,0.04) 0%, transparent 60%)", filter: "blur(50px)" }} />
-        <div style={{ position: "absolute", top: "-5%", left: "30%", width: 500, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(37,99,235,0.03) 0%, transparent 60%)", filter: "blur(60px)" }} />
+      {/* ===== FOOTER ===== */}
+      <div style={{padding:"40px 48px",background:"#0f172a"}}>
+        <div style={{maxWidth:1200,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <img src="/enterank-icon.svg" alt="EnterRank" style={{width:24,height:24,opacity:0.8}}/>
+            <div>
+              <div style={{fontSize:13,fontWeight:500,color:"#e2e8f0"}}>EnterRank</div>
+              <div style={{fontSize:11,color:"#64748b"}}>AI Engine Visibility Platform by Entermind AI</div>
+            </div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:24}}>
+            <a href="https://entermind.com/privacy-policy" target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:"#64748b",textDecoration:"none"}}>Privacy Policy</a>
+            <a href="https://entermind.ai" target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:"#60a5fa",textDecoration:"none",fontWeight:500}}>Visit Entermind AI →</a>
+          </div>
+        </div>
+        <div style={{maxWidth:1200,margin:"16px auto 0",paddingTop:16,borderTop:"1px solid #1e293b",fontSize:11,color:"#475569"}}>
+          © 2026 Entermind AI. All rights reserved.
+        </div>
       </div>
 
-      <LandingNav />
-      <div style={{overflowY:"auto",height:"calc(100vh - 56px)",marginTop:56}} key={view}>
-        {view === "hero" && <HeroView />}
-        {view === "pricing" && <PricingView />}
-        {view === "how" && <HowItWorksView />}
-        <LandingFooter />
-      </div>
+      </div>{/* end lp-scroll */}
     </div>
   );
 }
-
 
 /* ─── LOGIN FORM ─── */
 function LoginForm({ onLogin, onSignUp, error, loading, onBack }) {
