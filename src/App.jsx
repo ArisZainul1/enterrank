@@ -5328,7 +5328,7 @@ function PlaybookPage({r,goTo,activeProject}){
   const[editProduct,setEditProduct]=useState(null);
   const[prodForm,setProdForm]=useState({name:"",description:"",features:[]});
   const[featureInput,setFeatureInput]=useState("");
-  const[generating,setGenerating]=useState(false);
+  const[generatingIdx,setGeneratingIdx]=useState(null);const[seoMarkup,setSeoMarkup]=useState("");const[generatingSeo,setGeneratingSeo]=useState(false);
 
   const projectId=activeProject?.id||null;
   const brand=r?.clientData?.brand||"";
@@ -5408,7 +5408,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const parsed=safeJSON(result);
       if(parsed){setPlaybook(prev=>({...prev,brand_voice:{tone:parsed.tone||"",personality:parsed.personality||"",dos:parsed.dos||[],donts:parsed.donts||[],examples:parsed.examples||[]}}));}
     }catch(e){console.error("Voice generation failed:",e);}
-    setGenerating(false);
+    setGeneratingIdx(null);
   };
 
   const genTaglines=async()=>{
@@ -5419,7 +5419,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const parsed=safeJSON(result);
       if(parsed){setPlaybook(prev=>({...prev,taglines:{primary:parsed.primary||"",supporting:parsed.supporting||[]}}));}
     }catch(e){console.error("Taglines generation failed:",e);}
-    setGenerating(false);
+    setGeneratingIdx(null);
   };
 
   const genVisual=async()=>{
@@ -5430,7 +5430,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const parsed=safeJSON(result);
       if(parsed){setPlaybook(prev=>({...prev,visual_ci:{primaryColor:parsed.primaryColor||"#000000",secondaryColor:parsed.secondaryColor||"#ffffff",accentColor:parsed.accentColor||"#2563eb",fonts:parsed.fonts||[],logoUrl:parsed.logoUrl||prev.visual_ci.logoUrl||""}}));}
     }catch(e){console.error("Visual CI generation failed:",e);}
-    setGenerating(false);
+    setGeneratingIdx(null);
   };
 
   const genCompliance=async()=>{
@@ -5443,7 +5443,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const parsed=safeJSON(result);
       if(parsed){setPlaybook(prev=>({...prev,compliance:{restrictions:parsed.restrictions||[],notes:parsed.notes||""}}));}
     }catch(e){console.error("Compliance generation failed:",e);}
-    setGenerating(false);
+    setGeneratingIdx(null);
   };
 
   const genPositioning=async()=>{
@@ -5456,7 +5456,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const parsed=safeJSON(result);
       if(Array.isArray(parsed)){setPlaybook(prev=>({...prev,positioning:parsed}));}
     }catch(e){console.error("Positioning generation failed:",e);}
-    setGenerating(false);
+    setGeneratingIdx(null);
   };
 
   const renderTab=()=>{
@@ -5945,8 +5945,8 @@ function ContentHubPage({r,goTo,activeProject,onUpdate}){
     return ctx||"No brand playbook data available — use professional, neutral tone.";
   }
 
-  async function generateContent(type,topic,channel,sourceQuery,sourceRoadmapItem){
-    setGenerating(true);
+  async function generateContent(type,topic,channel,sourceQuery,sourceRoadmapItem,cardIdx){
+    setGeneratingIdx(cardIdx!=null?cardIdx:"create");setSeoMarkup("");
     const brand=r?.clientData?.brand||"";
     const region=r?.clientData?.region||"";
     const industry=r?.clientData?.industry||"";
@@ -5971,7 +5971,7 @@ CONTENT STRATEGY RULE: This content exists to fill SPECIFIC gaps in ${brand}'s A
 
     const typePrompts={
       blog:`Write a strategic long-form article (800-1500 words) about: "${topic}"\n\nThis article must be engineered to make AI engines (ChatGPT, Gemini, Perplexity, and Google AI) cite ${brand} when users search for related queries.\n\nStructure:\n- Headline that directly answers a query someone would type into an AI engine\n- Opening paragraph that states ${brand}'s position on this topic clearly and factually (AI engines extract opening paragraphs)\n- 3-5 sections, each answering a specific sub-question a user might ask\n- Each section must include at least one specific claim with a data point, statistic, or concrete example\n- Include a direct comparison or positioning statement vs alternatives (without naming competitors negatively)\n- Conclusion that summarises ${brand}'s key differentiator on this topic\n- Meta description (150 chars) phrased as an answer, not a teaser\n\nCRITICAL: Write in ${brand}'s voice. Every paragraph must contain information an AI engine could extract and cite. No filler, no fluff, no "in today's world" openings.`,
-      faq:`Create a schema-optimized FAQ page with 10-12 questions about: "${topic}"\n\nEach question must be a REAL query that someone would type into ChatGPT, Gemini, Perplexity, or Google AI about ${brand} or ${industry} in ${region}.\n\nEach answer must:\n- Start with a direct, one-sentence answer (this is what AI engines extract)\n- Follow with 2-3 sentences of supporting detail including specific numbers, features, or facts about ${brand}\n- Reference ${brand}'s specific products or services where relevant\n- Be written in ${brand}'s tone of voice\n\nInclude the complete JSON-LD FAQPage schema markup at the end, ready to paste into the website.\n\nCRITICAL: These questions should match the types of queries where ${brand} is currently ABSENT in AI engines. Design them to fill those exact gaps.`,
+      faq:`Create a schema-optimized FAQ page with 10-12 questions about: "${topic}"\n\nEach question must be a REAL query that someone would type into ChatGPT, Gemini, Perplexity, or Google AI about ${brand} or ${industry} in ${region}.\n\nEach answer must:\n- Start with a direct, one-sentence answer (this is what AI engines extract)\n- Follow with 2-3 sentences of supporting detail including specific numbers, features, or facts about ${brand}\n- Reference ${brand}'s specific products or services where relevant\n- Be written in ${brand}'s tone of voice\n\nWrite clean question-and-answer pairs only. Do not include any JSON-LD or schema markup.\n\nCRITICAL: These questions should match the types of queries where ${brand} is currently ABSENT in AI engines. Design them to fill those exact gaps.`,
       social:`Create a ${channel||"LinkedIn"} post about: "${topic}"\n\nThe post must position ${brand} as a thought leader that AI engines would cite.\n\nRequirements:\n- Open with a surprising insight, data point, or contrarian take \u2014 not a generic statement\n- Include one specific, quotable claim about ${brand} or ${industry}\n- End with a question or CTA that drives engagement\n- Match ${brand}'s voice and tone exactly\n- Platform-specific formatting:\n  - LinkedIn: 800-1300 chars, use line breaks for readability, professional but not corporate\n  - Twitter/X: under 280 chars, punchy, one key insight\n  - Instagram: visual-first, include emoji sparingly, 2200 chars max\n\nInclude 3-5 hashtags and a suggested visual description.\n\nCRITICAL: Do NOT write generic thought leadership. The post must contain a specific claim or insight that only ${brand} can make.`,
       email:`Write an email newsletter about: "${topic}"\n\nThis email should drive traffic to content that improves ${brand}'s AI engine visibility.\n\nStructure:\n- Subject line: under 50 chars, curiosity-driven or value-driven (not clickbait)\n- Preview text: 90 chars that complements the subject line\n- Opening: one sentence that states why this matters NOW\n- Body: 3 short paragraphs max \u2014 each with a specific insight, stat, or update about ${brand}\n- CTA: link to the content piece this email promotes\n- P.S.: one additional value hook\n\nWrite in ${brand}'s voice. Keep it under 300 words total. No filler paragraphs.`,
       video:`Write a video script about: "${topic}"\n\nStructure:\n- Hook (first 3 seconds — attention grabber)\n- Introduction (who this is for and what they'll learn)\n- Main content (3-5 key points with talking points for each)\n- For each section include: [VISUAL] notes for what to show on screen\n- Call to action (what to do next)\n- Estimated duration: 2-4 minutes\n\nFormat each section clearly with timestamps and visual/narration separation.`,
@@ -5984,7 +5984,7 @@ CONTENT STRATEGY RULE: This content exists to fill SPECIFIC gaps in ${brand}'s A
       typePrompts[key]=typePrompts[key]+"\n\n"+queryGapsContext+painContext;
     });
 
-    const systemPrompt=`You are an expert AEO/GEO content strategist. You create content specifically optimized to be cited and recommended by AI search engines (ChatGPT, Gemini, Perplexity, etc).\n\nBRAND CONTEXT:\nBrand: ${brand}\nIndustry: ${industry}\nRegion: ${region}\n${brandContext}\n\nAEO OPTIMIZATION RULES:\n- Use clear, factual, authoritative language that AI engines prefer to cite\n- Include natural question-and-answer patterns\n- Structure content with clear headings and logical flow\n- Include specific details, statistics, and examples\n- Write in a way that answers user queries directly and comprehensively\n- Avoid fluff, filler, and vague statements\n- Make statements that are quotable and extractable by AI\n\nIMPORTANT: All content must be in English. Follow all compliance restrictions listed above. Never violate brand guidelines.`;
+    const systemPrompt=`You are an expert AEO/GEO content strategist. You create content specifically optimized to be cited and recommended by AI search engines (ChatGPT, Gemini, Perplexity, etc).\n\nBRAND CONTEXT:\nBrand: ${brand}\nIndustry: ${industry}\nRegion: ${region}\n${brandContext}\n\nAEO OPTIMIZATION RULES:\n- Use clear, factual, authoritative language that AI engines prefer to cite\n- Include natural question-and-answer patterns\n- Structure content with clear headings and logical flow\n- Include specific details, statistics, and examples\n- Write in a way that answers user queries directly and comprehensively\n- Avoid fluff, filler, and vague statements\n- Make statements that are quotable and extractable by AI\n\nOUTPUT RULES:\n- Do NOT include JSON-LD, schema markup, meta tags, or any HTML metadata in the content\n- Do NOT include <script> tags or structured data snippets\n- Output clean, readable content only — SEO markup is handled separately\n- For FAQ content: write the questions and answers as clean text, not as schema markup\n\nIMPORTANT: All content must be in English. Follow all compliance restrictions listed above. Never violate brand guidelines.`;
 
     const userPrompt=typePrompts[type]||`Create ${type} content about: "${topic}"`;
 
@@ -5995,19 +5995,43 @@ CONTENT STRATEGY RULE: This content exists to fill SPECIFIC gaps in ${brand}'s A
       if(projectId){
         const saved=await sbSaveContent(projectId,newContent);
         if(saved){setContentLibrary(prev=>[saved,...prev]);setEditingContent(saved);setActiveTab("library");}
-        setGenerating(false);
+        setGeneratingIdx(null);
         return saved;
       }else{
         const local={...newContent,id:"local_"+Date.now(),created_at:new Date().toISOString()};
         setContentLibrary(prev=>[local,...prev]);setEditingContent(local);setActiveTab("library");
-        setGenerating(false);
+        setGeneratingIdx(null);
         return local;
       }
     }catch(e){
       console.error("Content generation failed:",e);
-      setGenerating(false);
+      setGeneratingIdx(null);
       return null;
     }
+  }
+
+  async function generateSeoMarkup(){
+    if(!editingContent||!editText)return;
+    setGeneratingSeo(true);
+    const brand=r?.clientData?.brand||"";
+    const industry=r?.clientData?.industry||"";
+    const region=r?.clientData?.region||"";
+    const prompt=`Generate complete JSON-LD structured data markup for the following content.
+
+Content type: ${editingContent.type}
+Brand: ${brand}
+Industry: ${industry}
+Region: ${region}
+
+CONTENT:
+${editText.substring(0,3000)}
+
+Generate all relevant schema types (Organization, FAQPage, Article, Product, HowTo, BreadcrumbList) as appropriate for this content. Output ONLY valid JSON-LD wrapped in <script type="application/ld+json"> tags, ready to paste into a webpage. No explanation, no markdown.`;
+    try{
+      const result=await callOpenAI(prompt,"You are an SEO specialist. Output ONLY valid JSON-LD schema markup in <script> tags. No explanation.");
+      setSeoMarkup(result||"");
+    }catch(e){console.error("SEO markup generation failed:",e);}
+    setGeneratingSeo(false);
   }
 
   /* ── Grid Tab (moved from standalone Content Grid page) ── */
@@ -6140,7 +6164,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
               <span style={{fontSize:10,fontWeight:500,padding:"2px 8px",borderRadius:4,background:getTypeColor(s.type),color:getTypeTextColor(s.type)}}>{s.type}</span>
             </div>
           </div>
-          <button onClick={()=>generateContent(s.genType||"blog",s.title,null,s.source_query,null)} disabled={generating} style={{padding:"8px 16px",fontSize:11,fontWeight:500,background:generating?"#e5e7eb":C.accent,color:generating?"#999":"#fff",border:"none",borderRadius:8,cursor:generating?"default":"pointer",whiteSpace:"nowrap",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{generating?"Generating...":"Generate"}</button>
+          <button onClick={()=>generateContent(s.genType||"blog",s.title,null,s.source_query,null,i)} disabled={generatingIdx!=null} style={{padding:"8px 16px",fontSize:11,fontWeight:500,background:generatingIdx!=null?"#e5e7eb":C.accent,color:generatingIdx!=null?"#999":"#fff",border:"none",borderRadius:8,cursor:generatingIdx!=null?"default":"pointer",whiteSpace:"nowrap",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{generatingIdx===i?(<><div style={{width:12,height:12,border:"2px solid #fff",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite",display:"inline-block",marginRight:4}}/>Generating...</>):generatingIdx!=null?"Generate":"Generate"}</button>
         </div>);
       })}
     </div>);
@@ -6176,8 +6200,8 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
         <textarea value={topic} onChange={e=>setTopic(e.target.value)} placeholder={`What should this ${selectedTypeInfo?.label||"content"} be about? Be specific — the more detail you provide, the better the output.`} style={{width:"100%",minHeight:100,padding:"12px 14px",fontSize:13,border:`1px solid ${C.border}`,borderRadius:10,outline:"none",resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",color:C.text,background:C.bg}}/>
       </div>
 
-      <button onClick={()=>{if(topic.trim())generateContent(selectedType,topic.trim(),channel||null);}} disabled={!topic.trim()||generating} style={{padding:"12px 28px",fontSize:13,fontWeight:500,background:topic.trim()&&!generating?C.accent:"#e5e7eb",color:topic.trim()&&!generating?"#fff":"#999",border:"none",borderRadius:10,cursor:topic.trim()&&!generating?"pointer":"default",display:"flex",alignItems:"center",gap:8,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>
-        {generating?(<><div style={{width:14,height:14,border:"2px solid #fff",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>Generating {selectedTypeInfo?.label}...</>):(<>Generate {selectedTypeInfo?.label}</>)}
+      <button onClick={()=>{if(topic.trim())generateContent(selectedType,topic.trim(),channel||null,null,null,"create");}} disabled={!topic.trim()||generatingIdx!=null} style={{padding:"12px 28px",fontSize:13,fontWeight:500,background:topic.trim()&&generatingIdx==null?C.accent:"#e5e7eb",color:topic.trim()&&generatingIdx==null?"#fff":"#999",border:"none",borderRadius:10,cursor:topic.trim()&&generatingIdx==null?"pointer":"default",display:"flex",alignItems:"center",gap:8,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>
+        {generatingIdx==="create"?(<><div style={{width:14,height:14,border:"2px solid #fff",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>Generating {selectedTypeInfo?.label}...</>):(<>Generate {selectedTypeInfo?.label}</>)}
       </button>
 
       <div style={{marginTop:20,padding:"12px 16px",background:C.bg,borderRadius:8,fontSize:11,color:C.muted}}>
@@ -6240,7 +6264,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
             const typeInfo=contentTypes.find(ct=>ct.id===c.type)||{label:c.type};
             const sColor=statusColors[c.status]||statusColors.draft;
             const isActive=editingContent?.id===c.id;
-            return(<div key={c.id} onClick={()=>setEditingContent(c)} style={{padding:"12px 14px",background:isActive?`${C.accent}08`:C.surface,border:isActive?`1px solid ${C.accent}40`:`1px solid ${C.border}`,borderRadius:10,marginBottom:6,cursor:"pointer",transition:"all .1s"}}>
+            return(<div key={c.id} onClick={()=>{setEditingContent(c);setSeoMarkup("");}} style={{padding:"12px 14px",background:isActive?`${C.accent}08`:C.surface,border:isActive?`1px solid ${C.accent}40`:`1px solid ${C.border}`,borderRadius:10,marginBottom:6,cursor:"pointer",transition:"all .1s"}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:12,fontWeight:500,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.title||"Untitled"}</div>
@@ -6272,9 +6296,20 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
 
         <textarea value={editText} onChange={e=>setEditText(e.target.value)} style={{flex:1,minHeight:400,padding:16,fontSize:13,lineHeight:1.7,border:`1px solid ${C.border}`,borderRadius:10,outline:"none",resize:"vertical",fontFamily:"Georgia, serif",boxSizing:"border-box",color:C.text,background:C.bg}}/>
 
-        <div style={{display:"flex",justifyContent:"flex-end",marginTop:12,gap:8}}>
-          <button onClick={saveEdit} disabled={saving} style={{padding:"8px 20px",fontSize:12,fontWeight:500,background:saving?"#e5e7eb":C.accent,color:saving?"#999":"#fff",border:"none",borderRadius:8,cursor:saving?"default":"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{saving?"Saving...":"Save Changes"}</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:12,gap:8}}>
+          <button onClick={()=>{setSeoMarkup("");generateSeoMarkup();}} disabled={generatingSeo||!editText} style={{padding:"8px 16px",fontSize:11,fontWeight:500,background:generatingSeo?"#e5e7eb":"#f0f4ff",color:generatingSeo?"#999":"#3730a3",border:"1px solid #c7d2fe",borderRadius:8,cursor:generatingSeo?"default":"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",display:"flex",alignItems:"center",gap:6}}>{generatingSeo?(<><div style={{width:12,height:12,border:"2px solid #6366f1",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>Generating SEO Markup...</>):"Generate SEO Markup"}</button>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={saveEdit} disabled={saving} style={{padding:"8px 20px",fontSize:12,fontWeight:500,background:saving?"#e5e7eb":C.accent,color:saving?"#999":"#fff",border:"none",borderRadius:8,cursor:saving?"default":"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{saving?"Saving...":"Save Changes"}</button>
+          </div>
         </div>
+
+        {seoMarkup&&(<div style={{marginTop:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <div style={{fontSize:12,fontWeight:500,color:C.text}}>SEO Schema Markup</div>
+            <button onClick={()=>{navigator.clipboard.writeText(seoMarkup);}} style={{padding:"4px 10px",fontSize:10,background:"#f0fdf4",color:"#166534",border:"1px solid #bbf7d0",borderRadius:5,cursor:"pointer",fontFamily:"inherit"}}>Copy Markup</button>
+          </div>
+          <pre style={{padding:14,background:"#1e1e2e",color:"#a6e3a1",borderRadius:10,fontSize:11,lineHeight:1.6,overflow:"auto",maxHeight:300,whiteSpace:"pre-wrap",wordBreak:"break-all"}}>{seoMarkup}</pre>
+        </div>)}
       </div>)}
     </div>);
   };
