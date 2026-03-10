@@ -3937,7 +3937,7 @@ function DashboardPage({r,history,goTo}){
         {[
           {label:"Mention Rate",value:avgMentions+"%",prev:prev?.mentions,color:C.accent,tip:"Percentage of queries where AI engines mention your brand. Averaged across all engines, weighted by regional market share."},
           {label:"Citation Rate",value:avgCitations+"%",prev:prev?.citations,color:"#8b5cf6",tip:"Percentage of queries where AI engines specifically recommend or link to your brand. Citations are stronger signals than mentions."},
-          {label:"Sentiment Score",value:sentimentReady?(avgSentiment>=70?"Very Positive":avgSentiment>=50?"Positive":avgSentiment>=35?"Mixed":avgSentiment>=20?"Negative":"Very Negative"):"...",prev:null,color:sentimentReady?(avgSentiment>=50?C.green:avgSentiment>=35?C.amber:C.red):C.muted,tip:"How positively AI engines describe your brand, based on language analysis of all responses that mention you."},
+          {label:"Sentiment Score",value:sentimentReady?(avgSentiment>=50?"Positive":avgSentiment>=30?"Neutral":"Negative"):"...",prev:null,color:sentimentReady?(avgSentiment>=50?C.green:avgSentiment>=30?C.amber:C.red):C.muted,tip:"How positively AI engines describe your brand, based on language analysis of all responses that mention you."},
           {label:"Best Engine",value:bestEngine.name.length>12?(bestEngine.name||"").replace(" Overview",""):bestEngine.name,color:bestEngine.name==="ChatGPT"?"#10A37F":(bestEngine.name||"").includes("Google")?"#EA4335":bestEngine.name==="Perplexity"?"#20808D":"#4285F4",tip:"The AI engine where your brand has the highest visibility score."}
         ].map((kpi,i)=>(
           <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 18px",textAlign:"center"}}>
