@@ -5631,6 +5631,7 @@ function PlaybookPage({r,goTo,activeProject}){
 function SentimentPage({r}){
   const cleanQuoteText=(text)=>{if(!text)return"";return text.replace(/\[([^\]]*)\]\([^)]*\)/g,"$1").replace(/https?:\/\/[^\s)]+/g,"").replace(/\*\*([^*]*)\*\*/g,"$1").replace(/\*([^*]*)\*/g,"$1").replace(/^#{1,6}\s*/gm,"").replace(/^[-*]{3,}\s*$/gm,"").replace(/^\s*[-*+]\s+/gm,"").replace(/^\s*\d+\.\s+/gm,"").replace(/\(\s*\)/g,"").replace(/\s{2,}/g," ").replace(/^\s*[-\u2013\u2014]+\s*/g,"").replace(/\s*[-\u2013\u2014]+\s*$/g,"").trim();};
   const[activeTab,setActiveTab]=useState("all");
+  const[visibleCount,setVisibleCount]=useState(10);
   const signals=r?.sentimentSignals||{};
   const brandMentions=signals.brandMentions||signals.quotes||[];
   const themes=signals.themes||[];
@@ -5769,7 +5770,7 @@ function SentimentPage({r}){
           {id:"negative",label:"Negative ("+negCount+")"},
           {id:"neutral",label:"Neutral ("+neuCount+")"}
         ].map(tab=>(
-          <button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{
+          <button key={tab.id} onClick={()=>{setActiveTab(tab.id);setVisibleCount(10);}} style={{
             padding:"8px 16px",fontSize:12,fontWeight:activeTab===tab.id?500:400,
             color:activeTab===tab.id?C.text:C.muted,background:"none",border:"none",
             borderBottom:activeTab===tab.id?"2px solid "+C.accent:"2px solid transparent",
@@ -5781,7 +5782,7 @@ function SentimentPage({r}){
       {/* Quote cards */}
       {filteredMentions.length>0?(
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {filteredMentions.slice(0,20).map((mention,i)=>{
+          {filteredMentions.slice(0,visibleCount).map((mention,i)=>{
             const sBorder=mention.sentiment==="positive"?"#059669":mention.sentiment==="negative"?"#dc2626":"#d97706";
             const sBg=mention.sentiment==="positive"?"#f0fdf4":mention.sentiment==="negative"?"#fef2f2":"#fffbeb";
             const sColor=mention.sentiment==="positive"?"#059669":mention.sentiment==="negative"?"#dc2626":"#d97706";
@@ -5801,10 +5802,10 @@ function SentimentPage({r}){
               </div>
             );
           })}
-          {filteredMentions.length>20&&(
-            <div style={{textAlign:"center",fontSize:12,color:C.muted,padding:12}}>
-              Showing 20 of {filteredMentions.length} quotes
-            </div>
+          {filteredMentions.length>visibleCount&&(
+            <button onClick={()=>setVisibleCount(v=>Math.min(v+10,filteredMentions.length))} style={{width:"100%",padding:"12px",background:"none",border:"1px solid "+C.border,borderRadius:8,fontSize:12,color:C.accent,cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",marginTop:8}}>
+              Show more ({Math.min(visibleCount,filteredMentions.length)} of {filteredMentions.length})
+            </button>
           )}
         </div>
       ):(
