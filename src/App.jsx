@@ -2299,7 +2299,7 @@ function LandingPage({ onGetStarted }) {
 
   React.useEffect(() => {
     const handleScroll = () => {
-      const sections = ["hero", "how", "pricing"];
+      const sections = ["hero", "how"];
       for (const id of [...sections].reverse()) {
         const el = document.getElementById("section-" + id);
         if (el) {
@@ -2434,11 +2434,7 @@ function LandingPage({ onGetStarted }) {
     }
   ];
 
-  const tiers = [
-    {name:"Scout",desc:"For brands getting started with AI visibility",price:29,period:"/month",myr:"RM 130/mo",highlight:false,cta:"Get Started",ctaAction:()=>onGetStarted(),features:["4 audits per month","3 AI engines (ChatGPT, Gemini, Perplexity)","10 queries per audit","Dashboard + PDF export","1 project workspace","Email support"],excluded:["Google AI Mode engine","Content Hub & Brand Playbook","90-Day Roadmap","Multiple projects"]},
-    {name:"Strategist",desc:"For brands serious about AI search dominance",price:79,period:"/month",myr:"RM 355/mo",highlight:true,badge:"Most Popular",cta:"Get Started",ctaAction:()=>onGetStarted(),features:["10 audits per month","4 AI engines (+ Google AI Mode)","15 queries per audit","Full dashboard + all analysis pages","Content Hub + Brand Playbook","90-Day Roadmap","Citation Sources tracking","5 project workspaces","Priority support"],excluded:["White-label reports","API access","Team seats"]},
-    {name:"Command",desc:"For agencies and enterprise teams",price:199,period:"/month",myr:"RM 895/mo",highlight:false,cta:"Contact Sales",ctaAction:()=>window.open("https://entermind.com/contact-us","_blank"),features:["Unlimited audits (fair use)","4 AI engines, 15 queries","Everything in Strategist","Unlimited projects","White-label PDF reports","API access (coming soon)","Up to 5 team seats","Dedicated support"],excluded:[]}
-  ];
+
 
   return (
     <div style={{fontFamily:"'Satoshi',-apple-system,BlinkMacSystemFont,sans-serif",background:"#ffffff",height:"100vh",overflow:"hidden"}}>
@@ -2460,7 +2456,6 @@ function LandingPage({ onGetStarted }) {
           </div>
           <div style={{display:"flex",gap:20,marginLeft:16}}>
             <span onClick={()=>scrollTo("how")} style={navLinkStyle("how")}>How It Works</span>
-            <span onClick={()=>scrollTo("pricing")} style={navLinkStyle("pricing")}>Pricing</span>
           </div>
         </div>
         <button onClick={onGetStarted} style={{padding:"8px 20px",background:"#2563eb",color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>Get Started</button>
@@ -2645,36 +2640,6 @@ function LandingPage({ onGetStarted }) {
           </div>
           <div style={{display:"flex",justifyContent:"center",gap:8,marginTop:32}}>
             {steps.map((s,i)=>(<div key={i} onClick={()=>{setActiveStep(i);setAutoPlay(false);}} style={{width:activeStep===i?24:8,height:8,borderRadius:4,background:activeStep===i?s.color:"#e2e8f0",cursor:"pointer",transition:"all .3s"}}/>))}
-          </div>
-        </div>
-      </div>
-
-      {/* ===== SECTION 3: PRICING ===== */}
-      <div id="section-pricing" style={{padding:"80px 48px",background:"#ffffff"}}>
-        <div style={{maxWidth:1100,margin:"0 auto"}}>
-          <div style={{textAlign:"center",marginBottom:48}}>
-            <div style={{fontSize:11,fontWeight:500,color:"#2563eb",letterSpacing:".1em",textTransform:"uppercase",marginBottom:12}}>Pricing</div>
-            <h2 style={{fontSize:36,fontWeight:500,color:"#0f172a",letterSpacing:"-.03em",margin:"0 0 12px"}}>Simple, transparent pricing</h2>
-            <p style={{fontSize:15,color:"#64748b",maxWidth:480,margin:"0 auto"}}>Start with Scout and upgrade as your AI visibility strategy grows. All plans include real-time engine testing.</p>
-
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20,alignItems:"start"}}>
-            {tiers.map((tier,i)=>(
-              <div key={i} style={{background:"#fff",border:tier.highlight?"2px solid #2563eb":"1px solid #e2e8f0",borderRadius:16,padding:"32px 28px",position:"relative",boxShadow:tier.highlight?"0 8px 32px rgba(37,99,235,0.1)":"0 2px 8px rgba(0,0,0,0.03)"}}>
-                {tier.badge && (<div style={{position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",background:"#2563eb",color:"#fff",fontSize:11,fontWeight:500,padding:"4px 14px",borderRadius:100}}>{tier.badge}</div>)}
-                <div style={{fontSize:18,fontWeight:500,color:"#0f172a",marginBottom:4}}>{tier.name}</div>
-                <div style={{fontSize:12,color:"#64748b",marginBottom:20,minHeight:36}}>{tier.desc}</div>
-                <div style={{marginBottom:4}}>
-                  <span style={{fontSize:40,fontWeight:500,color:"#0f172a",letterSpacing:"-.03em"}}>${tier.price}</span>
-                  <span style={{fontSize:13,color:"#94a3b8"}}>{tier.period}</span>
-                </div>
-                <div style={{fontSize:11,color:"#94a3b8",marginBottom:24}}>{tier.myr}</div>
-                <button onClick={tier.ctaAction} style={{width:"100%",padding:"12px",background:tier.highlight?"#2563eb":"#f8fafc",color:tier.highlight?"#fff":"#0f172a",border:tier.highlight?"none":"1px solid #e2e8f0",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"inherit",marginBottom:24}}>{tier.cta}</button>
-                <div style={{fontSize:12,fontWeight:500,color:"#0f172a",marginBottom:10}}>Includes:</div>
-                {tier.features.map((f,fi)=>(<div key={fi} style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:8}}><span style={{color:"#059669",fontSize:14,lineHeight:1,marginTop:1,flexShrink:0}}>{"✓"}</span><span style={{fontSize:12,color:"#374151",lineHeight:1.5}}>{f}</span></div>))}
-                {tier.excluded.length>0&&(<>{React.createElement("div",{style:{borderTop:"1px solid #f1f5f9",margin:"16px 0 12px"}})}{tier.excluded.map((f,fi)=>(<div key={"ex"+fi} style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:6}}><span style={{color:"#d1d5db",fontSize:12,lineHeight:1,marginTop:2,flexShrink:0}}>{"—"}</span><span style={{fontSize:12,color:"#94a3b8",lineHeight:1.5}}>{f}</span></div>))}</>)}
-              </div>
-            ))}
           </div>
         </div>
       </div>
