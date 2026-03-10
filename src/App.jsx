@@ -3919,13 +3919,10 @@ function DashboardPage({r,history,goTo}){
           <span style={{fontSize:12,color:C.muted,display:"flex",alignItems:"center",gap:4}}><span style={{width:4,height:4,borderRadius:"50%",background:C.muted,display:"inline-block"}}/>{r.auditDate?new Date(r.auditDate).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}):new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}</span>
         </div>
       </div>
-      <div style={{display:"flex",gap:8}}>
-        {r.clientData?.website&&<a href={r.clientData.website.startsWith("http")?r.clientData.website:"https://"+r.clientData.website} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:C.accent,textDecoration:"none",padding:"6px 12px",border:"1px solid "+C.border,borderRadius:6,transition:"all 0.15s ease"}}>Visit Website \u2197</a>}
         <button onClick={()=>exportPDF(r)} style={{padding:"6px 14px",fontSize:11,fontWeight:500,background:C.accent,color:"#fff",border:"none",borderRadius:6,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"'Satoshi',-apple-system,sans-serif",whiteSpace:"nowrap",transition:"all 0.15s ease"}}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           Export PDF
         </button>
-      </div>
     </div>
 
     {r._auditError&&<div style={{padding:"16px 20px",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:12,marginBottom:24,display:"flex",alignItems:"center",gap:12}}>
@@ -4014,7 +4011,7 @@ function DashboardPage({r,history,goTo}){
       {/* Key Findings */}
       <div style={{...CARD.base}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-          <span style={{fontSize:14,fontWeight:500,color:C.text}}>Key Findings and Actions</span>
+          <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:14,fontWeight:500,color:C.text}}>Key Findings and Actions</span><InfoTip text="Actionable insights generated from your audit data. Each finding highlights a specific gap or strength with a recommended next step."/></div>
           <span style={{fontSize:11,color:C.muted}}>{diags.filter(d=>d.severity==="critical").length} critical · {diags.filter(d=>d.severity==="warning").length} warnings</span>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:5}}>
@@ -4143,7 +4140,7 @@ function DashboardPage({r,history,goTo}){
             <div style={{display:"flex",flexDirection:"column",gap:16,marginBottom:8}}>
               <ShareOfVoiceSection title="Share of Mentions" rankTitle="Mention Share" brands={mentionBrands} metricKey="mentionRate" tooltip="Your brand's mentions as a proportion of all brand mentions across every query and engine. A mention means the brand was named in the response."/>
               <ShareOfVoiceSection title="Share of Citations" rankTitle="Citation Share" brands={citationBrands} metricKey="citationRate" tooltip="Your brand's citations as a proportion of all brand citations across every query and engine. A citation means the AI engine specifically recommended or linked to your brand."/>
-              <ShareOfVoiceSection title="Sentiment" rankTitle="Sentiment Score" brands={sentimentBrands} metricKey="sentimentScore" tooltip="Sentiment comparison across brands based on how AI engines describe each one. Derived from actual response language, not a rating."/>
+              <ShareOfVoiceSection title="Share of Sentiment" rankTitle="Sentiment Score" brands={sentimentBrands} metricKey="sentimentScore" tooltip="Sentiment comparison across brands based on how AI engines describe each one. Derived from actual response language, not a rating."/>
             </div>
             <div style={{fontSize:11,color:C.muted,marginBottom:16,padding:"0 4px"}}>Share = brand mentions / total mentions across all brands in {sov?.totalQueries||"all"} AI engine responses. <span style={{color:C.sub}}>Higher share = AI engines name you more often relative to competitors.</span></div>
           </>);
