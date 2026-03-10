@@ -2376,7 +2376,6 @@ function generatePartial(cd, partial) {
 function LandingPage({ onGetStarted }) {
   const [activeSection, setActiveSection] = React.useState("hero");
   const [hoverCTA, setHoverCTA] = React.useState(false);
-  const [annual, setAnnual] = React.useState(false);
   const [activeStep, setActiveStep] = React.useState(0);
   const [autoPlay, setAutoPlay] = React.useState(true);
 
@@ -2420,7 +2419,7 @@ function LandingPage({ onGetStarted }) {
           <div style={{display:"flex",gap:8}}>
             <div style={{flex:1,padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
               <div style={{fontSize:9,color:"#94a3b8",marginBottom:2}}>Brand Name</div>
-              <div style={{fontSize:13,color:"#0f172a",fontWeight:500}}>Shell Malaysia</div>
+              <div style={{fontSize:13,color:"#0f172a",fontWeight:500}}>Shell</div>
             </div>
             <div style={{flex:1,padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
               <div style={{fontSize:9,color:"#94a3b8",marginBottom:2}}>Region</div>
@@ -2491,7 +2490,7 @@ function LandingPage({ onGetStarted }) {
             ))}
           </div>
           <div style={{marginBottom:12}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:10,color:"#64748b"}}>Shell Malaysia</span><span style={{fontSize:10,fontWeight:500,color:"#0f172a"}}>62%</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:10,color:"#64748b"}}>Shell</span><span style={{fontSize:10,fontWeight:500,color:"#0f172a"}}>62%</span></div>
             <div style={{height:6,borderRadius:3,background:"#e2e8f0"}}><div style={{width:"62%",height:6,borderRadius:3,background:"#2563eb"}}/></div>
           </div>
           <div>
@@ -2510,7 +2509,7 @@ function LandingPage({ onGetStarted }) {
         <div style={{padding:24}}>
           <div style={{padding:"12px 16px",background:"#f0fdf4",borderRadius:8,borderLeft:"3px solid #059669",marginBottom:10}}>
             <div style={{fontSize:10,fontWeight:500,color:"#166534",marginBottom:2}}>Key Finding</div>
-            <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Shell Malaysia is absent from 40% of recommendation queries. Petronas is cited in all of them.</div>
+            <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Shell is absent from 40% of recommendation queries. Petronas is cited in all of them.</div>
           </div>
           <div style={{padding:"12px 16px",background:"#eff6ff",borderRadius:8,borderLeft:"3px solid #2563eb",marginBottom:10}}>
             <div style={{fontSize:10,fontWeight:500,color:"#1e40af",marginBottom:2}}>Action</div>
@@ -2526,9 +2525,9 @@ function LandingPage({ onGetStarted }) {
   ];
 
   const tiers = [
-    {name:"Scout",desc:"For brands getting started with AI visibility",price:annual?24:29,period:annual?"/mo (billed annually)":"/month",myr:annual?"RM 108/mo":"RM 130/mo",highlight:false,cta:"Get Started",ctaAction:()=>onGetStarted(),features:["4 audits per month","3 AI engines (ChatGPT, Gemini, Perplexity)","10 queries per audit","Dashboard + PDF export","1 project workspace","Email support"],excluded:["Google AI Mode engine","Content Hub & Brand Playbook","90-Day Roadmap","Multiple projects"]},
-    {name:"Strategist",desc:"For brands serious about AI search dominance",price:annual?65:79,period:annual?"/mo (billed annually)":"/month",myr:annual?"RM 290/mo":"RM 355/mo",highlight:true,badge:"Most Popular",cta:"Get Started",ctaAction:()=>onGetStarted(),features:["10 audits per month","4 AI engines (+ Google AI Mode)","15 queries per audit","Full dashboard + all analysis pages","Content Hub + Brand Playbook","90-Day Roadmap","Citation Sources tracking","5 project workspaces","Priority support"],excluded:["White-label reports","API access","Team seats"]},
-    {name:"Command",desc:"For agencies and enterprise teams",price:annual?165:199,period:annual?"/mo (billed annually)":"/month",myr:annual?"RM 740/mo":"RM 895/mo",highlight:false,cta:"Contact Sales",ctaAction:()=>window.open("https://entermind.com/contact-us","_blank"),features:["Unlimited audits (fair use)","4 AI engines, 15 queries","Everything in Strategist","Unlimited projects","White-label PDF reports","API access (coming soon)","Up to 5 team seats","Dedicated support"],excluded:[]}
+    {name:"Scout",desc:"For brands getting started with AI visibility",price:29,period:"/month",myr:"RM 130/mo",highlight:false,cta:"Get Started",ctaAction:()=>onGetStarted(),features:["4 audits per month","3 AI engines (ChatGPT, Gemini, Perplexity)","10 queries per audit","Dashboard + PDF export","1 project workspace","Email support"],excluded:["Google AI Mode engine","Content Hub & Brand Playbook","90-Day Roadmap","Multiple projects"]},
+    {name:"Strategist",desc:"For brands serious about AI search dominance",price:79,period:"/month",myr:"RM 355/mo",highlight:true,badge:"Most Popular",cta:"Get Started",ctaAction:()=>onGetStarted(),features:["10 audits per month","4 AI engines (+ Google AI Mode)","15 queries per audit","Full dashboard + all analysis pages","Content Hub + Brand Playbook","90-Day Roadmap","Citation Sources tracking","5 project workspaces","Priority support"],excluded:["White-label reports","API access","Team seats"]},
+    {name:"Command",desc:"For agencies and enterprise teams",price:199,period:"/month",myr:"RM 895/mo",highlight:false,cta:"Contact Sales",ctaAction:()=>window.open("https://entermind.com/contact-us","_blank"),features:["Unlimited audits (fair use)","4 AI engines, 15 queries","Everything in Strategist","Unlimited projects","White-label PDF reports","API access (coming soon)","Up to 5 team seats","Dedicated support"],excluded:[]}
   ];
 
   return (
@@ -2747,13 +2746,7 @@ function LandingPage({ onGetStarted }) {
             <div style={{fontSize:11,fontWeight:500,color:"#2563eb",letterSpacing:".1em",textTransform:"uppercase",marginBottom:12}}>Pricing</div>
             <h2 style={{fontSize:36,fontWeight:500,color:"#0f172a",letterSpacing:"-.03em",margin:"0 0 12px"}}>Simple, transparent pricing</h2>
             <p style={{fontSize:15,color:"#64748b",maxWidth:480,margin:"0 auto"}}>Start with Scout and upgrade as your AI visibility strategy grows. All plans include real-time engine testing.</p>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,marginTop:24}}>
-              <span style={{fontSize:13,color:!annual?"#0f172a":"#94a3b8",fontWeight:!annual?500:400}}>Monthly</span>
-              <div onClick={()=>setAnnual(!annual)} style={{width:44,height:24,borderRadius:12,background:annual?"#2563eb":"#e2e8f0",cursor:"pointer",position:"relative",transition:"all .2s"}}>
-                <div style={{width:18,height:18,borderRadius:9,background:"#fff",position:"absolute",top:3,left:annual?23:3,transition:"all .2s",boxShadow:"0 1px 3px rgba(0,0,0,0.1)"}}/>
-              </div>
-              <span style={{fontSize:13,color:annual?"#0f172a":"#94a3b8",fontWeight:annual?500:400}}>Annual <span style={{fontSize:11,color:"#059669",fontWeight:500}}>Save 17%</span></span>
-            </div>
+
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20,alignItems:"start"}}>
             {tiers.map((tier,i)=>(
