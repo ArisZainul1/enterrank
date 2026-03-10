@@ -2551,7 +2551,6 @@ function LandingPage({ onGetStarted }) {
             </div>
           </div>
         </div>
-        </div>
       </div>
     );
   }
@@ -2837,6 +2836,7 @@ function LandingPage({ onGetStarted }) {
           </div>
         </div>
       </div>
+    </div>
     );
   };
 
