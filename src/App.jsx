@@ -910,7 +910,16 @@ Return JSON only:
     });
     (gemResponses || []).forEach(r => {
       (r.citations || []).forEach(c => {
-        if (c.url && !seen.has(c.url)) { seen.add(c.url); citationSources.gemini.push({ url: c.url, title: c.title || "", query: r.query }); citationSources.all.push({ url: c.url, title: c.title || "", engine: "gemini", query: r.query }); }
+        if (!c.url) return;
+        let url = c.url;
+        let title = c.title || "";
+        // Gemini returns proxy URLs via vertexaisearch — resolve via title or skip
+        if (url.includes("vertexaisearch.cloud.google.com") || url.includes("grounding-api-redirect")) {
+          if (title && !title.includes(" ") && title.includes(".")) {
+            url = "https://" + title.replace(/^(https?:\/\/)?/,"").replace(/^www\./,"");
+          } else { return; }
+        }
+        if (!seen.has(url)) { seen.add(url); citationSources.gemini.push({ url, title, query: r.query }); citationSources.all.push({ url, title, engine: "gemini", query: r.query }); }
       });
     });
     (pplxResponses || []).forEach(r => {
@@ -5003,11 +5012,21 @@ function CitationSourcesPage({ r }) {
   const brandName = r?.clientData?.brand || "Your brand";
 
   // Build sources list from the actual data shape
-  const sources = (cs.all || []).map(s => ({
-    ...s,
-    engine: s.engine === "chatgpt" ? "ChatGPT" : s.engine === "gemini" ? "Gemini" : s.engine === "perplexity" ? "Perplexity" : s.engine === "googleai" ? "Google AI" : s.engine,
-    domain: (() => { try { return new URL(s.url).hostname.replace("www.", ""); } catch(e) { return "unknown"; } })()
-  }));
+  const sources = (cs.all || []).map(s => {
+    let url = s.url || "";
+    // Handle Gemini proxy URLs in display
+    if (url.includes("vertexaisearch.cloud.google.com") || url.includes("grounding-api-redirect")) {
+      if (s.title && !s.title.includes(" ") && s.title.includes(".")) url = "https://" + s.title.replace(/^(https?:\/\/)?/,"").replace(/^www\./,"");
+      else return null;
+    }
+    const domain = (() => { try { return new URL(url).hostname.replace("www.", ""); } catch(e) { return ""; } })();
+    if (!domain || domain.length < 3 || domain === "unknown") return null;
+    return {
+      ...s, url,
+      engine: s.engine === "chatgpt" ? "ChatGPT" : s.engine === "gemini" ? "Gemini" : s.engine === "perplexity" ? "Perplexity" : s.engine === "googleai" ? "Google AI" : s.engine,
+      domain
+    };
+  }).filter(Boolean);
 
   // Filter by tab
   const filtered = activeTab === "all" ? sources
@@ -5029,12 +5048,13 @@ function CitationSourcesPage({ r }) {
   });
 
   const domains = Object.values(domainMap).sort((a, b) => b.entries.length - a.entries.length);
-  const totalSources = sources.length;
-  const uniqueDomains = new Set(sources.map(s => s.domain)).size;
-  const chatgptSources = sources.filter(s => s.engine === "ChatGPT").length;
-  const geminiSources = sources.filter(s => s.engine === "Gemini").length;
-  const pplxSources = sources.filter(s => s.engine === "Perplexity").length;
-  const gaiSources = sources.filter(s => s.engine === "Google AI").length;
+  const statSources = filtered;
+  const totalSources = statSources.length;
+  const uniqueDomains = new Set(statSources.map(s => s.domain)).size;
+  const chatgptSources = statSources.filter(s => s.engine === "ChatGPT").length;
+  const geminiSources = statSources.filter(s => s.engine === "Gemini").length;
+  const pplxSources = statSources.filter(s => s.engine === "Perplexity").length;
+  const gaiSources = statSources.filter(s => s.engine === "Google AI").length;
 
   return (
     <div>
@@ -5133,7 +5153,10 @@ function CitationSourcesPage({ r }) {
                           <a href={entry.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: C.accent, textDecoration: "none", lineHeight: 1.5, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.title || entry.url}</a>
                           <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>Query: {entry.query}</div>
                         </div>
-                        <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: entry.engine === "ChatGPT" ? "#10A37F15" : entry.engine === "Gemini" ? "#4285F415" : "#20808D15", color: entry.engine === "ChatGPT" ? "#10A37F" : entry.engine === "Gemini" ? "#4285F4" : "#20808D", flexShrink: 0 }}>{entry.engine}</span>
+                        <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
+                          <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: entry.engine === "ChatGPT" ? "#10A37F15" : entry.engine === "Gemini" ? "#4285F415" : entry.engine === "Google AI" ? "#EA433515" : "#20808D15", color: entry.engine === "ChatGPT" ? "#10A37F" : entry.engine === "Gemini" ? "#4285F4" : entry.engine === "Google AI" ? "#EA4335" : "#20808D" }}>{entry.engine}</span>
+                          {(() => { const ek = entry.engine === "ChatGPT" ? "gpt" : entry.engine === "Gemini" ? "gemini" : entry.engine === "Perplexity" ? "perplexity" : "googleai"; const isBrand = (cs[ek] || []).some(b => b.url === entry.url || (b.query === entry.query && b.title === entry.title)); return (<span style={{ fontSize: 9, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: isBrand ? "#dcfce7" : "#fef3c7", color: isBrand ? "#166534" : "#92400e" }}>{isBrand ? "Your Brand" : "Competitor"}</span>); })()}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -5150,7 +5173,7 @@ function CitationSourcesPage({ r }) {
 
       {/* Methodology note */}
       <div style={{ marginTop: 16, fontSize: 11, color: C.muted, padding: "0 4px", lineHeight: 1.5 }}>
-        Citation sources are extracted from real-time web searches performed by ChatGPT, Gemini, and Perplexity during the audit. These are the actual URLs each engine referenced when generating its response.
+        Citation sources are extracted from real-time web searches performed by ChatGPT, Gemini, Perplexity, and Google AI during the audit. These are the actual URLs each engine referenced when generating its response.
       </div>
     </div>
   );
