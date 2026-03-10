@@ -4409,17 +4409,24 @@ function QueryCategoriesPage({ r }) {
   };
 
   const categories = Object.entries(categorized).map(([name, queries]) => {
-    const cited = queries.filter(q => q.bestStatus === "Cited").length;
-    const mentioned = queries.filter(q => q.bestStatus === "Mentioned").length;
-    const absent = queries.filter(q => q.bestStatus === "Absent").length;
-    const winRate = Math.round(((cited + mentioned) / queries.length) * 100);
-    return { name, queries, cited, mentioned, absent, total: queries.length, winRate, color: categoryColors[name] || "#6b7280", desc: categoryDescs[name] || "" };
-  }).sort((a, b) => b.total - a.total);
+    const cited = queries.reduce((sum, q) => sum + (q.gptStatus === "Cited" ? 1 : 0) + (q.gemStatus === "Cited" ? 1 : 0) + (q.pplxStatus === "Cited" ? 1 : 0) + (q.gaiStatus === "Cited" ? 1 : 0), 0);
+    const mentioned = queries.reduce((sum, q) => sum + (q.gptStatus === "Mentioned" ? 1 : 0) + (q.gemStatus === "Mentioned" ? 1 : 0) + (q.pplxStatus === "Mentioned" ? 1 : 0) + (q.gaiStatus === "Mentioned" ? 1 : 0), 0);
+    const totalEngineResponses = queries.length * 4;
+    const absent = totalEngineResponses - cited - mentioned;
+    const winRate = Math.round(((cited + mentioned) / Math.max(totalEngineResponses, 1)) * 100);
+    return { name, queries, cited, mentioned, absent, total: totalEngineResponses, winRate, color: categoryColors[name] || "#6b7280", desc: categoryDescs[name] || "" };
+  }).sort((a, b) => b.queries.length - a.queries.length);
 
-  const totalQueries = allQueries.length;
-  const totalCited = allQueries.filter(q => q.bestStatus === "Cited").length;
-  const totalMentioned = allQueries.filter(q => q.bestStatus === "Mentioned").length;
-  const totalAbsent = allQueries.filter(q => q.bestStatus === "Absent").length;
+  let totalCited = 0, totalMentioned = 0, totalAbsent = 0;
+  allQueries.forEach(q => {
+    ["gptStatus", "gemStatus", "pplxStatus", "gaiStatus"].forEach(key => {
+      const status = q[key];
+      if (status === "Cited") totalCited++;
+      else if (status === "Mentioned") totalMentioned++;
+      else totalAbsent++;
+    });
+  });
+  const totalDataPoints = totalCited + totalMentioned + totalAbsent;
 
   const statusBadge = (status) => {
     const bg = status === "Cited" ? "#dcfce7" : status === "Mentioned" ? "#dbeafe" : "#fee2e2";
@@ -4445,10 +4452,10 @@ function QueryCategoriesPage({ r }) {
       {/* Summary stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
         {[
-          { label: "Total Queries Tested", value: totalQueries, color: C.text },
-          { label: "Cited", value: totalCited, sub: Math.round(totalCited / totalQueries * 100) + "%", color: "#166534" },
-          { label: "Mentioned", value: totalMentioned, sub: Math.round(totalMentioned / totalQueries * 100) + "%", color: "#1e40af" },
-          { label: "Absent", value: totalAbsent, sub: Math.round(totalAbsent / totalQueries * 100) + "%", color: "#991b1b" }
+          { label: "Total Data Points", value: totalDataPoints, color: C.text },
+          { label: "Cited", value: totalCited, sub: Math.round(totalCited / Math.max(totalDataPoints, 1) * 100) + "%", color: "#166534" },
+          { label: "Mentioned", value: totalMentioned, sub: Math.round(totalMentioned / Math.max(totalDataPoints, 1) * 100) + "%", color: "#1e40af" },
+          { label: "Absent", value: totalAbsent, sub: Math.round(totalAbsent / Math.max(totalDataPoints, 1) * 100) + "%", color: "#991b1b" }
         ].map((s, i) => (
           <div key={i} style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "16px 18px", textAlign: "center" }}>
             <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>{s.label}</div>
@@ -4507,7 +4514,7 @@ function QueryCategoriesPage({ r }) {
                     {cat.winRate >= 60
                       ? `Strong performance on ${cat.name.toLowerCase()} queries. ${r.clientData.brand} is well-positioned when users ask AI engines for ${cat.desc.toLowerCase().replace("queries ", "")}.`
                       : cat.winRate >= 30
-                        ? `Mixed results on ${cat.name.toLowerCase()} queries. ${r.clientData.brand} appears in some responses but is missing from ${cat.absent} out of ${cat.total} queries in this category.`
+                        ? `Mixed results on ${cat.name.toLowerCase()} queries. ${r.clientData.brand} appears in some responses but is absent in ${cat.absent} out of ${cat.total} engine responses in this category.`
                         : `Weak visibility on ${cat.name.toLowerCase()} queries. AI engines rarely mention ${r.clientData.brand} when users ask for ${cat.desc.toLowerCase().replace("queries ", "")}. Priority area for content creation.`
                     }
                   </div>
@@ -6931,25 +6938,18 @@ export default function App(){
         }
         if(msg) setAuditStage(msg);
         if(partialData) {
-          const partialR = generatePartial(auditData, partialData);
-          if(partialR) {
-            setResults(prev => {
-              if(!prev) return partialR;
-              return partialR;
-            });
-            setSectionReady(prev => ({
-              ...prev,
-              dashboard: !!(partialData.engineData && partialData.competitorData),
-              sentiment: !!(partialData.sentimentData && partialData.sentimentSignals),
-              archetypes: !!(partialData.archData && partialData.archData.length > 0),
-              citations: !!(partialData.engineData && partialData.citationSources),
-              intent: !!(partialData.intentData && partialData.intentData.length > 0),
-              channels: !!(partialData.channelData && partialData.channelData.channels && partialData.channelData.channels.length > 0),
-              contenthub: !!(partialData.contentGridData && partialData.contentGridData.length > 0),
-              roadmap: !!(partialData.roadmapData && partialData.roadmapData.day30),
-              playbook: !!(partialData.guidelineData)
-            }));
-          }
+          setSectionReady(prev => ({
+            ...prev,
+            dashboard: !!(partialData.engineData && partialData.competitorData),
+            sentiment: !!(partialData.sentimentData && partialData.sentimentSignals),
+            archetypes: !!(partialData.archData && partialData.archData.length > 0),
+            citations: !!(partialData.engineData && partialData.citationSources),
+            intent: !!(partialData.intentData && partialData.intentData.length > 0),
+            channels: !!(partialData.channelData && partialData.channelData.channels && partialData.channelData.channels.length > 0),
+            contenthub: !!(partialData.contentGridData && partialData.contentGridData.length > 0),
+            roadmap: !!(partialData.roadmapData && partialData.roadmapData.day30),
+            playbook: !!(partialData.guidelineData)
+          }));
         }
       });
 
