@@ -2354,7 +2354,7 @@ function generateAll(cd, apiData){
   const verifiedChannelGaps=(hasApi&&apiData.verifiedChannelGaps)?apiData.verifiedChannelGaps:[];
   const narratives=(hasApi&&apiData.narratives)?apiData.narratives:{};
   const engineWeights=hasApi?(apiData.engineWeights||gWeights):gWeights;
-  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,queryArchetypeMap,channelSourceData,citationSources,narratives,sovData,engineWeights,websiteReadinessScore,verifiedChannelGaps,clientData:cd};
+  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,queryArchetypeMap,channelSourceData,citationSources,narratives,sovData,engineWeights,websiteReadinessScore,verifiedChannelGaps,auditDate:apiData.auditDate||new Date().toISOString(),clientData:cd};
 }
 
 function generatePartial(cd, partial) {
@@ -3904,16 +3904,28 @@ function DashboardPage({r,history,goTo}){
       icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>}
   ];
 
+  const[displayScore,setDisplayScore]=useState(0);
+  const targetScore=r.overall||0;
+  React.useEffect(()=>{if(targetScore===0)return;let current=0;const increment=targetScore/40;const timer=setInterval(()=>{current+=increment;if(current>=targetScore){setDisplayScore(targetScore);clearInterval(timer);}else{setDisplayScore(Math.round(current));}},25);return()=>clearInterval(timer);},[targetScore]);
+
   return(<div>
-    {/* Header row */}
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
+    {/* Dashboard Header */}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:32,paddingBottom:20,borderBottom:"1px solid "+C.border}}>
       <div>
-        <div style={{fontSize:13,color:C.muted}}>Dashboard for {r.clientData.brand}</div>
+        <div style={{fontSize:24,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{r.clientData?.brand||"Brand"} Visibility Report</div>
+        <div style={{display:"flex",gap:16,marginTop:6}}>
+          {r.clientData?.industry&&<span style={{fontSize:12,color:C.muted,display:"flex",alignItems:"center",gap:4}}><span style={{width:4,height:4,borderRadius:"50%",background:C.muted,display:"inline-block"}}/>{r.clientData.industry}</span>}
+          {r.clientData?.region&&<span style={{fontSize:12,color:C.muted,display:"flex",alignItems:"center",gap:4}}><span style={{width:4,height:4,borderRadius:"50%",background:C.muted,display:"inline-block"}}/>{r.clientData.region}</span>}
+          <span style={{fontSize:12,color:C.muted,display:"flex",alignItems:"center",gap:4}}><span style={{width:4,height:4,borderRadius:"50%",background:C.muted,display:"inline-block"}}/>{r.auditDate?new Date(r.auditDate).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}):new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}</span>
+        </div>
       </div>
-      <button onClick={()=>exportPDF(r)} style={{padding:"8px 16px",fontSize:12,fontWeight:500,background:C.accent,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"'Satoshi',-apple-system,sans-serif",whiteSpace:"nowrap"}}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        Export PDF
-      </button>
+      <div style={{display:"flex",gap:8}}>
+        {r.clientData?.website&&<a href={r.clientData.website.startsWith("http")?r.clientData.website:"https://"+r.clientData.website} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:C.accent,textDecoration:"none",padding:"6px 12px",border:"1px solid "+C.border,borderRadius:6,transition:"all 0.15s ease"}}>Visit Website \u2197</a>}
+        <button onClick={()=>exportPDF(r)} style={{padding:"6px 14px",fontSize:11,fontWeight:500,background:C.accent,color:"#fff",border:"none",borderRadius:6,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"'Satoshi',-apple-system,sans-serif",whiteSpace:"nowrap",transition:"all 0.15s ease"}}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Export PDF
+        </button>
+      </div>
     </div>
 
     {r._auditError&&<div style={{padding:"16px 20px",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:12,marginBottom:24,display:"flex",alignItems:"center",gap:12}}>
@@ -3929,10 +3941,10 @@ function DashboardPage({r,history,goTo}){
         <div style={{position:"relative",width:140,height:140,margin:"0 auto"}}>
           <svg viewBox="0 0 140 140" style={{width:140,height:140}}>
             <circle cx="70" cy="70" r="62" fill="none" stroke={C.borderSoft} strokeWidth="6"/>
-            <circle cx="70" cy="70" r="62" fill="none" stroke={r.overall>=80?C.green:r.overall>=60?C.accent:r.overall>=40?C.amber:C.red} strokeWidth="6" strokeLinecap="round" strokeDasharray={2*Math.PI*62} strokeDashoffset={2*Math.PI*62*(1-r.overall/100)} transform="rotate(-90 70 70)" style={{transition:"stroke-dashoffset 1s ease"}}/>
+            <circle cx="70" cy="70" r="62" fill="none" stroke={targetScore>=80?C.green:targetScore>=60?C.accent:targetScore>=40?C.amber:C.red} strokeWidth="6" strokeLinecap="round" strokeDasharray={2*Math.PI*62} strokeDashoffset={2*Math.PI*62*(1-displayScore/100)} transform="rotate(-90 70 70)" style={{transition:"stroke-dashoffset 0.15s ease"}}/>
           </svg>
           <div style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-            <div style={{fontSize:42,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text,letterSpacing:"-.03em",lineHeight:1}}>{r.overall}<span style={{fontSize:18,color:C.muted,fontWeight:400}}>%</span></div>
+            <div style={{fontSize:42,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text,letterSpacing:"-.03em",lineHeight:1}}>{displayScore}<span style={{fontSize:18,color:C.muted,fontWeight:400}}>%</span></div>
           </div>
         </div>
         <div style={{marginTop:10}}>
@@ -3967,6 +3979,8 @@ function DashboardPage({r,history,goTo}){
         ))}
       </div>
 
+      <div style={{borderBottom:"1px solid "+C.border,margin:"32px 0"}}/>
+
       {/* Engine comparison — individual cards */}
       <div style={{display:"grid",gridTemplateColumns:"repeat("+(r.engines||[]).length+",1fr)",gap:12,marginBottom:24}}>
         {(r.engines||[]).map((e,i)=>{
@@ -3992,6 +4006,8 @@ function DashboardPage({r,history,goTo}){
         })}
       </div>
     </div>
+
+    <div style={{borderBottom:"1px solid "+C.border,margin:"32px 0"}}/>
 
     {/* ═══ TIER 2: INSIGHTS ═══ */}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:32}}>
@@ -4086,6 +4102,8 @@ function DashboardPage({r,history,goTo}){
         })()}
       </div>
     </div>
+
+    <div style={{borderBottom:"1px solid "+C.border,margin:"32px 0"}}/>
 
     {/* ═══ TIER 3: COMPARISON ═══ */}
     {r.competitors.length>0&&(
@@ -4286,6 +4304,8 @@ function DashboardPage({r,history,goTo}){
         )}
       </div>
     )}
+
+    <div style={{borderBottom:"1px solid "+C.border,margin:"32px 0"}}/>
 
     {/* ═══ TIER 4: HISTORICAL ═══ */}
     <div style={{marginBottom:32}}>
@@ -7071,6 +7091,7 @@ export default function App(){
     setResults(r);
     setStep("dashboard");
     setScreen("dashboard");
+    document.title=(project.brand||"Dashboard")+" \u2014 EnterRank";
   };
 
   const handleNewProject=()=>{
@@ -7080,9 +7101,10 @@ export default function App(){
     setResults(null);
     setStep("input");
     setScreen("dashboard");
+    document.title="EnterRank \u2014 AI Engine Visibility Platform";
   };
 
-  const handleBackToHub=()=>{setScreen("hub");setResults(null);setStep("input");};
+  const handleBackToHub=()=>{setScreen("hub");setResults(null);setStep("input");document.title="EnterRank \u2014 AI Engine Visibility Platform";};
 
   if (authLoading) return (
     <div style={{height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#ffffff"}}>
