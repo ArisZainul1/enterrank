@@ -3,6 +3,15 @@ import { supabase, sbSignUp, sbSignIn, sbSignOut, sbGetSession, sbOnAuthChange }
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
+async function getAuthToken() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || "";
+  } catch (e) {
+    return "";
+  }
+}
+
 const ChatGPTLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.998 5.998 0 0 0-3.998 2.9 6.042 6.042 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" fill="#10A37F"/></svg>);
 const GeminiLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M12 24C12 20.8174 10.7357 17.7652 8.48528 15.5147C6.23484 13.2643 3.18261 12 0 12C3.18261 12 6.23484 10.7357 8.48528 8.48528C10.7357 6.23484 12 3.18261 12 0C12 3.18261 13.2643 6.23484 15.5147 8.48528C17.7652 10.7357 20.8174 12 24 12C20.8174 12 17.7652 13.2643 15.5147 15.5147C13.2643 17.7652 12 20.8174 12 24Z" fill="url(#gG2)"/><defs><linearGradient id="gG2" x1="0" y1="12" x2="24" y2="12"><stop stopColor="#4285F4"/><stop offset=".5" stopColor="#9B72CB"/><stop offset="1" stopColor="#D96570"/></linearGradient></defs></svg>);
 const C={bg:"#f8f9fb",surface:"#ffffff",border:"#e8ecf1",borderSoft:"#f0f2f5",text:"#111827",sub:"#4b5563",muted:"#9ca3af",accent:"#2563eb",green:"#059669",amber:"#d97706",red:"#dc2626",r:12,rs:8};
@@ -48,7 +57,7 @@ function BrandLogo({name,website,size=22,color}){
   const[src,setSrc]=useState(null);
   const[fallback,setFallback]=useState(false);
   const domain=website?website.replace(/^https?:\/\//,"").replace(/\/.*$/,""):null;
-  React.useEffect(()=>{setSrc(domain?`https://img.logo.dev/${domain}?token=${window.__LOGO_TOKEN||"pk_V2YlDNlxSO61y2CJt0JSDQ"}&size=${size*2}&format=png`:null);setFallback(false);},[domain,size]);
+  React.useEffect(()=>{setSrc(domain?`https://img.logo.dev/${domain}?token=${window.__LOGO_TOKEN||"pk_V2YlDNlxSO61y2CJt0JSDQ"/* public Logo.dev display token — no billing risk */}&size=${size*2}&format=png`:null);setFallback(false);},[domain,size]);
   if(src&&!fallback)return <img src={src} width={size} height={size} style={{borderRadius:size/4,objectFit:"contain",background:"#fff"}} onError={()=>{if(src.includes("logo.dev")){setSrc(`https://www.google.com/s2/favicons?domain=${domain}&sz=${size*2}`);}else{setFallback(true);}}} alt={name}/>;
   return <div style={{width:size,height:size,borderRadius:size/4,background:color||"#ccc",display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.5,fontWeight:700,color:"#fff"}}>{(name||"?")[0]}</div>;
 }
@@ -179,7 +188,7 @@ async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst.")
     const controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),55000);
     try{
-      const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt}),signal:controller.signal});
+      const __token=await getAuthToken();const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,systemPrompt}),signal:controller.signal});
       clearTimeout(timeout);
       if(!res.ok&&[400,401,404].includes(res.status))return null;
       if(!res.ok)throw new Error(res.status+" "+res.statusText);
@@ -196,7 +205,7 @@ async function callOpenAI4o(prompt, systemPrompt="You are an expert AEO analyst.
     const controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),55000);
     try{
-      const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt,model:"gpt-4o"}),signal:controller.signal});
+      const __token=await getAuthToken();const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,systemPrompt,model:"gpt-4o"}),signal:controller.signal});
       clearTimeout(timeout);
       if(!res.ok&&[400,401,404].includes(res.status))return null;
       if(!res.ok)throw new Error(res.status+" "+res.statusText);
@@ -213,7 +222,7 @@ async function callGemini(prompt, systemPrompt="You are an expert AEO analyst.")
     const controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),55000);
     try{
-      const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt}),signal:controller.signal});
+      const __token=await getAuthToken();const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,systemPrompt}),signal:controller.signal});
       clearTimeout(timeout);
       if(!res.ok&&[400,401,404].includes(res.status))return null;
       if(!res.ok)throw new Error(res.status+" "+res.statusText);
@@ -229,7 +238,7 @@ async function callGemini(prompt, systemPrompt="You are an expert AEO analyst.")
 
 async function callGeminiWithCitations(prompt, systemPrompt="You are an expert AEO analyst."){
   try{
-    const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,systemPrompt})});
+    const __token=await getAuthToken();const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,systemPrompt})});
     if(!res.ok)return{text:"",citations:[]};
     const data=await res.json();
     return{
@@ -247,7 +256,7 @@ async function callOpenAISearch(query, region){
     const controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),75000);
     try{
-      const r=await fetch("/api/openai-search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,region}),signal:controller.signal});
+      const __token=await getAuthToken();const r=await fetch("/api/openai-search",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({query,region}),signal:controller.signal});
       clearTimeout(timeout);
       if(!r.ok&&[400,401,404].includes(r.status))return null;
       if(!r.ok)throw new Error(r.status+" "+r.statusText);
@@ -261,7 +270,7 @@ async function callOpenAISearch(query, region){
 
 async function callPerplexity(query, systemPrompt){
   try{
-    const res=await fetch("/api/perplexity",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:query,systemPrompt:systemPrompt||""})});
+    const __token=await getAuthToken();const res=await fetch("/api/perplexity",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt:query,systemPrompt:systemPrompt||""})});
     if(!res.ok)return{text:"",citations:[]};
     const data=await res.json();
     return{text:data.result||"",citations:(data.citations||[]).map(c=>({url:c.url||c,title:c.title||""}))};
@@ -273,7 +282,7 @@ async function callPerplexity(query, systemPrompt){
 
 async function callGoogleAI(query, region){
   try{
-    const res=await fetch("/api/serpapi",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,region:region||""})});
+    const __token=await getAuthToken();const res=await fetch("/api/serpapi",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({query,region:region||""})});
     if(!res.ok)return{text:"",citations:[]};
     const data=await res.json();
     if(data.error){console.warn("Google AI Mode not available:",data.error);return{text:"",citations:[]};}
@@ -305,7 +314,7 @@ async function crawlWebsite(url){
   try{
     const isLocal=typeof window!=="undefined"&&window.location.hostname==="localhost";
     if(isLocal)return null; // crawl only works on Vercel
-    const res=await fetch("/api/crawl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url})});
+    const __token=await getAuthToken();const res=await fetch("/api/crawl",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({url})});
     const data=await res.json();
     if(data.error&&!data.domain)return null;
     return{mainPage:data};
@@ -316,7 +325,7 @@ async function verifyChannels(brand, website, industry, region){
   try{
     const isLocal=typeof window!=="undefined"&&window.location.hostname==="localhost";
     if(isLocal)return null;
-    const res=await fetch("/api/channels",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({brand,website,industry,region})});
+    const __token=await getAuthToken();const res=await fetch("/api/channels",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({brand,website,industry,region})});
     const data=await res.json();
     if(data.error)return null;
     return data;
@@ -6723,7 +6732,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
         setProjects(merged);setLoading(false);
       }else{
         // Fallback to API + localStorage
-        fetch("/api/projects").then(r=>r.json()).then(d=>{
+        getAuthToken().then(__tk=>fetch("/api/projects",{headers:{"Authorization":"Bearer "+__tk}})).then(r=>r.json()).then(d=>{
           const apiProjects=d.projects||[];
           const merged=[...apiProjects];
           localProjects.forEach(lp=>{if(!merged.find(ap=>ap.id===lp.id))merged.push(lp);});
@@ -6732,7 +6741,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
       }
     }).catch(()=>{
       // Supabase failed — fallback to API + localStorage
-      fetch("/api/projects").then(r=>r.json()).then(d=>{
+      getAuthToken().then(__tk=>fetch("/api/projects",{headers:{"Authorization":"Bearer "+__tk}})).then(r=>r.json()).then(d=>{
         const apiProjects=d.projects||[];
         const merged=[...apiProjects];
         localProjects.forEach(lp=>{if(!merged.find(ap=>ap.id===lp.id))merged.push(lp);});
@@ -6747,7 +6756,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
     setDeleting(id);
     try{
       await sbDeleteProject(id);
-      try{await fetch(`/api/projects?id=${id}`,{method:"DELETE"});}catch(e){}
+      try{await getAuthToken().then(__tk=>fetch(`/api/projects?id=${id}`,{method:"DELETE",headers:{"Authorization":"Bearer "+__tk}}));}catch(e){}
       lsDeleteProject(id);
       // Also remove from localStorage by brand name in case IDs don't match
       const deletedProject = projects.find(p => p.id === id);
@@ -6761,7 +6770,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
       setProjects(projects.filter(p=>p.id!==id));
     }catch(e){
       // Fallback: try old API delete
-      try{await fetch(`/api/projects?id=${id}`,{method:"DELETE"});}catch(e2){}
+      try{await getAuthToken().then(__tk=>fetch(`/api/projects?id=${id}`,{method:"DELETE",headers:{"Authorization":"Bearer "+__tk}}));}catch(e2){}
       lsDeleteProject(id);
       // Also remove from localStorage by brand name in case IDs don't match
       const deletedProject = projects.find(p => p.id === id);
@@ -6983,7 +6992,7 @@ export default function App(){
       // Legacy: old API + localStorage path
       let project=null;
       try{
-        const res=await fetch(`/api/projects?id=${projectSummary.id}`);
+        const __tkP=await getAuthToken();const res=await fetch(`/api/projects?id=${projectSummary.id}`,{headers:{"Authorization":"Bearer "+__tkP}});
         const data=await res.json();
         if(!data.error)project=data;
       }catch(e){}
@@ -7144,15 +7153,15 @@ export default function App(){
       // Also save to old API + localStorage as fallback
       if(!isLocal){try{
         if(activeProject&&!activeProject._supabase){
-          const res=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:activeProject.id,auditEntry:entry})});
+          const res=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json","Authorization":"Bearer "+(await getAuthToken())},body:JSON.stringify({id:activeProject.id,auditEntry:entry})});
           const updated=await res.json();
           if(!updated.error){lsSaveProject(updated);}
           else{const lp=lsGetProject(activeProject.id);if(lp){lp.history=[...(lp.history||[]),{...entry,timestamp:new Date().toISOString()}];lp.lastAudit=new Date().toISOString();lp.lastScore=entry.overall;lsSaveProject(lp);}}
         }else if(!activeProject){
-          const res=await fetch("/api/projects",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({brand:auditData.brand,industry:auditData.industry,website:auditData.website,region:auditData.region,topics:auditData.topics,competitors:auditData.competitors})});
+          const res=await fetch("/api/projects",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+(await getAuthToken())},body:JSON.stringify({brand:auditData.brand,industry:auditData.industry,website:auditData.website,region:auditData.region,topics:auditData.topics,competitors:auditData.competitors})});
           const created=await res.json();
           if(!created.error){
-            const res2=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:created.id,auditEntry:entry})});
+            const res2=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json","Authorization":"Bearer "+(await getAuthToken())},body:JSON.stringify({id:created.id,auditEntry:entry})});
             const updated2=await res2.json();
             if(!updated2.error){lsSaveProject(updated2);}else{lsSaveProject(created);}
           }else{
@@ -7219,15 +7228,15 @@ export default function App(){
     // Also save to old API + localStorage as fallback
     if(!isLocal){try{
       if(activeProject&&!activeProject._supabase){
-        const res=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:activeProject.id,auditEntry:entry})});
+        const res=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json","Authorization":"Bearer "+(await getAuthToken())},body:JSON.stringify({id:activeProject.id,auditEntry:entry})});
         const updated=await res.json();
         if(!updated.error){lsSaveProject(updated);}
         else{const lp=lsGetProject(activeProject.id);if(lp){lp.history=[...(lp.history||[]),{...entry,timestamp:new Date().toISOString()}];lp.lastAudit=new Date().toISOString();lp.lastScore=entry.overall;lsSaveProject(lp);}}
       }else if(!activeProject){
-        const res=await fetch("/api/projects",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({brand:data.brand,industry:data.industry,website:data.website,region:data.region,topics:data.topics,competitors:data.competitors})});
+        const res=await fetch("/api/projects",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+(await getAuthToken())},body:JSON.stringify({brand:data.brand,industry:data.industry,website:data.website,region:data.region,topics:data.topics,competitors:data.competitors})});
         const created=await res.json();
         if(!created.error){
-          const res2=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:created.id,auditEntry:entry})});
+          const res2=await fetch("/api/projects",{method:"PUT",headers:{"Content-Type":"application/json","Authorization":"Bearer "+(await getAuthToken())},body:JSON.stringify({id:created.id,auditEntry:entry})});
           const updated2=await res2.json();
           if(!updated2.error){lsSaveProject(updated2);}else{lsSaveProject(created);}
         }else{

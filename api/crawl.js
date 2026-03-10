@@ -1,18 +1,45 @@
 // /api/crawl.js — Vercel Serverless Function
 // Crawls a website using Jina AI Reader + raw HTML for deep AEO analysis
 
+import verifyAuth from "./_auth.js";
+import rateLimit from "./_rateLimit.js";
+
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  const allowedOrigins = ["https://enterrank.com", "https://www.enterrank.com", "https://enterrank.vercel.app", "http://localhost:5173", "http://localhost:3000"];
+  const origin = req.headers.origin || "";
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  const user = await verifyAuth(req);
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+  if (!rateLimit(user.id)) return res.status(429).json({ error: "Rate limit exceeded" });
 
   try {
     const { url } = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
     if (!url) return res.status(400).json({ error: "Missing URL" });
 
     const baseUrl = url.startsWith("http") ? url : "https://" + url;
+
+    // SSRF protection — block internal/private IPs
+    try {
+      const parsed = new URL(baseUrl);
+      const hostname = parsed.hostname;
+      const blocked = ["localhost", "127.0.0.1", "0.0.0.0", "169.254.", "10.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.", "192.168.", "[::1]"];
+      if (blocked.some(b => hostname === b || hostname.startsWith(b))) {
+        return res.status(400).json({ error: "Invalid URL" });
+      }
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        return res.status(400).json({ error: "Invalid protocol" });
+      }
+    } catch (e) {
+      return res.status(400).json({ error: "Invalid URL" });
+    }
+
     const domain = new URL(baseUrl).hostname;
 
     // Helper: fetch via Jina Reader (returns clean markdown + metadata)
