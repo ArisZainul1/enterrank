@@ -1620,8 +1620,7 @@ ${(()=>{try{const ac=brandCrawl?.mainPage?.aiCrawlerAccess;return ac?.llmsTxt?.f
 COMPETITOR ADVANTAGES TO COUNTER:
 ${compAdvantages.length>0?compAdvantages.map(a=>"- "+a).join("\n"):"- No major competitor advantages detected"}
 
-NEGATIVE BRAND PERCEPTION (address in content/PR):
-${(()=>{try{const neg=(sentimentSignals?.negative||[]).map(t=>typeof t==="string"?t:t.theme||t.name||"").filter(Boolean);return neg.length>0?neg.slice(0,5).map(t=>"- "+t).join("\n"):"- No negative themes detected";}catch(e){return"- No negative themes detected";}})()}
+${(()=>{try{const neg=(sentimentSignals?.negative||[]).map(t=>typeof t==="string"?t:t.theme||t.name||"").filter(Boolean);if(neg.length>0){return"NEGATIVE BRAND PERCEPTION (address in content/PR):\n"+neg.slice(0,5).map(t=>"- "+t).join("\n");}else{return"BRAND PERCEPTION: Sentiment is neutral or positive. No negative themes to address. Do NOT generate defensive PR tasks. Instead, focus PR efforts on amplifying existing positive positioning and expanding into new topic areas where the brand is currently absent.";}}catch(e){return"BRAND PERCEPTION: Sentiment is neutral or positive. No negative themes to address. Do NOT generate defensive PR tasks. Instead, focus PR efforts on amplifying existing positive positioning and expanding into new topic areas where the brand is currently absent.";}})()}
 
 CITATION SOURCE GAPS (authoritative third-party platforms to target):
 IMPORTANT: The following are AUTHORITATIVE third-party sources where AI engines cite content. These are NOT competitor-owned websites. Do NOT recommend partnering with competitor sites or low-quality/irrelevant platforms. Only recommend establishing presence on reputable industry publications, review platforms, and directories.
@@ -1631,6 +1630,8 @@ CRITICAL RULES:
 - NEVER recommend the brand get cited on competitor-owned websites (${(cd.competitors||[]).map(c=>c.name).join(", ")} domains)
 - NEVER recommend partnerships with price comparison sites, discount aggregators, or low-quality directories
 - Only recommend authoritative sources: industry publications, review platforms (G2, TrustRadius, Capterra), major news outlets, Wikipedia, LinkedIn, YouTube
+- If no negative themes are detected, do NOT recommend defensive PR campaigns, crisis management, or reputation repair. Instead focus on growth: expanding visibility into new query categories and strengthening existing advantages.
+- Every PR & Outreach task must make logical sense — do NOT recommend "countering negativity" when sentiment is positive.
 
 Every task in the roadmap MUST reference a specific finding from above. Format each task as "[Finding] → [Action]". For example:
 - "Missing FAQ schema → Implement FAQPage JSON-LD on top 5 service pages"
