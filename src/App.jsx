@@ -271,6 +271,16 @@ async function callPerplexity(query, systemPrompt){
   }
 }
 
+async function callGoogleAI(query, region){
+  try{
+    const res=await fetch("/api/serpapi",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,region:region||""})});
+    if(!res.ok)return{text:"",citations:[]};
+    const data=await res.json();
+    if(data.error){console.warn("Google AI Mode not available:",data.error);return{text:"",citations:[]};}
+    return{text:data.result||"",citations:(data.citations||[]).map(c=>({url:c.url||"",title:c.title||""}))};
+  }catch(e){console.error("Google AI Mode call failed:",e);return{text:"",citations:[]};}
+}
+
 // Call a specific engine by name, with fallback to OpenAI
 async function callEngine(engine, prompt, systemPrompt){
   if(engine==="openai") return await callOpenAI(prompt, systemPrompt);
