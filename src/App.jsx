@@ -2948,7 +2948,7 @@ function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,s
 }
 
 /* ─── SHARE OF VOICE — Large donut + ranked list like Profound ─── */
-function ShareOfVoiceSection({title,rankTitle,brands,metricKey}){
+function ShareOfVoiceSection({title,rankTitle,brands,metricKey,tooltip}){
   const[hover,setHover]=useState(null);
   const uniqueBrands=brands.filter((b,i,arr)=>arr.findIndex(x=>x.name.toLowerCase()===b.name.toLowerCase())===i);
   const size=200,cx=size/2,cy=size/2,r=size/2-8,ir=r*.65;
@@ -2971,7 +2971,7 @@ function ShareOfVoiceSection({title,rankTitle,brands,metricKey}){
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr"}}>
       {/* Left: donut */}
       <div style={{padding:"24px 28px",borderRight:`1px solid ${C.border}`}}>
-        <div style={{fontSize:13,color:C.muted,marginBottom:4}}>{title}</div>
+        <div style={{fontSize:13,color:C.muted,marginBottom:4}}>{title}{tooltip&&<InfoTip text={tooltip}/>}</div>
         <div style={{fontSize:28,fontWeight:700,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif",marginBottom:16}}>{ownBrand?.pct||0}%<span style={{fontSize:14,color:C.muted,fontWeight:400,marginLeft:6}}>–</span></div>
         <div style={{display:"flex",justifyContent:"center"}}>
           <svg width={size} height={size} onMouseLeave={()=>setHover(null)}>
@@ -3878,12 +3878,12 @@ function DashboardPage({r,history,goTo}){
           {label:"Mention Rate",value:avgMentions+"%",prev:prev?.mentions,color:C.accent,tip:"Percentage of queries where your brand appears in the AI engine's response — either Cited or Mentioned. Tested across all engines with live web search."},
           {label:"Citation Rate",value:avgCitations+"%",prev:prev?.citations,color:"#8b5cf6",tip:"Percentage of queries where the AI engine specifically recommends, links to, or endorses your brand. A citation is stronger than a mention."},
           {label:"Sentiment Score",value:sentimentReady?(avgSentiment>=55?"Positive":avgSentiment>=45?"Neutral":"Negative"):"...",prev:null,color:sentimentReady?(avgSentiment>=55?C.green:avgSentiment>=45?C.amber:C.red):C.muted,tip:"Derived from actual language patterns in AI engine responses about your brand. Analysed from real response text, not an AI-generated rating."},
-          {label:"Best Engine",value:bestEngine.name,sub:bestEngine.score+"%",color:bestEngine.name==="ChatGPT"?"#10A37F":bestEngine.name==="Google AI"?"#EA4335":"#4285F4",tip:"The engine where your brand scores highest. Visibility is weighted by estimated user share in your region."}
+          {label:"Best Engine",value:(bestEngine.name||"").replace(" Overview",""),sub:bestEngine.score+"%",color:bestEngine.name==="ChatGPT"?"#10A37F":(bestEngine.name||"").includes("Google")?"#EA4335":bestEngine.name==="Perplexity"?"#20808D":"#4285F4",tip:"The engine where your brand scores highest. Visibility is weighted by estimated user share in your region."}
         ].map((kpi,i)=>(
           <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 18px",textAlign:"center"}}>
             <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:8}}>{kpi.label}{kpi.tip&&<InfoTip text={kpi.tip}/>}</div>
             <div style={{display:"flex",alignItems:"baseline",gap:6,justifyContent:"center"}}>
-              <span style={{fontSize:20,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:kpi.color}}>{kpi.value}</span>
+              <span style={{fontSize:20,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:kpi.color,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%"}}>{kpi.value}</span>
               {kpi.prev!=null&&kpi.label!=="Best Engine"&&delta(parseInt(kpi.value),kpi.prev)}
               {kpi.sub&&<span style={{fontSize:12,color:C.muted}}>{kpi.sub}</span>}
             </div>
@@ -4014,7 +4014,7 @@ function DashboardPage({r,history,goTo}){
     {/* ═══ TIER 3: COMPARISON ═══ */}
     {r.competitors.length>0&&(
       <div style={{marginBottom:32}}>
-        <div style={{fontSize:16,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text,marginBottom:4}}>Competitive Landscape<InfoTip text="Your brand's mentions as a share of all brand mentions across every tested query and engine. Formula: your mentions divided by total mentions for all brands."/></div>
+        <div style={{fontSize:16,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text,marginBottom:4}}>Competitive Landscape</div>
         <div style={{fontSize:12,color:C.muted,marginBottom:16}}>{r.clientData.brand} vs competitors across AI engines</div>
 
         <div style={{ marginBottom: 16, padding: "10px 12px", background: C.bg, borderRadius: 8, minHeight: 60 }}>
@@ -4047,9 +4047,9 @@ function DashboardPage({r,history,goTo}){
           ];
           return(<>
             <div style={{display:"flex",flexDirection:"column",gap:16,marginBottom:8}}>
-              <ShareOfVoiceSection title="Share of Mentions" rankTitle="Mention Share" brands={mentionBrands} metricKey="mentionRate"/>
-              <ShareOfVoiceSection title="Share of Citations" rankTitle="Citation Share" brands={citationBrands} metricKey="citationRate"/>
-              <ShareOfVoiceSection title="Sentiment" rankTitle="Sentiment Score" brands={sentimentBrands} metricKey="sentimentScore"/>
+              <ShareOfVoiceSection title="Share of Mentions" rankTitle="Mention Share" brands={mentionBrands} metricKey="mentionRate" tooltip={"Your brand's mentions as a proportion of ALL brand mentions across every tested query and engine. Formula: "+(r.clientData?.brand||"your brand")+"'s mentions \u00f7 total mentions (all brands including competitors). A mention means the brand was named in the AI engine's response."}/>
+              <ShareOfVoiceSection title="Share of Citations" rankTitle="Citation Share" brands={citationBrands} metricKey="citationRate" tooltip="Your brand's citations as a proportion of ALL brand citations across every tested query and engine. A citation is stronger than a mention \u2014 it means the AI engine specifically recommended, linked to, or endorsed the brand. Formula: your citations \u00f7 total citations (all brands)."/>
+              <ShareOfVoiceSection title="Sentiment" rankTitle="Sentiment Score" brands={sentimentBrands} metricKey="sentimentScore" tooltip="Sentiment comparison across brands based on the language AI engines use when discussing each brand. Positive means the engine uses favourable language (recommend, excellent, leading). Negative means unfavourable language (drawback, expensive, limited). This is derived from actual response text, not a rating."/>
             </div>
             <div style={{fontSize:11,color:C.muted,marginBottom:16,padding:"0 4px"}}>Share = brand mentions / total mentions across all brands in {sov?.totalQueries||"all"} AI engine responses. <span style={{color:C.sub}}>Higher share = AI engines name you more often relative to competitors.</span></div>
           </>);
