@@ -1239,6 +1239,9 @@ Return JSON only: {"strengths":[{"name":"<competitor>","topStrength":"<1 sentenc
     sentimentSignals.totalResponses=totalResponses;
     sentimentSignals.mentionCount=mentionCount;
     sentimentSignals.neutral=brandMentions.filter(m=>m.sentiment==="neutral");
+    // Tag each brand mention with the closest theme
+    const themeNames=(sentimentSignals?.themes||[]).map(t=>({name:t.name,sentiment:t.sentiment,keywords:t.name.toLowerCase().split(/\s+/)}));
+    (sentimentSignals.brandMentions||[]).forEach(mention=>{const textLower=(mention.text||"").toLowerCase();let bestMatch=null;let bestScore=0;themeNames.forEach(theme=>{let score=0;theme.keywords.forEach(kw=>{if(kw.length>3&&textLower.includes(kw))score++;});if(score>bestScore){bestScore=score;bestMatch=theme;}});mention.theme=bestMatch?bestMatch.name:(mention.sentiment==="positive"?"Positive mention":mention.sentiment==="negative"?"Negative mention":"General mention");});
     delete sentimentData._brandMentions;
     delete sentimentData._totalResponses;
   }catch(fbErr){console.error("Sentiment enrichment failed:",fbErr);}
@@ -5725,40 +5728,14 @@ function SentimentPage({r}){
       </div>
     </div>
 
-    {/* Themes */}
-    {themes.length>0&&(
-      <div style={{marginBottom:32}}>
-        <div style={{fontSize:16,fontWeight:500,color:C.text,marginBottom:4,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Themes</div>
-        <div style={{fontSize:12,color:C.muted,marginBottom:16}}>Recurring patterns in how AI engines describe {brandName}</div>
-        <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,overflow:"hidden"}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 100px 80px",padding:"10px 20px",borderBottom:"1px solid "+C.border,background:C.bg}}>
-            <span style={{fontSize:11,fontWeight:500,color:C.muted}}>Theme</span>
-            <span style={{fontSize:11,fontWeight:500,color:C.muted,textAlign:"center"}}>Sentiment</span>
-            <span style={{fontSize:11,fontWeight:500,color:C.muted,textAlign:"center"}}>Evidence</span>
-          </div>
-          {themes.map((theme,i)=>{
-            const tColor=theme.sentiment==="positive"?"#059669":theme.sentiment==="negative"?"#dc2626":"#d97706";
-            const tBg=theme.sentiment==="positive"?"#dcfce7":theme.sentiment==="negative"?"#fee2e2":"#fef3c7";
-            return(
-              <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 100px 80px",padding:"14px 20px",borderBottom:i<themes.length-1?"1px solid "+C.borderSoft:"none",alignItems:"center"}}>
-                <span style={{fontSize:13,fontWeight:500,color:C.text}}>{theme.name}</span>
-                <div style={{textAlign:"center"}}>
-                  <span style={{fontSize:11,fontWeight:500,padding:"3px 10px",borderRadius:6,background:tBg,color:tColor}}>{theme.sentiment.charAt(0).toUpperCase()+theme.sentiment.slice(1)}</span>
-                </div>
-                <div style={{textAlign:"center",fontSize:12,color:C.muted}}>{theme.count||(theme.quotes||[]).length}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    )}
+
 
     {/* Full evidence quotes */}
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
         <div>
           <div style={{fontSize:16,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Engine Quotes</div>
-          <div style={{fontSize:12,color:C.muted,marginTop:2}}>What AI engines actually say about {brandName} {"\u2014"} full context from each response</div>
+          <div style={{fontSize:12,color:C.muted,marginTop:2}}>What AI engines actually say about {brandName} {"\u2014"} filtered by sentiment, tagged by theme</div>
         </div>
       </div>
 
@@ -5795,8 +5772,8 @@ function SentimentPage({r}){
                 <div style={{display:"flex",alignItems:"center",gap:8,fontSize:11}}>
                   <span style={{padding:"2px 8px",borderRadius:4,background:(engineColors[mention.engine]||C.accent)+"10",color:engineColors[mention.engine]||C.accent,fontWeight:500}}>{mention.engine}</span>
                   <span style={{color:C.muted}}>{mention.query}</span>
-                  {mention.triggerWord&&(
-                    <span style={{padding:"2px 6px",borderRadius:4,background:sBg,color:sColor,fontWeight:500}}>"{mention.triggerWord}"</span>
+                  {mention.theme&&(
+                    <span style={{padding:"2px 6px",borderRadius:4,background:"#f1f5f9",color:"#475569",fontSize:10,fontWeight:500}}>{mention.theme}</span>
                   )}
                 </div>
               </div>
