@@ -5329,7 +5329,7 @@ function PlaybookPage({r,goTo,activeProject}){
   const[editProduct,setEditProduct]=useState(null);
   const[prodForm,setProdForm]=useState({name:"",description:"",features:[]});
   const[featureInput,setFeatureInput]=useState("");
-  const[generatingIdx,setGeneratingIdx]=useState(null);const[seoMarkup,setSeoMarkup]=useState("");const[generatingSeo,setGeneratingSeo]=useState(false);
+  const[generating,setGenerating]=useState(false);
 
   const projectId=activeProject?.id||null;
   const brand=r?.clientData?.brand||"";
@@ -5409,7 +5409,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const parsed=safeJSON(result);
       if(parsed){setPlaybook(prev=>({...prev,brand_voice:{tone:parsed.tone||"",personality:parsed.personality||"",dos:parsed.dos||[],donts:parsed.donts||[],examples:parsed.examples||[]}}));}
     }catch(e){console.error("Voice generation failed:",e);}
-    setGeneratingIdx(null);
+    setGenerating(false);
   };
 
   const genTaglines=async()=>{
@@ -5420,7 +5420,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const parsed=safeJSON(result);
       if(parsed){setPlaybook(prev=>({...prev,taglines:{primary:parsed.primary||"",supporting:parsed.supporting||[]}}));}
     }catch(e){console.error("Taglines generation failed:",e);}
-    setGeneratingIdx(null);
+    setGenerating(false);
   };
 
   const genVisual=async()=>{
@@ -5431,7 +5431,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const parsed=safeJSON(result);
       if(parsed){setPlaybook(prev=>({...prev,visual_ci:{primaryColor:parsed.primaryColor||"#000000",secondaryColor:parsed.secondaryColor||"#ffffff",accentColor:parsed.accentColor||"#2563eb",fonts:parsed.fonts||[],logoUrl:parsed.logoUrl||prev.visual_ci.logoUrl||""}}));}
     }catch(e){console.error("Visual CI generation failed:",e);}
-    setGeneratingIdx(null);
+    setGenerating(false);
   };
 
   const genCompliance=async()=>{
@@ -5444,7 +5444,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const parsed=safeJSON(result);
       if(parsed){setPlaybook(prev=>({...prev,compliance:{restrictions:parsed.restrictions||[],notes:parsed.notes||""}}));}
     }catch(e){console.error("Compliance generation failed:",e);}
-    setGeneratingIdx(null);
+    setGenerating(false);
   };
 
   const genPositioning=async()=>{
@@ -5457,7 +5457,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const parsed=safeJSON(result);
       if(Array.isArray(parsed)){setPlaybook(prev=>({...prev,positioning:parsed}));}
     }catch(e){console.error("Positioning generation failed:",e);}
-    setGeneratingIdx(null);
+    setGenerating(false);
   };
 
   const renderTab=()=>{
@@ -5882,7 +5882,7 @@ function ContentHubPage({r,goTo,activeProject,onUpdate}){
   const[activeTab,setActiveTab]=useState("grid");
   const[contentLibrary,setContentLibrary]=useState([]);
   const[loading,setLoading]=useState(true);
-  const[generating,setGenerating]=useState(false);
+  const[generatingIdx,setGeneratingIdx]=useState(null);const[seoMarkup,setSeoMarkup]=useState("");const[generatingSeo,setGeneratingSeo]=useState(false);
   const[regenGrid,setRegenGrid]=useState(false);
   const[editingContent,setEditingContent]=useState(null);
   const[filterType,setFilterType]=useState("all");
