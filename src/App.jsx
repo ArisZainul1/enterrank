@@ -984,7 +984,7 @@ Return JSON only:
           if(posMatch&&!negMatch)sentimentLabel="positive";
           else if(negMatch&&!posMatch)sentimentLabel="negative";
           else if(posMatch&&negMatch)sentimentLabel="mixed";
-          brandMentions.push({text:contextWindow,engine:resp.engine,query:resp.query,sentiment:sentimentLabel,triggerWord:posMatch?posMatch[0]:(negMatch?negMatch[0]:"")});
+          brandMentions.push({text:contextWindow.replace(/\[([^\]]*)\]\([^)]*\)/g,"$1").replace(/https?:\/\/[^\s)]+/g,"").replace(/\*\*([^*]*)\*\*/g,"$1").replace(/\*([^*]*)\*/g,"$1").replace(/^#{1,6}\s*/gm,"").replace(/^[-*]{3,}\s*$/gm,"").replace(/^\s*[-*+]\s+/gm,"").replace(/^\s*\d+\.\s+/gm,"").replace(/\(\s*\)/g,"").replace(/\s{2,}/g," ").trim(),engine:resp.engine,query:resp.query,sentiment:sentimentLabel,triggerWord:posMatch?posMatch[0]:(negMatch?negMatch[0]:"")});
           break;
         }
       }
@@ -2635,7 +2635,7 @@ function LandingPage({ onGetStarted }) {
                     {l:"Best Engine",v:"ChatGPT",c:"#10A37F"}
                   ].map((k,i)=>(
                     <div key={i} style={{background:"#f8fafc",borderRadius:6,padding:"6px 6px",border:"1px solid #f1f5f9",textAlign:"center"}}>
-                      <div style={{fontSize:6,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".04em",marginBottom:2}}>{k.l}</div>
+                      <div style={{fontSize:6,color:"#94a3b8",letterSpacing:".01em",marginBottom:2}}>{k.l}</div>
                       <div style={{fontSize:k.l==="Best Engine"?9:11,fontWeight:500,color:k.c,fontFamily:"'Outfit',-apple-system,sans-serif"}}>{k.v}</div>
                     </div>
                   ))}
@@ -3605,7 +3605,7 @@ Return JSON only:
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,alignItems:"stretch"}}>
           {/* LEFT PANEL: Available Archetypes */}
           <div>
-            <div style={{fontSize:12,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:10}}>Available Archetypes</div>
+            <div style={{fontSize:12,fontWeight:500,color:C.muted,letterSpacing:".01em",marginBottom:10}}>Available Archetypes</div>
             <div style={{display:"flex",flexDirection:"column",gap:8,minHeight:300}}>
               {availableArchetypes.map((arch)=>{
                 const isSelected=!!selectedArchetypes.find(s=>s.id===arch.id);
@@ -3664,7 +3664,7 @@ Return JSON only:
 
           {/* RIGHT PANEL: Selected Archetypes (max 3) */}
           <div>
-            <div style={{fontSize:12,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:10}}>Focus Archetypes <span style={{color:C.sub,textTransform:"none",letterSpacing:0}}>({selectedArchetypes.length}/3)</span></div>
+            <div style={{fontSize:12,fontWeight:500,color:C.muted,letterSpacing:".01em",marginBottom:10}}>Focus Archetypes <span style={{color:C.sub,textTransform:"none",letterSpacing:0}}>({selectedArchetypes.length}/3)</span></div>
             <div
               style={{minHeight:300,flex:1,overflowY:"auto",maxHeight:500,border:"1px solid "+(selectedArchetypes.length===0?C.border:C.accent+"20"),borderRadius:12,padding:12,display:"flex",flexDirection:"column",gap:8,transition:"all .2s",background:selectedArchetypes.length===0?C.bg+"40":"transparent"}}
             >
@@ -3834,14 +3834,14 @@ function DashboardPage({r,history,goTo}){
   const dWeights=r.engineWeights||getEngineWeights(r.clientData?.region);
   const avgMentions=Math.round(r.engines.reduce((sum,e)=>{const w=dWeights[e.id]||(1/r.engines.length);return sum+(e.mentionRate*w);},0));
   const avgCitations=Math.round(r.engines.reduce((sum,e)=>{const w=dWeights[e.id]||(1/r.engines.length);return sum+(e.citationRate*w);},0));
-  const avgSentiment=r.sentiment?.brand?.avg||50;
+  const avgSentiment=r.sentiment?.brand?.posPercent??r.sentiment?.brand?.avg??50;
   const prev=history.length>1?history[history.length-2]:null;
   const prevSentiment=prev?.sentimentPerEngine?Math.round(((prev.sentimentPerEngine.gpt||50)+(prev.sentimentPerEngine.gemini||50)+(prev.sentimentPerEngine.perplexity||50))/3):null;
 
   // ── Data readiness flags (for progressive loading placeholders) ──
   const painPointsReady=r.painPoints&&r.painPoints.some(p=>p.score>0||(p.evidence&&p.evidence.length>0));
   const competitorsReady=r.competitors&&r.competitors.length>0&&r.competitors.some(c=>(c.mentionRate||0)>0||(c.citationRate||0)>0||(c.painPoints||[]).some(p=>p.score>0));
-  const sentimentReady=r.sentiment?.brand?.avg!=null&&r.sentiment.brand.summary&&r.sentiment.brand.summary!=="Sentiment analysis unavailable";
+  const sentimentReady=(r.sentiment?.brand?.posPercent!=null||r.sentiment?.brand?.avg!=null);
 
   const delta=(cur,pre)=>{
     if(pre===null||pre===undefined)return <span style={{fontSize:10,fontWeight:500,color:C.muted,background:C.bg,padding:"2px 8px",borderRadius:100}}>First audit</span>;
@@ -3909,7 +3909,7 @@ function DashboardPage({r,history,goTo}){
     <div style={{marginBottom:32}}>
       {/* Overall Score — circular ring */}
       <div style={{textAlign:"center",marginBottom:24}}>
-        <div style={{fontSize:13,fontWeight:500,color:C.muted,marginBottom:12}}>Engine Visibility Score<InfoTip text="Weighted average across all engines. Weights based on estimated regional market share (Q1 2026)."/></div>
+        <div style={{fontSize:13,fontWeight:500,color:C.muted,marginBottom:12}}>Engine Visibility Score<InfoTip text="Weighted average across all engines based on estimated regional market share."/></div>
         <div style={{position:"relative",width:140,height:140,margin:"0 auto"}}>
           <svg viewBox="0 0 140 140" style={{width:140,height:140}}>
             <circle cx="70" cy="70" r="62" fill="none" stroke={C.borderSoft} strokeWidth="6"/>
@@ -3935,13 +3935,13 @@ function DashboardPage({r,history,goTo}){
       {/* 4 KPI cards in a row */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
         {[
-          {label:"Mention Rate",value:avgMentions+"%",prev:prev?.mentions,color:C.accent,tip:"Percentage of queries where your brand appears in the response. Averaged across all engines, weighted by regional market share."},
-          {label:"Citation Rate",value:avgCitations+"%",prev:prev?.citations,color:"#8b5cf6",tip:"Percentage of queries where AI engines specifically recommend or link to your brand. Citations are stronger than mentions."},
-          {label:"Sentiment Score",value:sentimentReady?(avgSentiment>=55?"Positive":avgSentiment>=45?"Neutral":"Negative"):"...",prev:null,color:sentimentReady?(avgSentiment>=55?C.green:avgSentiment>=45?C.amber:C.red):C.muted,tip:"How AI engines describe your brand. Derived from actual response language, not an AI-generated rating."},
+          {label:"Mention Rate",value:avgMentions+"%",prev:prev?.mentions,color:C.accent,tip:"Percentage of queries where AI engines mention your brand. Averaged across all engines, weighted by regional market share."},
+          {label:"Citation Rate",value:avgCitations+"%",prev:prev?.citations,color:"#8b5cf6",tip:"Percentage of queries where AI engines specifically recommend or link to your brand. Citations are stronger signals than mentions."},
+          {label:"Sentiment Score",value:sentimentReady?(avgSentiment>=70?"Very Positive":avgSentiment>=50?"Positive":avgSentiment>=35?"Mixed":avgSentiment>=20?"Negative":"Very Negative"):"...",prev:null,color:sentimentReady?(avgSentiment>=50?C.green:avgSentiment>=35?C.amber:C.red):C.muted,tip:"How positively AI engines describe your brand, based on language analysis of all responses that mention you."},
           {label:"Best Engine",value:bestEngine.name.length>12?(bestEngine.name||"").replace(" Overview",""):bestEngine.name,color:bestEngine.name==="ChatGPT"?"#10A37F":(bestEngine.name||"").includes("Google")?"#EA4335":bestEngine.name==="Perplexity"?"#20808D":"#4285F4",tip:"The AI engine where your brand has the highest visibility score."}
         ].map((kpi,i)=>(
           <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 18px",textAlign:"center"}}>
-            <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:8}}>{kpi.label}{kpi.tip&&<InfoTip text={kpi.tip}/>}</div>
+            <div style={{fontSize:11,fontWeight:500,color:C.muted,letterSpacing:".01em",marginBottom:8}}>{kpi.label}{kpi.tip&&<InfoTip text={kpi.tip}/>}</div>
             <div style={{display:"flex",alignItems:"baseline",gap:6,justifyContent:"center"}}>
               <span style={{fontSize:28,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:kpi.color,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%"}}>{kpi.value}</span>
               {kpi.prev!=null&&kpi.label!=="Best Engine"&&delta(parseInt(kpi.value),kpi.prev)}
@@ -3958,7 +3958,7 @@ function DashboardPage({r,history,goTo}){
           return (
             <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 20px",textAlign:"center"}}>
               <div style={{fontSize:14,fontWeight:500,color:e.color||C.text,marginBottom:2}}>{e.name}</div>
-              <div style={{fontSize:10,color:C.muted,marginBottom:12}}>{w?Math.round(w*100)+"% weight":""}{i===0&&<InfoTip text="Weights reflect estimated user share in your region. Higher weight = more impact on your overall score."/>}</div>
+              <div style={{fontSize:10,color:C.muted,marginBottom:12}}>{w?Math.round(w*100)+"% weight":""}{i===0&&<InfoTip text="Estimated user share in your region. Higher weight means more impact on your overall score."/>}</div>
               <div style={{fontSize:28,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif",marginBottom:12}}>{e.score}%</div>
               <div style={{display:"flex",justifyContent:"center",gap:16,fontSize:11,color:C.sub}}>
                 <div style={{textAlign:"center"}}>
@@ -3997,7 +3997,7 @@ function DashboardPage({r,history,goTo}){
 
       {/* Category Health */}
       <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 20px"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:14,fontWeight:500,color:C.text}}>Website Readiness</span><InfoTip text="Scored from a live crawl of your website. Weighted by category importance for AI citations."/></div>{r.websiteReadinessScore!=null&&<span style={{fontSize:14,fontWeight:500,color:r.websiteReadinessScore>=60?C.green:r.websiteReadinessScore>=35?C.amber:C.red}}>{r.websiteReadinessScore}%</span>}</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:14,fontWeight:500,color:C.text}}>Website Readiness</span><InfoTip text="Scored from a live crawl of your website, weighted by category importance for AI engine citations."/></div>{r.websiteReadinessScore!=null&&<span style={{fontSize:14,fontWeight:500,color:r.websiteReadinessScore>=60?C.green:r.websiteReadinessScore>=35?C.amber:C.red}}>{r.websiteReadinessScore}%</span>}</div>
         <div style={{ marginBottom: 14, padding: "10px 12px", background: C.bg, borderRadius: 8, minHeight: 60 }}>
           {r.narratives?.categoryHealth ? (
             <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6 }}>{r.narratives.categoryHealth}</div>
@@ -5629,6 +5629,7 @@ function PlaybookPage({r,goTo,activeProject}){
 
 /* ─── PAGE: SENTIMENT ANALYSIS ─── */
 function SentimentPage({r}){
+  const cleanQuoteText=(text)=>{if(!text)return"";return text.replace(/\[([^\]]*)\]\([^)]*\)/g,"$1").replace(/https?:\/\/[^\s)]+/g,"").replace(/\*\*([^*]*)\*\*/g,"$1").replace(/\*([^*]*)\*/g,"$1").replace(/^#{1,6}\s*/gm,"").replace(/^[-*]{3,}\s*$/gm,"").replace(/^\s*[-*+]\s+/gm,"").replace(/^\s*\d+\.\s+/gm,"").replace(/\(\s*\)/g,"").replace(/\s{2,}/g," ").replace(/^\s*[-\u2013\u2014]+\s*/g,"").replace(/\s*[-\u2013\u2014]+\s*$/g,"").trim();};
   const[activeTab,setActiveTab]=useState("all");
   const signals=r?.sentimentSignals||{};
   const brandMentions=signals.brandMentions||signals.quotes||[];
@@ -5663,7 +5664,7 @@ function SentimentPage({r}){
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:32}}>
       {/* Brand sentiment */}
       <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"20px 24px"}}>
-        <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:16}}>
+        <div style={{fontSize:11,fontWeight:500,color:C.muted,letterSpacing:".01em",marginBottom:16}}>
           {brandName} Engine Sentiment
           <InfoTip text="Based on language analysis of every AI engine response that mentions your brand. Each mention is classified by the tone of surrounding text."/>
         </div>
@@ -5689,7 +5690,7 @@ function SentimentPage({r}){
 
       {/* Competitor comparison */}
       <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"20px 24px"}}>
-        <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:16}}>
+        <div style={{fontSize:11,fontWeight:500,color:C.muted,letterSpacing:".01em",marginBottom:16}}>
           Competitor Comparison
           <InfoTip text="Same methodology applied to every competitor. Shows what percentage of their AI engine mentions are positive."/>
         </div>
@@ -5788,7 +5789,7 @@ function SentimentPage({r}){
             return(
               <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:10,borderLeft:"3px solid "+sBorder,padding:"14px 18px"}}>
                 <div style={{fontSize:13,color:C.sub,lineHeight:1.7,marginBottom:10,fontStyle:"italic"}}>
-                  "{mention.text}"
+                  "{cleanQuoteText(mention.text)}"
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:8,fontSize:11}}>
                   <span style={{padding:"2px 8px",borderRadius:4,background:(engineColors[mention.engine]||C.accent)+"10",color:engineColors[mention.engine]||C.accent,fontWeight:500}}>{mention.engine}</span>
