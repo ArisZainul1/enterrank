@@ -5166,7 +5166,10 @@ function CitationSourcesPage({ r }) {
   return (
     <div>
       <div style={{ marginBottom: 32 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 500, color: C.text, margin: 0, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>Citation Sources</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 500, color: C.text, margin: 0, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>Citation Sources</h2>
+          <InfoTip text="The actual websites and domains that AI engines reference when answering queries about your industry. Shows which sources each engine pulls from and how often."/>
+        </div>
         <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>The sources AI engines trust when talking about {brandName}</p>
       </div>
 
