@@ -1874,7 +1874,7 @@ Return JSON only:
   "dashboard": "<3-4 sentences. Start with what the score means in context. Compare to top competitor. Highlight the biggest gap or opportunity. End with the single most important thing to focus on.>",
   "dashboardLabel": "<5-8 words contextualizing the score label>",
   "sentiment": "<3-4 sentences. Describe HOW AI engines talk about the brand. What narrative are they pushing? How does this compare to competitors? What perception gap exists?>",
-  "queryCategories": "<3-4 sentences. Which types of queries is the brand winning? Which is it losing? What does this mean for customer discovery? Where should content efforts focus?>",
+  "queryCategories": "<3-4 sentences. Summarise which query TYPES (recommendation, comparison, how-to, etc.) the brand performs best and worst on. Use percentages, NOT fractions like X out of Y. Name the weakest category and recommend a specific action. Be specific: e.g. cited in 85% of recommendation queries but only 40% of comparison queries.>",
   "categoryHealth": "<3-4 sentences. Translate technical scores into business language. Which website signals are helping visibility? Which gaps are holding the brand back? Be specific about what is missing.>",
   "citationSources": "<2-3 sentences. What types of sources are AI engines pulling from? Are they authoritative? Are there obvious sources missing that competitors likely have?>",
   "competitiveLandscape": "<2-3 sentences. How does the brand compare overall? Who is the biggest threat? What are competitors doing differently that is working?>"
@@ -4523,7 +4523,10 @@ function QueryCategoriesPage({ r }) {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 500, color: C.text, margin: 0, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>Query Categories</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 500, color: C.text, margin: 0, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>Query Categories</h2>
+          <InfoTip text="How your brand performs across different types of AI queries. Each topic was tested on all engines. Cited means the engine recommended you, Mentioned means you were named, Absent means you were not included."/>
+        </div>
         <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Which customer questions lead to {r.clientData.brand} — and which don't</p>
       </div>
 
@@ -4544,7 +4547,7 @@ function QueryCategoriesPage({ r }) {
           { label: "Absent", value: totalAbsent, sub: Math.round(totalAbsent / Math.max(totalDataPoints, 1) * 100) + "%", color: "#991b1b" }
         ].map((s, i) => (
           <div key={i} style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "16px 18px", textAlign: "center" }}>
-            <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>{s.label}</div>
+            <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, letterSpacing: ".01em", marginBottom: 8 }}>{s.label}</div>
             <div style={{ fontSize: 24, fontWeight: 500, fontFamily: "'Satoshi',-apple-system,sans-serif", color: s.color }}>{s.value}</div>
             {s.sub && <div style={{ fontSize: 11, color: s.color, marginTop: 2 }}>{s.sub}</div>}
           </div>
