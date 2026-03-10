@@ -6049,69 +6049,92 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
   /* ── Suggested Tab ── */
   const renderSuggested=()=>{
     const suggestions=[];
-    const gptQueries=Array.isArray(r?.gptData?.queries)?r.gptData.queries:[];
-    const gemQueries=Array.isArray(r?.gemData?.queries)?r.gemData.queries:[];
+    const engines=r?.engines||[];
     const searchQueries=Array.isArray(r?.searchQueries)?r.searchQueries:[];
+    const negThemes=(r?.sentimentSignals?.themes||[]).filter(t=>t.sentiment==="negative").map(t=>t.name);
+    const channelGaps=(r?.verifiedChannelGaps||[]).slice(0,5);
+    const getTypeColor=(type)=>({"Blog Article":"#dbeafe","FAQ Page":"#dcfce7","Comparison Page":"#fef3c7","Landing Page":"#e0e7ff","Press Release":"#fce7f3","Case Study":"#f3e8ff","How-To Guide":"#ccfbf1","Video Script":"#fee2e2","Social Media Post Series":"#cffafe","Technical Documentation":"#f1f5f9","Product/Service Page":"#fef9c3","Email Newsletter":"#ede9fe"}[type]||"#f1f5f9");
+    const getTypeTextColor=(type)=>({"Blog Article":"#1e40af","FAQ Page":"#166534","Comparison Page":"#92400e","Landing Page":"#3730a3","Press Release":"#9d174d","Case Study":"#6b21a8","How-To Guide":"#0f766e","Video Script":"#991b1b","Social Media Post Series":"#155e75","Technical Documentation":"#475569","Product/Service Page":"#854d0e","Email Newsletter":"#5b21b6"}[type]||"#475569");
+    const typeToId=(type)=>{const map={"Blog Article":"blog","FAQ Page":"faq","Comparison Page":"blog","Landing Page":"landing","Press Release":"blog","Case Study":"blog","How-To Guide":"blog","Video Script":"video","Social Media Post Series":"social","Technical Documentation":"blog","Product/Service Page":"landing","Email Newsletter":"email"};return map[type]||"blog";};
 
-    searchQueries.forEach((q,i)=>{
+    // Build absent and mentioned-not-cited queries from all engines
+    const absentQueries=[];
+    const mentionedNotCited=[];
+    searchQueries.forEach((q,qi)=>{
       const qText=typeof q==="string"?q:(q&&q.query)||"";
       if(!qText)return;
-      const gptStatus=gptQueries[i]?.status||"Absent";
-      const gemStatus=gemQueries[i]?.status||"Absent";
-      if(gptStatus==="Absent"&&gemStatus==="Absent"){
-        suggestions.push({type:"blog",topic:qText,reason:"Your brand is absent on both ChatGPT and Gemini for this query",priority:"high",source_query:qText});
-      }else if(gptStatus==="Absent"||gemStatus==="Absent"){
-        suggestions.push({type:"faq",topic:qText,reason:`Your brand is absent on ${gptStatus==="Absent"?"ChatGPT":"Gemini"} for this query`,priority:"medium",source_query:qText});
-      }
-    });
-
-    const contentGrid=Array.isArray(r?.contentTypes)?r.contentTypes:[];
-    (contentGrid||[]).slice(0,5).forEach(item=>{
-      const topic=item.type||item.topic||item.title||"";
-      const chArr=Array.isArray(item.channels)?item.channels:[];
-      const channel=(chArr[0]||"").toLowerCase();
-      let type="blog";
-      if(channel.includes("social")||channel.includes("linkedin")||channel.includes("twitter")||channel.includes("instagram")||channel.includes("facebook")||channel.includes("tiktok"))type="social";
-      else if(channel.includes("email")||channel.includes("newsletter"))type="email";
-      else if(channel.includes("video")||channel.includes("youtube"))type="video";
-      else if(channel.includes("faq"))type="faq";
-      if(topic&&!suggestions.find(s=>s.topic===topic)){
-        suggestions.push({type,topic,reason:`Recommended in your Content Grid — ${chArr.length?chArr.join(", "):"multi-channel"}`,priority:item.p==="P0"?"high":"medium",channel:chArr[0]||null});
-      }
-    });
-
-    const roadmap=Array.isArray(r?.roadmap)?r.roadmap:[];
-    (roadmap||[]).forEach(phase=>{
-      const tasks=Array.isArray(phase.tasks)?phase.tasks:Array.isArray(phase.items)?phase.items:Array.isArray(phase.actions)?phase.actions:[];
-      (tasks||[]).slice(0,3).forEach(task=>{
-        const taskText=typeof task==="string"?task:(task&&(task.task||task.title||task.description))||"";
-        if(taskText&&taskText.length>20&&!suggestions.find(s=>s.topic===taskText)){
-          suggestions.push({type:"blog",topic:taskText,reason:`From your 90-Day Roadmap — ${phase.phase||phase.title||""}`,priority:"medium",source_roadmap_item:taskText});
+      let absentCount=0,mentionCount=0,citedCount=0;
+      engines.forEach(e=>{
+        const eqArr=e.queries||[];
+        const eq=eqArr[qi];
+        if(eq){
+          if(eq.status==="Absent")absentCount++;
+          else if(eq.status==="Mentioned")mentionCount++;
+          else if(eq.status==="Cited")citedCount++;
         }
       });
+      if(absentCount>=3)absentQueries.push({query:qText,absentCount,type:qText.toLowerCase().match(/\b(how|guide|tutorial|step)\b/)?"howto":qText.toLowerCase().match(/\b(vs|versus|compare|comparison|better|best)\b/)?"comparison":qText.toLowerCase().match(/\b(best|top|recommend)\b/)?"landing":"faq"});
+      else if(mentionCount>=2&&citedCount===0)mentionedNotCited.push({query:qText,mentionCount});
+    });
+
+    // Map absent queries to content types
+    absentQueries.slice(0,4).forEach(aq=>{
+      const typeMap={howto:{type:"How-To Guide",reason:"Brand absent on "+aq.absentCount+" engines for this how-to query"},comparison:{type:"Comparison Page",reason:"Brand absent on "+aq.absentCount+" engines for this comparison query"},landing:{type:"Landing Page",reason:"Brand absent on "+aq.absentCount+" engines for this recommendation query"},faq:{type:"FAQ Page",reason:"Brand absent on "+aq.absentCount+" engines for this informational query"}};
+      const mapped=typeMap[aq.type]||typeMap.faq;
+      suggestions.push({title:aq.query,type:mapped.type,gap:"Absent on "+aq.absentCount+"/"+engines.length+" engines for: "+aq.query,description:mapped.reason,priority:"high",source_query:aq.query,genType:typeToId(mapped.type)});
+    });
+
+    // Mentioned but not cited
+    mentionedNotCited.slice(0,2).forEach(mq=>{
+      suggestions.push({title:"Structured content for: "+mq.query,type:"Product/Service Page",gap:"Mentioned but not cited on "+mq.mentionCount+" engines",description:"Improve structured data and depth so engines cite, not just mention",priority:"high",source_query:mq.query,genType:"landing"});
+    });
+
+    // Negative sentiment themes
+    negThemes.slice(0,1).forEach(theme=>{
+      suggestions.push({title:"Address: "+theme,type:"Case Study",gap:"Negative sentiment theme: "+theme,description:"Counter this perception with evidence-based content",priority:"medium",genType:"blog"});
+    });
+
+    // Platform gaps
+    channelGaps.slice(0,2).forEach(gap=>{
+      const isVideo=gap.domain.includes("youtube");
+      const isSocial=["linkedin","facebook","twitter","instagram","tiktok","reddit"].some(s=>gap.domain.includes(s));
+      const type=isVideo?"Video Script":isSocial?"Social Media Post Series":"Blog Article";
+      suggestions.push({title:"Establish presence on "+gap.domain,type,gap:"Platform gap: "+gap.domain+" ("+gap.citations+" citations)",description:gap.action||"Create and optimise presence on this platform",priority:"medium",genType:typeToId(type)});
+    });
+
+    // Fill remaining from content grid
+    const contentGrid=Array.isArray(r?.contentTypes)?r.contentTypes:[];
+    contentGrid.slice(0,3).forEach(item=>{
+      if(suggestions.length>=9)return;
+      const topic=item.type||item.topic||item.title||"";
+      if(!topic||suggestions.find(s=>s.title===topic))return;
+      suggestions.push({title:topic,type:"Blog Article",gap:item.rationale||"From content strategy grid",description:item.rationale||"Recommended in audit content grid",priority:item.p==="P0"?"high":"medium",genType:"blog"});
     });
 
     suggestions.sort((a,b)=>(a.priority==="high"?0:1)-(b.priority==="high"?0:1));
+    const finalSuggestions=suggestions.slice(0,9);
 
     const priorityColors={high:{bg:"#fee2e2",text:"#991b1b",label:"High Priority"},medium:{bg:"#fef3c7",text:"#92400e",label:"Medium"},low:{bg:"#f0fdf4",text:"#166534",label:"Low"}};
 
-    if(suggestions.length===0)return(<div style={{padding:40,textAlign:"center"}}><div style={{fontSize:14,fontWeight:500,color:C.text}}>No suggestions yet</div><div style={{fontSize:12,color:C.muted,marginTop:4}}>Run an audit first to get content recommendations based on your visibility gaps.</div></div>);
+    if(finalSuggestions.length===0)return(<div style={{padding:40,textAlign:"center"}}><div style={{fontSize:14,fontWeight:500,color:C.text}}>No suggestions yet</div><div style={{fontSize:12,color:C.muted,marginTop:4}}>Run an audit first to get content recommendations based on your visibility gaps.</div></div>);
 
     return(<div>
-      <div style={{fontSize:12,color:C.muted,marginBottom:16}}>{suggestions.length} content suggestions based on your audit data</div>
-      {suggestions.slice(0,15).map((s,i)=>{
-        const typeInfo=contentTypes.find(ct=>ct.id===s.type)||contentTypes[0];
+      <div style={{fontSize:12,color:C.muted,marginBottom:16}}>{finalSuggestions.length} content suggestions mapped to your audit gaps</div>
+      {finalSuggestions.map((s,i)=>{
         const pColor=priorityColors[s.priority]||priorityColors.medium;
-        return(<div key={i} style={{padding:"16px 20px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,marginBottom:10,display:"flex",alignItems:"flex-start",gap:14}}>
+        return(<div key={i} style={{padding:"16px 20px",background:C.surface,border:"1px solid "+C.border,borderRadius:12,marginBottom:10,display:"flex",alignItems:"flex-start",gap:14}}>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:500,color:C.text,lineHeight:1.4}}>{s.topic}</div>
-            <div style={{fontSize:11,color:C.muted,marginTop:4}}>{s.reason}</div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{fontSize:13,fontWeight:500,color:C.text,lineHeight:1.4}}>{s.title}</div>
+              {s.priority==="high"&&<span style={{fontSize:9,fontWeight:500,padding:"2px 6px",borderRadius:4,background:"#fee2e2",color:"#dc2626"}}>High Priority</span>}
+            </div>
+            {s.gap&&<div style={{fontSize:11,color:C.muted,marginTop:4,fontStyle:"italic"}}>Addresses: {s.gap}</div>}
+            {s.description&&<div style={{fontSize:11,color:C.sub,marginTop:4}}>{s.description}</div>}
             <div style={{display:"flex",gap:6,marginTop:8}}>
-              <span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:pColor.bg,color:pColor.text,fontWeight:500}}>{pColor.label}</span>
-              <span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:"#f1f5f9",color:C.muted}}>{typeInfo.label}</span>
+              <span style={{fontSize:10,fontWeight:500,padding:"2px 8px",borderRadius:4,background:getTypeColor(s.type),color:getTypeTextColor(s.type)}}>{s.type}</span>
             </div>
           </div>
-          <button onClick={()=>generateContent(s.type,s.topic,s.channel,s.source_query,s.source_roadmap_item)} disabled={generating} style={{padding:"8px 16px",fontSize:11,fontWeight:500,background:generating?"#e5e7eb":C.accent,color:generating?"#999":"#fff",border:"none",borderRadius:8,cursor:generating?"default":"pointer",whiteSpace:"nowrap",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{generating?"Generating...":"Generate"}</button>
+          <button onClick={()=>generateContent(s.genType||"blog",s.title,null,s.source_query,null)} disabled={generating} style={{padding:"8px 16px",fontSize:11,fontWeight:500,background:generating?"#e5e7eb":C.accent,color:generating?"#999":"#fff",border:"none",borderRadius:8,cursor:generating?"default":"pointer",whiteSpace:"nowrap",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{generating?"Generating...":"Generate"}</button>
         </div>);
       })}
     </div>);
