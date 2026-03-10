@@ -3177,6 +3177,7 @@ function NewAuditPage({data,setData,onRun,history=[]}){
   const[availableArchetypes,setAvailableArchetypes]=useState([]);
   const[selectedArchetypes,setSelectedArchetypes]=useState([]);
   const[generatingArchetypes,setGeneratingArchetypes]=useState(false);
+  const[archLoadMsg,setArchLoadMsg]=useState("Analysing brand context...");
   const[editingArch,setEditingArch]=useState(null);
   const[editArchData,setEditArchData]=useState({name:"",description:"",demographics:""});
   const[addingArch,setAddingArch]=useState(false);
@@ -3238,7 +3239,7 @@ Return JSON only:
       const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.");
       const result=safeJSON(raw);
       if(result&&result.topics&&Array.isArray(result.topics)){
-        const validTopics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,15);
+        const validTopics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>5).map(t=>t.trim()).slice(0,15);
         if(validTopics.length>0){
           setData(prev=>{
             const hasExisting=(prev.topics||[]).some(t=>(typeof t==="string"?t:"").trim().length>3);
@@ -3330,7 +3331,7 @@ Return JSON only:
       const parsed=safeJSON(raw);
       const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(topics&&Array.isArray(topics)&&topics.length>0){
-        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,15)}));
+        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>5).map(t=>t.trim()).slice(0,15)}));
         setAuditStep("topics");
       }else{
         setError("Failed to generate topics. Please try again.");
@@ -3388,10 +3389,13 @@ Return JSON only:
 
   const generateArchetypes=async()=>{
     setGeneratingArchetypes(true);
+    setArchLoadMsg("Analysing brand context...");
     try{
       const compNamesStr=(data.competitors||[]).filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
       let crawlSummary="";
+      setArchLoadMsg("Crawling website for brand signals...");
       try{const cached=getCachedCrawl(data.website||"");if(cached){crawlSummary=summariseCrawl(cached);}else{const cr=await crawlWebsite(data.website||"");if(cr){crawlCacheRef.current={url:data.website,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
+      setArchLoadMsg("Generating audience archetypes...");
       const prompt=`For "${data.brand}" in "${data.industry}" (${data.region||"Global"}).
 Website: ${data.website||"unknown"}
 Competitors: ${compNamesStr||"none"}
@@ -3413,6 +3417,7 @@ Return JSON only:
       const parsed=safeJSON(raw);
       if(parsed&&Array.isArray(parsed)&&parsed.length>0){
         const cleaned=parsed.filter(a=>a.name&&a.description).slice(0,7).map((a,i)=>({id:"arch-"+Date.now()+"-"+i,name:a.name.trim(),description:a.description.trim(),demographics:(a.demographics||"").trim()}));
+        setArchLoadMsg("Archetypes ready");
         setAvailableArchetypes(cleaned);
       }else{setAvailableArchetypes([]);}
     }catch(e){console.error("Archetype generation failed:",e);}
@@ -3469,13 +3474,15 @@ CRITICAL RULES:
 7. Each topic should be 10-25 words, natural language
 ${compNamesStr?"8. Do NOT mention competitor names: "+compNamesStr:""}
 
+You MUST return exactly 15 topics. Count them. If you have fewer than 15, add more until you reach exactly 15.
+
 Return JSON only:
-{"topics": ["topic 1", "topic 2", ...]}`;
+{"topics": ["topic 1", "topic 2", ..., "topic 15"]}`;
       const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Return ONLY valid JSON.");
       const parsed=safeJSON(raw);
       const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(topics&&Array.isArray(topics)&&topics.length>0){
-        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,15)}));
+        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>5).map(t=>t.trim()).slice(0,15)}));
       }else{setError("Failed to generate topics. Please try again.");}
     }catch(e){console.error("Topic generation from archetypes failed:",e);setError("Failed to generate topics. Check your API connection.");}
     setGenTopics(false);
@@ -3540,7 +3547,8 @@ Return JSON only:
       {generatingArchetypes&&availableArchetypes.length===0?(
         <div style={{textAlign:"center",padding:60}}>
           <div style={{width:24,height:24,border:"2.5px solid "+C.borderSoft,borderTopColor:C.accent,borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 12px"}}/>
-          <div style={{fontSize:13,color:C.sub}}>Generating audience archetypes for {data.brand}...</div>
+          <div style={{fontSize:13,color:C.sub,marginBottom:4}}>Generating audience archetypes for {data.brand}...</div>
+          <div style={{fontSize:11,color:C.muted}}>{archLoadMsg}</div>
         </div>
       ):(
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,alignItems:"stretch"}}>
@@ -3641,7 +3649,7 @@ Return JSON only:
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <span style={{fontSize:11,color:C.muted}}>{selectedArchetypes.length} of 3 selected</span>
           <button
-            onClick={()=>{setData(d=>({...d,archetypes:selectedArchetypes}));setAuditStep("topics");setGenTopics(true);generateTopicsFromArchetypes(selectedArchetypes);}}
+            onClick={()=>{setData(d=>({...d,archetypes:selectedArchetypes,topics:[]}));setAuditStep("topics");setGenTopics(true);generateTopicsFromArchetypes(selectedArchetypes);}}
             disabled={selectedArchetypes.length===0}
             style={{padding:"10px 24px",background:selectedArchetypes.length>0?C.accent:"#dde1e7",color:selectedArchetypes.length>0?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:500,cursor:selectedArchetypes.length>0?"pointer":"not-allowed",fontFamily:"'Satoshi',-apple-system,sans-serif"}}
           >
