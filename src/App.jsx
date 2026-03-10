@@ -6405,13 +6405,30 @@ function lsGetProject(id){return lsGetProjects().find(p=>p.id===id)||null;}
 
 /* ─── SUPABASE HELPERS ─── */
 
+async function sbGetUserId() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) return session.user.id;
+  } catch(e) {}
+  const isLocal = typeof window !== "undefined" && window.location.hostname === "localhost";
+  return isLocal ? "local-dev-user" : null;
+}
+
 async function sbSaveProject(projectData) {
-  const { data: existing } = await supabase
-    .from('projects')
-    .select('id')
-    .eq('user_id', 'default')
-    .eq('brand', projectData.brand)
-    .limit(1);
+  const userId = await sbGetUserId();
+  if (!userId) { console.error('No user ID available'); return null; }
+
+  // Enforce 5 project cap
+  const { count } = await supabase.from('projects').select('*', { count: 'exact', head: true }).eq('user_id', userId);
+
+  // Check if this is a new project (not update) and enforce cap
+  const { data: existingBrand } = await supabase.from('projects').select('id').eq('user_id', userId).eq('brand', projectData.brand).limit(1);
+  if ((!existingBrand || existingBrand.length === 0) && count >= 5) {
+    console.warn('Project cap reached (5 max)');
+    return { _capReached: true };
+  }
+
+  const existing = existingBrand;
 
   if (existing && existing.length > 0) {
     const { data, error } = await supabase
@@ -6433,7 +6450,7 @@ async function sbSaveProject(projectData) {
     const { data, error } = await supabase
       .from('projects')
       .insert({
-        user_id: 'default',
+        user_id: userId,
         brand: projectData.brand,
         website: projectData.website,
         industry: projectData.industry,
@@ -6453,7 +6470,7 @@ async function sbSaveAudit(projectId, apiData, computedScores) {
     .from('audits')
     .insert({
       project_id: projectId,
-      user_id: 'default',
+      user_id: (await sbGetUserId()) || 'default',
       results: apiData,
       overall_score: computedScores?.overall ?? null,
       mention_rate: computedScores?.mentions ?? null,
@@ -6467,10 +6484,12 @@ async function sbSaveAudit(projectId, apiData, computedScores) {
 }
 
 async function sbLoadProjects() {
+  const userId = await sbGetUserId();
+  if (!userId) return [];
   const { data, error } = await supabase
     .from('projects')
     .select('*, audits(id, overall_score, mention_rate, citation_rate, created_at)')
-    .eq('user_id', 'default')
+    .eq('user_id', userId)
     .order('updated_at', { ascending: false });
   if (error) { console.error('Error loading projects:', error); return []; }
   return data || [];
@@ -6519,7 +6538,8 @@ async function sbDeleteProject(projectId) {
     await supabase.from('audits').delete().eq('project_id', projectId);
 
     // Finally delete the project itself
-    const { error } = await supabase.from('projects').delete().eq('id', projectId);
+    const userId = await sbGetUserId();
+    const { error } = await supabase.from('projects').delete().eq('id', projectId).eq('user_id', userId || 'none');
     if (error) {
       console.error('Error deleting project:', error);
       return false;
@@ -6786,11 +6806,12 @@ function ProjectHub({onSelect,onNew,onLogout}){
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5" stroke={C.sub} strokeWidth="1.5"/></svg>
             <span style={{fontSize:15,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Workspaces</span>
+            {projects&&<span style={{fontSize:11,color:C.muted,marginLeft:4}}>{projects.length} / 5</span>}
           </div>
-          <button onClick={onNew} style={{padding:"8px 18px",background:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",display:"flex",alignItems:"center",gap:5,transition:"opacity .15s"}}
-            onMouseEnter={e=>e.currentTarget.style.opacity=".85"}
+          <button onClick={()=>{if(projects&&projects.length>=5){alert("Maximum 5 projects reached. Delete an existing project to create a new one.");return;}onNew();}} style={{padding:"8px 18px",background:projects&&projects.length>=5?"#e5e7eb":C.accent,color:projects&&projects.length>=5?"#9ca3af":"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:500,cursor:projects&&projects.length>=5?"not-allowed":"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",display:"flex",alignItems:"center",gap:5,transition:"opacity .15s"}}
+            onMouseEnter={e=>{if(!(projects&&projects.length>=5))e.currentTarget.style.opacity=".85";}}
             onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
-            New workspace
+            {projects&&projects.length>=5?"Limit reached":"New workspace"}
           </button>
         </div>
 
@@ -6830,7 +6851,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
             </div>
           ))}
           {/* Empty workspace slots */}
-          {projects.length<6&&Array.from({length:Math.min(3,6-projects.length)}).map((_,i)=>(
+          {projects.length<5&&Array.from({length:Math.min(3,5-projects.length)}).map((_,i)=>(
             <div key={`empty-${i}`} onClick={onNew} style={{padding:"16px 24px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",borderBottom:i<Math.min(3,6-projects.length)-1?`1px solid ${C.borderSoft}`:"none",opacity:.4,transition:"opacity .15s"}}
               onMouseEnter={e=>e.currentTarget.style.opacity=".7"}
               onMouseLeave={e=>e.currentTarget.style.opacity=".4"}>
