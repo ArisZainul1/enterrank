@@ -1683,6 +1683,19 @@ CITATION SOURCE GAPS (authoritative third-party platforms to target):
 IMPORTANT: The following are AUTHORITATIVE third-party sources where AI engines cite content. These are NOT competitor-owned websites. Do NOT recommend partnering with competitor sites or low-quality/irrelevant platforms. Only recommend establishing presence on reputable industry publications, review platforms, and directories.
 ${(()=>{try{const allSrc=citationSources?.all||[];const compDomainSet=new Set();(cd.competitors||[]).forEach(c=>{const name=(c.name||"").toLowerCase().replace(/\s+/g,"");const website=c.website||"";if(website){try{const hostname=new URL(website.startsWith("http")?website:"https://"+website).hostname.replace("www.","").toLowerCase();compDomainSet.add(hostname);hostname.split(".").slice(0,-1).forEach(part=>{if(part.length>3)compDomainSet.add(part);});}catch(e){}}if(name.length>3)compDomainSet.add(name);});const isCompDomain=(domain)=>{const dl=domain.toLowerCase();for(const comp of compDomainSet){if(dl.includes(comp)||comp.includes(dl.split(".")[0]))return true;}return false;};const lowQuality=["shopee","lazada","aliexpress","temu","wish.com","priceshop","mudah.my"];const topDomains=Object.entries(allSrc.reduce((acc,c)=>{try{const h=new URL(c.url).hostname.replace("www.","");if(!isCompDomain(h)&&!lowQuality.some(lq=>h.toLowerCase().includes(lq)))acc[h]=(acc[h]||0)+1;}catch(e){}return acc;},{})).sort((a,b)=>b[1]-a[1]).slice(0,8).map(d=>d[0]);return topDomains.length>0?topDomains.slice(0,5).map(d=>"- "+d+" (cited "+allSrc.filter(c=>{try{return new URL(c.url).hostname.replace("www.","")===d;}catch(e){return false;}}).length+" times)").join("\n"):"- No citation source data available";}catch(e){return"- No citation source data available";}})()}
 
+CURRENT BRAND VISIBILITY SCORE: ${overallScore}%
+
+CRITICAL LIFT RULES:
+- The brand currently scores ${overallScore}%. All projected improvements must be realistic relative to this baseline.
+- Phase 1 (Days 1-30): Target score should be ${Math.min(overallScore + Math.round((100 - overallScore) * 0.25), 95)}% (closing ~25% of the gap to 100%)
+- Phase 2 (Days 31-60): Target score should be ${Math.min(overallScore + Math.round((100 - overallScore) * 0.45), 97)}% (closing ~45% of the gap)
+- Phase 3 (Days 61-90): Target score should be ${Math.min(overallScore + Math.round((100 - overallScore) * 0.6), 98)}% (closing ~60% of the gap)
+- Each task's estimated lift must be a SPECIFIC number (not a range like "10-15%") and all task lifts in a phase must sum to approximately the phase's total improvement
+- For example: if current score is 83%, Phase 1 target is ~87%, so total Phase 1 lift is ~4 points spread across 3-4 tasks (e.g. +1.5%, +1%, +0.8%, +0.7%)
+- If current score is 40%, Phase 1 target is ~55%, so total Phase 1 lift is ~15 points spread across tasks
+- NEVER project a score above 95% — diminishing returns make this unrealistic
+- Each task's lift should be proportional to its impact — technical fixes are smaller lifts, content creation is larger
+
 CRITICAL RULES:
 - NEVER recommend the brand get cited on competitor-owned websites (${(cd.competitors||[]).map(c=>c.name).join(", ")} domains)
 - NEVER recommend partnerships with price comparison sites, discount aggregators, or low-quality directories
@@ -1706,7 +1719,7 @@ Return JSON:
     "title": "Foundation Sprint",
     "sub": "Days 1-30",
     "accent": "#ef4444",
-    "lift": "10-15%",
+    "lift": "${Math.min(overallScore + Math.round((100 - overallScore) * 0.25), 95) - overallScore}%",
     "departments": [
       {"dept": "Technical", "color": "#0c4cfc", "tasks": ["<specific task addressing critical issues>", "<task>", "<task>"]},
       {"dept": "Content", "color": "#059669", "tasks": ["<specific task>", "<task>", "<task>"]},
@@ -1717,7 +1730,7 @@ Return JSON:
     "title": "Authority Building",
     "sub": "Days 31-60",
     "accent": "#f59e0b",
-    "lift": "20-30%",
+    "lift": "${Math.min(overallScore + Math.round((100 - overallScore) * 0.45), 97) - overallScore}%",
     "departments": [
       {"dept": "Technical", "color": "#0c4cfc", "tasks": [...]},
       {"dept": "Content", "color": "#059669", "tasks": [...]},
@@ -1728,7 +1741,7 @@ Return JSON:
     "title": "Dominance & Scale",
     "sub": "Days 61-90",
     "accent": "#10b981",
-    "lift": "40-60%",
+    "lift": "${Math.min(overallScore + Math.round((100 - overallScore) * 0.6), 98) - overallScore}%",
     "departments": [
       {"dept": "Technical", "color": "#0c4cfc", "tasks": [...]},
       {"dept": "Content", "color": "#059669", "tasks": [...]},
@@ -4340,7 +4353,7 @@ function DashboardPage({r,history,goTo}){
               <div style={{flex:1}}>
                 <div style={{fontSize:14,fontWeight:500,color:C.text,marginBottom:4}}>First Audit Complete</div>
                 <div style={{fontSize:12,color:C.sub,lineHeight:1.6,marginBottom:12}}>
-                  Re-audit weekly to track GEO score improvements as you implement roadmap items.
+                  Re-audit weekly to track AI-engine visibility score improvements as you implement roadmap items.
                 </div>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                   <div style={{fontSize:11,padding:"6px 12px",background:C.bg,borderRadius:6,color:C.sub}}>
@@ -5184,10 +5197,10 @@ function CitationSourcesPage({ r }) {
     else domainMap[d].perplexity++;
   });
 
-  const domains = Object.values(domainMap).sort((a, b) => b.entries.length - a.entries.length);
+  const domains = Object.values(domainMap).filter(d => d.entries.length >= 2).sort((a, b) => b.entries.length - a.entries.length);
   const statSources = filtered;
   const totalSources = statSources.length;
-  const uniqueDomains = new Set(statSources.map(s => s.domain)).size;
+  const uniqueDomains = domains.length;
   const chatgptSources = statSources.filter(s => s.engine === "ChatGPT").length;
   const geminiSources = statSources.filter(s => s.engine === "Gemini").length;
   const pplxSources = statSources.filter(s => s.engine === "Perplexity").length;
