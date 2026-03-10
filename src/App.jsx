@@ -2014,7 +2014,7 @@ function exportPDF(r){
   const brand=r.clientData.brand;
   const region=r.clientData.region;
   const industry=r.clientData.industry;
-  const date=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
+  const date=r.auditDate?new Date(r.auditDate).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}):new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
   const accent=[37,99,235],dark=[17,24,39],muted=[107,114,128],green=[22,163,74],red=[220,38,38],amber=[217,119,6];
 
   function checkPage(needed=20){if(y+needed>H-margin){doc.addPage();y=margin;}}
@@ -2041,15 +2041,17 @@ function exportPDF(r){
   // ── EXECUTIVE SUMMARY ──
   sectionHeader("Executive Summary");
   const overallScore=r.overall||0;
-  const gptE=r.engines[0]||{},gemE=r.engines[1]||{},pplxE=r.engines[2]||{};
-  const avgMention=Math.round(((gptE.mentionRate||0)+(gemE.mentionRate||0)+(pplxE.mentionRate||0))/3);
-  const avgCitation=Math.round(((gptE.citationRate||0)+(gemE.citationRate||0)+(pplxE.citationRate||0))/3);
+  const gptE=r.engines[0]||{},gemE=r.engines[1]||{},pplxE=r.engines[2]||{},gaiE=r.engines[3]||{};
+  const engArr=[gptE,gemE,pplxE,gaiE].filter(e=>e.score!=null);
+  const avgMention=engArr.length?Math.round(engArr.reduce((s,e)=>s+(e.mentionRate||0),0)/engArr.length):0;
+  const avgCitation=engArr.length?Math.round(engArr.reduce((s,e)=>s+(e.citationRate||0),0)/engArr.length):0;
   kvLine("Overall Visibility Score",overallScore+"%",overallScore>=60?green:overallScore>=30?amber:red);
   kvLine("Average Mention Rate",avgMention+"%");
   kvLine("Average Citation Rate",avgCitation+"%");
   kvLine("ChatGPT Mentions / Citations",(gptE.mentionRate||0)+"% / "+(gptE.citationRate||0)+"%");
   kvLine("Gemini Mentions / Citations",(gemE.mentionRate||0)+"% / "+(gemE.citationRate||0)+"%");
   kvLine("Perplexity Mentions / Citations",(pplxE.mentionRate||0)+"% / "+(pplxE.citationRate||0)+"%");
+  kvLine("Google AI Mentions / Citations",(gaiE.mentionRate||0)+"% / "+(gaiE.citationRate||0)+"%");
   y+=5;
 
   // Key findings (inline diagnostics)
@@ -2061,12 +2063,23 @@ function exportPDF(r){
   if(critCats.length>0)findings.push(critCats.map(c=>c.label.split("/")[0].trim()+" "+c.score+"%").join(", ")+" — need immediate attention.");
   const compsAhead=(r.competitors||[]).filter(c=>{const cr=Math.round(((c.mentionRate||0)+(c.citationRate||0))/2);return cr>Math.round((avgMention+avgCitation)/2);});
   if(compsAhead.length>0)findings.push(compsAhead.map(c=>c.name).join(", ")+" scoring above you on visibility metrics.");
+  if(r.narratives?.dashboard){
+    checkPage(20);doc.setFontSize(10);doc.setFont("helvetica","bold");doc.setTextColor(...dark);doc.text("AI Summary",margin,y);y+=6;
+    doc.setFontSize(8);doc.setFont("helvetica","normal");doc.setTextColor(80,80,80);
+    const narrativeLines=doc.splitTextToSize(r.narratives.dashboard,contentW);narrativeLines.forEach(nl=>{checkPage(5);doc.text(nl,margin,y);y+=4;});y+=4;
+  }
   if(findings.length>0){
     checkPage(10);doc.setFontSize(10);doc.setFont("helvetica","bold");doc.setTextColor(...dark);doc.text("Key Findings",margin,y);y+=6;
     findings.slice(0,5).forEach(f=>{
       checkPage(10);doc.setFontSize(8);doc.setFont("helvetica","normal");doc.setTextColor(...dark);
       const lines=doc.splitTextToSize("\u2022 "+f,contentW-5);doc.text(lines,margin+3,y);y+=lines.length*4+2;
     });
+  }
+  const weights=r.engineWeights||{};
+  if(Object.keys(weights).length>0){
+    checkPage(8);doc.setFontSize(8);doc.setFont("helvetica","normal");doc.setTextColor(120,120,120);
+    const weightText="Engine weights (regional market share): "+(r.engines||[]).map(e=>e.name+" "+Math.round((weights[e.id]||0)*100)+"%").join(", ");
+    doc.text(weightText,margin,y);y+=6;
   }
 
   // ── INTENT PATHWAY — QUERY RESULTS ──
@@ -2076,19 +2089,21 @@ function exportPDF(r){
   const gemQueries=gemE.queries||[];
   const pplxQueries=pplxE.queries||[];
   const searchQueries=r.searchQueries||gptQueries.map(q=>q.query||q);
+  const gaiQueries=(r.engines[3]||{}).queries||[];
   const queryTableData=searchQueries.map((q,i)=>{
     const qText=typeof q==="string"?q:q.query||q;
     const gptStatus=gptQueries[i]?.status||"Absent";
     const gemStatus=gemQueries[i]?.status||"Absent";
     const pplxStatus=pplxQueries[i]?.status||"Absent";
-    return[qText,gptStatus,gemStatus,pplxStatus];
+    const gaiStatus=gaiQueries[i]?.status||"Absent";
+    return[qText,gptStatus,gemStatus,pplxStatus,gaiStatus];
   });
   if(queryTableData.length>0){
-    doc.autoTable({startY:y,head:[["Query","ChatGPT","Gemini","Perplexity"]],body:queryTableData,margin:{left:margin,right:margin},
+    doc.autoTable({startY:y,head:[["Query","ChatGPT","Gemini","Perplexity","Google AI"]],body:queryTableData,margin:{left:margin,right:margin},
       styles:{fontSize:7,cellPadding:3},headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold",fontSize:8},
-      columnStyles:{0:{cellWidth:contentW-75},1:{cellWidth:25,halign:"center"},2:{cellWidth:25,halign:"center"},3:{cellWidth:25,halign:"center"}},
+      columnStyles:{0:{cellWidth:contentW-88},1:{cellWidth:22,halign:"center"},2:{cellWidth:22,halign:"center"},3:{cellWidth:22,halign:"center"},4:{cellWidth:22,halign:"center"}},
       didParseCell:function(data){
-        if(data.section==="body"&&(data.column.index===1||data.column.index===2||data.column.index===3)){
+        if(data.section==="body"&&data.column.index>=1&&data.column.index<=4){
           const val=data.cell.raw;
           if(val==="Cited")data.cell.styles.textColor=green;
           else if(val==="Mentioned")data.cell.styles.textColor=accent;
@@ -2124,6 +2139,18 @@ function exportPDF(r){
     y+=6;
   });
 
+  // ── WEBSITE READINESS ──
+  if(r.painPoints&&r.painPoints.length>0){
+    checkPage(40);sectionHeader("Website Readiness");
+    if(r.websiteReadinessScore!=null){doc.setFontSize(10);doc.setFont("helvetica","bold");doc.setTextColor(...dark);doc.text("Weighted Readiness Score: "+r.websiteReadinessScore+"%",margin,y);y+=8;}
+    const readinessRows=r.painPoints.map(p=>[p.label||p.name||"",String(p.score||0)+"%",p.severity||"",p.evidence||p.detail||""]);
+    doc.autoTable({startY:y,head:[["Category","Score","Severity","Evidence"]],body:readinessRows,margin:{left:margin,right:margin},
+      styles:{fontSize:7,cellPadding:3},headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold",fontSize:8},
+      columnStyles:{0:{cellWidth:35},1:{cellWidth:15,halign:"center"},2:{cellWidth:18,halign:"center"},3:{cellWidth:contentW-68}},
+      didParseCell:function(data){if(data.section==="body"&&data.column.index===2){const v=(data.cell.raw||"").toLowerCase();if(v==="critical")data.cell.styles.textColor=red;else if(v==="warning")data.cell.styles.textColor=amber;else data.cell.styles.textColor=green;data.cell.styles.fontStyle="bold";}}
+    });y=doc.lastAutoTable.finalY+10;
+  }
+
   // ── COMPETITOR DEEP-DIVE ──
   checkPage(30);sectionHeader("Competitor Deep-Dive");
   (r.competitors||[]).forEach(comp=>{
@@ -2157,33 +2184,58 @@ function exportPDF(r){
 
   // ── TARGET CHANNELS ──
   checkPage(30);sectionHeader("Target Channels");
-  const srcCh=r.channelSourceData?.sourceChannels||[];
-  const srcOpp=r.channelSourceData?.opportunities||[];
-  if(srcCh.length>0){
+  const channelGaps=r.verifiedChannelGaps||[];
+  if(channelGaps.length>0){
     doc.setFontSize(9);doc.setFont("helvetica","bold");doc.setTextColor(...dark);
-    doc.text("Where AI Sources You",margin,y);y+=5;
-    doc.autoTable({startY:y,head:[["Channel","Type","References","Description"]],
-      body:srcCh.map(s=>[s.channel||"",s.type||"",String(s.referenceCount||0),s.description||""]),
-      margin:{left:margin,right:margin},styles:{fontSize:7,cellPadding:3},
-      headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold",fontSize:8},
-      columnStyles:{0:{cellWidth:40},1:{cellWidth:22,halign:"center"},2:{cellWidth:18,halign:"center"},3:{cellWidth:contentW-80}}
-    });y=doc.lastAutoTable.finalY+6;
-  }
-  if(srcOpp.length>0){
-    checkPage(20);
-    doc.setFontSize(9);doc.setFont("helvetica","bold");doc.setTextColor(...dark);
-    doc.text("High-Impact Opportunities",margin,y);y+=5;
-    doc.autoTable({startY:y,head:[["Channel","Impact","Action"]],
-      body:srcOpp.map(o=>[o.channel||"",o.impact||"medium",o.action||""]),
-      margin:{left:margin,right:margin},styles:{fontSize:7,cellPadding:3},
-      headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold",fontSize:8},
-      columnStyles:{0:{cellWidth:35},1:{cellWidth:20,halign:"center"},2:{cellWidth:contentW-55}}
+    doc.text("Verified platforms where "+(r.clientData?.brand||"your brand")+" can improve visibility",margin,y);y+=6;
+    const gapRows=channelGaps.map((g,i)=>[String(i+1),g.domain||"",String(g.citations||0)+" citations",g.description||"",g.action||""]);
+    doc.autoTable({startY:y,head:[["#","Platform","Citations","Description","Recommended Action"]],body:gapRows,margin:{left:margin,right:margin},
+      styles:{fontSize:7,cellPadding:3},headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold",fontSize:8},
+      columnStyles:{0:{cellWidth:8},1:{cellWidth:28},2:{cellWidth:18,halign:"center"},3:{cellWidth:contentW-109},4:{cellWidth:55}}
     });y=doc.lastAutoTable.finalY+10;
+  }else{
+    const srcCh=r.channelSourceData?.sourceChannels||[];
+    const srcOpp=r.channelSourceData?.opportunities||[];
+    if(srcCh.length>0){
+      doc.setFontSize(9);doc.setFont("helvetica","bold");doc.setTextColor(...dark);
+      doc.text("Where AI Sources You",margin,y);y+=5;
+      doc.autoTable({startY:y,head:[["Channel","Type","References","Description"]],
+        body:srcCh.map(s=>[s.channel||"",s.type||"",String(s.referenceCount||0),s.description||""]),
+        margin:{left:margin,right:margin},styles:{fontSize:7,cellPadding:3},
+        headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold",fontSize:8},
+        columnStyles:{0:{cellWidth:40},1:{cellWidth:22,halign:"center"},2:{cellWidth:18,halign:"center"},3:{cellWidth:contentW-80}}
+      });y=doc.lastAutoTable.finalY+6;
+    }
+    if(srcOpp.length>0){
+      checkPage(20);
+      doc.setFontSize(9);doc.setFont("helvetica","bold");doc.setTextColor(...dark);
+      doc.text("High-Impact Opportunities",margin,y);y+=5;
+      doc.autoTable({startY:y,head:[["Channel","Impact","Action"]],
+        body:srcOpp.map(o=>[o.channel||"",o.impact||"medium",o.action||""]),
+        margin:{left:margin,right:margin},styles:{fontSize:7,cellPadding:3},
+        headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold",fontSize:8},
+        columnStyles:{0:{cellWidth:35},1:{cellWidth:20,halign:"center"},2:{cellWidth:contentW-55}}
+      });y=doc.lastAutoTable.finalY+10;
+    }
   }
 
-  // ── SENTIMENT SIGNALS ──
+  // ── SENTIMENT ANALYSIS ──
+  checkPage(30);sectionHeader("Sentiment Analysis");
+  const sentBrand=r.sentiment?.brand||{};
+  if(sentBrand.posPercent!=null){
+    doc.setFontSize(9);doc.setFont("helvetica","normal");doc.setTextColor(80,80,80);
+    doc.text((sentBrand.posPercent||0)+"% positive sentiment across "+(sentBrand.mentionCount||0)+" mentions from "+(sentBrand.totalResponses||60)+" queries",margin,y);y+=5;
+    doc.text((sentBrand.posCount||0)+" positive, "+(sentBrand.negCount||0)+" negative, "+(sentBrand.neuCount||0)+" neutral",margin,y);y+=8;
+    const compSent=r.sentiment?.competitors||[];
+    if(compSent.length>0){
+      const sentRows=[[r.clientData?.brand||"Brand",String(sentBrand.mentionCount||0),String(sentBrand.posPercent||0)+"%",String(sentBrand.negPercent||0)+"%"]];
+      compSent.forEach(c=>{if(c.name)sentRows.push([c.name,String(c.mentionCount||0),String(c.posPercent||0)+"%",String(c.negPercent||0)+"%"]);});
+      doc.autoTable({startY:y,head:[["Brand","Mentions","Positive %","Negative %"]],body:sentRows,margin:{left:margin,right:margin},
+        styles:{fontSize:8,cellPadding:3},headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold"}
+      });y=doc.lastAutoTable.finalY+8;
+    }
+  }
   if(r.sentimentSignals){
-    checkPage(30);sectionHeader("Sentiment Analysis");
     if(r.sentimentSignals.positive?.length){
       doc.setFontSize(10);doc.setFont("helvetica","bold");doc.setTextColor(...green);
       doc.text("Positive Signals:",margin,y);y+=5;
@@ -2213,6 +2265,31 @@ function exportPDF(r){
       });
     }
     y+=6;
+  }
+
+  // ── CITATION SOURCES ──
+  const cs=r.citationSources||{};
+  const allCite=(cs.all||[]).map(s=>{
+    let url=s.url||"";if(url.includes("vertexaisearch")||url.includes("grounding-api-redirect")){if(s.title&&!s.title.includes(" ")&&s.title.includes("."))url="https://"+s.title.replace(/^(https?:\/\/)?/,"").replace(/^www\./,"");else return null;}
+    const domain=(()=>{try{return new URL(url).hostname.replace("www.","");}catch(e){return"";}})();
+    if(!domain||domain.length<3)return null;
+    return{domain,engine:s.engine==="chatgpt"?"ChatGPT":s.engine==="gemini"?"Gemini":s.engine==="perplexity"?"Perplexity":s.engine==="googleai"?"Google AI":s.engine};
+  }).filter(Boolean);
+  if(allCite.length>0){
+    checkPage(40);sectionHeader("Citation Sources");
+    if(r.narratives?.citationSources){
+      doc.setFontSize(8);doc.setFont("helvetica","normal");doc.setTextColor(80,80,80);
+      const csNarr=doc.splitTextToSize(r.narratives.citationSources,contentW);csNarr.forEach(nl=>{checkPage(5);doc.text(nl,margin,y);y+=4;});y+=4;
+    }
+    const csDomainMap={};
+    allCite.forEach(c=>{const d=c.domain;if(!csDomainMap[d])csDomainMap[d]={domain:d,count:0,engines:new Set()};csDomainMap[d].count++;csDomainMap[d].engines.add(c.engine);});
+    const topDomains=Object.values(csDomainMap).filter(d=>d.count>=2).sort((a,b)=>b.count-a.count).slice(0,20);
+    if(topDomains.length>0){
+      const citRows=topDomains.map(d=>[d.domain,String(d.count),[...d.engines].join(", ")]);
+      doc.autoTable({startY:y,head:[["Domain","Citations","Engines"]],body:citRows,margin:{left:margin,right:margin},
+        styles:{fontSize:8,cellPadding:3},headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold"}
+      });y=doc.lastAutoTable.finalY+10;
+    }
   }
 
   // ── CONTENT-CHANNEL GRID ──
