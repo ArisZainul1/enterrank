@@ -5587,162 +5587,187 @@ function PlaybookPage({r,goTo,activeProject}){
 
 /* ─── PAGE: SENTIMENT ANALYSIS ─── */
 function SentimentPage({r}){
-  const[selectedTheme,setSelectedTheme]=useState(null);
   const[activeTab,setActiveTab]=useState("all");
-  const signals=r?.sentimentSignals||{themes:[],summary:"",positive:[],negative:[],quotes:[]};
+  const signals=r?.sentimentSignals||{};
+  const brandMentions=signals.brandMentions||signals.quotes||[];
   const themes=signals.themes||[];
-  const sentimentScore=r?.sentiment?.brand?.avg||50;
-  const compSentiment=r?.sentiment?.competitors||[];
+  const totalResponses=signals.totalResponses||60;
+  const mentionCount=signals.mentionCount||brandMentions.length;
   const brandName=r?.clientData?.brand||"Your brand";
-  const sentimentLabel=sentimentScore>=55?"Positive":sentimentScore>=45?"Neutral":"Negative";
-  const sentimentColor=sentimentScore>=55?"#059669":sentimentScore>=45?"#d97706":"#dc2626";
-  const posCount=themes.filter(t=>t.sentiment==="positive").length;
-  const negCount=themes.filter(t=>t.sentiment==="negative").length;
-  const neuCount=themes.filter(t=>t.sentiment==="neutral").length;
-  const totalThemes=themes.length||1;
-  const filteredThemes=activeTab==="all"?themes:themes.filter(t=>t.sentiment===activeTab);
-  const brandNameLower=brandName.toLowerCase();
+  const sentData=r?.sentiment?.brand||{};
+  const posCount=sentData.posCount||brandMentions.filter(m=>m.sentiment==="positive").length;
+  const negCount=sentData.negCount||brandMentions.filter(m=>m.sentiment==="negative").length;
+  const neuCount=sentData.neuCount||brandMentions.filter(m=>m.sentiment==="neutral").length;
+  const posPercent=sentData.posPercent||(mentionCount>0?Math.round((posCount/mentionCount)*100):0);
+  const negPercent=sentData.negPercent||(mentionCount>0?Math.round((negCount/mentionCount)*100):0);
+  const compSentiment=r?.sentiment?.competitors||[];
+  const filteredMentions=activeTab==="all"?brandMentions:brandMentions.filter(m=>m.sentiment===activeTab);
   return(<div>
-    <div style={{marginBottom:32}}>
-      <h2 style={{fontSize:22,fontWeight:500,color:C.text,letterSpacing:"-.02em",margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Sentiment Analysis</h2>
-      <p style={{fontSize:13,color:"#6b7280",marginTop:4}}>How AI engines describe and position {brandName} to potential customers</p>
+    <div style={{marginBottom:24}}>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Sentiment Analysis</h2>
+        <InfoTip text="How AI engines describe your brand in their responses. This is engine sentiment \u2014 what ChatGPT, Gemini, Perplexity, and Google AI say about you \u2014 not social media sentiment."/>
+      </div>
+      <p style={{fontSize:13,color:C.muted,marginTop:4}}>Extracted from {totalResponses} AI engine responses across {(r.engines||[]).length} engines</p>
     </div>
 
-    <div style={{ marginBottom: 24, padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, minHeight: 70 }}>
-      {r.narratives?.sentiment ? (
-        <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.7 }}>{r.narratives.sentiment}</div>
-      ) : (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 48 }}><div style={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>Generating insights...</div></div>
-      )}
-    </div>
+    {r.narratives?.sentiment&&(
+      <div style={{marginBottom:24,padding:"16px 20px",background:"#fff",border:"1px solid "+C.border,borderRadius:10,minHeight:70}}>
+        <div style={{fontSize:13,color:C.sub,lineHeight:1.7}}>{r.narratives.sentiment}</div>
+      </div>
+    )}
 
-    {/* Top section: Label + bar + competitor comparison */}
+    {/* Quantified overview */}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:32}}>
-      {/* Sentiment overview */}
-      <Card>
-        <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:16}}>Overall Sentiment</div>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-          <span style={{fontSize:28,fontWeight:500,color:sentimentColor,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{sentimentLabel}</span>
+      {/* Brand sentiment */}
+      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"20px 24px"}}>
+        <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:16}}>
+          {brandName} Engine Sentiment
+          <InfoTip text="Based on language analysis of every AI engine response that mentions your brand. Each mention is classified by the tone of surrounding text."/>
         </div>
-        <div style={{marginBottom:12}}>
-          <div style={{display:"flex",height:8,borderRadius:4,overflow:"hidden",background:C.bg}}>
-            {posCount>0&&<div style={{width:(posCount/totalThemes*100)+"%",background:"#22c55e",transition:"width .6s ease"}}/>}
-            {neuCount>0&&<div style={{width:(neuCount/totalThemes*100)+"%",background:"#f59e0b",transition:"width .6s ease"}}/>}
-            {negCount>0&&<div style={{width:(negCount/totalThemes*100)+"%",background:"#ef4444",transition:"width .6s ease"}}/>}
-          </div>
-          <div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:11,color:C.muted}}>
-            <span><span style={{color:"#22c55e",fontWeight:500}}>{posCount}</span> Positive</span>
-            <span><span style={{color:"#f59e0b",fontWeight:500}}>{neuCount}</span> Neutral</span>
-            <span><span style={{color:"#ef4444",fontWeight:500}}>{negCount}</span> Negative</span>
-          </div>
+        <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:16}}>
+          <span style={{fontSize:36,fontWeight:500,color:posPercent>=60?"#059669":posPercent>=40?"#d97706":"#dc2626",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{posPercent}%</span>
+          <span style={{fontSize:13,color:C.muted}}>positive sentiment</span>
         </div>
-        {signals.summary&&<div style={{fontSize:12,color:C.sub,lineHeight:1.6,padding:"10px 12px",background:C.bg,borderRadius:8}}>{signals.summary}</div>}
-      </Card>
+        <div style={{fontSize:12,color:C.sub,marginBottom:16}}>
+          {posCount} positive, {negCount} negative, {neuCount} neutral out of {mentionCount} mentions across {totalResponses} queries
+        </div>
+        {/* Stacked bar */}
+        <div style={{display:"flex",height:8,borderRadius:4,overflow:"hidden",background:C.bg,marginBottom:8}}>
+          {posCount>0&&<div style={{width:(posCount/Math.max(mentionCount,1)*100)+"%",background:"#22c55e"}}/>}
+          {neuCount>0&&<div style={{width:(neuCount/Math.max(mentionCount,1)*100)+"%",background:"#f59e0b"}}/>}
+          {negCount>0&&<div style={{width:(negCount/Math.max(mentionCount,1)*100)+"%",background:"#ef4444"}}/>}
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.muted}}>
+          <span><span style={{color:"#22c55e",fontWeight:500}}>{posCount}</span> Positive</span>
+          <span><span style={{color:"#f59e0b",fontWeight:500}}>{neuCount}</span> Neutral</span>
+          <span><span style={{color:"#ef4444",fontWeight:500}}>{negCount}</span> Negative</span>
+        </div>
+      </div>
 
       {/* Competitor comparison */}
-      <Card>
-        <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:16}}>Competitor Comparison</div>
-        {compSentiment.length>0?(
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {compSentiment.filter(c=>c.name.toLowerCase()!==brandNameLower).map((comp,i)=>{
-              const compLabel=comp.avg>=55?"Positive":comp.avg>=45?"Neutral":"Negative";
-              const compColor=comp.avg>=55?"#059669":comp.avg>=45?"#d97706":"#dc2626";
-              return(
-                <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:i<compSentiment.filter(c=>c.name.toLowerCase()!==brandNameLower).length-1?"1px solid "+C.borderSoft:"none"}}>
-                  <span style={{fontSize:13,fontWeight:500,color:C.text}}>{comp.name}</span>
-                  <span style={{fontSize:12,fontWeight:500,color:compColor,padding:"3px 10px",borderRadius:6,background:compColor+"10"}}>{compLabel}</span>
-                </div>
-              );
-            })}
+      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"20px 24px"}}>
+        <div style={{fontSize:11,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",marginBottom:16}}>
+          Competitor Comparison
+          <InfoTip text="Same methodology applied to every competitor. Shows what percentage of their AI engine mentions are positive."/>
+        </div>
+        {/* Brand first */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid "+C.borderSoft}}>
+          <div>
+            <span style={{fontSize:13,fontWeight:500,color:C.text}}>{brandName}</span>
+            <span style={{fontSize:10,color:C.muted,marginLeft:6}}>{mentionCount} mentions</span>
           </div>
-        ):(
-          <div style={{fontSize:12,color:C.muted,textAlign:"center",padding:20}}>No competitor data available</div>
-        )}
-      </Card>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{width:80,height:6,borderRadius:3,background:C.bg}}>
+              <div style={{width:posPercent+"%",height:6,borderRadius:3,background:"#22c55e"}}/>
+            </div>
+            <span style={{fontSize:13,fontWeight:500,color:"#059669",minWidth:36,textAlign:"right"}}>{posPercent}%</span>
+          </div>
+        </div>
+        {compSentiment.filter(c=>c.name&&c.name.toLowerCase()!==brandName.toLowerCase()).map((comp,i)=>(
+          <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:i<compSentiment.length-2?"1px solid "+C.borderSoft:"none"}}>
+            <div>
+              <span style={{fontSize:13,fontWeight:500,color:C.text}}>{comp.name}</span>
+              <span style={{fontSize:10,color:C.muted,marginLeft:6}}>{comp.mentionCount||0} mentions</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:80,height:6,borderRadius:3,background:C.bg}}>
+                <div style={{width:(comp.posPercent||0)+"%",height:6,borderRadius:3,background:"#22c55e"}}/>
+              </div>
+              <span style={{fontSize:13,fontWeight:500,color:(comp.posPercent||0)>=60?"#059669":(comp.posPercent||0)>=40?"#d97706":"#dc2626",minWidth:36,textAlign:"right"}}>{comp.posPercent||0}%</span>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
 
-    {/* Themes section */}
-    <div style={{marginBottom:24}}>
+    {/* Themes */}
+    {themes.length>0&&(
+      <div style={{marginBottom:32}}>
+        <div style={{fontSize:16,fontWeight:500,color:C.text,marginBottom:4,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Themes</div>
+        <div style={{fontSize:12,color:C.muted,marginBottom:16}}>Recurring patterns in how AI engines describe {brandName}</div>
+        <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,overflow:"hidden"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 100px 80px",padding:"10px 20px",borderBottom:"1px solid "+C.border,background:C.bg}}>
+            <span style={{fontSize:11,fontWeight:500,color:C.muted}}>Theme</span>
+            <span style={{fontSize:11,fontWeight:500,color:C.muted,textAlign:"center"}}>Sentiment</span>
+            <span style={{fontSize:11,fontWeight:500,color:C.muted,textAlign:"center"}}>Evidence</span>
+          </div>
+          {themes.map((theme,i)=>{
+            const tColor=theme.sentiment==="positive"?"#059669":theme.sentiment==="negative"?"#dc2626":"#d97706";
+            const tBg=theme.sentiment==="positive"?"#dcfce7":theme.sentiment==="negative"?"#fee2e2":"#fef3c7";
+            return(
+              <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 100px 80px",padding:"14px 20px",borderBottom:i<themes.length-1?"1px solid "+C.borderSoft:"none",alignItems:"center"}}>
+                <span style={{fontSize:13,fontWeight:500,color:C.text}}>{theme.name}</span>
+                <div style={{textAlign:"center"}}>
+                  <span style={{fontSize:11,fontWeight:500,padding:"3px 10px",borderRadius:6,background:tBg,color:tColor}}>{theme.sentiment.charAt(0).toUpperCase()+theme.sentiment.slice(1)}</span>
+                </div>
+                <div style={{textAlign:"center",fontSize:12,color:C.muted}}>{theme.count||(theme.quotes||[]).length}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
+
+    {/* Full evidence quotes */}
+    <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
         <div>
-          <div style={{fontSize:16,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Themes</div>
-          <div style={{fontSize:12,color:C.muted,marginTop:2}}>Key themes and patterns surfaced by AI when referencing {brandName}</div>
+          <div style={{fontSize:16,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Engine Quotes</div>
+          <div style={{fontSize:12,color:C.muted,marginTop:2}}>What AI engines actually say about {brandName} {"\u2014"} full context from each response</div>
         </div>
       </div>
 
       {/* Filter tabs */}
       <div style={{display:"flex",gap:0,marginBottom:16,borderBottom:"1px solid "+C.border}}>
         {[
-          {id:"all",label:"All"},
-          {id:"positive",label:"Positive"},
-          {id:"negative",label:"Negative"},
-          {id:"neutral",label:"Neutral"}
+          {id:"all",label:"All ("+brandMentions.length+")"},
+          {id:"positive",label:"Positive ("+posCount+")"},
+          {id:"negative",label:"Negative ("+negCount+")"},
+          {id:"neutral",label:"Neutral ("+neuCount+")"}
         ].map(tab=>(
           <button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{
             padding:"8px 16px",fontSize:12,fontWeight:activeTab===tab.id?500:400,
-            color:activeTab===tab.id?C.text:C.muted,
-            background:"none",border:"none",
+            color:activeTab===tab.id?C.text:C.muted,background:"none",border:"none",
             borderBottom:activeTab===tab.id?"2px solid "+C.accent:"2px solid transparent",
-            cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",transition:"all .15s"
+            cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif"
           }}>{tab.label}</button>
         ))}
       </div>
 
-      {/* Themes table */}
-      {filteredThemes.length>0?(
-        <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,overflow:"hidden"}}>
-          {/* Header */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 100px 80px",padding:"10px 20px",borderBottom:"1px solid "+C.border,background:C.bg}}>
-            <span style={{fontSize:11,fontWeight:500,color:C.muted}}>Theme</span>
-            <span style={{fontSize:11,fontWeight:500,color:C.muted,textAlign:"center"}}>Sentiment</span>
-            <span style={{fontSize:11,fontWeight:500,color:C.muted,textAlign:"center"}}>Occurrences</span>
-          </div>
-          {/* Rows */}
-          {filteredThemes.map((theme,i)=>{
-            const isOpen=selectedTheme===i;
-            const tColor=theme.sentiment==="positive"?"#059669":theme.sentiment==="negative"?"#dc2626":"#d97706";
-            const tBg=theme.sentiment==="positive"?"#dcfce7":theme.sentiment==="negative"?"#fee2e2":"#fef3c7";
-            const tLabel=theme.sentiment.charAt(0).toUpperCase()+theme.sentiment.slice(1);
+      {/* Quote cards */}
+      {filteredMentions.length>0?(
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {filteredMentions.slice(0,20).map((mention,i)=>{
+            const sBorder=mention.sentiment==="positive"?"#059669":mention.sentiment==="negative"?"#dc2626":"#d97706";
+            const sBg=mention.sentiment==="positive"?"#f0fdf4":mention.sentiment==="negative"?"#fef2f2":"#fffbeb";
+            const sColor=mention.sentiment==="positive"?"#059669":mention.sentiment==="negative"?"#dc2626":"#d97706";
+            const engineColors={"ChatGPT":"#10A37F","Gemini":"#4285F4","Perplexity":"#20808D","Google AI Overview":"#EA4335"};
             return(
-              <div key={i}>
-                <div onClick={()=>setSelectedTheme(isOpen?null:i)} style={{
-                  display:"grid",gridTemplateColumns:"1fr 100px 80px",padding:"14px 20px",
-                  borderBottom:i<filteredThemes.length-1||isOpen?"1px solid "+C.borderSoft:"none",
-                  cursor:"pointer",transition:"background .15s",
-                  background:isOpen?C.bg+"80":"transparent"
-                }}
-                  onMouseEnter={e=>{if(!isOpen)e.currentTarget.style.background=C.bg+"40";}}
-                  onMouseLeave={e=>{if(!isOpen)e.currentTarget.style.background="transparent";}}
-                >
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontSize:10,color:C.muted}}>{isOpen?"\u25BC":"\u25B6"}</span>
-                    <span style={{fontSize:13,fontWeight:500,color:C.text}}>{theme.name}</span>
-                  </div>
-                  <div style={{textAlign:"center"}}>
-                    <span style={{fontSize:11,fontWeight:500,padding:"3px 10px",borderRadius:6,background:tBg,color:tColor}}>{tLabel}</span>
-                  </div>
-                  <div style={{textAlign:"center",fontSize:13,fontWeight:500,color:C.text}}>{theme.count}</div>
+              <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:10,borderLeft:"3px solid "+sBorder,padding:"14px 18px"}}>
+                <div style={{fontSize:13,color:C.sub,lineHeight:1.7,marginBottom:10,fontStyle:"italic"}}>
+                  "{mention.text}"
                 </div>
-                {/* Expanded evidence */}
-                {isOpen&&theme.quotes&&theme.quotes.length>0&&(
-                  <div style={{padding:"12px 20px 16px 40px",background:C.bg+"60",borderBottom:i<filteredThemes.length-1?"1px solid "+C.borderSoft:"none"}}>
-                    <div style={{fontSize:11,fontWeight:500,color:C.muted,marginBottom:8}}>Evidence from AI engine responses:</div>
-                    {theme.quotes.map((quote,qi)=>(
-                      <div key={qi} style={{padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid "+C.borderSoft,marginBottom:6,borderLeft:"3px solid "+tColor}}>
-                        <div style={{fontSize:12,color:C.sub,lineHeight:1.6,fontStyle:"italic"}}>"{quote}"</div>
-                        <div style={{fontSize:10,color:C.muted,marginTop:4}}>{theme.engine||"AI Engine"}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div style={{display:"flex",alignItems:"center",gap:8,fontSize:11}}>
+                  <span style={{padding:"2px 8px",borderRadius:4,background:(engineColors[mention.engine]||C.accent)+"10",color:engineColors[mention.engine]||C.accent,fontWeight:500}}>{mention.engine}</span>
+                  <span style={{color:C.muted}}>{mention.query}</span>
+                  {mention.triggerWord&&(
+                    <span style={{padding:"2px 6px",borderRadius:4,background:sBg,color:sColor,fontWeight:500}}>"{mention.triggerWord}"</span>
+                  )}
+                </div>
               </div>
             );
           })}
+          {filteredMentions.length>20&&(
+            <div style={{textAlign:"center",fontSize:12,color:C.muted,padding:12}}>
+              Showing 20 of {filteredMentions.length} quotes
+            </div>
+          )}
         </div>
       ):(
-        <Card style={{textAlign:"center",padding:"40px 20px"}}>
-          <div style={{fontSize:13,color:C.muted}}>No {activeTab!=="all"?activeTab+" ":""}themes detected in AI engine responses</div>
-        </Card>
+        <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"40px 20px",textAlign:"center"}}>
+          <div style={{fontSize:13,color:C.muted}}>No {activeTab!=="all"?activeTab+" ":""}mentions found in AI engine responses</div>
+        </div>
       )}
     </div>
   </div>);
