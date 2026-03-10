@@ -14,7 +14,8 @@ async function getAuthToken() {
 
 const ChatGPTLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.998 5.998 0 0 0-3.998 2.9 6.042 6.042 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" fill="#10A37F"/></svg>);
 const GeminiLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M12 24C12 20.8174 10.7357 17.7652 8.48528 15.5147C6.23484 13.2643 3.18261 12 0 12C3.18261 12 6.23484 10.7357 8.48528 8.48528C10.7357 6.23484 12 3.18261 12 0C12 3.18261 13.2643 6.23484 15.5147 8.48528C17.7652 10.7357 20.8174 12 24 12C20.8174 12 17.7652 13.2643 15.5147 15.5147C13.2643 17.7652 12 20.8174 12 24Z" fill="url(#gG2)"/><defs><linearGradient id="gG2" x1="0" y1="12" x2="24" y2="12"><stop stopColor="#4285F4"/><stop offset=".5" stopColor="#9B72CB"/><stop offset="1" stopColor="#D96570"/></linearGradient></defs></svg>);
-const C={bg:"#f8f9fb",surface:"#ffffff",border:"#e8ecf1",borderSoft:"#f0f2f5",text:"#111827",sub:"#4b5563",muted:"#9ca3af",accent:"#2563eb",green:"#059669",amber:"#d97706",red:"#dc2626",r:12,rs:8};
+const C={bg:"#f8f9fb",surface:"#ffffff",border:"#e2e8f0",borderSoft:"#f0f2f5",text:"#111827",sub:"#4b5563",muted:"#9ca3af",accent:"#2563eb",green:"#059669",amber:"#d97706",red:"#dc2626",r:12,rs:8};
+const CARD={base:{background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:"20px 24px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",transition:"all 0.15s ease"},hover:{boxShadow:"0 4px 12px rgba(0,0,0,0.07)",borderColor:"#cbd5e1",transform:"translateY(-1px)"}};
 const ENGINE_WEIGHTS={
   "Global":{chatgpt:0.45,gemini:0.20,perplexity:0.03,googleai:0.32},
   "United States":{chatgpt:0.42,gemini:0.15,perplexity:0.06,googleai:0.37},
@@ -52,7 +53,7 @@ function getCategoryWeight(label){const clean=label.split("/")[0].trim().toLower
 function Ring({score,size=100,color,sw=5}){const r2=(size-sw*2)/2,ci=2*Math.PI*r2;const col=color||(score>=70?C.green:score>=40?C.amber:C.red);return(<div style={{position:"relative",width:size,height:size}}><svg width={size} height={size}><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={C.borderSoft} strokeWidth={sw}/><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={col} strokeWidth={sw} strokeDasharray={ci} strokeDashoffset={ci-(score/100)*ci} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`} style={{transition:"stroke-dashoffset 1.2s ease-out"}}/></svg><div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:size*.26,fontWeight:700,color:C.text,lineHeight:1,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{score}%</span></div></div>);}
 function Bar({value,color=C.accent,h=5}){return <div style={{width:"100%",height:h,background:C.borderSoft,borderRadius:h}}><div style={{width:`${Math.max(2,value)}%`,height:"100%",background:color,borderRadius:h,transition:"width .8s ease-out"}}/></div>;}
 function Pill({children,color=C.accent,filled}){return <span style={{display:"inline-flex",padding:"3px 10px",borderRadius:100,fontSize:11,fontWeight:600,background:filled?color:`${color}10`,color:filled?"#fff":color}}>{children}</span>;}
-function Card({children,style={},onClick}){return <div onClick={onClick} style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:14,padding:22,boxShadow:"0 1px 2px rgba(0,0,0,.03)",...(onClick?{cursor:"pointer"}:{}),...style}}>{children}</div>;}
+function Card({children,style={},onClick}){return <div onClick={onClick} style={{...CARD.base,...(onClick?{cursor:"pointer"}:{}),...style}}>{children}</div>;}
 function BrandLogo({name,website,size=22,color}){
   const[src,setSrc]=useState(null);
   const[fallback,setFallback]=useState(false);
@@ -67,7 +68,7 @@ const formatAuditDate=(d)=>{const date=d instanceof Date?d:new Date(d);return da
 function Field({label,value,onChange,placeholder,onBlur:onBlurCb}){return(<div style={{display:"flex",flexDirection:"column",gap:6}}><label style={{fontSize:12,fontWeight:500,color:C.sub}}>{label.endsWith(" *")?<>{label.slice(0,-2)}<span style={{color:C.red}}> *</span></>:label}</label><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{padding:"8px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rs,color:C.text,fontSize:14,outline:"none",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>{e.target.style.borderColor=C.border;if(onBlurCb)onBlurCb(e);}}/></div>);}
 function InfoTip({text}){const[show,setShow]=useState(false);return(<span style={{position:"relative",display:"inline-flex",marginLeft:4,cursor:"help"}} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}><span style={{width:14,height:14,borderRadius:"50%",background:C.bg,border:`1px solid ${C.border}`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.muted,fontWeight:600}}>?</span>{show&&<div style={{position:"absolute",top:"calc(100% + 6px)",left:"50%",transform:"translateX(-50%)",width:240,padding:"8px 10px",background:C.text,color:"#fff",borderRadius:8,fontSize:11,lineHeight:1.5,zIndex:99999,boxShadow:"0 8px 24px rgba(0,0,0,.2)",pointerEvents:"none"}}><div style={{position:"absolute",top:-4,left:"50%",transform:"translateX(-50%) rotate(45deg)",width:8,height:8,background:C.text}}/>{text}</div>}</span>);}
 function SectionNote({text}){return <div style={{padding:"10px 14px",background:`${C.accent}04`,border:`1px solid ${C.accent}10`,borderRadius:C.rs,marginBottom:16,display:"flex",gap:8,alignItems:"flex-start"}}><span style={{fontSize:12,color:C.sub,lineHeight:1.6}}>{text}</span></div>;}
-function NavBtn({onClick,label}){return <div style={{display:"flex",justifyContent:"flex-end",marginTop:20}}><button onClick={onClick} style={{padding:"10px 22px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{label}</button></div>;}
+function NavBtn({onClick,label}){return <div style={{display:"flex",justifyContent:"flex-end",marginTop:20}}><button onClick={onClick} style={{padding:"10px 22px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",transition:"all 0.15s ease"}} onMouseEnter={e=>Object.assign(e.target.style,{opacity:"0.9",transform:"translateY(-1px)",boxShadow:"0 2px 8px rgba(37,99,235,0.25)"})} onMouseLeave={e=>Object.assign(e.target.style,{opacity:"1",transform:"translateY(0)",boxShadow:"none"})}>{label}</button></div>;}
 function Logo(){return(<div style={{display:"flex",alignItems:"center",gap:9}}><img src="/enterank-icon.svg" alt="EnterRank" style={{width:28,height:28}}/><div><span style={{fontWeight:800,fontSize:16,color:C.text,letterSpacing:"-.03em",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>EnterRank</span><span style={{fontSize:9,color:C.muted,marginLeft:6,fontWeight:500,textTransform:"uppercase",letterSpacing:".08em"}}>by Entermind</span></div></div>);}
 function BRow({name,score,color,bold,diff}){return(<div style={{display:"flex",alignItems:"center",gap:12}}><span style={{minWidth:120,fontSize:12,fontWeight:bold?600:400,color:bold?C.accent:C.sub}}>{name}</span><div style={{flex:1}}><Bar value={score} color={color} h={8}/></div><span style={{minWidth:26,textAlign:"right",fontSize:13,fontWeight:700,color:bold?C.text:C.sub}}>{score}</span>{diff!==undefined&&<span style={{fontSize:11,fontWeight:600,color:diff>0?C.red:C.green,minWidth:32,textAlign:"right"}}>{diff>0?`+${diff}`:diff}</span>}</div>);}
 function SC(s){return s==="critical"?C.red:s==="warning"?C.amber:C.green;}
@@ -2975,10 +2976,10 @@ function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,s
           const isLocked=auditInProgress&&sectionMap[item.id]&&!sectionReady[sectionMap[item.id]];
           const dis=(!results&&!auditInProgress)||item.comingSoon||isLocked;
           return(<div key={item.id} onClick={()=>{if(!dis)setStep(item.id);}}
-            style={{display:"flex",alignItems:"center",gap:10,padding:collapsed?"10px 12px":"8px 10px",borderRadius:8,cursor:dis?"default":"pointer",background:active?"#111827":"transparent",color:active?"#fff":dis?"#d1d5db":C.sub,fontSize:13,fontWeight:500,marginBottom:2,transition:"opacity 0.5s ease, background 0.15s",opacity:isLocked?0.35:item.comingSoon?.5:1,justifyContent:collapsed?"center":"flex-start",position:"relative",overflow:"hidden"}}
-            onMouseEnter={e=>{setHoveredNav(item.id);if(!dis&&!active)e.currentTarget.style.background=C.bg;}}
+            style={{display:"flex",alignItems:"center",gap:10,padding:collapsed?"10px 12px":"8px 10px",borderRadius:collapsed?8:0,borderTopRightRadius:8,borderBottomRightRadius:8,cursor:dis?"default":"pointer",background:active?C.accent+"08":"transparent",borderLeft:collapsed?"none":active?"3px solid "+C.accent:"3px solid transparent",color:active?C.text:dis?"#d1d5db":C.sub,fontSize:13,fontWeight:active?500:400,marginBottom:2,transition:"all 0.15s ease",opacity:isLocked?0.35:item.comingSoon?.5:1,justifyContent:collapsed?"center":"flex-start",position:"relative",overflow:"hidden"}}
+            onMouseEnter={e=>{setHoveredNav(item.id);if(!dis&&!active)e.currentTarget.style.background="#f8fafc";}}
             onMouseLeave={e=>{setHoveredNav(null);if(!active)e.currentTarget.style.background="transparent";}}>
-            <SidebarIcon name={item.icon} size={18} color={active?"#fff":dis?"#d1d5db":"#6b7280"}/>
+            <SidebarIcon name={item.icon} size={18} color={active?C.accent:dis?"#d1d5db":"#6b7280"}/>
             {!collapsed&&<span>{item.label}</span>}
             {!collapsed&&item.comingSoon&&<span style={{fontSize:9,background:"#f1f1f1",color:"#999",padding:"2px 6px",borderRadius:4,marginLeft:6,fontWeight:500}}>Soon</span>}
             {isLocked&&hoveredNav===item.id&&!collapsed&&(
@@ -3034,7 +3035,7 @@ function ShareOfVoiceSection({title,rankTitle,brands,metricKey,tooltip}){
   const sorted=[...arcs].sort((a,b)=>b.pct-a.pct);
   const brandRank=sorted.findIndex(a=>a.name===ownBrand?.name)+1;
 
-  return(<div style={{border:`1px solid ${C.border}`,borderRadius:14,background:"#fff",overflow:"visible"}}>
+  return(<div style={{...CARD.base,overflow:"visible"}}>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr"}}>
       {/* Left: donut */}
       <div style={{padding:"24px 28px",borderRight:`1px solid ${C.border}`}}>
@@ -3728,7 +3729,7 @@ Return JSON only:
 
   if(auditStep==="topics")return(<div style={{maxWidth:620,margin:"0 auto"}}>
     <div style={{marginBottom:24,textAlign:"center"}}>
-      <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Review Topics for {data.brand}</h2>
+      <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Review Topics for {data.brand}</h2>
       <p style={{color:C.sub,fontSize:13,marginTop:4}}>These topics will be used to measure AI engine visibility. Edit, remove, or add more.</p>
     </div>
     <Card>
@@ -3789,7 +3790,7 @@ Return JSON only:
 
   /* ─── STEP 1: Client Details Input ─── */
   return(<div style={{maxWidth:620,margin:"0 auto"}}>
-    <div style={{marginBottom:24,textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>{data.brand?"Configure Audit":"New Audit"}</h2><p style={{color:C.sub,fontSize:13,marginTop:4}}>{data.brand?`${history.length>0?"Run another":"Set up"} audit for ${data.brand}.`:"Enter client details to begin."}</p></div>
+    <div style={{marginBottom:24,textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>{data.brand?"Configure Audit":"New Audit"}</h2><p style={{color:C.sub,fontSize:13,marginTop:4}}>{data.brand?`${history.length>0?"Run another":"Set up"} audit for ${data.brand}.`:"Enter client details to begin."}</p></div>
     {autoFilled&&(
       <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:`${C.accent}08`,border:`1px solid ${C.accent}20`,borderRadius:10,marginBottom:16,fontSize:12,color:C.accent}}>
         <span style={{fontSize:14}}>✦</span>
@@ -3939,7 +3940,7 @@ function DashboardPage({r,history,goTo}){
         </div>
       </div>
 
-      <div style={{ margin: "0 0 24px", padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, minHeight: 80 }}>
+      <div style={{ margin: "0 0 24px", ...CARD.base, borderRadius: 10, minHeight: 80 }}>
         {r.narratives?.dashboard ? (
           <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.7, textAlign: "left" }}>{r.narratives.dashboard}</div>
         ) : (
@@ -3948,14 +3949,14 @@ function DashboardPage({r,history,goTo}){
       </div>
 
       {/* 4 KPI cards in a row */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
         {[
           {label:"Mention Rate",value:avgMentions+"%",prev:prev?.mentions,color:C.accent,tip:"Percentage of queries where AI engines mention your brand. Averaged across all engines, weighted by regional market share."},
           {label:"Citation Rate",value:avgCitations+"%",prev:prev?.citations,color:"#8b5cf6",tip:"Percentage of queries where AI engines specifically recommend or link to your brand. Citations are stronger signals than mentions."},
           {label:"Sentiment Score",value:sentimentReady?(avgSentiment>=50?"Positive":avgSentiment>=30?"Neutral":"Negative"):"...",prev:null,color:sentimentReady?(avgSentiment>=50?C.green:avgSentiment>=30?C.amber:C.red):C.muted,tip:"How positively AI engines describe your brand, based on language analysis of all responses that mention you."},
           {label:"Best Engine",value:bestEngine.name.length>12?(bestEngine.name||"").replace(" Overview",""):bestEngine.name,color:bestEngine.name==="ChatGPT"?"#10A37F":(bestEngine.name||"").includes("Google")?"#EA4335":bestEngine.name==="Perplexity"?"#20808D":"#4285F4",tip:"The AI engine where your brand has the highest visibility score."}
         ].map((kpi,i)=>(
-          <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 18px",textAlign:"center"}}>
+          <div key={i} style={{...CARD.base,padding:"16px 20px",textAlign:"center"}}>
             <div style={{fontSize:11,fontWeight:500,color:C.muted,letterSpacing:".01em",marginBottom:8}}>{kpi.label}{kpi.tip&&<InfoTip text={kpi.tip}/>}</div>
             <div style={{display:"flex",alignItems:"baseline",gap:6,justifyContent:"center"}}>
               <span style={{fontSize:28,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:kpi.color,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%"}}>{kpi.value}</span>
@@ -3971,7 +3972,7 @@ function DashboardPage({r,history,goTo}){
         {(r.engines||[]).map((e,i)=>{
           const w=dWeights[e.id]||0;
           return (
-            <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 20px",textAlign:"center"}}>
+            <div key={i} style={{...CARD.base,padding:"16px 20px",textAlign:"center"}}>
               <div style={{fontSize:14,fontWeight:500,color:e.color||C.text,marginBottom:2}}>{e.name}</div>
               <div style={{fontSize:10,color:C.muted,marginBottom:12}}>{w?Math.round(w*100)+"% weight":""}{i===0&&<InfoTip text="Estimated user share in your region. Higher weight means more impact on your overall score."/>}</div>
               <div style={{fontSize:28,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif",marginBottom:12}}>{e.score}%</div>
@@ -3995,7 +3996,7 @@ function DashboardPage({r,history,goTo}){
     {/* ═══ TIER 2: INSIGHTS ═══ */}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:32}}>
       {/* Key Findings */}
-      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 20px"}}>
+      <div style={{...CARD.base}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <span style={{fontSize:14,fontWeight:500,color:C.text}}>Key Findings and Actions</span>
           <span style={{fontSize:11,color:C.muted}}>{diags.filter(d=>d.severity==="critical").length} critical · {diags.filter(d=>d.severity==="warning").length} warnings</span>
@@ -4011,7 +4012,7 @@ function DashboardPage({r,history,goTo}){
       </div>
 
       {/* Category Health */}
-      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 20px"}}>
+      <div style={{...CARD.base}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:14,fontWeight:500,color:C.text}}>Website Readiness</span><InfoTip text="Scored from a live crawl of your website, weighted by category importance for AI engine citations."/></div>{r.websiteReadinessScore!=null&&<span style={{fontSize:14,fontWeight:500,color:r.websiteReadinessScore>=60?C.green:r.websiteReadinessScore>=35?C.amber:C.red}}>{r.websiteReadinessScore}%</span>}</div>
         <div style={{ marginBottom: 14, padding: "10px 12px", background: C.bg, borderRadius: 8, minHeight: 60 }}>
           {r.narratives?.categoryHealth ? (
@@ -4089,7 +4090,7 @@ function DashboardPage({r,history,goTo}){
     {/* ═══ TIER 3: COMPARISON ═══ */}
     {r.competitors.length>0&&(
       <div style={{marginBottom:32}}>
-        <div style={{fontSize:16,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text,marginBottom:4}}>Competitive Landscape</div>
+        <div style={{fontSize:15,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text,marginBottom:4}}>Competitive Landscape</div>
         <div style={{fontSize:12,color:C.muted,marginBottom:16}}>{r.clientData.brand} vs competitors across AI engines</div>
 
         <div style={{ marginBottom: 16, padding: "10px 12px", background: C.bg, borderRadius: 8, minHeight: 60 }}>
@@ -4131,7 +4132,7 @@ function DashboardPage({r,history,goTo}){
         })()}
 
         {/* Competitor quick-comparison table */}
-        <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,overflow:"hidden"}}>
+        <div style={{...CARD.base,padding:0,overflow:"hidden"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
             <thead>
               <tr style={{borderBottom:"2px solid "+C.border}}>
@@ -4270,7 +4271,7 @@ function DashboardPage({r,history,goTo}){
           </table>
         </div>
         </>):(
-          <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"20px",overflow:"hidden"}}>
+          <div style={{...CARD.base,overflow:"hidden"}}>
             {[0,1,2].map(i=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:i<2?"1px solid "+C.borderSoft:"none"}}>
                 <div style={{width:28,height:28,borderRadius:8,background:"#e5e7eb"}}/>
@@ -4288,7 +4289,7 @@ function DashboardPage({r,history,goTo}){
 
     {/* ═══ TIER 4: HISTORICAL ═══ */}
     <div style={{marginBottom:32}}>
-      <div style={{fontSize:16,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text,marginBottom:4}}>Historical Performance</div>
+      <div style={{fontSize:15,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text,marginBottom:4}}>Historical Performance</div>
       <div style={{fontSize:12,color:C.muted,marginBottom:16}}>Track {r.clientData.brand}'s AI visibility over time</div>
 
       {(()=>{
@@ -4314,7 +4315,7 @@ function DashboardPage({r,history,goTo}){
         const chartData=[...dayMap.values()].map(({_ts,...rest})=>rest);
 
         if(chartData.length<2)return(
-          <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"24px"}}>
+          <div style={{...CARD.base}}>
             <div style={{display:"flex",alignItems:"flex-start",gap:16}}>
               <div style={{width:40,height:40,borderRadius:10,background:C.accent+"08",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -4688,7 +4689,7 @@ Return JSON only.`;
     }catch(e){console.error("Archetype regeneration failed:",e);}
     setRegenArch(false);
   };
-  if(!r.stakeholders||r.stakeholders.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>User Archetypes</h2></div>
+  if(!r.stakeholders||r.stakeholders.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>User Archetypes</h2></div>
     <div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
       <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Archetypes not generated</div>
       <div style={{fontSize:12,color:"#9ca3af",marginBottom:16}}>This can happen if the AI service timed out during the audit.</div>
@@ -4696,7 +4697,7 @@ Return JSON only.`;
     </div>
   </div>);
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>User Archetypes</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Who is searching — grouped by stakeholder type</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>User Archetypes</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Who is searching — grouped by stakeholder type</p></div>
     <SectionNote text="Select a stakeholder group to see customer segments within it. 'Visibility' shows how often AI engines mention your brand for this segment's queries."/>
     <div style={{display:"flex",gap:8,marginBottom:20}}>
       {r.stakeholders.map((sg,i)=>(<div key={i} onClick={()=>{setSelGroup(i);setSelArch(null);}} style={{flex:1,padding:"14px 16px",background:selGroup===i?`${C.accent}06`:C.surface,border:`1px solid ${selGroup===i?`${C.accent}30`:C.border}`,borderRadius:C.rs,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
@@ -5004,12 +5005,12 @@ function IntentPage({r,goTo}){
   return(<div>
     {/* Header */}
     <div style={{marginBottom:32}}>
-      <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Query Results</h2>
+      <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Query Results</h2>
       <p style={{color:"#6b7280",fontSize:13,marginTop:4}}>Audit query results across ChatGPT, Gemini, Perplexity, and Google AI for {r.clientData.brand}</p>
     </div>
 
     {/* Overall summary */}
-    <div style={{padding:"20px 24px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:14,marginBottom:32}}>
+    <div style={{...CARD.base,marginBottom:32}}>
       <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Query Visibility Summary</div>
       <div style={{fontSize:12,color:C.muted,marginTop:2}}>{combinedQueries.length} prompts tested across all engines</div>
     </div>
@@ -5036,7 +5037,7 @@ function IntentPage({r,goTo}){
     </div>}
 
     {/* Section B: Test a Prompt */}
-    <div style={{marginTop:40,padding:24,background:"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
+    <div style={{marginTop:40,...CARD.base}}>
       <div style={{fontSize:15,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em",color:C.text,marginBottom:4}}>Test a Prompt</div>
       <p style={{fontSize:12,color:C.muted,marginBottom:16,marginTop:0}}>Type any search query to test whether {r.clientData.brand} gets cited or mentioned on ChatGPT, Gemini, Perplexity, and Google AI.</p>
 
@@ -5464,7 +5465,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const v=playbook.brand_voice;
       return(<Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Brand Voice & Tone{aiLink(genVoice)}</h3>
+          <h3 style={{fontSize:15,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Brand Voice & Tone{aiLink(genVoice)}</h3>
         </div>
         <div style={{marginBottom:10}}><label style={labelStyle}>Tone of Voice</label><input value={v.tone} onChange={e=>setPlaybook({...playbook,brand_voice:{...v,tone:e.target.value}})} placeholder="e.g. Authoritative, data-driven, approachable" style={inputStyle}/></div>
         <div style={{marginBottom:10}}><label style={labelStyle}>Brand Personality</label><textarea value={v.personality} onChange={e=>setPlaybook({...playbook,brand_voice:{...v,personality:e.target.value}})} placeholder="Describe your brand personality in 2-3 sentences..." rows={3} style={{...inputStyle,resize:"vertical"}}/></div>
@@ -5478,7 +5479,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const t=playbook.taglines;
       return(<Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Taglines & Messaging{aiLink(genTaglines)}</h3>
+          <h3 style={{fontSize:15,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Taglines & Messaging{aiLink(genTaglines)}</h3>
         </div>
         <div style={{marginBottom:10}}><label style={labelStyle}>Primary Tagline</label><input value={t.primary} onChange={e=>setPlaybook({...playbook,taglines:{...t,primary:e.target.value}})} placeholder={`e.g. "${brand} — The future of ${industry}"`} style={inputStyle}/></div>
         <ListEditor section="taglines" field="supporting" label="Supporting Messages" placeholder="e.g. Trusted by 500+ enterprises worldwide"/>
@@ -5490,7 +5491,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const setVi=(k,val)=>setPlaybook({...playbook,visual_ci:{...vi,[k]:val}});
       return(<Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Visual Corporate Identity{aiLink(genVisual)}</h3>
+          <h3 style={{fontSize:15,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Visual Corporate Identity{aiLink(genVisual)}</h3>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:14}}>
           {[["primaryColor","Primary"],["secondaryColor","Secondary"],["accentColor","Accent"]].map(([key,lbl])=>(<div key={key}>
@@ -5519,7 +5520,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const co=playbook.compliance;
       return(<Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Compliance & Restrictions{aiLink(genCompliance)}</h3>
+          <h3 style={{fontSize:15,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Compliance & Restrictions{aiLink(genCompliance)}</h3>
         </div>
         <ListEditor section="compliance" field="restrictions" label="Brand Restrictions" placeholder="e.g. Never compare directly with competitor X" color={C.red}/>
         <div style={{marginBottom:10}}><label style={labelStyle}>Additional Notes</label><textarea value={co.notes} onChange={e=>setPlaybook({...playbook,compliance:{...co,notes:e.target.value}})} placeholder="Any additional compliance notes, legal disclaimers, or regulatory requirements..." rows={4} style={{...inputStyle,resize:"vertical"}}/></div>
@@ -5543,7 +5544,7 @@ function PlaybookPage({r,goTo,activeProject}){
       };
       return(<Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Products & Services</h3>
+          <h3 style={{fontSize:15,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Products & Services</h3>
           <button onClick={()=>startEdit(null,"new")} style={{padding:"6px 14px",background:`${C.accent}10`,color:C.accent,border:`1px solid ${C.accent}25`,borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>+ Add Product</button>
         </div>
         {editProduct!==null&&<div style={{padding:14,background:C.bg,borderRadius:C.rs,border:`1px solid ${C.accent}25`,marginBottom:14}}>
@@ -5583,7 +5584,7 @@ function PlaybookPage({r,goTo,activeProject}){
       const po=Array.isArray(playbook.positioning)?playbook.positioning:[];
       return(<Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Competitive Positioning{aiLink(genPositioning)}</h3>
+          <h3 style={{fontSize:15,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Competitive Positioning{aiLink(genPositioning)}</h3>
         </div>
         {po.length>0?po.map((p,i)=>(<div key={i} style={{padding:12,background:C.surface,borderRadius:C.rs,border:`1px solid ${C.borderSoft}`,marginBottom:8}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -5602,7 +5603,7 @@ function PlaybookPage({r,goTo,activeProject}){
   };
 
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Brand Playbook</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Your brand hub — identity, voice, and AI-optimised guidelines</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Brand Playbook</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Your brand hub — identity, voice, and AI-optimised guidelines</p></div>
     <SectionNote text="This is your central brand hub. Define your brand voice, manage compliance, and set guidelines. Everything here powers your content generation and AI engine strategy."/>
 
     {/* Tab Bar */}
@@ -5677,7 +5678,7 @@ function SentimentPage({r}){
     </div>
 
     {r.narratives?.sentiment&&(
-      <div style={{marginBottom:24,padding:"16px 20px",background:"#fff",border:"1px solid "+C.border,borderRadius:10,minHeight:70}}>
+      <div style={{marginBottom:24,...CARD.base,borderRadius:10,minHeight:70}}>
         <div style={{fontSize:13,color:C.sub,lineHeight:1.7}}>{r.narratives.sentiment}</div>
       </div>
     )}
@@ -5685,7 +5686,7 @@ function SentimentPage({r}){
     {/* Quantified overview */}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:32}}>
       {/* Brand sentiment */}
-      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"20px 24px"}}>
+      <div style={{...CARD.base}}>
         <div style={{fontSize:11,fontWeight:500,color:C.muted,letterSpacing:".01em",marginBottom:16}}>
           {brandName} Engine Sentiment
           <InfoTip text="Based on language analysis of every AI engine response that mentions your brand. Each mention is classified by the tone of surrounding text."/>
@@ -5711,7 +5712,7 @@ function SentimentPage({r}){
       </div>
 
       {/* Competitor comparison */}
-      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"20px 24px"}}>
+      <div style={{...CARD.base}}>
         <div style={{fontSize:11,fontWeight:500,color:C.muted,letterSpacing:".01em",marginBottom:16}}>
           Competitor Comparison
           <InfoTip text="Same methodology applied to every competitor. Shows what percentage of their AI engine mentions are positive."/>
@@ -5752,7 +5753,7 @@ function SentimentPage({r}){
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
         <div>
-          <div style={{fontSize:16,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Engine Quotes</div>
+          <div style={{fontSize:15,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Engine Quotes</div>
           <div style={{fontSize:12,color:C.muted,marginTop:2}}>What AI engines actually say about {brandName} {"\u2014"} filtered by sentiment, tagged by theme</div>
         </div>
       </div>
@@ -5783,7 +5784,7 @@ function SentimentPage({r}){
             const sColor=mention.sentiment==="positive"?"#059669":mention.sentiment==="negative"?"#dc2626":"#d97706";
             const engineColors={"ChatGPT":"#10A37F","Gemini":"#4285F4","Perplexity":"#20808D","Google AI Overview":"#EA4335"};
             return(
-              <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:10,borderLeft:"3px solid "+sBorder,padding:"14px 18px"}}>
+              <div key={i} style={{...CARD.base,borderRadius:10,borderLeft:"3px solid "+sBorder,padding:"14px 18px"}}>
                 <div style={{fontSize:13,color:C.sub,lineHeight:1.7,marginBottom:10,fontStyle:"italic"}}>
                   "{cleanQuoteText(mention.text)}"
                 </div>
@@ -5804,7 +5805,7 @@ function SentimentPage({r}){
           )}
         </div>
       ):(
-        <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"40px 20px",textAlign:"center"}}>
+        <div style={{...CARD.base,padding:"40px 20px",textAlign:"center"}}>
           <div style={{fontSize:13,color:C.muted}}>No {activeTab!=="all"?activeTab+" ":""}mentions found in AI engine responses</div>
         </div>
       )}
@@ -5825,7 +5826,7 @@ function TargetChannelsPage({r}){
     </div>
 
     {/* Summary */}
-    <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 20px",marginBottom:24}}>
+    <div style={{...CARD.base,marginBottom:24}}>
       <div style={{fontSize:13,color:C.sub,lineHeight:1.7}}>
         {gaps.length>0
           ?"We identified "+gaps.length+" platform"+(gaps.length!==1?"s":"")+" where AI engines actively source information for your industry, but "+brandName+" has no presence. Each gap was verified via web search \u2014 these are real, actionable opportunities."
@@ -5838,7 +5839,7 @@ function TargetChannelsPage({r}){
     {gaps.length>0?(
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {gaps.map((gap,i)=>(
-          <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 22px"}}>
+          <div key={i} style={{...CARD.base}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 <span style={{fontSize:14,fontWeight:500,color:C.accent,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{i+1}. {gap.domain}</span>{gap.uncertain&&<span style={{fontSize:9,fontWeight:500,padding:"2px 6px",borderRadius:4,background:"#fef3c7",color:"#92400e",marginLeft:6}}>Unverified</span>}
@@ -5861,7 +5862,7 @@ function TargetChannelsPage({r}){
         ))}
       </div>
     ):(
-      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"48px 20px",textAlign:"center"}}>
+      <div style={{...CARD.base,padding:"48px 20px",textAlign:"center"}}>
         <div style={{fontSize:36,marginBottom:12}}>{String.fromCharCode(10003)}</div>
         <div style={{fontSize:15,fontWeight:500,color:"#059669",marginBottom:4}}>No Platform Gaps Detected</div>
         <div style={{fontSize:12,color:C.muted}}>{brandName} has presence across all key platforms referenced by AI engines</div>
@@ -6068,7 +6069,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
           <td style={{padding:"10px",color:C.sub,fontSize:11}}>{item.owner}</td>
         </tr>))}</tbody></table>
       </Card>
-      <Card><h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:"0 0 12px",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Monthly Output Requirements</h3>
+      <Card><h3 style={{fontSize:15,fontWeight:500,color:C.text,margin:"0 0 12px",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Monthly Output Requirements</h3>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
           {(r.outputReqs||[]).map((item,i)=>(<div key={i} style={{padding:"14px",background:C.bg,borderRadius:C.rs,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:C.accent,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{item.n}</div><div style={{fontSize:10,color:C.muted,marginBottom:4}}>{item.u}</div><div style={{fontSize:12,fontWeight:500,color:C.text}}>{item.l}</div><div style={{fontSize:10,color:C.muted,marginTop:2}}>{item.d}</div></div>))}
         </div>
@@ -6152,7 +6153,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
       <div style={{fontSize:12,color:C.muted,marginBottom:16}}>{finalSuggestions.length} content suggestions mapped to your audit gaps</div>
       {finalSuggestions.map((s,i)=>{
         const pColor=priorityColors[s.priority]||priorityColors.medium;
-        return(<div key={i} style={{padding:"16px 20px",background:C.surface,border:"1px solid "+C.border,borderRadius:12,marginBottom:10,display:"flex",alignItems:"flex-start",gap:14}}>
+        return(<div key={i} onMouseEnter={e=>Object.assign(e.currentTarget.style,CARD.hover)} onMouseLeave={e=>Object.assign(e.currentTarget.style,{boxShadow:CARD.base.boxShadow,borderColor:"#e2e8f0",transform:"none"})} style={{...CARD.base,marginBottom:10,display:"flex",alignItems:"flex-start",gap:14,cursor:"default"}}>
           <div style={{flex:1}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <div style={{fontSize:13,fontWeight:500,color:C.text,lineHeight:1.4}}>{s.title}</div>
@@ -6277,7 +6278,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
         )}
       </div>
 
-      {editingContent&&(<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:20,display:"flex",flexDirection:"column"}}>
+      {editingContent&&(<div style={{...CARD.base,display:"flex",flexDirection:"column"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,gap:8}}>
           <input value={editTitle} onChange={e=>setEditTitle(e.target.value)} style={{fontSize:16,fontWeight:500,border:"none",outline:"none",background:"transparent",flex:1,padding:0,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif"}} placeholder="Content title..."/>
           <div style={{display:"flex",gap:6,flexShrink:0}}>
@@ -6315,7 +6316,7 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
   };
 
   if(!projectId)return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Generate content powered by your brand playbook and audit insights.</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Generate content powered by your brand playbook and audit insights.</p></div>
     <Card style={{textAlign:"center",padding:32}}>
       <div style={{fontSize:13,fontWeight:500,color:C.text,marginBottom:4}}>No project linked yet</div>
       <div style={{fontSize:12,color:C.muted}}>Save an audit first to start generating content.</div>
@@ -6323,12 +6324,12 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
   </div>);
 
   if(loading)return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Content Hub</h2></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Content Hub</h2></div>
     <div style={{textAlign:"center",padding:40,color:C.muted,fontSize:13}}>Loading content library...</div>
   </div>);
 
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Generate content powered by your brand playbook and audit insights.</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Content Hub</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Generate content powered by your brand playbook and audit insights.</p></div>
 
     <div style={{display:"flex",gap:0,marginBottom:20,borderBottom:`1px solid ${C.border}`,overflowX:"auto"}}>
       {TABS.map(tab=>(<button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{padding:"10px 16px",background:"transparent",border:"none",borderBottom:activeTab===tab.id?`2px solid ${C.accent}`:"2px solid transparent",color:activeTab===tab.id?C.accent:C.muted,fontSize:12,fontWeight:activeTab===tab.id?600:500,cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",whiteSpace:"nowrap",transition:"all .15s",display:"flex",alignItems:"center",gap:6}}>
@@ -6346,14 +6347,14 @@ Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","ow
 
 /* ─── PAGE: CONTENT GRID (Step 07) ─── */
 function GridPage({r,goTo}){
-  if(!r.contentTypes||r.contentTypes.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Content Grid</h2></div>
+  if(!r.contentTypes||r.contentTypes.length===0)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Content Grid</h2></div>
     <div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
       <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Content grid not generated</div>
       <div style={{fontSize:12,color:"#9ca3af"}}>This can happen if the AI service timed out during the audit.</div>
     </div>
   </div>);
   return(<div>
-    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Content-Channel Grid</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Personalised content strategy based on {r.clientData.brand}'s audit findings.</p></div>
+    <div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Content-Channel Grid</h2><p style={{color:C.sub,fontSize:13,marginTop:3}}>Personalised content strategy based on {r.clientData.brand}'s audit findings.</p></div>
     <SectionNote text={`This content grid is tailored to ${r.clientData.brand}'s specific gaps and competitive landscape. Priority P0 = start immediately based on audit findings.`}/>
     <Card style={{marginBottom:20,overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
       <thead><tr style={{borderBottom:`2px solid ${C.border}`}}>{["Content Type","Channels","Frequency","Priority","Owner"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:600,color:C.muted,fontSize:10,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
@@ -6365,7 +6366,7 @@ function GridPage({r,goTo}){
         <td style={{padding:"10px",color:C.sub,fontSize:11}}>{ct.owner}</td>
       </tr>))}</tbody></table>
     </Card>
-    <Card><h3 style={{fontSize:15,fontWeight:600,color:C.text,margin:"0 0 12px",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Monthly Output Requirements for {r.clientData.brand}</h3>
+    <Card><h3 style={{fontSize:15,fontWeight:500,color:C.text,margin:"0 0 12px",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Monthly Output Requirements for {r.clientData.brand}</h3>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
         {(r.outputReqs||[]).map((item,i)=>(<div key={i} style={{padding:"14px",background:C.bg,borderRadius:C.rs,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:C.accent,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{item.n}</div><div style={{fontSize:10,color:C.muted,marginBottom:4}}>{item.u}</div><div style={{fontSize:12,fontWeight:500,color:C.text}}>{item.l}</div><div style={{fontSize:10,color:C.muted,marginTop:2}}>{item.d}</div></div>))}
       </div>
@@ -6389,7 +6390,7 @@ Return JSON only:
     }catch(e){console.error("Roadmap regeneration failed:",e);}
     setRegenRoad(false);
   };
-  if(!r.roadmap||!r.roadmap.day30)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>90-Day Roadmap</h2></div>
+  if(!r.roadmap||!r.roadmap.day30)return(<div><div style={{marginBottom:24}}><h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>90-Day Roadmap</h2></div>
     <div style={{padding:32,textAlign:"center",background:C.card||"#fff",border:`1px solid ${C.border}`,borderRadius:14}}>
       <div style={{fontSize:14,fontWeight:500,color:"#111827",marginBottom:4}}>Roadmap not generated</div>
       <div style={{fontSize:12,color:"#9ca3af",marginBottom:16}}>This can happen if the AI service timed out during the audit.</div>
@@ -6401,7 +6402,7 @@ Return JSON only:
 
   return(<div>
     <div style={{marginBottom:24}}>
-      <h2 style={{fontSize:22,fontWeight:600,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>90-Day Transformation Roadmap</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Department-by-department plan for <strong>{r.clientData.brand}</strong></p>
+      <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>90-Day Transformation Roadmap</h2><p style={{color:"#6b7280",fontSize:13,marginTop:3}}>Department-by-department plan for <strong>{r.clientData.brand}</strong></p>
     </div>
     <SectionNote text="This roadmap assigns tasks to every department involved. The PDF export includes all 8 stages of your audit in a professional format with cover page and table of contents."/>
 
@@ -6417,7 +6418,7 @@ Return JSON only:
         <div style={{position:"absolute",left:-19,top:10,width:12,height:12,borderRadius:"50%",background:p.accent,border:"3px solid #f5f6f8",boxShadow:`0 0 0 2px ${p.accent}33`}}/>
         <Card>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-            <div><div style={{fontSize:16,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>{p.title}</div><div style={{color:p.accent,fontSize:11,fontWeight:600,marginTop:1}}>{p.sub}</div></div>
+            <div><div style={{fontSize:15,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>{p.title}</div><div style={{color:p.accent,fontSize:11,fontWeight:600,marginTop:1}}>{p.sub}</div></div>
             <div style={{padding:"5px 12px",background:`${p.accent}08`,borderRadius:8,border:`1px solid ${p.accent}20`}}><span style={{fontSize:10,color:C.muted}}>Lift: </span><span style={{fontSize:14,fontWeight:700,color:p.accent,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{p.lift}</span></div>
           </div>
           {p.departments.map((d,di)=>(<div key={di} style={{marginBottom:di<p.departments.length-1?10:0}}>
@@ -6429,7 +6430,7 @@ Return JSON only:
     </div>
 
     <Card style={{marginTop:20,background:`linear-gradient(135deg,${C.accent}08,${C.accent}03)`,border:`1px solid ${C.accent}20`,textAlign:"center"}}>
-      <div style={{fontSize:17,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em",marginBottom:4}}>Ready to dominate AI search results?</div>
+      <div style={{fontSize:15,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em",marginBottom:4}}>Ready to dominate AI search results?</div>
       <p style={{fontSize:12,color:C.sub,maxWidth:460,margin:"0 auto 14px"}}>Let Entermind execute this strategy and guarantee measurable improvements within 90 days.</p>
       <button onClick={()=>exportPDF(r)} style={{padding:"11px 26px",background:C.accent,color:"#fff",border:"none",borderRadius:C.rs,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Export Full Report as PDF</button>
     </Card>
@@ -6861,7 +6862,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
           <div style={{width:48,height:48,borderRadius:12,background:C.bg,display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}>
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 4v14M4 11h14" stroke={C.muted} strokeWidth="2" strokeLinecap="round"/></svg>
           </div>
-          <h3 style={{fontSize:16,fontWeight:500,color:C.text,margin:"0 0 6px",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>No workspaces yet</h3>
+          <h3 style={{fontSize:15,fontWeight:500,color:C.text,margin:"0 0 6px",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>No workspaces yet</h3>
           <p style={{color:C.muted,fontSize:13,margin:"0 0 20px"}}>Create your first workspace to start tracking visibility.</p>
           <button onClick={onNew} style={{padding:"10px 22px",background:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Create workspace</button>
         </div>:
@@ -7284,7 +7285,7 @@ export default function App(){
   return(<div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Satoshi',-apple-system,BlinkMacSystemFont,sans-serif",color:C.text,display:"flex"}}>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.cdnfonts.com/css/satoshi" rel="stylesheet"/>
-    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes loadingSlide{0%{transform:translateX(-100%);opacity:0.5}30%{opacity:1}100%{transform:translateX(350%);opacity:0.3}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}.field-autofilled input{background:#f3f4f6!important;color:${C.sub}!important;transition:all .15s}.field-autofilled input:focus{background:#fff!important;color:${C.text}!important}`}</style>
+    <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes loadingSlide{0%{transform:translateX(-100%);opacity:0.5}30%{opacity:1}100%{transform:translateX(350%);opacity:0.3}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}.field-autofilled input{background:#f3f4f6!important;color:${C.sub}!important;transition:all .15s}.field-autofilled input:focus{background:#fff!important;color:${C.text}!important}`}</style>
 
     {/* Sidebar */}
     <Sidebar step={step} setStep={setStep} results={results} brand={results?.clientData?.brand||data.brand} onBack={handleBackToHub} isLocal={isLocal} onLogout={handleLogout} collapsed={sideCollapsed} setCollapsed={setSideCollapsed} sectionReady={sectionReady} auditInProgress={auditInProgress}/>
@@ -7292,6 +7293,7 @@ export default function App(){
     {/* Main content */}
     <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",marginLeft:sideCollapsed?60:220,transition:"margin-left .2s ease"}}>
       <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto"}}>
+        <div key={step} style={{animation:"fadeIn 0.2s ease"}}>
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={runAuditProgressive} history={history}/>}
         {step==="dashboard"&&!results&&auditInProgress&&<AuditLoadingInline progress={dashboardLoadProgress} stage={auditStage}/>}
         {step==="dashboard"&&results&&<DashboardPage r={results} history={history} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }}/>}
@@ -7305,6 +7307,7 @@ export default function App(){
         {step!=="input"&&step!=="dashboard"&&auditInProgress&&!(sectionReady[step])&&results&&(
           <AuditLoadingInline progress={dashboardLoadProgress} stage={auditStage}/>
         )}
+        </div>
       </div>
     </div>
   </div>);
