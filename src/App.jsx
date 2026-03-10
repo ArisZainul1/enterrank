@@ -2493,7 +2493,7 @@ function LandingPage({ onGetStarted }) {
 
   React.useEffect(() => {
     const handleScroll = () => {
-      const sections = ["hero", "how"];
+      const sections = ["hero", "features", "how"];
       for (const id of [...sections].reverse()) {
         const el = document.getElementById("section-" + id);
         if (el) {
@@ -2649,6 +2649,7 @@ function LandingPage({ onGetStarted }) {
             <span style={{fontSize:15,fontWeight:500,color:"#0f172a",letterSpacing:"-.01em"}}>EnterRank</span>
           </div>
           <div style={{display:"flex",gap:20,marginLeft:16}}>
+            <span onClick={()=>scrollTo("features")} style={navLinkStyle("features")}>Features</span>
             <span onClick={()=>scrollTo("how")} style={navLinkStyle("how")}>How It Works</span>
           </div>
         </div>
@@ -2683,122 +2684,110 @@ function LandingPage({ onGetStarted }) {
             </div>
           </div>
           <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"center",animation:"slideInRight 1s ease-out"}}>
-            <div style={{
-            width:"100%",maxWidth:640,
-            background:"#ffffff",
-            borderRadius:16,
-            border:"1px solid #e2e8f0",
-            boxShadow:"0 24px 80px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02)",
-            transform:"perspective(1400px) rotateY(-12deg) rotateX(5deg)",
-            animation:"floatDash 6s ease-in-out infinite",
-            overflow:"hidden"
-          }}>
-            {/* Window chrome */}
-            <div style={{padding:"12px 16px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div style={{display:"flex",gap:6}}>
-                <div style={{width:10,height:10,borderRadius:"50%",background:"#ef4444"}}/>
-                <div style={{width:10,height:10,borderRadius:"50%",background:"#f59e0b"}}/>
-                <div style={{width:10,height:10,borderRadius:"50%",background:"#22c55e"}}/>
-              </div>
-              <div style={{fontSize:10,color:"#94a3b8",fontFamily:"'Space Mono',monospace"}}>rank.entermind.ai/dashboard</div>
-              <div style={{width:40}}/>
-            </div>
-
-            {/* Dashboard body with sidebar */}
-            <div style={{display:"flex",minHeight:360}}>
-              {/* Fake sidebar */}
-              <div style={{width:110,background:"#f8fafc",borderRight:"1px solid #f1f5f9",padding:"12px 0",flexShrink:0}}>
-                <div style={{padding:"8px 14px",marginBottom:8}}>
-                  <img src="/enterank-icon.svg" alt="ER" style={{width:18,height:18}}/>
+            <div style={{position:"relative",width:"100%",maxWidth:520,perspective:"1200px",margin:"0 auto"}}>
+              <div style={{position:"absolute",top:"10%",left:"10%",right:"10%",bottom:"10%",background:"radial-gradient(ellipse at center, rgba(59,130,246,0.15) 0%, transparent 70%)",filter:"blur(40px)",zIndex:0,borderRadius:"50%"}}/>
+              <div style={{position:"relative",zIndex:1,background:"#fff",borderRadius:16,boxShadow:"0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)",border:"1px solid rgba(226,232,240,0.8)",padding:"20px 24px",transform:"rotateY(-8deg) rotateX(4deg)",animation:"floatDash 6s ease-in-out infinite",overflow:"hidden"}}>
+                {/* Browser bar */}
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16,paddingBottom:12,borderBottom:"1px solid #f1f5f9"}}>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:"#ef4444",opacity:0.7}}/>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:"#f59e0b",opacity:0.7}}/>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:"#22c55e",opacity:0.7}}/>
+                  <div style={{flex:1,height:6,background:"#f8fafc",borderRadius:3,marginLeft:8}}/>
                 </div>
-                {[
-                  {label:"Dashboard",active:true},
-                  {label:"Query Categories",active:false},
-                  {label:"Sentiment",active:false},
-                  {label:"Query Results",active:false},
-                  {label:"Channels",active:false},
-                  {label:"Roadmap",active:false},
-                  {label:"Playbook",active:false},
-                  {label:"Content Hub",active:false}
-                ].map((item,i)=>(
-                  <div key={i} style={{padding:"5px 12px",fontSize:8,color:item.active?"#2563eb":"#94a3b8",background:item.active?"#eff6ff":"transparent",fontWeight:item.active?500:400,borderLeft:item.active?"2px solid #2563eb":"2px solid transparent",marginBottom:0}}>{item.label}</div>
-                ))}
-              </div>
 
-              {/* Main dashboard content */}
-              <div style={{flex:1,padding:18,overflowY:"hidden"}}>
-                {/* Score */}
-                <div style={{textAlign:"center",marginBottom:10,paddingTop:8}}>
-                  <div style={{fontSize:7,color:"#94a3b8",letterSpacing:".06em",textTransform:"uppercase",marginBottom:4}}>Engine Visibility Score</div>
-                  <div style={{fontSize:32,fontWeight:500,color:"#0f172a",fontFamily:"'Outfit',-apple-system,sans-serif",lineHeight:1}}>72<span style={{fontSize:12,color:"#94a3b8"}}>%</span></div>
-                  <div style={{display:"inline-block",fontSize:7,fontWeight:500,padding:"2px 6px",borderRadius:100,background:"#dcfce7",color:"#166534",marginTop:3}}>Strong</div>
+                {/* Score ring area */}
+                <div style={{textAlign:"center",marginBottom:14}}>
+                  <div style={{position:"relative",width:80,height:80,margin:"0 auto 6px"}}>
+                    <svg width="80" height="80" viewBox="0 0 80 80">
+                      <circle cx="40" cy="40" r="34" fill="none" stroke="#f1f5f9" strokeWidth="5"/>
+                      <circle cx="40" cy="40" r="34" fill="none" stroke="#3b82f6" strokeWidth="5" strokeDasharray={2*Math.PI*34} strokeDashoffset={2*Math.PI*34*(1-0.83)} strokeLinecap="round" transform="rotate(-90 40 40)"/>
+                    </svg>
+                    <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <span style={{fontSize:22,fontWeight:500,color:"#0f172a",fontFamily:"'Outfit',-apple-system,sans-serif",lineHeight:1}}>83<span style={{fontSize:9,color:"#94a3b8"}}>%</span></span>
+                    </div>
+                  </div>
+                  <div style={{fontSize:8,color:"#94a3b8",letterSpacing:".04em"}}>Visibility Score</div>
                 </div>
 
                 {/* KPIs */}
-                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4,marginBottom:10}}>
-                  {[
-                    {l:"Mention Rate",v:"68%",c:"#2563eb"},
-                    {l:"Citation Rate",v:"45%",c:"#8b5cf6"},
-                    {l:"Sentiment",v:"Positive",c:"#059669"},
-                    {l:"Best Engine",v:"ChatGPT",c:"#10A37F"}
-                  ].map((k,i)=>(
-                    <div key={i} style={{background:"#f8fafc",borderRadius:6,padding:"6px 6px",border:"1px solid #f1f5f9",textAlign:"center"}}>
-                      <div style={{fontSize:6,color:"#94a3b8",letterSpacing:".01em",marginBottom:2}}>{k.l}</div>
-                      <div style={{fontSize:k.l==="Best Engine"?9:11,fontWeight:500,color:k.c,fontFamily:"'Outfit',-apple-system,sans-serif"}}>{k.v}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Query results */}
-                <div style={{marginBottom:10}}>
-                  <div style={{fontSize:8,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".06em",marginBottom:4}}>Query Results</div>
-                  <div style={{border:"1px solid #f1f5f9",borderRadius:6,overflow:"hidden"}}>
-                    {[
-                      {q:"What are the best cloud platforms for startups?",g:"Cited",m:"Cited"},
-                      {q:"Enterprise CRM software comparison",g:"Mentioned",m:"Cited"},
-                      {q:"I need a project management tool for a remote team of 50",g:"Cited",m:"Mentioned"},
-                      {q:"Best analytics tools",g:"Mentioned",m:"Absent"}
-                    ].map((r,i)=>{
-                      const badge=(s)=>({fontSize:7,fontWeight:500,padding:"1px 4px",borderRadius:3,
-                        background:s==="Cited"?"#dcfce7":s==="Mentioned"?"#dbeafe":"#fee2e2",
-                        color:s==="Cited"?"#166534":s==="Mentioned"?"#1e40af":"#991b1b"});
-                      return(
-                        <div key={i} style={{display:"flex",alignItems:"center",padding:"5px 8px",borderBottom:i<3?"1px solid #f1f5f9":"none",gap:4}}>
-                          <div style={{flex:1,fontSize:8,color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.q}</div>
-                          <span style={badge(r.g)}>{r.g}</span>
-                          <span style={badge(r.m)}>{r.m}</span>
-                        </div>
-                      );
-                    })}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                    <div style={{fontSize:7,color:"#94a3b8",marginBottom:2,fontWeight:500}}>MENTION RATE</div>
+                    <div style={{fontSize:14,fontWeight:500,color:"#1e40af"}}>86%</div>
+                  </div>
+                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                    <div style={{fontSize:7,color:"#94a3b8",marginBottom:2,fontWeight:500}}>CITATION RATE</div>
+                    <div style={{fontSize:14,fontWeight:500,color:"#1e40af"}}>72%</div>
+                  </div>
+                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                    <div style={{fontSize:7,color:"#94a3b8",marginBottom:2,fontWeight:500}}>BEST ENGINE</div>
+                    <div style={{fontSize:12,fontWeight:500,color:"#059669"}}>Gemini</div>
                   </div>
                 </div>
 
-                {/* Share of voice bars */}
-                <div>
-                  <div style={{fontSize:8,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".06em",marginBottom:4}}>Share of Voice</div>
-                  {[
-                    {n:"Your Brand",s:38,c:"#2563eb"},
-                    {n:"Competitor A",s:28,c:"#f97316"},
-                    {n:"Competitor B",s:22,c:"#8b5cf6"},
-                    {n:"Competitor C",s:12,c:"#06b6d4"}
-                  ].map((c,i)=>(
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:4,marginBottom:3}}>
-                      <div style={{width:54,fontSize:8,color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.n}</div>
-                      <div style={{flex:1,height:3,borderRadius:2,background:"#f1f5f9"}}>
-                        <div style={{width:c.s+"%",height:3,borderRadius:2,background:c.c}}/>
+                {/* Engine comparison bars */}
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:8,color:"#94a3b8",marginBottom:6,fontWeight:500}}>ENGINE COMPARISON</div>
+                  {[{name:"ChatGPT",score:77,color:"#10A37F"},{name:"Gemini",score:87,color:"#4285F4"},{name:"Perplexity",score:82,color:"#20808D"},{name:"Google AI",score:85,color:"#EA4335"}].map((e,i)=>(
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                      <div style={{fontSize:7,color:"#64748b",width:42,textAlign:"right"}}>{e.name}</div>
+                      <div style={{flex:1,height:5,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
+                        <div style={{width:e.score+"%",height:"100%",background:e.color,borderRadius:3}}/>
                       </div>
-                      <div style={{fontSize:8,color:"#64748b",minWidth:18,textAlign:"right"}}>{c.s}%</div>
+                      <div style={{fontSize:7,color:"#334155",fontWeight:500,width:20}}>{e.score}%</div>
                     </div>
                   ))}
                 </div>
+
+                {/* Sentiment bar */}
+                <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:"#f0fdf4",borderRadius:8}}>
+                  <div style={{fontSize:7,color:"#059669",fontWeight:500}}>SENTIMENT</div>
+                  <div style={{flex:1,height:4,borderRadius:2,overflow:"hidden",display:"flex"}}>
+                    <div style={{width:"71%",background:"#22c55e",height:"100%"}}/>
+                    <div style={{width:"20%",background:"#f59e0b",height:"100%"}}/>
+                    <div style={{width:"9%",background:"#ef4444",height:"100%"}}/>
+                  </div>
+                  <div style={{fontSize:8,color:"#059669",fontWeight:500}}>71% Positive</div>
+                </div>
               </div>
             </div>
-          </div>
           </div>
         </div>
       </div>
 
-      {/* ===== SECTION 2: HOW IT WORKS ===== */}
+      {/* ===== SECTION 2: WHAT YOU'LL DISCOVER ===== */}
+      <div id="section-features" style={{padding:"80px 24px",maxWidth:1100,margin:"0 auto"}}>
+        <div style={{textAlign:"center",marginBottom:48}}>
+          <div style={{fontSize:13,fontWeight:500,color:"#2563eb",letterSpacing:".06em",textTransform:"uppercase",marginBottom:8}}>What You'll Discover</div>
+          <div style={{fontSize:28,fontWeight:500,color:"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Actionable intelligence from every AI engine</div>
+          <div style={{fontSize:14,color:"#64748b",marginTop:8,maxWidth:560,margin:"8px auto 0"}}>EnterRank tests real queries across 4 major AI platforms and turns raw responses into a clear strategy</div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:20}}>
+          <div style={{background:"#fff",borderRadius:16,padding:"32px 28px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
+            <div style={{width:48,height:48,borderRadius:12,background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            </div>
+            <div style={{fontSize:17,fontWeight:500,color:"#0f172a",marginBottom:8}}>Visibility Scoring</div>
+            <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>See exactly when ChatGPT, Gemini, Perplexity, and Google AI mention, cite, or completely ignore your brand — scored and weighted by regional market share.</div>
+          </div>
+          <div style={{background:"#fff",borderRadius:16,padding:"32px 28px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
+            <div style={{width:48,height:48,borderRadius:12,background:"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+            </div>
+            <div style={{fontSize:17,fontWeight:500,color:"#0f172a",marginBottom:8}}>Competitive Intelligence</div>
+            <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>Compare your share of voice against competitors across every AI engine. Understand who AI recommends — and why it might not be you.</div>
+          </div>
+          <div style={{background:"#fff",borderRadius:16,padding:"32px 28px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
+            <div style={{width:48,height:48,borderRadius:12,background:"#fef3c7",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+            </div>
+            <div style={{fontSize:17,fontWeight:500,color:"#0f172a",marginBottom:8}}>90-Day Action Plan</div>
+            <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>Get a phased roadmap with specific tasks — content to create, platforms to target, and technical fixes — all tied to projected visibility improvements.</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== SECTION 3: HOW IT WORKS ===== */}
       <div id="section-how" style={{padding:"80px 48px",background:"#f8fafc"}}>
         <div style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{textAlign:"center",marginBottom:48}}>
