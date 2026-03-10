@@ -1774,14 +1774,26 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
     const topDomains=Object.entries(domainCounts).sort((a,b)=>b[1]-a[1]).slice(0,20).map(([domain,count])=>({domain,count}));
     if(topDomains.length>0){
       const domainListStr=topDomains.map(d=>d.domain+" ("+d.count+" citations)").join("\n");
+      console.log("[ChannelVerify] topDomains count:",topDomains.length);
+      console.log("[ChannelVerify] topDomains:",topDomains.map(d=>d.domain+"("+d.count+")").join(", "));
       const verifyPrompt=`You are verifying platform opportunities for the brand "${brand}" (website: ${brandWebsite}) in the ${cd.industry||"general"} industry in ${cd.region||"Global"}.\n\nKnown competitors: ${compData?.competitors?.map(c=>c.name+" ("+(c.website||"")+")").join(", ")||"none"}\n\nBelow are third-party platforms that AI engines cited when answering queries about this industry. For EACH platform, determine:\n\n1. COMPETITOR: Is this a competitor, competitor sub-brand, or competitor-owned property? (true/false)\n2. RELEVANT: Is this platform relevant to ${brand}'s industry? (true/false)\n3. PRESENT: Does ${brand} have an active, findable presence on this platform? Search the web to verify. (true/false/unknown)\n4. ACTIONABLE: Can a brand realistically take action to establish or improve their presence here? (true/false)\n5. DESCRIPTION: One line describing what this platform is and why it matters for this industry.\n6. ACTION: If this is a genuine gap, one specific action ${brand} should take.\n\nPlatforms to verify:\n${domainListStr}\n\nCRITICAL RULES:\n- Actually search the web to check if ${brand} has a presence on each platform\n- Social media platforms — search for the brand's official page/channel before marking as not present\n- If you're unsure about presence, mark as "unknown" not "false"\n- Be strict about competitor detection — include sub-brands, sister companies\n- Only mark as ACTIONABLE if the brand can directly influence their presence\n\nRespond in JSON only. No preamble, no markdown backticks.\n{"platforms": [{"domain": "example.com","citations": 5,"isCompetitor": false,"isRelevant": true,"brandPresent": false,"isActionable": true,"description": "Leading review platform","action": "Submit product pages for review"}]}`;
       const verifyResp=await callOpenAISearch(verifyPrompt);
+      console.log("[ChannelVerify] raw response type:",typeof verifyResp,typeof verifyResp?.text);
+      console.log("[ChannelVerify] raw response preview:",(verifyResp?.text||verifyResp||"").substring(0,300));
       try{
         const cleaned=(verifyResp?.text||verifyResp||"").replace(/```json|```/g,"").trim();
         const parsed=safeJSON(cleaned)||JSON.parse(cleaned);
-        verifiedChannelGaps=(parsed.platforms||[]).filter(p=>!p.isCompetitor&&p.isRelevant&&p.brandPresent===false&&p.isActionable).map(p=>({domain:p.domain,citations:p.citations||domainCounts[p.domain]||0,description:p.description||"",action:p.action||""})).sort((a,b)=>b.citations-a.citations);
-      }catch(e){console.error("Channel verification parse failed:",e);}
-    }
+        console.log("[ChannelVerify] parsed platforms:",(parsed.platforms||[]).length);
+        // Loosen filter to handle string/boolean mismatches from AI
+        verifiedChannelGaps=(parsed.platforms||[]).filter(p=>{const isComp=p.isCompetitor===true||p.isCompetitor==="true";const isRel=p.isRelevant===true||p.isRelevant==="true";const notPresent=p.brandPresent===false||p.brandPresent==="false"||p.brandPresent==="no";const isAction=p.isActionable===true||p.isActionable==="true";return !isComp&&isRel&&notPresent&&isAction;}).map(p=>({domain:p.domain,citations:p.citations||domainCounts[p.domain]||0,description:p.description||"",action:p.action||""}));
+        // Include unknown presence as uncertain gaps
+        const uncertainGaps=(parsed.platforms||[]).filter(p=>{const isComp=p.isCompetitor===true||p.isCompetitor==="true";const isRel=p.isRelevant===true||p.isRelevant==="true";const isUnknown=p.brandPresent==="unknown"||p.brandPresent===null||p.brandPresent===undefined;const isAction=p.isActionable===true||p.isActionable==="true";return !isComp&&isRel&&isUnknown&&isAction;}).map(p=>({domain:p.domain,citations:p.citations||domainCounts[p.domain]||0,description:p.description||"",action:p.action||"",uncertain:true}));
+        verifiedChannelGaps=[...verifiedChannelGaps,...uncertainGaps].sort((a,b)=>b.citations-a.citations);
+        console.log("[ChannelVerify] filtered gaps:",verifiedChannelGaps.length,"uncertain:",uncertainGaps.length);
+        // Log filter reasons
+        (parsed.platforms||[]).forEach(p=>{const reasons=[];if(p.isCompetitor===true||p.isCompetitor==="true")reasons.push("competitor");if(!(p.isRelevant===true||p.isRelevant==="true"))reasons.push("not relevant");if(!(p.brandPresent===false||p.brandPresent==="false"||p.brandPresent==="no"||p.brandPresent==="unknown"||p.brandPresent===null||p.brandPresent===undefined))reasons.push("brand present: "+p.brandPresent);if(!(p.isActionable===true||p.isActionable==="true"))reasons.push("not actionable");if(reasons.length>0)console.log("[ChannelVerify] FILTERED OUT:",p.domain,"—",reasons.join(", "));else console.log("[ChannelVerify] KEPT:",p.domain);});
+      }catch(e){console.error("[ChannelVerify] Parse error:",e.message);console.log("[ChannelVerify] Raw text that failed:",(verifyResp?.text||verifyResp||"").substring(0,500));}
+    }else{console.log("[ChannelVerify] No topDomains found — citationSources.all has",allCitations.length,"items");}
   }catch(e){console.error("Channel verification failed:",e);}
 
   // ── Step: Generate narrative summaries ──
@@ -5829,7 +5841,7 @@ function TargetChannelsPage({r}){
           <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 22px"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <span style={{fontSize:14,fontWeight:500,color:C.accent,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{i+1}. {gap.domain}</span>
+                <span style={{fontSize:14,fontWeight:500,color:C.accent,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{i+1}. {gap.domain}</span>{gap.uncertain&&<span style={{fontSize:9,fontWeight:500,padding:"2px 6px",borderRadius:4,background:"#fef3c7",color:"#92400e",marginLeft:6}}>Unverified</span>}
               </div>
               <span style={{fontSize:11,color:C.muted,padding:"3px 10px",background:C.bg,borderRadius:6}}>
                 {gap.citations} citation{gap.citations!==1?"s":""} in audit
