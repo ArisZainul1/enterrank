@@ -1741,6 +1741,37 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
   }catch(e){console.error("Content/roadmap emission failed:",e.message||e);}
   try{onProgress("All sections ready...", null, {...accumulated});}catch(emitErr){console.error("Emission 4 failed:",emitErr);}
 
+  // --- Step: Verify Target Channel Gaps ---
+  let verifiedChannelGaps=[];
+  try{
+    onProgress("Verifying target channel opportunities...",78);
+    const brandWebsite=cd.website||"";
+    const brandDomain=(()=>{try{return new URL(brandWebsite.startsWith("http")?brandWebsite:"https://"+brandWebsite).hostname.replace("www.","").toLowerCase();}catch(e){return"";}})();
+    const compNamesLower=(compData?.competitors||[]).map(c=>(c.name||"").toLowerCase());
+    const compWebsites=(compData?.competitors||[]).map(c=>{try{return new URL((c.website||"").startsWith("http")?c.website:"https://"+c.website).hostname.replace("www.","").toLowerCase();}catch(e){return"";}}).filter(Boolean);
+    const allCitations=citationSources?.all||[];
+    const domainCounts={};
+    allCitations.forEach(c=>{
+      let d="";try{d=new URL(c.url||"").hostname.replace("www.","").toLowerCase();}catch(e){return;}
+      if(!d||d.length<4)return;
+      if(brandDomain&&(d.includes(brandDomain)||brandDomain.includes(d.split(".")[0])))return;
+      if(compWebsites.some(cw=>d.includes(cw)||cw.includes(d.split(".")[0])))return;
+      if(["google.com","gstatic.com","googleapis.com","bing.com","yahoo.com","cloudflare.com","amazonaws.com","akamai.net","schema.org","w3.org","vertexaisearch.cloud.google.com"].some(ex=>d.includes(ex)))return;
+      domainCounts[d]=(domainCounts[d]||0)+1;
+    });
+    const topDomains=Object.entries(domainCounts).sort((a,b)=>b[1]-a[1]).slice(0,20).map(([domain,count])=>({domain,count}));
+    if(topDomains.length>0){
+      const domainListStr=topDomains.map(d=>d.domain+" ("+d.count+" citations)").join("\n");
+      const verifyPrompt=`You are verifying platform opportunities for the brand "${brand}" (website: ${brandWebsite}) in the ${cd.industry||"general"} industry in ${cd.region||"Global"}.\n\nKnown competitors: ${compData?.competitors?.map(c=>c.name+" ("+(c.website||"")+")").join(", ")||"none"}\n\nBelow are third-party platforms that AI engines cited when answering queries about this industry. For EACH platform, determine:\n\n1. COMPETITOR: Is this a competitor, competitor sub-brand, or competitor-owned property? (true/false)\n2. RELEVANT: Is this platform relevant to ${brand}'s industry? (true/false)\n3. PRESENT: Does ${brand} have an active, findable presence on this platform? Search the web to verify. (true/false/unknown)\n4. ACTIONABLE: Can a brand realistically take action to establish or improve their presence here? (true/false)\n5. DESCRIPTION: One line describing what this platform is and why it matters for this industry.\n6. ACTION: If this is a genuine gap, one specific action ${brand} should take.\n\nPlatforms to verify:\n${domainListStr}\n\nCRITICAL RULES:\n- Actually search the web to check if ${brand} has a presence on each platform\n- Social media platforms — search for the brand's official page/channel before marking as not present\n- If you're unsure about presence, mark as "unknown" not "false"\n- Be strict about competitor detection — include sub-brands, sister companies\n- Only mark as ACTIONABLE if the brand can directly influence their presence\n\nRespond in JSON only. No preamble, no markdown backticks.\n{"platforms": [{"domain": "example.com","citations": 5,"isCompetitor": false,"isRelevant": true,"brandPresent": false,"isActionable": true,"description": "Leading review platform","action": "Submit product pages for review"}]}`;
+      const verifyResp=await callOpenAISearch(verifyPrompt);
+      try{
+        const cleaned=(verifyResp||"").replace(/```json|```/g,"").trim();
+        const parsed=safeJSON(cleaned)||JSON.parse(cleaned);
+        verifiedChannelGaps=(parsed.platforms||[]).filter(p=>!p.isCompetitor&&p.isRelevant&&p.brandPresent===false&&p.isActionable).map(p=>({domain:p.domain,citations:p.citations||domainCounts[p.domain]||0,description:p.description||"",action:p.action||""})).sort((a,b)=>b.citations-a.citations);
+      }catch(e){console.error("Channel verification parse failed:",e);}
+    }
+  }catch(e){console.error("Channel verification failed:",e);}
+
   // ── Step: Generate narrative summaries ──
   let narratives = {};
   try {
@@ -1884,7 +1915,8 @@ Rules:
       citationSources:typeof citationSources!=="undefined"?citationSources:{gpt:[],gemini:[],all:[]},
       guidelinesData:typeof guidelinesData!=="undefined"?guidelinesData:null,
       narratives:typeof narratives!=="undefined"?narratives:{},
-      engineWeights:getEngineWeights(region)
+      engineWeights:getEngineWeights(region),
+      verifiedChannelGaps:typeof verifiedChannelGaps!=="undefined"?verifiedChannelGaps:[]
     };
   } catch(returnError) {
     console.error("CRITICAL: runRealAudit return assembly failed:",returnError);
@@ -2294,9 +2326,10 @@ function generateAll(cd, apiData){
     return{shares,totalMentions,totalCitations,totalQueries:sovEngines.reduce((sum,e)=>(e.queries||[]).length,0)};
   })();
   const citationSources=(hasApi&&apiData.citationSources)?apiData.citationSources:{gpt:[],gemini:[],all:[]};
+  const verifiedChannelGaps=(hasApi&&apiData.verifiedChannelGaps)?apiData.verifiedChannelGaps:[];
   const narratives=(hasApi&&apiData.narratives)?apiData.narratives:{};
   const engineWeights=hasApi?(apiData.engineWeights||gWeights):gWeights;
-  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,queryArchetypeMap,channelSourceData,citationSources,narratives,sovData,engineWeights,websiteReadinessScore,clientData:cd};
+  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,queryArchetypeMap,channelSourceData,citationSources,narratives,sovData,engineWeights,websiteReadinessScore,verifiedChannelGaps,clientData:cd};
 }
 
 function generatePartial(cd, partial) {
@@ -5774,327 +5807,65 @@ function SentimentPage({r}){
 }
 /* ─── PAGE: TARGET CHANNELS (citation-based) ─── */
 function TargetChannelsPage({r}){
-  const [activeTab, setActiveTab] = useState("gaps");
-
-  const brandName = r.clientData?.brand || "Your brand";
-  const cs = r.citationSources || { gpt: [], gemini: [], perplexity: [], googleai: [], all: [] };
-
-  // Normalize all citation sources with domain
-  const normalizeSrc = (arr, engine) => (arr || []).map(s => {
-    let url = s.url || "";
-    const domain = (() => { try { return new URL(url).hostname.replace("www.", ""); } catch(e) { return ""; } })();
-    return { ...s, domain, engine };
-  }).filter(s => s.domain && s.domain.length > 3);
-
-  const allSources = [
-    ...normalizeSrc(cs.gpt, "ChatGPT"),
-    ...normalizeSrc(cs.gemini, "Gemini"),
-    ...normalizeSrc(cs.perplexity, "Perplexity"),
-    ...normalizeSrc(cs.googleai, "Google AI Overview")
-  ];
-
-  // Brand sources: sources from responses that mentioned the brand
-  const brandSources = [
-    ...normalizeSrc(cs.brand?.chatgpt || cs.brand?.gpt || [], "ChatGPT"),
-    ...normalizeSrc(cs.brand?.gemini || [], "Gemini"),
-    ...normalizeSrc(cs.brand?.perplexity || [], "Perplexity"),
-    ...normalizeSrc(cs.brand?.googleai || [], "Google AI Overview")
-  ];
-
-  // Build competitor domain set
-  const compDomains = new Set();
-  (r.competitors || []).forEach(c => {
-    try {
-      const w = c.website || "";
-      if (w) {
-        const h = new URL(w.startsWith("http") ? w : "https://" + w).hostname.replace("www.", "").toLowerCase();
-        compDomains.add(h);
-        h.split(".").slice(0, -1).forEach(p => { if (p.length > 3) compDomains.add(p); });
-      }
-      const name = (c.name || "").toLowerCase().replace(/\s+/g, "");
-      if (name.length > 3) compDomains.add(name);
-    } catch (e) {}
-  });
-
-  // Build brand domain set
-  const brandDomainSet = new Set();
-  try {
-    const w = r.clientData?.website || "";
-    if (w) {
-      const h = new URL(w.startsWith("http") ? w : "https://" + w).hostname.replace("www.", "").toLowerCase();
-      brandDomainSet.add(h);
-      h.split(".").slice(0, -1).forEach(p => { if (p.length > 3) brandDomainSet.add(p); });
-    }
-  } catch (e) {}
-
-  const isCompDomain = (domain) => {
-    const d = (domain || "").toLowerCase();
-    for (const comp of compDomains) {
-      if (d.includes(comp) || comp.includes(d.split(".")[0])) return true;
-    }
-    return false;
-  };
-
-  const isBrandDomain = (domain) => {
-    const d = (domain || "").toLowerCase();
-    for (const bd of brandDomainSet) {
-      if (d.includes(bd) || bd.includes(d.split(".")[0])) return true;
-    }
-    return false;
-  };
-
-  // Group all sources by domain, excluding brand and competitor owned domains
-  const platformMap = {};
-  allSources.forEach(s => {
-    const d = s.domain;
-    if (isBrandDomain(d) || isCompDomain(d)) return;
-    if (!platformMap[d]) platformMap[d] = { domain: d, totalCitations: 0, brandCitations: 0, engines: new Set(), queries: new Set() };
-    platformMap[d].totalCitations++;
-    platformMap[d].engines.add(s.engine);
-    if (s.query) platformMap[d].queries.add(s.query);
-  });
-
-  // Count brand citations per platform
-  brandSources.forEach(s => {
-    const d = s.domain;
-    if (isBrandDomain(d) || isCompDomain(d)) return;
-    if (platformMap[d]) platformMap[d].brandCitations++;
-  });
-
-  const platforms = Object.values(platformMap)
-    .map(p => ({
-      ...p,
-      engines: [...p.engines],
-      queries: [...p.queries],
-      brandPresent: p.brandCitations > 0,
-      gap: p.totalCitations > 0 && p.brandCitations === 0
-    }))
-    .sort((a, b) => b.totalCitations - a.totalCitations);
-
-  const gaps = platforms.filter(p => p.gap);
-  const strengths = platforms.filter(p => p.brandPresent);
-  const allPlatforms = platforms;
-
-  const displayList = activeTab === "gaps" ? gaps : activeTab === "strengths" ? strengths : allPlatforms;
-
-  const engineColors = { "ChatGPT": "#10A37F", "Gemini": "#4285F4", "Perplexity": "#20808D", "Google AI Overview": "#EA4335" };
-
-  return (
-    <div>
-      <div style={{ marginBottom: 32 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 500, color: C.text, margin: 0, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>Target Channels</h2>
-        <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Platforms where AI engines source information for your industry {"\u2014"} and where {brandName} needs to be</p>
-      </div>
-
-      {/* Narrative */}
-      <div style={{ marginBottom: 24, padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, fontSize: 13, color: C.sub, lineHeight: 1.7 }}>
-        AI engines cited {platforms.length} third-party platforms when answering queries about your industry. {brandName} is present on {strengths.length} of them.{gaps.length > 0 ? " " + gaps.length + " platforms cite competitors but not " + brandName + " \u2014 these are your priority distribution targets." : " No major platform gaps detected."}
-      </div>
-
-      {/* Summary stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
-        <div style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "16px 18px", textAlign: "center" }}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>Third-Party Platforms</div>
-          <div style={{ fontSize: 24, fontWeight: 500, color: C.text, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>{platforms.length}</div>
-        </div>
-        <div style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "16px 18px", textAlign: "center" }}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>You're Present On</div>
-          <div style={{ fontSize: 24, fontWeight: 500, color: "#059669", fontFamily: "'Satoshi',-apple-system,sans-serif" }}>{strengths.length}</div>
-        </div>
-        <div style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "16px 18px", textAlign: "center" }}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>Platform Gaps</div>
-          <div style={{ fontSize: 24, fontWeight: 500, color: "#dc2626", fontFamily: "'Satoshi',-apple-system,sans-serif" }}>{gaps.length}</div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "1px solid " + C.border }}>
-        {[
-          { id: "gaps", label: "Priority Gaps (" + gaps.length + ")" },
-          { id: "strengths", label: "Your Strengths (" + strengths.length + ")" },
-          { id: "all", label: "All Platforms (" + allPlatforms.length + ")" }
-        ].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-            padding: "8px 16px", fontSize: 12, fontWeight: activeTab === tab.id ? 500 : 400,
-            color: activeTab === tab.id ? C.text : C.muted, background: "none", border: "none",
-            borderBottom: activeTab === tab.id ? "2px solid " + C.accent : "2px solid transparent",
-            cursor: "pointer", fontFamily: "'Satoshi',-apple-system,sans-serif", transition: "all .15s"
-          }}>{tab.label}</button>
-        ))}
-      </div>
-
-      {/* Platform list */}
-      {displayList.length > 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {displayList.map((p, i) => (
-            <div key={i} style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "16px 20px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: C.accent }}>{p.domain}</span>
-                  {p.brandPresent ? (
-                    <span style={{ fontSize: 9, fontWeight: 500, padding: "2px 8px", borderRadius: 4, background: "#dcfce7", color: "#166534" }}>Present</span>
-                  ) : (
-                    <span style={{ fontSize: 9, fontWeight: 500, padding: "2px 8px", borderRadius: 4, background: "#fee2e2", color: "#991b1b" }}>Not Present</span>
-                  )}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 11, color: C.muted }}>
-                  <span>{p.totalCitations} citation{p.totalCitations !== 1 ? "s" : ""}</span>
-                  <span>{p.engines.length} engine{p.engines.length !== 1 ? "s" : ""}</span>
-                </div>
-              </div>
-
-              {/* Engine pills */}
-              <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
-                {p.engines.map((eng, ei) => (
-                  <span key={ei} style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: (engineColors[eng] || C.accent) + "10", color: engineColors[eng] || C.accent }}>{eng}</span>
-                ))}
-              </div>
-
-              {/* Action recommendation for gaps */}
-              {!p.brandPresent && (
-                <div style={{ fontSize: 11, color: C.sub, lineHeight: 1.5, padding: "8px 12px", background: "#fef2f2", borderRadius: 6, borderLeft: "3px solid #dc2626" }}>
-                  AI engines reference this platform {p.totalCitations} time{p.totalCitations !== 1 ? "s" : ""} for queries in your industry. Establish {brandName}'s presence here to increase citation likelihood.
-                </div>
-              )}
-
-              {/* Confirmation for strengths */}
-              {p.brandPresent && (
-                <div style={{ fontSize: 11, color: C.sub, lineHeight: 1.5, padding: "8px 12px", background: "#f0fdf4", borderRadius: 6, borderLeft: "3px solid #059669" }}>
-                  {brandName} is cited from this platform {p.brandCitations} time{p.brandCitations !== 1 ? "s" : ""}. Maintain and strengthen your presence here.
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "40px 20px", textAlign: "center" }}>
-          <div style={{ fontSize: 13, color: C.muted }}>
-            {activeTab === "gaps" ? "No platform gaps found \u2014 " + brandName + " is present across all cited platforms." : activeTab === "strengths" ? "No platforms found where " + brandName + " is currently cited." : "No third-party platforms identified in citation data."}
-          </div>
-        </div>
-      )}
-
-      {/* Methodology note */}
-      <div style={{ marginTop: 16, fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
-        Platforms identified from real citation URLs returned by AI engines during this audit. Competitor-owned domains and brand-owned domains are excluded. Presence is determined by whether AI engines cited this platform in responses that mention {brandName}.
-      </div>
-    </div>
-  );
-}
-
-/* ─── PAGE: TARGET CHANNELS (3-tab layout) ─── */
-function ChannelsPage({r}){
-  const[activeTab,setActiveTab]=useState("sources");
-  const tabs=[{id:"sources",label:"Where AI Sources You"},{id:"opportunities",label:"High-Impact Opportunities"},{id:"status",label:"Channel Status"}];
-
-  const sourceChannels=r?.channelSourceData?.sourceChannels||[];
-  const opportunities=r?.channelSourceData?.opportunities||[];
-  const channels=r?.aeoChannels||[];
-  const maxCount=Math.max(...sourceChannels.map(s=>s.referenceCount||0),1);
-  const totalResponses=(r?.searchQueries?.length||20)*2;
-
+  const gaps=r.verifiedChannelGaps||[];
+  const brandName=r.clientData?.brand||"Your brand";
   return(<div>
     <div style={{marginBottom:24}}>
-      <h2 style={{fontSize:22,fontWeight:600,color:"#111827",letterSpacing:"-.02em",margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Target Channels</h2>
-      <p style={{fontSize:13,color:"#6b7280",marginTop:4}}>Channels ranked by real AI engine source data from your audit</p>
-    </div>
-    <div style={{display:"flex",gap:0,marginBottom:24,borderBottom:"1px solid "+C.border,overflowX:"auto"}}>
-      {tabs.map(tab=>(<button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{padding:"10px 16px",fontSize:12,fontWeight:activeTab===tab.id?600:500,color:activeTab===tab.id?C.accent:"#9ca3af",background:"none",border:"none",borderBottom:activeTab===tab.id?"2px solid "+C.accent:"2px solid transparent",cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",whiteSpace:"nowrap",transition:"all .15s"}}>{tab.label}</button>))}
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Target Channels</h2>
+        <InfoTip text={"Platforms where AI engines source information for your industry but "+brandName+" has no active presence. Each platform was verified via web search during the audit. Only actionable, relevant gaps are shown."}/>
+      </div>
+      <p style={{fontSize:13,color:C.muted,marginTop:4}}>Verified platform gaps where {brandName} can improve AI engine visibility</p>
     </div>
 
-    {/* TAB 1: Where AI Sources You */}
-    {activeTab==="sources"&&(<div>
-      {sourceChannels.length===0?(<div style={{padding:40,textAlign:"center",background:C.card,border:"1px solid "+C.border,borderRadius:14}}>
-        <div style={{fontSize:14,fontWeight:500,color:"#111827"}}>No source data available</div>
-        <div style={{fontSize:12,color:"#9ca3af",marginTop:4}}>Run a new audit to extract source channel data from AI engine responses.</div>
-      </div>):(<div>
-        <div style={{fontSize:12,color:"#6b7280",marginBottom:16}}>Source types identified from AI engine responses during your audit</div>
-        {sourceChannels.map((source,i)=>{
-          const pct=Math.round(((source.referenceCount||0)/totalResponses)*100);
-          const barWidth=Math.round(((source.referenceCount||0)/maxCount)*100);
-          const typeColors={owned:{bg:"#dcfce7",text:"#166534",label:"Owned"},earned:{bg:"#dbeafe",text:"#1e40af",label:"Earned"},"third-party":{bg:"#fef3c7",text:"#92400e",label:"Third Party"}};
-          const typeColor=typeColors[source.type]||typeColors["third-party"];
-          return(<div key={i} style={{padding:"18px 20px",background:C.card,border:"1px solid "+C.border,borderRadius:14,marginBottom:10}}>
+    {/* Summary */}
+    <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"16px 20px",marginBottom:24}}>
+      <div style={{fontSize:13,color:C.sub,lineHeight:1.7}}>
+        {gaps.length>0
+          ?"We identified "+gaps.length+" platform"+(gaps.length!==1?"s":"")+" where AI engines actively source information for your industry, but "+brandName+" has no presence. Each gap was verified via web search \u2014 these are real, actionable opportunities."
+          :"No verified platform gaps found. "+brandName+" appears to have presence across the key platforms that AI engines reference for your industry."
+        }
+      </div>
+    </div>
+
+    {/* Gap cards */}
+    {gaps.length>0?(
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {gaps.map((gap,i)=>(
+          <div key={i} style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 22px"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <span style={{fontSize:16,fontWeight:600,color:"#9ca3af",width:24}}>{i+1}</span>
-                <div>
-                  <div style={{fontSize:14,fontWeight:500,color:"#111827"}}>{source.channel}</div>
-                  <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{source.description}</div>
-                </div>
+                <span style={{fontSize:14,fontWeight:500,color:C.accent,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{i+1}. {gap.domain}</span>
               </div>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:typeColor.bg,color:typeColor.text,fontWeight:500}}>{typeColor.label}</span>
-                <span style={{fontSize:14,fontWeight:600,color:"#111827"}}>{source.referenceCount} references</span>
+              <span style={{fontSize:11,color:C.muted,padding:"3px 10px",background:C.bg,borderRadius:6}}>
+                {gap.citations} citation{gap.citations!==1?"s":""} in audit
+              </span>
+            </div>
+            {gap.description&&(
+              <div style={{fontSize:12,color:C.sub,lineHeight:1.6,marginBottom:10}}>
+                {gap.description}
               </div>
-            </div>
-            <div style={{height:4,background:"#e5e7eb",borderRadius:2,overflow:"hidden",marginBottom:8}}>
-              <div style={{height:"100%",width:barWidth+"%",background:C.accent,borderRadius:2,transition:"width 0.3s ease"}}/>
-            </div>
-            {source.specificUrls&&source.specificUrls.length>0&&(<div style={{fontSize:11,color:"#9ca3af",display:"flex",gap:6,flexWrap:"wrap"}}>
-              {source.specificUrls.map((url,ui)=>(<span key={ui} style={{padding:"2px 6px",background:"#f3f4f6",borderRadius:4}}>{url}</span>))}
-            </div>)}
-          </div>);
-        })}
-      </div>)}
-    </div>)}
+            )}
+            {gap.action&&(
+              <div style={{fontSize:12,color:"#1e40af",lineHeight:1.5,padding:"10px 14px",background:"#eff6ff",borderRadius:8,borderLeft:"3px solid #3b82f6"}}>
+                <span style={{fontWeight:500}}>Recommended action:</span> {gap.action}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    ):(
+      <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"48px 20px",textAlign:"center"}}>
+        <div style={{fontSize:36,marginBottom:12}}>{String.fromCharCode(10003)}</div>
+        <div style={{fontSize:15,fontWeight:500,color:"#059669",marginBottom:4}}>No Platform Gaps Detected</div>
+        <div style={{fontSize:12,color:C.muted}}>{brandName} has presence across all key platforms referenced by AI engines</div>
+      </div>
+    )}
 
-    {/* TAB 2: High-Impact Opportunities */}
-    {activeTab==="opportunities"&&(<div>
-      {opportunities.length===0?(<div style={{padding:40,textAlign:"center",background:C.card,border:"1px solid "+C.border,borderRadius:14}}>
-        <div style={{fontSize:14,fontWeight:500,color:"#111827"}}>No opportunities identified</div>
-        <div style={{fontSize:12,color:"#9ca3af",marginTop:4}}>Your brand appears well-covered across channels. Run another audit to check.</div>
-      </div>):(<div>
-        <div style={{fontSize:12,color:"#6b7280",marginBottom:16}}>Channels where investing content would likely improve your AI engine visibility</div>
-        {opportunities.map((opp,i)=>{
-          const impactColors={high:{bg:"#fee2e2",text:"#991b1b",label:"High Impact"},medium:{bg:"#fef3c7",text:"#92400e",label:"Medium Impact"},low:{bg:"#f0fdf4",text:"#166534",label:"Low Impact"}};
-          const impact=impactColors[opp.impact]||impactColors.medium;
-          return(<div key={i} style={{padding:"18px 20px",background:C.card,border:"1px solid "+C.border,borderRadius:14,marginBottom:10}}>
-            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:6}}>
-              <div style={{fontSize:14,fontWeight:500,color:"#111827"}}>{opp.channel}</div>
-              <span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:impact.bg,color:impact.text,fontWeight:500}}>{impact.label}</span>
-            </div>
-            <div style={{fontSize:12,color:"#6b7280",marginBottom:8,lineHeight:1.5}}>{opp.reason}</div>
-            <div style={{fontSize:12,color:C.accent,fontWeight:500}}>{"\u2192"} {opp.action}</div>
-          </div>);
-        })}
-      </div>)}
-    </div>)}
-
-    {/* TAB 3: Channel Status */}
-    {activeTab==="status"&&(<div>
-      {channels.length===0?(<div style={{padding:40,textAlign:"center",background:C.card,border:"1px solid "+C.border,borderRadius:14}}>
-        <div style={{fontSize:14,fontWeight:500,color:"#111827"}}>No channel verification data</div>
-        <div style={{fontSize:12,color:"#9ca3af",marginTop:4}}>Channel status is populated during the audit.</div>
-      </div>):(<div>
-        <div style={{fontSize:12,color:"#6b7280",marginBottom:16}}>Verified presence across key platforms</div>
-        {channels.slice(0,10).map((ch,i)=>{
-          let displayFinding=ch.finding||"";
-          let displayStatus=ch.status||"Not Verified";
-          // Fix contradictions: if Active but finding is negative, clean the finding
-          if(/active|verified|found/i.test(displayStatus)&&/could not verify|not found|no official|unable to confirm|no dedicated|only.*appear/i.test(displayFinding)){
-            displayFinding=ch.url?"Verified presence":"Presence detected";
-          }
-          // Fix contradictions: if Not Present but has a real URL, upgrade
-          if(/not present|not found|missing/i.test(displayStatus)&&ch.url&&ch.url.startsWith("http")){
-            displayStatus="Active";
-            displayFinding=displayFinding||"Verified presence";
-          }
-          const status=(displayStatus||"Unknown").toLowerCase();
-          const statusConfig=status.includes("active")||status.includes("verified")||status.includes("found")?{bg:"#dcfce7",text:"#166534",label:"Active"}:status.includes("not present")||status.includes("not found")||status.includes("missing")?{bg:"#fee2e2",text:"#991b1b",label:"Not Present"}:status.includes("needs work")?{bg:"#fef3c7",text:"#92400e",label:"Needs Work"}:{bg:"#f3f4f6",text:"#6b7280",label:"Not Verified"};
-          return(<div key={i} style={{padding:"14px 20px",background:C.card,border:"1px solid "+C.border,borderRadius:14,marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div>
-              <div style={{fontSize:13,fontWeight:500,color:"#111827"}}>{ch.name||ch.channel}</div>
-              {(ch.url||displayFinding)&&<div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{ch.url||displayFinding}</div>}
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontSize:11,fontWeight:500,padding:"4px 10px",borderRadius:6,background:statusConfig.bg,color:statusConfig.text}}>{statusConfig.label}</span>
-              {ch.verifiedBy==="web_search"&&<span style={{fontSize:9,color:"#9ca3af"}}>{"✓ web verified"}</span>}
-            </div>
-          </div>);
-        })}
-      </div>)}
-    </div>)}
+    {/* Methodology note */}
+    <div style={{marginTop:20,fontSize:11,color:C.muted,lineHeight:1.5}}>
+      Methodology: The top 20 most-cited third-party domains from your audit were verified via web search. Competitor-owned platforms, irrelevant domains, and platforms where {brandName} already has a presence were filtered out. Only actionable gaps are shown.
+    </div>
   </div>);
 }
 
