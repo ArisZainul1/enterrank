@@ -545,117 +545,11 @@ async function runRealAudit(cd, onProgress){
   }));
   const compCrawlSummary=Object.entries(compCrawls).map(([name,data])=>`\n--- ${name} ---\n${data}`).join("\n")||"No competitor crawl data.";
 
-  // ── Step 2: Generate high-quality search queries from key topics ──
-  onProgress("Generating search queries from your topics...", 8);
-  let searchQueries = [];
-  const topicsToUse = topics.slice(0, 12);
-  try{
-  const queryGenPrompt = `You are an expert in AI engine optimization (AEO/GEO). Your job is to generate realistic, high-quality search queries that real users would type into ChatGPT or Gemini.
-
-I need 2-3 search queries for each of these topics (aim for at least 15 total). Each query must approach the topic from a DIFFERENT angle.
-
-Industry: ${industry}
-Region: ${region}
-
-BRAND WEBSITE CONTEXT (use this to understand what the brand actually offers):
-${crawlSummary || "No crawl data available"}
-
-IMPORTANT RULES FOR QUERY GENERATION:
-- Queries MUST reflect what the brand actually sells based on their website content above
-- For a mobile telecommunications brand, queries should be HEAVILY weighted toward mobile plans, data packages, prepaid and postpaid, 5G coverage, roaming, device plans, mobile apps, network coverage
-- Fibre and broadband queries are fine IF the brand offers them, but should NOT be the majority
-- Do NOT include generic technology topics that no mobile provider sells such as satellite dishes, cordless phones, wifi router systems, walkie talkies
-- Each query should be something a real consumer would search for when considering this brand
-- Queries should map to the actual service categories visible on the brand website
-
-${(()=>{const archs=cd.archetypes||[];if(archs.length===0)return"";return"Target Audience Archetypes (ranked by priority):\n"+archs.map((a,i)=>`${i+1}. ${a.name}${a.demographics?" ("+a.demographics+")":""}: ${a.description||""}`).join("\n")+"\n\nIMPORTANT: For each query, tag it with the archetype name that would most likely ask that query.\n";})()}Topics:
-${topicsToUse.map((t, i) => `${i + 1}. ${t}`).join("\n")}
-
-For each topic, generate 2-3 queries using DIFFERENT angles from this list:
-- Comparison/versus: "Compare X vs Y for [use case]"
-- Best-of with specific criteria: "What are the best X with [specific feature] in [region]?"
-- Purchase intent: "Where to buy X in [region]?" or "Which X is worth buying right now?"
-- Problem-solving: "How to choose the right X for [specific need]?"
-- Feature-specific: "Which X offers the best [specific feature like battery life, rewards, coverage]?"
-- Price/value: "Who offers the best deals/pricing on X in [region]?"
-- Beginner/newcomer: "Best X for beginners/first-time users in [region]?"
-- Authenticity/trust: "Where to find authentic/genuine X in [region]?"
-- Trends/current: "What are the top-rated X in [region] in ${new Date().getFullYear()}?"
-- Trade-in/switching: "Best X for people switching from [alternative]?"
-
-Rules:
-- Queries must be specific and detailed — NOT generic like "best X in Y"
-- Include specific criteria, features, or use cases in each query
-- NEVER include the brand "${brand}" or these competitor names: ${compNames.filter(n=>n).join(", ")}
-- Queries must be what someone asks when they do NOT have a specific company in mind
-- Make queries specific to ${region} where relevant (mention cities, local context)
-- All queries must be in English
-- Each query should be 15-25 words long — detailed enough to get a substantive AI response
-- The queries per topic MUST use different angles — never repeat the same structure
-- When including a year in any query, ALWAYS use ${new Date().getFullYear()}. NEVER use 2023, 2024, or any past year.
-
-BAD examples (too generic):
-- "What are the best credit cards in UAE?"
-- "Top heated tobacco brands in Malaysia"
-- "Best mortgage rates"
-
-GOOD examples (specific, varied angles):
-- "Which credit cards in UAE offer the highest cashback on grocery and fuel purchases?"
-- "Compare heat-not-burn devices by battery life, price and compatible tobacco sticks — which should I buy in Malaysia?"
-- "Who offers the best mortgage refinancing deals for expats in Abu Dhabi right now?"
-- "What are the most reliable heated tobacco devices for beginners who want easy maintenance?"
-- "Where to buy authentic heat-not-burn devices and consumables online in Malaysia?"
-
-Return JSON only:
-{"queries": [${topicsToUse.map((t, i) => `\n  {"topic": "${t.replace(/"/g, '\\"')}", "q1": "first query", "q1_archetype": "archetype or empty", "q2": "second query", "q2_archetype": "archetype or empty", "q3": "third query (optional)", "q3_archetype": "archetype or empty"}`).join(",")}
-]}`;
-
-  const queryGenRaw = await callOpenAI4o(queryGenPrompt, "You are an AEO/GEO search query expert. Generate highly specific, realistic search queries. Return ONLY valid JSON, no markdown fences.");
-  const queryGenParsed = safeJSON(queryGenRaw) || { queries: [] };
-
-  // Extract queries from the structured response
-  queryArchetypeMap={};
-  if (Array.isArray(queryGenParsed.queries)) {
-    queryGenParsed.queries.forEach(item => {
-      if (typeof item === "string") {
-        searchQueries.push(item);
-      } else if (item && typeof item === "object") {
-        if (item.q1) {searchQueries.push(item.q1);if(item.q1_archetype)queryArchetypeMap[item.q1]=item.q1_archetype;}
-        if (item.q2) {searchQueries.push(item.q2);if(item.q2_archetype)queryArchetypeMap[item.q2]=item.q2_archetype;}
-        if (item.q3) {searchQueries.push(item.q3);if(item.q3_archetype)queryArchetypeMap[item.q3]=item.q3_archetype;}
-      }
-    });
-  }
-  searchQueries = searchQueries.filter(q => typeof q === "string" && q.length > 15).slice(0, 15);
-
-  // Fallback if generation failed
-  if (searchQueries.length < 4) {
-    searchQueries = topicsToUse.flatMap(t => [
-      `What are the best ${t} options with the highest ratings in ${region}?`,
-      `Compare the top ${t} providers by features, pricing and customer reviews in ${region}`
-    ]).slice(0, 15);
-  }
-
-  // Post-generation: strip any brand/competitor names that leaked through
-  const brandEscaped = brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const brandStripRegex = new RegExp('\\b' + brandEscaped + '\\b', 'gi');
-  searchQueries = searchQueries.map(q => {
-    let cleaned = q;
-    cleaned = cleaned.replace(brandStripRegex, '').replace(/\s{2,}/g, ' ').trim();
-    compNames.filter(n => n && n.length > 2).forEach(cn => {
-      const esc = cn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      cleaned = cleaned.replace(new RegExp('\\b' + esc + '\\b', 'gi'), '').replace(/\s{2,}/g, ' ').trim();
-    });
-    return cleaned;
-  }).filter(q => q.length > 10);
-  }catch(stepError){
-    console.error("Query generation failed:",stepError.message);
-    onProgress("Warning: query generation had an issue, using fallback queries...",9);
-    searchQueries=topicsToUse.flatMap(t=>[
-      `What are the best ${t} options with the highest ratings in ${region}?`,
-      `Compare the top ${t} providers by features, pricing and customer reviews in ${region}`
-    ]).slice(0,15);
-  }
+  // ── Step 2: Use topics directly as search queries ──
+  onProgress("Preparing search queries from your topics...", 8);
+  const topicsToUse = topics.slice(0, 15);
+  let searchQueries = topicsToUse.filter(q => typeof q === "string" && q.length > 10);
+  queryArchetypeMap = {};
 
   // ── Step 3: Test all queries on both engines with real responses ──
   const allBrandNames = [brand, ...compNames.filter(n => n)].slice(0, 6);
@@ -3309,7 +3203,7 @@ COMPETITORS: ${compNamesStr||"None specified"}
 
 ${crawlSummary?"BRAND WEBSITE CONTENT (this tells you what the brand ACTUALLY sells):\n"+crawlSummary:""}
 
-Generate exactly 12 search queries that a REAL CONSUMER would type into ChatGPT or Google when looking for products or services that ${data.brand||"Brand"} actually provides.
+Generate exactly 15 search queries that a REAL CONSUMER would type into ChatGPT or Google when looking for products or services that ${data.brand||"Brand"} actually provides.
 
 STRICT RULES:
 1. Every query MUST be for a product or service that ${data.brand||"Brand"} actually sells or offers. Check the website content above.
@@ -3318,17 +3212,17 @@ STRICT RULES:
 4. Queries should be diverse across the brand's ACTUAL service categories. Mix comparison queries, best-of queries, how-to queries, and recommendation queries.
 5. Include the region naturally where relevant (e.g. 'in ${region||"Global"}' or '${region||"Global"} ${new Date().getFullYear()}').
 6. Each query should be 10-25 words, natural language, like a real person asking ChatGPT.
-7. At least 7 out of 12 queries should be about the brand's PRIMARY product category.
+7. At least 10 out of 15 queries should be about the brand's PRIMARY product category.
 8. Do NOT mention ${data.brand||"Brand"} by name in any query — these should be generic category queries where ${data.brand||"Brand"} SHOULD appear in the answer.
 ${compNamesStr?"9. Do NOT mention these competitor names: "+compNamesStr:""}
 All queries must be in English.
 
 Return JSON only:
-{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5", "query 6", "query 7", "query 8", "query 9", "query 10", "query 11", "query 12"]}`;
+{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5", "query 6", "query 7", "query 8", "query 9", "query 10", "query 11", "query 12", "query 13", "query 14", "query 15"]}`;
       const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.");
       const result=safeJSON(raw);
       if(result&&result.topics&&Array.isArray(result.topics)){
-        const validTopics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,12);
+        const validTopics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,15);
         if(validTopics.length>0){
           setData(prev=>{
             const hasExisting=(prev.topics||[]).some(t=>(typeof t==="string"?t:"").trim().length>3);
@@ -3399,7 +3293,7 @@ COMPETITORS: ${compNamesStr||"None specified"}
 
 ${crawlSummary?"BRAND WEBSITE CONTENT (this tells you what the brand ACTUALLY sells):\n"+crawlSummary:""}
 
-Generate exactly 12 search queries that a REAL CONSUMER would type into ChatGPT or Google when looking for products or services that ${data.brand||"Brand"} actually provides.
+Generate exactly 15 search queries that a REAL CONSUMER would type into ChatGPT or Google when looking for products or services that ${data.brand||"Brand"} actually provides.
 
 STRICT RULES:
 1. Every query MUST be for a product or service that ${data.brand||"Brand"} actually sells or offers. Check the website content above.
@@ -3409,18 +3303,18 @@ STRICT RULES:
 5. Include the region naturally where relevant (e.g. 'in ${data.region||"Global"}' or '${data.region||"Global"} ${new Date().getFullYear()}').
 6. When including a year in any query, ALWAYS use ${new Date().getFullYear()}. NEVER use 2023, 2024, or any past year.
 7. Each query should be 10-25 words, natural language, like a real person asking ChatGPT.
-8. At least 7 out of 12 queries should be about the brand's PRIMARY product category.
+8. At least 10 out of 15 queries should be about the brand's PRIMARY product category.
 9. Do NOT mention ${data.brand||"Brand"} by name in any query — these should be generic category queries where ${data.brand||"Brand"} SHOULD appear in the answer.
 ${compNamesStr?"10. Do NOT mention these competitor names: "+compNamesStr:""}
 All queries must be in English.
 
 Return JSON only:
-{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5", "query 6", "query 7", "query 8", "query 9", "query 10", "query 11", "query 12"]}`;
+{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5", "query 6", "query 7", "query 8", "query 9", "query 10", "query 11", "query 12", "query 13", "query 14", "query 15"]}`;
       const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.");
       const parsed=safeJSON(raw);
       const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(topics&&Array.isArray(topics)&&topics.length>0){
-        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,12)}));
+        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,15)}));
         setAuditStep("topics");
       }else{
         setError("Failed to generate topics. Please try again.");
@@ -3470,7 +3364,7 @@ Return JSON only:
       const newTopics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(newTopics&&Array.isArray(newTopics)&&newTopics.length>0){
         const cleaned=newTopics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,5);
-        setData(d=>({...d,topics:[...d.topics,...cleaned].slice(0,12)}));
+        setData(d=>({...d,topics:[...d.topics,...cleaned].slice(0,15)}));
       }
     }catch(e){console.error("Regenerate error:",e);}
     setGenTopics(false);
@@ -3547,10 +3441,10 @@ ${crawlSummary?"BRAND WEBSITE CONTENT:\n"+crawlSummary.slice(0,600)+"\n":""}
 TARGET AUDIENCE ARCHETYPES (ranked by priority):
 ${archContext}
 
-Generate exactly 12 search topics that these archetypes would actually search for on AI engines (ChatGPT, Gemini).
+Generate exactly 15 search topics that these archetypes would actually search for on AI engines (ChatGPT, Gemini).
 
 CRITICAL RULES:
-1. Topics must be weighted by archetype priority — archetype #1 should influence ~5 topics, #2 ~4 topics, #3 ~3 topics
+1. Topics must be weighted by archetype priority — archetype #1 should influence ~6 topics, #2 ~5 topics, #3 ~4 topics
 2. Each topic should reflect what that archetype ACTUALLY searches for
 3. Topics must be about products/services ${data.brand} actually offers (check website content)
 4. Do NOT mention ${data.brand} by name — these are generic queries where ${data.brand} SHOULD appear
@@ -3565,7 +3459,7 @@ Return JSON only:
       const parsed=safeJSON(raw);
       const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(topics&&Array.isArray(topics)&&topics.length>0){
-        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,12)}));
+        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,15)}));
       }else{setError("Failed to generate topics. Please try again.");}
     }catch(e){console.error("Topic generation from archetypes failed:",e);setError("Failed to generate topics. Check your API connection.");}
     setGenTopics(false);
@@ -3578,7 +3472,7 @@ Return JSON only:
     setEditingTopic(null);setEditVal("");
   };
   const deleteTopic=(i)=>{setData({...data,topics:data.topics.filter((_,j)=>j!==i)});};
-  const addTopic=()=>{if(newTopic.trim()&&data.topics.length<10){setData({...data,topics:[...data.topics,newTopic.trim()]});setNewTopic("");}};
+  const addTopic=()=>{if(newTopic.trim()&&data.topics.length<15){setData({...data,topics:[...data.topics,newTopic.trim()]});setNewTopic("");}};
 
   // Smooth progress: target is set by API callbacks, displayed value interpolates toward it
   const targetRef=React.useRef(0);
@@ -3777,17 +3671,17 @@ Return JSON only:
 
       {/* Topic counter */}
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
-        <span style={{fontSize:11,fontWeight:500,color:data.topics.length>=10?C.red:C.muted,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{data.topics.length} / 10 topics</span>
+        <span style={{fontSize:11,fontWeight:500,color:data.topics.length>=15?C.red:C.muted,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{data.topics.length} / 15 topics</span>
       </div>
 
       {/* Add new topic */}
       <div style={{display:"flex",gap:8,marginBottom:16}}>
-        <input value={newTopic} onChange={e=>setNewTopic(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTopic();}} placeholder={data.topics.length>=10?"Maximum 10 topics reached":"Add a custom topic..."} disabled={data.topics.length>=10} style={{flex:1,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit",opacity:data.topics.length>=10?.5:1}}/>
-        <button onClick={addTopic} disabled={!newTopic.trim()||data.topics.length>=10} style={{padding:"8px 16px",background:newTopic.trim()&&data.topics.length<10?C.accent:"#dde1e7",color:newTopic.trim()&&data.topics.length<10?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:newTopic.trim()&&data.topics.length<10?"pointer":"not-allowed",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Add</button>
+        <input value={newTopic} onChange={e=>setNewTopic(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTopic();}} placeholder={data.topics.length>=15?"Maximum 15 topics reached":"Add a custom topic..."} disabled={data.topics.length>=10} style={{flex:1,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit",opacity:data.topics.length>=15?.5:1}}/>
+        <button onClick={addTopic} disabled={!newTopic.trim()||data.topics.length>=10} style={{padding:"8px 16px",background:newTopic.trim()&&data.topics.length<15?C.accent:"#dde1e7",color:newTopic.trim()&&data.topics.length<15?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:newTopic.trim()&&data.topics.length<15?"pointer":"not-allowed",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Add</button>
       </div>
 
       {/* Generate more button */}
-      <button onClick={regenerateTopics} disabled={genTopics||generatingTopics||data.topics.length>=10} style={{width:"100%",padding:"10px 16px",background:"none",border:`1px dashed ${C.accent}40`,borderRadius:8,fontSize:12,fontWeight:600,color:data.topics.length>=10?C.muted:C.accent,cursor:genTopics||generatingTopics||data.topics.length>=10?"not-allowed":"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",marginBottom:8,opacity:genTopics||generatingTopics||data.topics.length>=10?.5:1}}>
+      <button onClick={regenerateTopics} disabled={genTopics||generatingTopics||data.topics.length>=10} style={{width:"100%",padding:"10px 16px",background:"none",border:`1px dashed ${C.accent}40`,borderRadius:8,fontSize:12,fontWeight:600,color:data.topics.length>=15?C.muted:C.accent,cursor:genTopics||generatingTopics||data.topics.length>=15?"not-allowed":"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",marginBottom:8,opacity:genTopics||generatingTopics||data.topics.length>=15?.5:1}}>
         {genTopics?"Generating more topics...":"+ Generate More Topics"}
       </button>
 
