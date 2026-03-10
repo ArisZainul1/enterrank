@@ -38,6 +38,8 @@ function getEngineWeights(region){
   for(const[key,weights]of Object.entries(ENGINE_WEIGHTS)){if(rl.includes(key.toLowerCase())||key.toLowerCase().includes(rl))return weights;}
   return ENGINE_WEIGHTS["Global"];
 }
+const CATEGORY_WEIGHTS={"Structured Data / Schema Markup":0.20,"Structured Data":0.20,"Content Authority / Depth":0.25,"Content Authority":0.25,"E-E-A-T Signals":0.20,"Technical SEO Foundations":0.10,"Technical SEO":0.10,"Citation Network / Linking":0.15,"Citation Network":0.15,"Content Freshness":0.10};
+function getCategoryWeight(label){const clean=label.split("/")[0].trim().toLowerCase();for(const[key,weight]of Object.entries(CATEGORY_WEIGHTS)){const kClean=key.toLowerCase().split("/")[0].trim();if(kClean.includes(clean)||clean.includes(kClean))return weight;}return 1/6;}
 function Ring({score,size=100,color,sw=5}){const r2=(size-sw*2)/2,ci=2*Math.PI*r2;const col=color||(score>=70?C.green:score>=40?C.amber:C.red);return(<div style={{position:"relative",width:size,height:size}}><svg width={size} height={size}><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={C.borderSoft} strokeWidth={sw}/><circle cx={size/2} cy={size/2} r={r2} fill="none" stroke={col} strokeWidth={sw} strokeDasharray={ci} strokeDashoffset={ci-(score/100)*ci} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`} style={{transition:"stroke-dashoffset 1.2s ease-out"}}/></svg><div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:size*.26,fontWeight:700,color:C.text,lineHeight:1,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{score}%</span></div></div>);}
 function Bar({value,color=C.accent,h=5}){return <div style={{width:"100%",height:h,background:C.borderSoft,borderRadius:h}}><div style={{width:`${Math.max(2,value)}%`,height:"100%",background:color,borderRadius:h,transition:"width .8s ease-out"}}/></div>;}
 function Pill({children,color=C.accent,filled}){return <span style={{display:"inline-flex",padding:"3px 10px",borderRadius:100,fontSize:11,fontWeight:600,background:filled?color:`${color}10`,color:filled?"#fff":color}}>{children}</span>;}
@@ -1635,6 +1637,7 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
   if(!brandCrawl?.subPages?.blog)missingEEAT.push("Blog/content hub");
   if(!brandCrawl?.subPages?.faq)missingEEAT.push("FAQ page");
 
+  const roadmapWeightedReadiness=Math.round((mergedPainPoints||[]).reduce((sum,pp)=>sum+(pp.score*getCategoryWeight(pp.label)),0));
   const aiCrawlerSummaryForRoadmap=(()=>{try{const ac=brandCrawl?.mainPage?.aiCrawlerAccess;if(!ac)return null;const r=ac.robotsTxt;const l=ac.llmsTxt;let s=r?.found?ac.summary:"robots.txt not found";if(r?.found){const blocked=(r.crawlers||[]).filter(c=>c.blocked);if(blocked.length>0)s+=": "+blocked.map(c=>`${c.agent} (${c.engine})`).join(", ");}s+=l?.found?" | llms.txt present":" | llms.txt not found";return s;}catch(e){return null;}})();
   const roadmapPrompt=`Create a 90-day AEO roadmap for "${brand}" in ${industry}, specifically for improving visibility in ${region}.
 
@@ -1645,6 +1648,7 @@ AUDIT FINDINGS TO ADDRESS:
 - Warning categories: ${weakCats||"none"}
 - Missing channels: ${channelGaps||"none"}
 - Website issues from crawl: ${crawlSummary.slice(0,500)}
+- Overall website readiness: ${roadmapWeightedReadiness||"N/A"}% (weighted by category importance for AI citations)
 - AI crawler access: ${aiCrawlerSummaryForRoadmap||"not checked"}
 - Top competitor advantages: ${(compData.competitors||[]).slice(0,3).map(c=>`${c.name} (${c.score}%): ${c.topStrength||"N/A"}`).join("; ")}
 
@@ -1793,6 +1797,7 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
       (citationSources?.all || []).map(c => { try { return new URL(c.url).hostname.replace("www.",""); } catch(e) { return ""; } }).filter(Boolean)
     )].slice(0, 10);
 
+    const narrativeWeightedReadiness=Math.round((mergedPainPoints||[]).reduce((sum,pp)=>sum+(pp.score*getCategoryWeight(pp.label)),0));
     const aiCrawlerData=brandCrawl?.mainPage?.aiCrawlerAccess||null;
     const aiCrawlerSummary=aiCrawlerData?(()=>{const r=aiCrawlerData.robotsTxt;const l=aiCrawlerData.llmsTxt;let s=r?.found?aiCrawlerData.summary:"robots.txt not found";if(r?.found){const blocked=(r.crawlers||[]).filter(c=>c.blocked);if(blocked.length>0)s+=` (blocked: ${blocked.map(c=>c.agent).join(", ")})`;}s+=l?.found?" | llms.txt: present":" | llms.txt: not found";return s;})():null;
 
@@ -1810,6 +1815,7 @@ AUDIT DATA:
 - Query categories: ${catSummary}
 - Queries where brand is ABSENT on all engines: ${absentQueries.join(" | ") || "none"}
 - Website health: ${ppSummary || "not scored"}
+- Website Readiness (weighted): ${narrativeWeightedReadiness || "N/A"}% (Content Authority 25%, Structured Data 20%, E-E-A-T 20%, Citation Network 15%, Technical SEO 10%, Content Freshness 10%)
 - Weak areas: ${weakPPs.join(", ") || "none"}
 - Strong areas: ${strongPPs.join(", ") || "none"}
 - AI crawler access: ${aiCrawlerSummary || "not checked"}
@@ -2206,6 +2212,7 @@ function generateAll(cd, apiData){
   const getScoreDesc=(s,b)=>s>=80?b+" is dominant — frequently cited and recommended.":s>=60?b+" has strong visibility — regularly mentioned.":s>=40?b+" has moderate visibility — rarely cited as primary source.":s>=20?b+" has weak visibility — occasionally mentioned.":b+" is invisible to AI engines.";
   const painCats=["Structured Data / Schema","Content Authority","E-E-A-T Signals","Technical SEO","Citation Network","Content Freshness"];
   const painPoints=(hasApi&&apiData.engineData.painPoints&&apiData.engineData.painPoints.length>0)?apiData.engineData.painPoints.map(pp=>({label:pp.label,score:pp.score,severity:pp.score<30?"critical":pp.score<60?"warning":"good",evidence:pp.evidence||[]})):painCats.map(label=>({label,score:0,severity:"critical"}));
+  const websiteReadinessScore=Math.round(painPoints.reduce((sum,pp)=>sum+(pp.score*getCategoryWeight(pp.label)),0));
   const compVis = (hasApi && apiData.compVisibilityData) ? apiData.compVisibilityData : {};
   const competitors=(hasApi&&apiData.competitorData)?(()=>{const raw=Array.isArray(apiData.competitorData)?apiData.competitorData:apiData.competitorData.competitors||[];return raw.filter(c=>c.name&&c.name.toLowerCase()!==cd.brand.toLowerCase()).map(c=>{const cPain=(c.painPoints||painCats.map(l=>({label:l,score:c.score||0}))).map(p=>({label:p.label,score:p.score}));const advantages=cPain.map(pp=>{const brandPP=painPoints.find(bp=>bp.label===pp.label);const diff=pp.score-(brandPP?brandPP.score:0);return{category:pp.label,diff,insight:getInsight(pp.label,c.name,cd.brand,diff>0)};}).filter(a=>a.insight);return{name:c.name,score:c.score||0,painPoints:cPain,advantages,mentionRate:(compVis[c.name]?.avgMentionRate)??0,citationRate:(compVis[c.name]?.avgCitationRate)??0,engineScores:[compVis[c.name]?.gpt?.score??c.score??0,compVis[c.name]?.gemini?.score??c.score??0],topStrength:c.topStrength||"N/A"};});})():[];
   const stakeholders=(hasApi&&apiData.archData&&Array.isArray(apiData.archData)&&apiData.archData.length>0)?apiData.archData:[];
@@ -2284,7 +2291,7 @@ function generateAll(cd, apiData){
   const citationSources=(hasApi&&apiData.citationSources)?apiData.citationSources:{gpt:[],gemini:[],all:[]};
   const narratives=(hasApi&&apiData.narratives)?apiData.narratives:{};
   const engineWeights=hasApi?(apiData.engineWeights||gWeights):gWeights;
-  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,queryArchetypeMap,channelSourceData,citationSources,narratives,sovData,engineWeights,clientData:cd};
+  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,queryArchetypeMap,channelSourceData,citationSources,narratives,sovData,engineWeights,websiteReadinessScore,clientData:cd};
 }
 
 function generatePartial(cd, partial) {
@@ -3743,7 +3750,7 @@ function DashboardPage({r,history,goTo}){
 
       {/* Category Health */}
       <div style={{background:"#fff",border:"1px solid "+C.border,borderRadius:12,padding:"18px 20px"}}>
-        <div style={{fontSize:14,fontWeight:500,color:C.text,marginBottom:12}}>Website Readiness<InfoTip text="Scored from a live crawl of your website. Checks for schema markup, content structure, authority signals, and technical factors that AI engines use when deciding whether to cite a source."/></div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:14,fontWeight:500,color:C.text}}>Website Readiness</span><InfoTip text="Weighted score based on 6 website signal categories. Content Authority (25%) and Structured Data (20%) are weighted highest because they most directly impact AI citation likelihood."/></div>{r.websiteReadinessScore!=null&&<span style={{fontSize:14,fontWeight:500,color:r.websiteReadinessScore>=60?C.green:r.websiteReadinessScore>=35?C.amber:C.red}}>{r.websiteReadinessScore}%</span>}</div>
         <div style={{ marginBottom: 14, padding: "10px 12px", background: C.bg, borderRadius: 8, minHeight: 60 }}>
           {r.narratives?.categoryHealth ? (
             <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6 }}>{r.narratives.categoryHealth}</div>
@@ -3758,7 +3765,7 @@ function DashboardPage({r,history,goTo}){
               return (
                 <div key={i}>
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontSize:11,color:C.sub,minWidth:100,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{pp.label.split("/")[0].trim()}</span>
+                    <span style={{fontSize:11,color:C.sub,minWidth:120,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{pp.label.split("/")[0].trim()} <span style={{fontSize:9,color:C.muted}}>({Math.round(getCategoryWeight(pp.label)*100)}%)</span></span>
                     <div style={{flex:1,height:6,borderRadius:3,background:C.bg}}>
                       <div style={{width:Math.max(2,pp.score)+"%",height:6,borderRadius:3,background:pp.severity==="critical"?C.red:pp.severity==="warning"?C.amber:C.green,transition:"width .6s ease"}}/>
                     </div>
