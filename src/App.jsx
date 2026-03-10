@@ -5729,6 +5729,216 @@ function SentimentPage({r}){
     </div>
   </div>);
 }
+/* ─── PAGE: TARGET CHANNELS (citation-based) ─── */
+function TargetChannelsPage({r}){
+  const [activeTab, setActiveTab] = useState("gaps");
+
+  const brandName = r.clientData?.brand || "Your brand";
+  const cs = r.citationSources || { gpt: [], gemini: [], perplexity: [], googleai: [], all: [] };
+
+  // Normalize all citation sources with domain
+  const normalizeSrc = (arr, engine) => (arr || []).map(s => {
+    let url = s.url || "";
+    const domain = (() => { try { return new URL(url).hostname.replace("www.", ""); } catch(e) { return ""; } })();
+    return { ...s, domain, engine };
+  }).filter(s => s.domain && s.domain.length > 3);
+
+  const allSources = [
+    ...normalizeSrc(cs.gpt, "ChatGPT"),
+    ...normalizeSrc(cs.gemini, "Gemini"),
+    ...normalizeSrc(cs.perplexity, "Perplexity"),
+    ...normalizeSrc(cs.googleai, "Google AI Overview")
+  ];
+
+  // Brand sources: sources from responses that mentioned the brand
+  const brandSources = [
+    ...normalizeSrc(cs.brand?.chatgpt || cs.brand?.gpt || [], "ChatGPT"),
+    ...normalizeSrc(cs.brand?.gemini || [], "Gemini"),
+    ...normalizeSrc(cs.brand?.perplexity || [], "Perplexity"),
+    ...normalizeSrc(cs.brand?.googleai || [], "Google AI Overview")
+  ];
+
+  // Build competitor domain set
+  const compDomains = new Set();
+  (r.competitors || []).forEach(c => {
+    try {
+      const w = c.website || "";
+      if (w) {
+        const h = new URL(w.startsWith("http") ? w : "https://" + w).hostname.replace("www.", "").toLowerCase();
+        compDomains.add(h);
+        h.split(".").slice(0, -1).forEach(p => { if (p.length > 3) compDomains.add(p); });
+      }
+      const name = (c.name || "").toLowerCase().replace(/\s+/g, "");
+      if (name.length > 3) compDomains.add(name);
+    } catch (e) {}
+  });
+
+  // Build brand domain set
+  const brandDomainSet = new Set();
+  try {
+    const w = r.clientData?.website || "";
+    if (w) {
+      const h = new URL(w.startsWith("http") ? w : "https://" + w).hostname.replace("www.", "").toLowerCase();
+      brandDomainSet.add(h);
+      h.split(".").slice(0, -1).forEach(p => { if (p.length > 3) brandDomainSet.add(p); });
+    }
+  } catch (e) {}
+
+  const isCompDomain = (domain) => {
+    const d = (domain || "").toLowerCase();
+    for (const comp of compDomains) {
+      if (d.includes(comp) || comp.includes(d.split(".")[0])) return true;
+    }
+    return false;
+  };
+
+  const isBrandDomain = (domain) => {
+    const d = (domain || "").toLowerCase();
+    for (const bd of brandDomainSet) {
+      if (d.includes(bd) || bd.includes(d.split(".")[0])) return true;
+    }
+    return false;
+  };
+
+  // Group all sources by domain, excluding brand and competitor owned domains
+  const platformMap = {};
+  allSources.forEach(s => {
+    const d = s.domain;
+    if (isBrandDomain(d) || isCompDomain(d)) return;
+    if (!platformMap[d]) platformMap[d] = { domain: d, totalCitations: 0, brandCitations: 0, engines: new Set(), queries: new Set() };
+    platformMap[d].totalCitations++;
+    platformMap[d].engines.add(s.engine);
+    if (s.query) platformMap[d].queries.add(s.query);
+  });
+
+  // Count brand citations per platform
+  brandSources.forEach(s => {
+    const d = s.domain;
+    if (isBrandDomain(d) || isCompDomain(d)) return;
+    if (platformMap[d]) platformMap[d].brandCitations++;
+  });
+
+  const platforms = Object.values(platformMap)
+    .map(p => ({
+      ...p,
+      engines: [...p.engines],
+      queries: [...p.queries],
+      brandPresent: p.brandCitations > 0,
+      gap: p.totalCitations > 0 && p.brandCitations === 0
+    }))
+    .sort((a, b) => b.totalCitations - a.totalCitations);
+
+  const gaps = platforms.filter(p => p.gap);
+  const strengths = platforms.filter(p => p.brandPresent);
+  const allPlatforms = platforms;
+
+  const displayList = activeTab === "gaps" ? gaps : activeTab === "strengths" ? strengths : allPlatforms;
+
+  const engineColors = { "ChatGPT": "#10A37F", "Gemini": "#4285F4", "Perplexity": "#20808D", "Google AI Overview": "#EA4335" };
+
+  return (
+    <div>
+      <div style={{ marginBottom: 32 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 500, color: C.text, margin: 0, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>Target Channels</h2>
+        <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Platforms where AI engines source information for your industry {"\u2014"} and where {brandName} needs to be</p>
+      </div>
+
+      {/* Narrative */}
+      <div style={{ marginBottom: 24, padding: "16px 20px", background: "#fff", border: "1px solid " + C.border, borderRadius: 10, fontSize: 13, color: C.sub, lineHeight: 1.7 }}>
+        AI engines cited {platforms.length} third-party platforms when answering queries about your industry. {brandName} is present on {strengths.length} of them.{gaps.length > 0 ? " " + gaps.length + " platforms cite competitors but not " + brandName + " \u2014 these are your priority distribution targets." : " No major platform gaps detected."}
+      </div>
+
+      {/* Summary stats */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+        <div style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "16px 18px", textAlign: "center" }}>
+          <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>Third-Party Platforms</div>
+          <div style={{ fontSize: 24, fontWeight: 500, color: C.text, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>{platforms.length}</div>
+        </div>
+        <div style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "16px 18px", textAlign: "center" }}>
+          <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>You're Present On</div>
+          <div style={{ fontSize: 24, fontWeight: 500, color: "#059669", fontFamily: "'Satoshi',-apple-system,sans-serif" }}>{strengths.length}</div>
+        </div>
+        <div style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "16px 18px", textAlign: "center" }}>
+          <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>Platform Gaps</div>
+          <div style={{ fontSize: 24, fontWeight: 500, color: "#dc2626", fontFamily: "'Satoshi',-apple-system,sans-serif" }}>{gaps.length}</div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "1px solid " + C.border }}>
+        {[
+          { id: "gaps", label: "Priority Gaps (" + gaps.length + ")" },
+          { id: "strengths", label: "Your Strengths (" + strengths.length + ")" },
+          { id: "all", label: "All Platforms (" + allPlatforms.length + ")" }
+        ].map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+            padding: "8px 16px", fontSize: 12, fontWeight: activeTab === tab.id ? 500 : 400,
+            color: activeTab === tab.id ? C.text : C.muted, background: "none", border: "none",
+            borderBottom: activeTab === tab.id ? "2px solid " + C.accent : "2px solid transparent",
+            cursor: "pointer", fontFamily: "'Satoshi',-apple-system,sans-serif", transition: "all .15s"
+          }}>{tab.label}</button>
+        ))}
+      </div>
+
+      {/* Platform list */}
+      {displayList.length > 0 ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {displayList.map((p, i) => (
+            <div key={i} style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "16px 20px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: C.accent }}>{p.domain}</span>
+                  {p.brandPresent ? (
+                    <span style={{ fontSize: 9, fontWeight: 500, padding: "2px 8px", borderRadius: 4, background: "#dcfce7", color: "#166534" }}>Present</span>
+                  ) : (
+                    <span style={{ fontSize: 9, fontWeight: 500, padding: "2px 8px", borderRadius: 4, background: "#fee2e2", color: "#991b1b" }}>Not Present</span>
+                  )}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 11, color: C.muted }}>
+                  <span>{p.totalCitations} citation{p.totalCitations !== 1 ? "s" : ""}</span>
+                  <span>{p.engines.length} engine{p.engines.length !== 1 ? "s" : ""}</span>
+                </div>
+              </div>
+
+              {/* Engine pills */}
+              <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
+                {p.engines.map((eng, ei) => (
+                  <span key={ei} style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: (engineColors[eng] || C.accent) + "10", color: engineColors[eng] || C.accent }}>{eng}</span>
+                ))}
+              </div>
+
+              {/* Action recommendation for gaps */}
+              {!p.brandPresent && (
+                <div style={{ fontSize: 11, color: C.sub, lineHeight: 1.5, padding: "8px 12px", background: "#fef2f2", borderRadius: 6, borderLeft: "3px solid #dc2626" }}>
+                  AI engines reference this platform {p.totalCitations} time{p.totalCitations !== 1 ? "s" : ""} for queries in your industry. Establish {brandName}'s presence here to increase citation likelihood.
+                </div>
+              )}
+
+              {/* Confirmation for strengths */}
+              {p.brandPresent && (
+                <div style={{ fontSize: 11, color: C.sub, lineHeight: 1.5, padding: "8px 12px", background: "#f0fdf4", borderRadius: 6, borderLeft: "3px solid #059669" }}>
+                  {brandName} is cited from this platform {p.brandCitations} time{p.brandCitations !== 1 ? "s" : ""}. Maintain and strengthen your presence here.
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "40px 20px", textAlign: "center" }}>
+          <div style={{ fontSize: 13, color: C.muted }}>
+            {activeTab === "gaps" ? "No platform gaps found \u2014 " + brandName + " is present across all cited platforms." : activeTab === "strengths" ? "No platforms found where " + brandName + " is currently cited." : "No third-party platforms identified in citation data."}
+          </div>
+        </div>
+      )}
+
+      {/* Methodology note */}
+      <div style={{ marginTop: 16, fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
+        Platforms identified from real citation URLs returned by AI engines during this audit. Competitor-owned domains and brand-owned domains are excluded. Presence is determined by whether AI engines cited this platform in responses that mention {brandName}.
+      </div>
+    </div>
+  );
+}
+
 /* ─── PAGE: TARGET CHANNELS (3-tab layout) ─── */
 function ChannelsPage({r}){
   const[activeTab,setActiveTab]=useState("sources");
@@ -7190,7 +7400,7 @@ export default function App(){
         {step==="sentiment"&&results&&(sectionReady.sentiment||!auditInProgress)&&<SentimentPage r={results}/>}
         {step==="citations"&&results&&<CitationSourcesPage r={results}/>}
         {step==="playbook"&&results&&(sectionReady.playbook||!auditInProgress)&&<PlaybookPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject}/>}
-        {step==="channels"&&results&&(sectionReady.channels||!auditInProgress)&&<ChannelsPage r={results}/>}
+        {step==="channels"&&results&&<TargetChannelsPage r={results}/>}
         {step==="contenthub"&&results&&(sectionReady.contenthub||!auditInProgress)&&<ContentHubPage r={results} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }} activeProject={activeProject} onUpdate={setResults}/>}
         {step==="roadmap"&&results&&(sectionReady.roadmap||!auditInProgress)&&<RoadmapPage r={results} onUpdate={setResults}/>}
         {step!=="input"&&step!=="dashboard"&&auditInProgress&&!(sectionReady[step])&&results&&(
