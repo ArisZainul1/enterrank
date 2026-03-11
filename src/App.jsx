@@ -2516,30 +2516,30 @@ function LandingPage({ onGetStarted }) {
   const steps = [
     {
       number:"01",title:"Configure",subtitle:"Define your brand context",
-      desc:"Enter your brand name, website, region, and industry. EnterRank automatically crawls your website to understand your products and positioning. Add up to 3 competitors for head-to-head comparison, then select from AI-generated audience archetypes that represent your key customer segments. These archetypes drive the 15 search topics your audit will test.",
+      desc:"Enter your brand name, website, region, and industry. EnterRank automatically crawls your website to understand your products and positioning. Add competitors for head-to-head comparison, then select from AI-generated audience archetypes that represent your key customer segments. These archetypes drive the 15 real queries across 4 engines your audit will test.",
       color:"#2563eb",
       visual:(
         <div style={{display:"flex",flexDirection:"column",gap:10,padding:24}}>
           <div style={{display:"flex",gap:8}}>
             <div style={{flex:1,padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
               <div style={{fontSize:9,color:"#94a3b8",marginBottom:2}}>Brand Name</div>
-              <div style={{fontSize:13,color:"#0f172a",fontWeight:500}}>Shell</div>
+              <div style={{fontSize:13,color:"#0f172a",fontWeight:500}}>Your Brand</div>
             </div>
             <div style={{flex:1,padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
               <div style={{fontSize:9,color:"#94a3b8",marginBottom:2}}>Region</div>
-              <div style={{fontSize:13,color:"#0f172a",fontWeight:500}}>Malaysia</div>
+              <div style={{fontSize:13,color:"#0f172a",fontWeight:500}}>United States</div>
             </div>
           </div>
           <div style={{padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
             <div style={{fontSize:9,color:"#94a3b8",marginBottom:4}}>Detected Competitors</div>
             <div style={{display:"flex",gap:6}}>
-              {["Petronas","BP","Caltex"].map((c,i)=>(<span key={i} style={{fontSize:11,padding:"3px 10px",background:"#fff",borderRadius:6,border:"1px solid #e2e8f0",color:"#374151"}}>{c}</span>))}
+              {["Competitor A","Competitor B","Competitor C"].map((c,i)=>(<span key={i} style={{fontSize:11,padding:"3px 10px",background:"#fff",borderRadius:6,border:"1px solid #e2e8f0",color:"#374151"}}>{c}</span>))}
             </div>
           </div>
           <div style={{padding:"10px 14px",background:"#eff6ff",borderRadius:8,border:"1px solid #bfdbfe"}}>
             <div style={{fontSize:9,color:"#2563eb",marginBottom:4}}>Target Archetypes (ranked)</div>
             <div style={{display:"flex",flexDirection:"column",gap:4}}>
-              {["Daily Commuter","Budget-Conscious Family","Fleet Manager"].map((a,i)=>(
+              {["Enterprise Decision Maker","Technical Evaluator","Budget-Conscious Buyer"].map((a,i)=>(
                 <div key={i} style={{display:"flex",alignItems:"center",gap:6}}>
                   <span style={{width:18,height:18,borderRadius:6,background:"#2563eb",color:"#fff",fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:500}}>{i+1}</span>
                   <span style={{fontSize:11,color:"#1e40af"}}>{a}</span>
@@ -2552,7 +2552,7 @@ function LandingPage({ onGetStarted }) {
     },
     {
       number:"02",title:"Test",subtitle:"Live queries on 4 AI engines",
-      desc:"Each of your 15 topics is sent as a real query to ChatGPT, Gemini, Perplexity, and Google AI. That\u2019s 60 live data points collected in under three minutes. Every response is captured word-for-word, including citation URLs and source references.",
+      desc:"Each of your 15 topics is sent as a real query to ChatGPT, Gemini, Perplexity, and Google AI Overview. That\u2019s 60 live data points collected in under three minutes. Every response is captured in full, including citation URLs and source references.",
       color:"#059669",
       visual:(
         <div style={{padding:24}}>
@@ -2567,7 +2567,7 @@ function LandingPage({ onGetStarted }) {
             ))}
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
-            {["What are the best petrol stations in Malaysia?","Compare Shell vs Petronas fuel quality","Cheapest fuel rewards program 2026"].map((q,i)=>(
+            {["Best project management tools for remote teams","Compare top CRM platforms for startups","Most reliable cloud hosting providers 2026"].map((q,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
                 <div style={{width:6,height:6,borderRadius:3,background:i===0?"#059669":"#e2e8f0"}}/>
                 <span style={{fontSize:11,color:"#64748b",flex:1}}>{q}</span>
@@ -2581,7 +2581,7 @@ function LandingPage({ onGetStarted }) {
     },
     {
       number:"03",title:"Analyse",subtitle:"Classify, score, and compare",
-      desc:"Responses are classified as Cited (the engine recommended you), Mentioned (you were named but not recommended), or Absent (you were not included at all). Scores are weighted by each engine\u2019s estimated market share in your region, so your visibility score reflects real-world user behaviour.",
+      desc:"Responses are classified as Cited, Mentioned, or Absent for each engine. Scores are weighted by estimated engine market share in your region, so your visibility score reflects how real users discover brands through AI.",
       color:"#8b5cf6",
       visual:(
         <div style={{padding:24}}>
@@ -2594,11 +2594,11 @@ function LandingPage({ onGetStarted }) {
             ))}
           </div>
           <div style={{marginBottom:12}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:10,color:"#64748b"}}>Shell</span><span style={{fontSize:10,fontWeight:500,color:"#0f172a"}}>62%</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:10,color:"#64748b"}}>Your Brand</span><span style={{fontSize:10,fontWeight:500,color:"#0f172a"}}>62%</span></div>
             <div style={{height:6,borderRadius:3,background:"#e2e8f0"}}><div style={{width:"62%",height:6,borderRadius:3,background:"#2563eb"}}/></div>
           </div>
           <div>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:10,color:"#64748b"}}>Petronas</span><span style={{fontSize:10,fontWeight:500,color:"#0f172a"}}>78%</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:10,color:"#64748b"}}>Competitor A</span><span style={{fontSize:10,fontWeight:500,color:"#0f172a"}}>78%</span></div>
             <div style={{height:6,borderRadius:3,background:"#e2e8f0"}}><div style={{width:"78%",height:6,borderRadius:3,background:"#f97316"}}/></div>
           </div>
           <div style={{textAlign:"center",marginTop:12,fontSize:10,color:"#94a3b8"}}>Weighted by regional engine market share</div>
@@ -2607,21 +2607,21 @@ function LandingPage({ onGetStarted }) {
     },
     {
       number:"04",title:"Optimise",subtitle:"Actionable strategy backed by evidence",
-      desc:"Review key findings with specific actions, sentiment analysis showing how each engine describes your brand, citation source mapping, competitive share of voice, and a 90-day transformation roadmap your team can execute immediately. Export everything as a PDF report.",
+      desc:"Review key findings with specific actions, sentiment analysis, citation source mapping, and competitive share of voice. Export a 90-day transformation roadmap your team can start executing on day one.",
       color:"#d97706",
       visual:(
         <div style={{padding:24}}>
           <div style={{padding:"12px 16px",background:"#f0fdf4",borderRadius:8,borderLeft:"3px solid #059669",marginBottom:10}}>
             <div style={{fontSize:10,fontWeight:500,color:"#166534",marginBottom:2}}>Key Finding</div>
-            <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Shell is absent from 40% of recommendation queries. Petronas is cited in all of them.</div>
+            <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Your brand is absent from 40% of recommendation queries. Competitor A is cited in all of them.</div>
           </div>
           <div style={{padding:"12px 16px",background:"#eff6ff",borderRadius:8,borderLeft:"3px solid #2563eb",marginBottom:10}}>
             <div style={{fontSize:10,fontWeight:500,color:"#1e40af",marginBottom:2}}>Action</div>
-            <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Create comparison guide targeting "best petrol station" queries with pricing data and rewards breakdown.</div>
+            <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Create comparison guide targeting high-intent recommendation queries with structured data and feature breakdowns.</div>
           </div>
           <div style={{padding:"12px 16px",background:"#fef3c7",borderRadius:8,borderLeft:"3px solid #d97706"}}>
             <div style={{fontSize:10,fontWeight:500,color:"#92400e",marginBottom:2}}>Citation Gap</div>
-            <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Competitors cited via Lowyat.net and PaulTan.org. Shell has no presence on either platform.</div>
+            <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Competitors are cited via industry publications and review platforms. Your brand has no presence on either.</div>
           </div>
         </div>
       )
@@ -2660,7 +2660,7 @@ function LandingPage({ onGetStarted }) {
       <div id="lp-scroll" style={{overflowY:"auto",height:"100vh",paddingTop:56}}>
 
       {/* ===== SECTION 1: HERO ===== */}
-      <div id="section-hero" style={{minHeight:"calc(100vh - 56px)",display:"flex",alignItems:"center",padding:"80px 48px 0",position:"relative"}}>
+      <div id="section-hero" style={{display:"flex",alignItems:"center",padding:"40px 48px 0",position:"relative"}}>
         <div style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden"}}>
           <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle at 1px 1px, rgba(0,0,0,0.02) 1px, transparent 0)",backgroundSize:"32px 32px"}}/>
           <div style={{position:"absolute",top:"-15%",right:"-5%",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.07) 0%, rgba(99,102,241,0.03) 40%, transparent 65%)",filter:"blur(40px)"}}/>
@@ -2691,7 +2691,7 @@ function LandingPage({ onGetStarted }) {
                 <div style={{width:140,background:"#f8fafc",borderRight:"1px solid #e2e8f0",padding:"14px 0",flexShrink:0}}>
                   <div style={{padding:"0 12px",marginBottom:16}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <div style={{width:18,height:18,borderRadius:6,background:"#3b82f6",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:"#fff",fontSize:8,fontWeight:500}}>E</span></div>
+                      <img src="/enterank-icon.svg" alt="" style={{width:18,height:18,borderRadius:6}}/>
                       <span style={{fontSize:9,fontWeight:500,color:"#0f172a"}}>EnterRank</span>
                     </div>
                   </div>
@@ -2795,7 +2795,7 @@ function LandingPage({ onGetStarted }) {
               </div>
             ))}
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:40,alignItems:"center"}} key={activeStep}>
+          <div style={{display:"grid",gridTemplateColumns:"38% 58%",gap:40,alignItems:"center"}} key={activeStep}>
             <div style={{animation:"fadeInUp .4s ease-out"}}>
               <div style={{fontSize:12,fontWeight:500,color:steps[activeStep].color,marginBottom:8}}>{steps[activeStep].subtitle}</div>
               <h3 style={{fontSize:28,fontWeight:500,color:"#0f172a",margin:"0 0 16px",letterSpacing:"-.02em"}}>{steps[activeStep].title}</h3>
