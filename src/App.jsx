@@ -2795,7 +2795,7 @@ function LandingPage({ onGetStarted }) {
               </div>
             ))}
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"38% 58%",gap:40,alignItems:"center"}} key={activeStep}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:40,alignItems:"center"}} key={activeStep}>
             <div style={{animation:"fadeInUp .4s ease-out"}}>
               <div style={{fontSize:12,fontWeight:500,color:steps[activeStep].color,marginBottom:8}}>{steps[activeStep].subtitle}</div>
               <h3 style={{fontSize:28,fontWeight:500,color:"#0f172a",margin:"0 0 16px",letterSpacing:"-.02em"}}>{steps[activeStep].title}</h3>
@@ -2820,7 +2820,7 @@ function LandingPage({ onGetStarted }) {
       </div>
 
       {/* ===== FOOTER ===== */}
-      <div style={{padding:"48px 40px",background:"#0f172a"}}>
+      <div style={{padding:"48px 40px",background:"#0f172a",width:"100%",boxSizing:"border-box"}}>
         <div style={{maxWidth:1200,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <img src="/enterank-icon.svg" alt="EnterRank" style={{width:24,height:24,opacity:0.8}}/>
