@@ -2660,7 +2660,7 @@ function LandingPage({ onGetStarted }) {
       <div id="lp-scroll" style={{overflowY:"auto",height:"100vh",paddingTop:56}}>
 
       {/* ===== SECTION 1: HERO ===== */}
-      <div id="section-hero" style={{minHeight:"calc(100vh - 56px)",display:"flex",alignItems:"center",padding:"100px 48px 0",position:"relative"}}>
+      <div id="section-hero" style={{minHeight:"calc(100vh - 56px)",display:"flex",alignItems:"center",padding:"80px 48px 0",position:"relative"}}>
         <div style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden"}}>
           <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle at 1px 1px, rgba(0,0,0,0.02) 1px, transparent 0)",backgroundSize:"32px 32px"}}/>
           <div style={{position:"absolute",top:"-15%",right:"-5%",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.07) 0%, rgba(99,102,241,0.03) 40%, transparent 65%)",filter:"blur(40px)"}}/>
@@ -2674,7 +2674,7 @@ function LandingPage({ onGetStarted }) {
               Own Your Brand's<br/><span style={{color:"#2563eb"}}>AI Visibility</span>
             </h1>
             <p style={{fontSize:16,color:"#64748b",margin:"0 0 32px",lineHeight:1.7,maxWidth:440}}>
-              Test real queries on ChatGPT, Gemini, Perplexity, and Google AI. See exactly when AI engines mention, cite, or ignore your brand. Then build the strategy to change it.
+              Test real queries on ChatGPT, Gemini, Perplexity, and Google AI Overview. See exactly when AI engines mention, cite, or ignore your brand. Then build the strategy to change it.
             </p>
             <div style={{display:"flex",gap:12}}>
               <button onClick={onGetStarted} onMouseEnter={()=>setHoverCTA(true)} onMouseLeave={()=>setHoverCTA(false)} style={{padding:"15px 32px",background:hoverCTA?"#1d4ed8":"#2563eb",color:"#fff",border:"none",borderRadius:10,fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit",transition:"all .25s",boxShadow:hoverCTA?"0 8px 28px rgba(37,99,235,0.3)":"0 4px 16px rgba(37,99,235,0.15)",transform:hoverCTA?"translateY(-2px)":"translateY(0)",display:"flex",alignItems:"center",gap:8}}>
@@ -2732,19 +2732,10 @@ function LandingPage({ onGetStarted }) {
                   <div style={{marginBottom:10}}>
                     <div style={{fontSize:7,color:"#94a3b8",marginBottom:4,fontWeight:500}}>QUERY RESULTS</div>
                     <div style={{borderRadius:4,border:"1px solid #f1f5f9",overflow:"hidden"}}>
-                      {[{q:"Best cloud platforms for startups",g:"Cited",m:"Cited"},{q:"Enterprise CRM comparison",g:"Mentioned",m:"Absent"},{q:"Project management for remote teams",g:"Cited",m:"Mentioned"}].map((r,i)=>{const bc=(s)=>({fontSize:6,fontWeight:500,padding:"1px 3px",borderRadius:2,background:s==="Cited"?"#dcfce7":s==="Mentioned"?"#dbeafe":"#fee2e2",color:s==="Cited"?"#166534":s==="Mentioned"?"#1e40af":"#991b1b"});return(<div key={i} style={{display:"flex",alignItems:"center",padding:"3px 6px",borderBottom:i<2?"1px solid #f1f5f9":"none",gap:3}}><div style={{flex:1,fontSize:7,color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.q}</div><span style={bc(r.g)}>{r.g}</span><span style={bc(r.m)}>{r.m}</span></div>);})}
+                      {[{q:"Best cloud platforms for startups",g:"Cited",m:"Cited"},{q:"Enterprise CRM comparison",g:"Mentioned",m:"Absent"},{q:"Project management for remote teams",g:"Cited",m:"Mentioned"},{q:"Best mobile plan for small businesses",g:"Cited",m:"Cited"}].map((r,i)=>{const bc=(s)=>({fontSize:6,fontWeight:500,padding:"1px 3px",borderRadius:2,background:s==="Cited"?"#dcfce7":s==="Mentioned"?"#dbeafe":"#fee2e2",color:s==="Cited"?"#166534":s==="Mentioned"?"#1e40af":"#991b1b"});return(<div key={i} style={{display:"flex",alignItems:"center",padding:"3px 6px",borderBottom:i<3?"1px solid #f1f5f9":"none",gap:3}}><div style={{flex:1,fontSize:7,color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.q}</div><span style={bc(r.g)}>{r.g}</span><span style={bc(r.m)}>{r.m}</span></div>);})}
                     </div>
                   </div>
-                  {/* SoV donut */}
-                  <div>
-                    <div style={{fontSize:7,color:"#94a3b8",marginBottom:4,fontWeight:500}}>SHARE OF VOICE</div>
-                    <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                      <svg width="40" height="40" viewBox="0 0 50 50"><circle cx="25" cy="25" r="18" fill="none" stroke="#3b82f6" strokeWidth="6" strokeDasharray="33 80" transform="rotate(-90 25 25)"/><circle cx="25" cy="25" r="18" fill="none" stroke="#f97316" strokeWidth="6" strokeDasharray="25 88" strokeDashoffset="-33" transform="rotate(-90 25 25)"/><circle cx="25" cy="25" r="18" fill="none" stroke="#a855f7" strokeWidth="6" strokeDasharray="20 93" strokeDashoffset="-58" transform="rotate(-90 25 25)"/></svg>
-                      <div style={{flex:1}}>
-                        {[{name:"Acme Corp",pct:"30%",color:"#3b82f6"},{name:"Competitor A",pct:"23%",color:"#f97316"},{name:"Competitor B",pct:"18%",color:"#a855f7"}].map((c,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:4,marginBottom:1}}><div style={{width:5,height:5,borderRadius:"50%",background:c.color}}/><span style={{fontSize:6,color:"#64748b",flex:1}}>{c.name}</span><span style={{fontSize:6,fontWeight:500,color:"#0f172a"}}>{c.pct}</span></div>))}
-                      </div>
-                    </div>
-                  </div>
+
                 </div>
               </div>
             </div>
@@ -2755,28 +2746,28 @@ function LandingPage({ onGetStarted }) {
       <div style={{maxWidth:1100,margin:"0 auto",padding:"0 24px"}}><div style={{height:1,background:"linear-gradient(to right, transparent, #e2e8f0 20%, #e2e8f0 80%, transparent)"}}/></div>
 
       {/* ===== SECTION 2: WHAT YOU'LL DISCOVER ===== */}
-      <div id="section-features" style={{padding:"80px 24px",maxWidth:1100,margin:"0 auto"}}>
+      <div id="section-features" style={{padding:"100px 24px",maxWidth:1100,margin:"0 auto"}}>
         <div style={{textAlign:"center",marginBottom:48}}>
           <div style={{fontSize:13,fontWeight:500,color:"#2563eb",letterSpacing:".06em",textTransform:"uppercase",marginBottom:8}}>What You'll Discover</div>
           <div style={{fontSize:28,fontWeight:500,color:"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Actionable intelligence from every AI engine</div>
-          <div style={{fontSize:14,color:"#64748b",marginTop:8,maxWidth:560,margin:"8px auto 0"}}>Every audit delivers three layers of intelligence that traditional SEO tools cannot provide</div>
+          <div style={{fontSize:14,color:"#64748b",marginTop:8,maxWidth:560,margin:"8px auto 0"}}>Your brand's AI visibility, measured across every major engine in one audit</div>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:20}}>
-          <div style={{background:"#fff",borderRadius:16,padding:"32px 28px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:24}}>
+          <div style={{background:"#fff",borderRadius:16,padding:"36px 32px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
             <div style={{width:48,height:48,borderRadius:12,background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
             </div>
             <div style={{fontSize:17,fontWeight:500,color:"#0f172a",marginBottom:8}}>Visibility Scoring</div>
-            <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>See when ChatGPT, Gemini, Perplexity, and Google AI mention, cite, or ignore your brand across 60 real queries.</div>
+            <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>See when ChatGPT, Gemini, Perplexity, and Google AI Overview mention, cite, or ignore your brand across 60 real queries.</div>
           </div>
-          <div style={{background:"#fff",borderRadius:16,padding:"32px 28px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
+          <div style={{background:"#fff",borderRadius:16,padding:"36px 32px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
             <div style={{width:48,height:48,borderRadius:12,background:"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
             </div>
             <div style={{fontSize:17,fontWeight:500,color:"#0f172a",marginBottom:8}}>Competitive Intelligence</div>
             <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>Compare your share of voice against competitors on every AI engine and find the queries where you're losing.</div>
           </div>
-          <div style={{background:"#fff",borderRadius:16,padding:"32px 28px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
+          <div style={{background:"#fff",borderRadius:16,padding:"36px 32px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
             <div style={{width:48,height:48,borderRadius:12,background:"#fef3c7",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
             </div>
@@ -2789,7 +2780,7 @@ function LandingPage({ onGetStarted }) {
       <div style={{maxWidth:1100,margin:"0 auto",padding:"0 24px"}}><div style={{height:1,background:"linear-gradient(to right, transparent, #e2e8f0 20%, #e2e8f0 80%, transparent)"}}/></div>
 
       {/* ===== SECTION 3: HOW IT WORKS ===== */}
-      <div id="section-how" style={{padding:"80px 48px"}}>
+      <div id="section-how" style={{padding:"100px 48px"}}>
         <div style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{textAlign:"center",marginBottom:48}}>
             <div style={{fontSize:11,fontWeight:500,color:"#2563eb",letterSpacing:".1em",textTransform:"uppercase",marginBottom:12}}>How It Works</div>
@@ -2831,7 +2822,7 @@ function LandingPage({ onGetStarted }) {
       <div style={{maxWidth:1100,margin:"0 auto",padding:"0 24px"}}><div style={{height:1,background:"linear-gradient(to right, transparent, #e2e8f0 20%, #e2e8f0 80%, transparent)"}}/></div>
 
       {/* ===== FOOTER ===== */}
-      <div style={{padding:"40px 48px",background:"#0f172a"}}>
+      <div style={{padding:"60px 48px",background:"#0f172a"}}>
         <div style={{maxWidth:1200,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <img src="/enterank-icon.svg" alt="EnterRank" style={{width:24,height:24,opacity:0.8}}/>
