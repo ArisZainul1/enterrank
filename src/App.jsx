@@ -2660,7 +2660,7 @@ function LandingPage({ onGetStarted }) {
       <div id="lp-scroll" style={{overflowY:"auto",height:"100vh",paddingTop:56}}>
 
       {/* ===== SECTION 1: HERO ===== */}
-      <div id="section-hero" style={{display:"flex",alignItems:"center",padding:"40px 48px 0",position:"relative"}}>
+      <div id="section-hero" style={{minHeight:"calc(100vh - 56px)",display:"flex",alignItems:"center",padding:"0 48px",paddingTop:8,position:"relative"}}>
         <div style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden"}}>
           <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle at 1px 1px, rgba(0,0,0,0.02) 1px, transparent 0)",backgroundSize:"32px 32px"}}/>
           <div style={{position:"absolute",top:"-15%",right:"-5%",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.07) 0%, rgba(99,102,241,0.03) 40%, transparent 65%)",filter:"blur(40px)"}}/>
@@ -2819,10 +2819,8 @@ function LandingPage({ onGetStarted }) {
         </div>
       </div>
 
-      <div style={{maxWidth:1100,margin:"0 auto",padding:"0 24px"}}><div style={{height:1,background:"linear-gradient(to right, transparent, #e2e8f0 20%, #e2e8f0 80%, transparent)"}}/></div>
-
       {/* ===== FOOTER ===== */}
-      <div style={{padding:"60px 48px",background:"#0f172a"}}>
+      <div style={{padding:"48px 40px",background:"#0f172a"}}>
         <div style={{maxWidth:1200,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <img src="/enterank-icon.svg" alt="EnterRank" style={{width:24,height:24,opacity:0.8}}/>
