@@ -12,6 +12,8 @@ async function getAuthToken() {
   }
 }
 
+const ADMIN_EMAILS = ["admin@entermind.com"];
+
 const ChatGPTLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.998 5.998 0 0 0-3.998 2.9 6.042 6.042 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" fill="#10A37F"/></svg>);
 const GeminiLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M12 24C12 20.8174 10.7357 17.7652 8.48528 15.5147C6.23484 13.2643 3.18261 12 0 12C3.18261 12 6.23484 10.7357 8.48528 8.48528C10.7357 6.23484 12 3.18261 12 0C12 3.18261 13.2643 6.23484 15.5147 8.48528C17.7652 10.7357 20.8174 12 24 12C20.8174 12 17.7652 13.2643 15.5147 15.5147C13.2643 17.7652 12 20.8174 12 24Z" fill="url(#gG2)"/><defs><linearGradient id="gG2" x1="0" y1="12" x2="24" y2="12"><stop stopColor="#4285F4"/><stop offset=".5" stopColor="#9B72CB"/><stop offset="1" stopColor="#D96570"/></linearGradient></defs></svg>);
 const C={bg:"#f8f9fb",surface:"#ffffff",border:"#e2e8f0",borderSoft:"#f0f2f5",text:"#111827",sub:"#4b5563",muted:"#9ca3af",accent:"#2563eb",green:"#059669",amber:"#d97706",red:"#dc2626",r:12,rs:8};
@@ -3068,7 +3070,7 @@ const SidebarIcon=({name,size=18,color="#9ca3af"})=>{
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none">{p[name]||null}</svg>;
 };
 
-function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,setCollapsed,sectionReady={},auditInProgress=false}){
+function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,setCollapsed,sectionReady={},auditInProgress=false,isAdmin=false,screen,onAdminClick}){
   const [hoveredNav, setHoveredNav] = useState(null);
   const sectionMap = { dashboard:"dashboard", archetypes:"archetypes", sentiment:"sentiment", intent:"intent", citations:"citations", playbook:"playbook", channels:"channels", contenthub:"contenthub", roadmap:"roadmap" };
   const sideW=collapsed?60:220;
@@ -3121,6 +3123,25 @@ function Sidebar({step,setStep,results,brand,onBack,isLocal,onLogout,collapsed,s
         })}
       </div>))}
     </div>
+
+    {/* Admin section */}
+    {isAdmin&&!collapsed&&(
+      <div style={{padding:"0 12px 4px"}}>
+        <div style={{fontSize:9,fontWeight:500,color:C.muted,textTransform:"uppercase",letterSpacing:".08em",padding:"8px 8px 4px",marginTop:4,borderTop:"1px solid "+C.border}}>Admin</div>
+        <div onClick={onAdminClick} style={{
+          display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:"0 8px 8px 0",cursor:"pointer",
+          color:screen==="admin"?C.text:C.muted,fontSize:13,fontWeight:screen==="admin"?500:400,
+          background:screen==="admin"?C.accent+"08":"transparent",
+          borderLeft:screen==="admin"?"3px solid "+C.accent:"3px solid transparent",
+          transition:"all 0.15s ease"
+        }}
+          onMouseEnter={e=>{if(screen!=="admin")e.currentTarget.style.background="#f8fafc";}}
+          onMouseLeave={e=>{if(screen!=="admin")e.currentTarget.style.background="transparent";}}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={screen==="admin"?C.accent:"#6b7280"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          <span>Admin Dashboard</span>
+        </div>
+      </div>
+    )}
 
     {/* Bottom section */}
     <div style={{borderTop:`1px solid ${C.border}`,padding:collapsed?"10px 6px":"10px 12px"}}>
@@ -7081,6 +7102,117 @@ function ProjectHub({onSelect,onNew,onLogout}){
   </div>);
 }
 
+/* ─── ADMIN DASHBOARD PAGE ─── */
+function AdminDashboardPage({ data, users, loading }) {
+  if (loading) return (
+    <div style={{ padding: 60, textAlign: "center" }}>
+      <div style={{ width: 24, height: 24, border: "2.5px solid " + C.borderSoft, borderTopColor: C.accent, borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 12px" }} />
+      <div style={{ fontSize: 13, color: C.muted }}>Loading admin data...</div>
+    </div>
+  );
+  if (!data) return <div style={{ padding: 40, textAlign: "center", color: C.muted }}>No data available</div>;
+
+  const mergedUsers = (users || []).map(u => {
+    const usage = (data.users || []).find(du => du.userId === u.id);
+    return { ...u, projects: usage?.projects || 0, audits: usage?.audits || 0, lastActivity: usage?.lastActivity || u.lastSignIn };
+  }).sort((a, b) => b.audits - a.audits);
+
+  return (
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 500, color: C.text, margin: 0, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>Admin Dashboard</h2>
+        <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Platform usage and cost overview</p>
+      </div>
+
+      {/* KPI Cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
+        {[
+          { label: "Active Users", value: data.activeUsers, color: C.accent },
+          { label: "Total Projects", value: data.totalProjects, color: "#059669" },
+          { label: "Total Audits", value: data.totalAudits, color: "#7c3aed" },
+          { label: "Est. Total Cost", value: "$" + (data.estimatedCosts?.total || 0).toFixed(2), color: "#dc2626" }
+        ].map((kpi, i) => (
+          <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "20px 24px", textAlign: "center", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>{kpi.label}</div>
+            <div style={{ fontSize: 28, fontWeight: 500, color: kpi.color, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>{kpi.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Cost Breakdown */}
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "20px 24px", marginBottom: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+        <div style={{ fontSize: 15, fontWeight: 500, color: C.text, marginBottom: 16 }}>Cost Breakdown</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+          {[
+            { label: "OpenAI", cost: data.estimatedCosts?.openai, color: "#10A37F" },
+            { label: "Gemini", cost: data.estimatedCosts?.gemini, color: "#4285F4" },
+            { label: "Perplexity", cost: data.estimatedCosts?.perplexity, color: "#20808D" },
+            { label: "SerpApi", cost: data.estimatedCosts?.serpapi, color: "#EA4335" },
+            { label: "Avg/Audit", cost: data.avgCostPerAudit, color: C.text }
+          ].map((item, i) => (
+            <div key={i} style={{ textAlign: "center", padding: "12px 8px", background: "#f8fafc", borderRadius: 8 }}>
+              <div style={{ fontSize: 10, color: item.color, fontWeight: 500, marginBottom: 4 }}>{item.label}</div>
+              <div style={{ fontSize: 18, fontWeight: 500, color: C.text }}>${(item.cost || 0).toFixed(2)}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 12, fontSize: 11, color: C.muted }}>
+          Based on {data.auditsWithTokenData || 0} audits with token tracking data out of {data.totalAudits} total
+        </div>
+      </div>
+
+      {/* Token Usage */}
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "20px 24px", marginBottom: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+        <div style={{ fontSize: 15, fontWeight: 500, color: C.text, marginBottom: 16 }}>Token Usage</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
+          {[
+            { label: "OpenAI", input: data.totalTokens?.openai?.input, output: data.totalTokens?.openai?.output },
+            { label: "Gemini", input: data.totalTokens?.gemini?.input, output: data.totalTokens?.gemini?.output },
+            { label: "Perplexity", input: data.totalTokens?.perplexity?.input, output: data.totalTokens?.perplexity?.output },
+            { label: "SerpApi", input: null, output: null, searches: data.totalTokens?.serpapi?.searches }
+          ].map((item, i) => (
+            <div key={i} style={{ padding: "12px", background: "#f8fafc", borderRadius: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 500, color: C.text, marginBottom: 8 }}>{item.label}</div>
+              {item.searches !== undefined ? (
+                <div style={{ fontSize: 12, color: C.sub }}>{(item.searches || 0).toLocaleString()} searches</div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 12, color: C.sub }}>In: {(item.input || 0).toLocaleString()}</div>
+                  <div style={{ fontSize: 12, color: C.sub }}>Out: {(item.output || 0).toLocaleString()}</div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* User Table */}
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+        <div style={{ fontSize: 15, fontWeight: 500, color: C.text, marginBottom: 16 }}>Users ({mergedUsers.length})</div>
+        <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 2fr", padding: "10px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+            <span style={{ fontSize: 11, fontWeight: 500, color: C.muted }}>Email</span>
+            <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "center" }}>Projects</span>
+            <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "center" }}>Audits</span>
+            <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "right" }}>Last Activity</span>
+          </div>
+          {mergedUsers.map((u, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 2fr", padding: "10px 16px", borderBottom: i < mergedUsers.length - 1 ? "1px solid #f1f5f9" : "none" }}>
+              <span style={{ fontSize: 12, color: C.text }}>{u.email}</span>
+              <span style={{ fontSize: 12, color: C.sub, textAlign: "center" }}>{u.projects}</span>
+              <span style={{ fontSize: 12, color: C.sub, textAlign: "center" }}>{u.audits}</span>
+              <span style={{ fontSize: 11, color: C.muted, textAlign: "right" }}>{u.lastActivity ? new Date(u.lastActivity).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Never"}</span>
+            </div>
+          ))}
+          {mergedUsers.length === 0 && (
+            <div style={{ padding: "20px 16px", textAlign: "center", color: C.muted, fontSize: 12 }}>No users yet</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App(){
   const isLocal=typeof window!=="undefined"&&window.location.hostname==="localhost";
   const[authed,setAuthed]=useState(()=>{if(isLocal)return true;return false;});
@@ -7103,6 +7235,12 @@ export default function App(){
   const[sideCollapsed,setSideCollapsed]=useState(false);
   const[loginError,setLoginError]=useState("");
   const[loggingIn,setLoggingIn]=useState(false);
+
+  // Admin state
+  const isAdmin = authUser?.email && ADMIN_EMAILS.includes(authUser.email.toLowerCase());
+  const [adminData, setAdminData] = useState(null);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminUsers, setAdminUsers] = useState([]);
 
   React.useEffect(() => {
     if (isLocal) return;
@@ -7248,6 +7386,24 @@ export default function App(){
   };
 
   const handleBackToHub=()=>{setScreen("hub");setResults(null);setStep("input");document.title="EnterRank \u2014 AI Engine Visibility Platform";};
+
+  const loadAdminData = async () => {
+    setAdminLoading(true);
+    try {
+      const token = await getAuthToken();
+      const [overviewRes, usersRes] = await Promise.all([
+        fetch("/api/admin?action=overview", { headers: { "Authorization": "Bearer " + token } }),
+        fetch("/api/admin?action=users", { headers: { "Authorization": "Bearer " + token } })
+      ]);
+      const overview = await overviewRes.json();
+      const users = await usersRes.json();
+      setAdminData(overview);
+      setAdminUsers(users.users || []);
+    } catch (e) {
+      console.error("Admin load failed:", e);
+    }
+    setAdminLoading(false);
+  };
 
   if (authLoading) return (
     <div style={{height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#ffffff"}}>
@@ -7466,12 +7622,14 @@ export default function App(){
     <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes loadingSlide{0%{transform:translateX(-100%);opacity:0.5}30%{opacity:1}100%{transform:translateX(350%);opacity:0.3}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}.field-autofilled input{background:#f3f4f6!important;color:${C.sub}!important;transition:all .15s}.field-autofilled input:focus{background:#fff!important;color:${C.text}!important}`}</style>
 
     {/* Sidebar */}
-    <Sidebar step={step} setStep={setStep} results={results} brand={results?.clientData?.brand||data.brand} onBack={handleBackToHub} isLocal={isLocal} onLogout={handleLogout} collapsed={sideCollapsed} setCollapsed={setSideCollapsed} sectionReady={sectionReady} auditInProgress={auditInProgress}/>
+    <Sidebar step={step} setStep={(s)=>{if(screen==="admin")setScreen("dashboard");setStep(s);}} results={results} brand={results?.clientData?.brand||data.brand} onBack={handleBackToHub} isLocal={isLocal} onLogout={handleLogout} collapsed={sideCollapsed} setCollapsed={setSideCollapsed} sectionReady={sectionReady} auditInProgress={auditInProgress} isAdmin={isAdmin} screen={screen} onAdminClick={()=>{setScreen("admin");loadAdminData();}}/>
 
     {/* Main content */}
     <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",marginLeft:sideCollapsed?60:220,transition:"margin-left .2s ease"}}>
       <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto"}}>
         <div key={step} style={{animation:"fadeIn 0.2s ease"}}>
+        {screen==="admin"&&isAdmin&&<ErrorBoundary><AdminDashboardPage data={adminData} users={adminUsers} loading={adminLoading}/></ErrorBoundary>}
+        {screen!=="admin"&&<>
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={runAuditProgressive} history={history}/>}
         {step==="dashboard"&&!results&&(auditInProgress||auditError)&&<AuditLoadingInline progress={dashboardLoadProgress} stage={auditStage} error={auditError} onClearError={()=>{setAuditError(null);setStep("input");}}/>}
         {step==="dashboard"&&results&&<ErrorBoundary><DashboardPage r={results} history={history} goTo={(s) => { if(auditInProgress && !sectionReady[s]) return; setStep(s); }}/></ErrorBoundary>}
@@ -7485,6 +7643,7 @@ export default function App(){
         {step!=="input"&&step!=="dashboard"&&auditInProgress&&!(sectionReady[step])&&results&&(
           <AuditLoadingInline progress={dashboardLoadProgress} stage={auditStage} error={auditError} onClearError={()=>{setAuditError(null);setStep("input");}}/>
         )}
+        </>}
         </div>
       </div>
     </div>
