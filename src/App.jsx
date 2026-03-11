@@ -7125,7 +7125,7 @@ function ProjectHub({onSelect,onNew,onLogout,isAdmin,onAdminClick}){
 }
 
 /* ─── ADMIN DASHBOARD PAGE ─── */
-function AdminDashboardPage({ data, users, loading, setScreen }) {
+function AdminDashboardPage({ data, users, loading, setScreen, health }) {
   if (loading) return (
     <div style={{ padding: 60, textAlign: "center" }}>
       <div style={{ width: 24, height: 24, border: "2.5px solid " + C.borderSoft, borderTopColor: C.accent, borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 12px" }} />
@@ -7219,7 +7219,7 @@ function AdminDashboardPage({ data, users, loading, setScreen }) {
       </div>
 
       {/* User Table */}
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "20px 24px", marginBottom: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
         <div style={{ fontSize: 15, fontWeight: 500, color: C.text, marginBottom: 16 }}>Users ({mergedUsers.length})</div>
         <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0" }}>
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 2fr", padding: "10px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
@@ -7241,6 +7241,83 @@ function AdminDashboardPage({ data, users, loading, setScreen }) {
           )}
         </div>
       </div>
+
+      {/* Cost Projection */}
+      {data.projection && (
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "20px 24px", marginBottom: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+          <div style={{ fontSize: 15, fontWeight: 500, color: C.text, marginBottom: 16 }}>Cost Projection (7-day rolling avg)</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+            {[
+              { label: "Daily Audit Rate", value: data.projection.dailyAuditRate + "/day", color: C.accent },
+              { label: "Projected Monthly Audits", value: data.projection.projectedMonthlyAudits, color: "#7c3aed" },
+              { label: "Projected Monthly Cost", value: "$" + data.projection.projectedMonthlyCost.toFixed(2), color: "#dc2626" },
+              { label: "Avg Cost (Recent)", value: "$" + data.projection.avgCostPerAuditRecent.toFixed(2), color: "#059669" }
+            ].map((item, i) => (
+              <div key={i} style={{ textAlign: "center", padding: "16px 12px", background: "#f8fafc", borderRadius: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 500, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 6 }}>{item.label}</div>
+                <div style={{ fontSize: 22, fontWeight: 500, color: item.color, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>{item.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* System Health */}
+      {health?.services && (
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "20px 24px", marginBottom: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: C.text }}>System Health</div>
+            {health.checkedAt && <div style={{ fontSize: 11, color: C.muted }}>Checked: {new Date(health.checkedAt).toLocaleTimeString()}</div>}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+            {[
+              { key: "openai", label: "OpenAI", color: "#10A37F" },
+              { key: "gemini", label: "Gemini", color: "#4285F4" },
+              { key: "perplexity", label: "Perplexity", color: "#20808D" },
+              { key: "serpapi", label: "SerpApi", color: "#EA4335" },
+              { key: "supabase", label: "Supabase", color: "#3ECF8E" }
+            ].map((svc, i) => {
+              const s = health.services[svc.key];
+              const ok = s?.ok;
+              return (
+                <div key={i} style={{ textAlign: "center", padding: "16px 12px", background: ok ? "#f0fdf4" : "#fef2f2", borderRadius: 8, border: "1px solid " + (ok ? "#bbf7d0" : "#fecaca") }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: ok ? "#22c55e" : "#ef4444", margin: "0 auto 8px" }} />
+                  <div style={{ fontSize: 12, fontWeight: 500, color: svc.color, marginBottom: 4 }}>{svc.label}</div>
+                  <div style={{ fontSize: 10, color: ok ? "#16a34a" : "#dc2626" }}>{ok ? (s.ms + "ms") : (s?.error || "Down")}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Audit Log Timeline */}
+      {data.auditLog && data.auditLog.length > 0 && (
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+          <div style={{ fontSize: 15, fontWeight: 500, color: C.text, marginBottom: 16 }}>Audit Log (Last 20)</div>
+          <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 2fr", padding: "10px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+              <span style={{ fontSize: 11, fontWeight: 500, color: C.muted }}>Brand</span>
+              <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "center" }}>Cost</span>
+              <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "center" }}>Tokens</span>
+              <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "center" }}>User</span>
+              <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "right" }}>Date</span>
+            </div>
+            {data.auditLog.map((log, i) => {
+              const userEmail = (users || []).find(u => u.id === log.userId)?.email || log.userId?.slice(0, 8) || "—";
+              return (
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 2fr", padding: "10px 16px", borderBottom: i < data.auditLog.length - 1 ? "1px solid #f1f5f9" : "none" }}>
+                  <span style={{ fontSize: 12, color: C.text, fontWeight: 500 }}>{log.brand}</span>
+                  <span style={{ fontSize: 12, color: log.cost > 0 ? "#dc2626" : C.muted, textAlign: "center" }}>{log.cost > 0 ? "$" + log.cost.toFixed(2) : "—"}</span>
+                  <span style={{ fontSize: 12, color: C.sub, textAlign: "center" }}>{log.tokens > 0 ? log.tokens.toLocaleString() : "—"}</span>
+                  <span style={{ fontSize: 11, color: C.muted, textAlign: "center" }}>{userEmail}</span>
+                  <span style={{ fontSize: 11, color: C.muted, textAlign: "right" }}>{log.createdAt ? new Date(log.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -7273,6 +7350,7 @@ export default function App(){
   const [adminData, setAdminData] = useState(null);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminUsers, setAdminUsers] = useState([]);
+  const [adminHealth, setAdminHealth] = useState(null);
 
   React.useEffect(() => {
     if (isLocal) return;
@@ -7423,14 +7501,17 @@ export default function App(){
     setAdminLoading(true);
     try {
       const token = await getAuthToken();
-      const [overviewRes, usersRes] = await Promise.all([
+      const [overviewRes, usersRes, healthRes] = await Promise.all([
         fetch("/api/admin?action=overview", { headers: { "Authorization": "Bearer " + token } }),
-        fetch("/api/admin?action=users", { headers: { "Authorization": "Bearer " + token } })
+        fetch("/api/admin?action=users", { headers: { "Authorization": "Bearer " + token } }),
+        fetch("/api/admin?action=health", { headers: { "Authorization": "Bearer " + token } })
       ]);
       const overview = await overviewRes.json();
       const users = await usersRes.json();
+      const health = await healthRes.json();
       setAdminData(overview);
       setAdminUsers(users.users || []);
+      setAdminHealth(health);
     } catch (e) {
       console.error("Admin load failed:", e);
     }
@@ -7660,7 +7741,7 @@ export default function App(){
     <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",marginLeft:sideCollapsed?60:220,transition:"margin-left .2s ease"}}>
       <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto"}}>
         <div key={step} style={{animation:"fadeIn 0.2s ease"}}>
-        {screen==="admin"&&isAdmin&&<ErrorBoundary><AdminDashboardPage data={adminData} users={adminUsers} loading={adminLoading} setScreen={setScreen}/></ErrorBoundary>}
+        {screen==="admin"&&isAdmin&&<ErrorBoundary><AdminDashboardPage data={adminData} users={adminUsers} loading={adminLoading} setScreen={setScreen} health={adminHealth}/></ErrorBoundary>}
         {screen!=="admin"&&<>
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={runAuditProgressive} history={history}/>}
         {step==="dashboard"&&!results&&(auditInProgress||auditError)&&<AuditLoadingInline progress={dashboardLoadProgress} stage={auditStage} error={auditError} onClearError={()=>{setAuditError(null);setStep("input");}}/>}

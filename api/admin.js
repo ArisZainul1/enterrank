@@ -106,6 +106,63 @@ export default async function handler(req, res) {
       };
       costs.total = costs.openai + costs.gemini + costs.perplexity + costs.serpapi;
 
+      // Audit log timeline — last 20 audits with cost per audit
+      const auditLog = (audits || [])
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+        .slice(0, 20)
+        .map(a => {
+          const results = typeof a.results === "string" ? (() => { try { return JSON.parse(a.results); } catch(e) { return null; } })() : a.results;
+          const apiData = typeof a.api_data === "string" ? (() => { try { return JSON.parse(a.api_data); } catch(e) { return null; } })() : a.api_data;
+          const tu = results?.tokenUsage || apiData?.tokenUsage || apiData?.results?.tokenUsage || null;
+          let auditCost = 0;
+          let totalTok = 0;
+          if (tu) {
+            const oIn = (tu.openai?.input || 0) + (tu.openaiSearch?.input || 0);
+            const oOut = (tu.openai?.output || 0) + (tu.openaiSearch?.output || 0);
+            auditCost += (oIn / 1000000 * 2.50) + (oOut / 1000000 * 10);
+            auditCost += ((tu.gemini?.input || 0) / 1000000 * 0.10) + ((tu.gemini?.output || 0) / 1000000 * 0.40);
+            auditCost += ((tu.perplexity?.input || 0) / 1000000 * 3) + ((tu.perplexity?.output || 0) / 1000000 * 15);
+            auditCost += (tu.serpapi?.searches || 0) * 0.015;
+            totalTok = oIn + oOut + (tu.gemini?.input || 0) + (tu.gemini?.output || 0) + (tu.perplexity?.input || 0) + (tu.perplexity?.output || 0);
+          }
+          const brand = results?.clientData?.brand || apiData?.results?.clientData?.brand || a.brand || "Unknown";
+          return {
+            id: a.id,
+            brand,
+            userId: a.user_id,
+            cost: Math.round(auditCost * 100) / 100,
+            tokens: totalTok,
+            createdAt: a.created_at
+          };
+        });
+
+      // Cost projection — 7-day rolling average
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const recentAudits = (audits || []).filter(a => a.created_at && new Date(a.created_at) >= sevenDaysAgo);
+      const recentCount = recentAudits.length;
+      const dailyRate = recentCount / 7;
+      const recentCosts = recentAudits.reduce((sum, a) => {
+        const results = typeof a.results === "string" ? (() => { try { return JSON.parse(a.results); } catch(e) { return null; } })() : a.results;
+        const apiData = typeof a.api_data === "string" ? (() => { try { return JSON.parse(a.api_data); } catch(e) { return null; } })() : a.api_data;
+        const tu = results?.tokenUsage || apiData?.tokenUsage || apiData?.results?.tokenUsage;
+        if (!tu) return sum;
+        let c = 0;
+        c += (((tu.openai?.input || 0) + (tu.openaiSearch?.input || 0)) / 1000000 * 2.50) + (((tu.openai?.output || 0) + (tu.openaiSearch?.output || 0)) / 1000000 * 10);
+        c += ((tu.gemini?.input || 0) / 1000000 * 0.10) + ((tu.gemini?.output || 0) / 1000000 * 0.40);
+        c += ((tu.perplexity?.input || 0) / 1000000 * 3) + ((tu.perplexity?.output || 0) / 1000000 * 15);
+        c += (tu.serpapi?.searches || 0) * 0.015;
+        return sum + c;
+      }, 0);
+      const dailyCostRate = recentCount > 0 ? recentCosts / 7 : 0;
+      const avgCostRecent = recentCount > 0 ? recentCosts / recentCount : 0;
+      const projection = {
+        dailyAuditRate: Math.round(dailyRate * 10) / 10,
+        projectedMonthlyAudits: Math.round(dailyRate * 30),
+        projectedMonthlyCost: Math.round(dailyCostRate * 30 * 100) / 100,
+        avgCostPerAuditRecent: Math.round(avgCostRecent * 100) / 100
+      };
+
       return res.json({
         totalProjects: (projects || []).length,
         totalAudits: (audits || []).length,
@@ -120,7 +177,9 @@ export default async function handler(req, res) {
           serpapi: Math.round(costs.serpapi * 100) / 100,
           total: Math.round(costs.total * 100) / 100
         },
-        avgCostPerAudit: (audits || []).length > 0 ? Math.round((costs.total / (audits || []).length) * 100) / 100 : 0
+        avgCostPerAudit: (audits || []).length > 0 ? Math.round((costs.total / (audits || []).length) * 100) / 100 : 0,
+        auditLog,
+        projection
       });
 
     } else if (action === "users") {
@@ -136,8 +195,50 @@ export default async function handler(req, res) {
         }))
       });
 
+    } else if (action === "health") {
+      // Ping each service to check availability
+      const checks = {};
+      const ping = async (name, fn) => {
+        const start = Date.now();
+        try { await fn(); checks[name] = { ok: true, ms: Date.now() - start }; }
+        catch (e) { checks[name] = { ok: false, ms: Date.now() - start, error: e.message || "Failed" }; }
+      };
+
+      await Promise.all([
+        ping("openai", async () => {
+          const key = process.env.OPENAI_API_KEY;
+          if (!key) throw new Error("Key not configured");
+          const r = await fetch("https://api.openai.com/v1/models", { headers: { "Authorization": "Bearer " + key }, signal: AbortSignal.timeout(8000) });
+          if (!r.ok) throw new Error("HTTP " + r.status);
+        }),
+        ping("gemini", async () => {
+          const key = process.env.GOOGLE_AI_KEY;
+          if (!key) throw new Error("Key not configured");
+          const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?key=" + key, { signal: AbortSignal.timeout(8000) });
+          if (!r.ok) throw new Error("HTTP " + r.status);
+        }),
+        ping("perplexity", async () => {
+          const key = process.env.PERPLEXITY_API_KEY;
+          if (!key) throw new Error("Key not configured");
+          const r = await fetch("https://api.perplexity.ai/chat/completions", { method: "POST", headers: { "Authorization": "Bearer " + key, "Content-Type": "application/json" }, body: JSON.stringify({ model: "sonar", messages: [{ role: "user", content: "ping" }] }), signal: AbortSignal.timeout(10000) });
+          if (!r.ok && r.status !== 429) throw new Error("HTTP " + r.status);
+        }),
+        ping("serpapi", async () => {
+          const key = process.env.SERPAPI_API_KEY;
+          if (!key) throw new Error("Key not configured");
+          const r = await fetch("https://serpapi.com/account.json?api_key=" + key, { signal: AbortSignal.timeout(8000) });
+          if (!r.ok) throw new Error("HTTP " + r.status);
+        }),
+        ping("supabase", async () => {
+          const { data, error } = await supabase.from("projects").select("id", { count: "exact", head: true });
+          if (error) throw error;
+        })
+      ]);
+
+      return res.json({ services: checks, checkedAt: new Date().toISOString() });
+
     } else {
-      return res.status(400).json({ error: "Unknown action. Use: overview, users" });
+      return res.status(400).json({ error: "Unknown action. Use: overview, users, health" });
     }
   } catch (err) {
     console.error("Admin API error:", err);
