@@ -2516,7 +2516,7 @@ function LandingPage({ onGetStarted }) {
   const steps = [
     {
       number:"01",title:"Configure",subtitle:"Define your brand context",
-      desc:"Enter your brand, select your region, add competitors, and choose your target audience. EnterRank crawls your website to build context automatically.",
+      desc:"Enter your brand name, website, region, and industry. EnterRank automatically crawls your website to understand your products and positioning. Add up to 3 competitors for head-to-head comparison, then select from AI-generated audience archetypes that represent your key customer segments. These archetypes drive the 15 search topics your audit will test.",
       color:"#2563eb",
       visual:(
         <div style={{display:"flex",flexDirection:"column",gap:10,padding:24}}>
@@ -2552,7 +2552,7 @@ function LandingPage({ onGetStarted }) {
     },
     {
       number:"02",title:"Test",subtitle:"Live queries on 4 AI engines",
-      desc:"15 real queries are sent to ChatGPT, Gemini, Perplexity, and Google AI. That\u2019s 60 data points collected in under three minutes.",
+      desc:"Each of your 15 topics is sent as a real query to ChatGPT, Gemini, Perplexity, and Google AI. That\u2019s 60 live data points collected in under three minutes. Every response is captured word-for-word, including citation URLs and source references.",
       color:"#059669",
       visual:(
         <div style={{padding:24}}>
@@ -2581,7 +2581,7 @@ function LandingPage({ onGetStarted }) {
     },
     {
       number:"03",title:"Analyse",subtitle:"Classify, score, and compare",
-      desc:"Every response is classified as Cited, Mentioned, or Absent. Scores are weighted by engine market share in your region to reflect real-world impact.",
+      desc:"Responses are classified as Cited (the engine recommended you), Mentioned (you were named but not recommended), or Absent (you were not included at all). Scores are weighted by each engine\u2019s estimated market share in your region, so your visibility score reflects real-world user behaviour.",
       color:"#8b5cf6",
       visual:(
         <div style={{padding:24}}>
@@ -2607,7 +2607,7 @@ function LandingPage({ onGetStarted }) {
     },
     {
       number:"04",title:"Optimise",subtitle:"Actionable strategy backed by evidence",
-      desc:"Review your key findings, sentiment analysis, citation sources, and competitive positioning. Export a 90-day roadmap your team can act on immediately.",
+      desc:"Review key findings with specific actions, sentiment analysis showing how each engine describes your brand, citation source mapping, competitive share of voice, and a 90-day transformation roadmap your team can execute immediately. Export everything as a PDF report.",
       color:"#d97706",
       visual:(
         <div style={{padding:24}}>
@@ -2723,12 +2723,25 @@ function LandingPage({ onGetStarted }) {
                       {[{name:"ChatGPT",score:77,color:"#10A37F"},{name:"Gemini",score:87,color:"#4285F4"},{name:"Perplexity",score:82,color:"#20808D"},{name:"Google AI",score:85,color:"#EA4335"}].map((e,i)=>(<div key={i} style={{background:"#f8fafc",borderRadius:6,padding:"6px 8px",textAlign:"center"}}><div style={{fontSize:7,color:e.color,fontWeight:500,marginBottom:2}}>{e.name}</div><div style={{fontSize:13,fontWeight:500,color:"#0f172a"}}>{e.score}%</div><div style={{height:3,background:"#e2e8f0",borderRadius:2,marginTop:3}}><div style={{width:e.score+"%",height:"100%",background:e.color,borderRadius:2}}/></div></div>))}
                     </div>
                   </div>
+                  {/* Key finding insight */}
+                  <div style={{padding:"6px 8px",background:"#eff6ff",borderRadius:6,borderLeft:"2px solid #3b82f6",marginBottom:10}}>
+                    <div style={{fontSize:6,color:"#3b82f6",fontWeight:500,marginBottom:1}}>KEY FINDING</div>
+                    <div style={{fontSize:7,color:"#334155",lineHeight:1.4}}>Absent from 40% of recommendation queries. Competitor A cited in all.</div>
+                  </div>
+                  {/* Mini query results */}
+                  <div style={{marginBottom:10}}>
+                    <div style={{fontSize:7,color:"#94a3b8",marginBottom:4,fontWeight:500}}>QUERY RESULTS</div>
+                    <div style={{borderRadius:4,border:"1px solid #f1f5f9",overflow:"hidden"}}>
+                      {[{q:"Best cloud platforms for startups",g:"Cited",m:"Cited"},{q:"Enterprise CRM comparison",g:"Mentioned",m:"Absent"},{q:"Project management for remote teams",g:"Cited",m:"Mentioned"}].map((r,i)=>{const bc=(s)=>({fontSize:6,fontWeight:500,padding:"1px 3px",borderRadius:2,background:s==="Cited"?"#dcfce7":s==="Mentioned"?"#dbeafe":"#fee2e2",color:s==="Cited"?"#166534":s==="Mentioned"?"#1e40af":"#991b1b"});return(<div key={i} style={{display:"flex",alignItems:"center",padding:"3px 6px",borderBottom:i<2?"1px solid #f1f5f9":"none",gap:3}}><div style={{flex:1,fontSize:7,color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.q}</div><span style={bc(r.g)}>{r.g}</span><span style={bc(r.m)}>{r.m}</span></div>);})}
+                    </div>
+                  </div>
+                  {/* SoV donut */}
                   <div>
-                    <div style={{fontSize:7,color:"#94a3b8",marginBottom:6,fontWeight:500}}>SHARE OF VOICE</div>
-                    <div style={{display:"flex",gap:12,alignItems:"center"}}>
-                      <svg width="50" height="50" viewBox="0 0 50 50"><circle cx="25" cy="25" r="18" fill="none" stroke="#3b82f6" strokeWidth="6" strokeDasharray="33 80" transform="rotate(-90 25 25)"/><circle cx="25" cy="25" r="18" fill="none" stroke="#f97316" strokeWidth="6" strokeDasharray="25 88" strokeDashoffset="-33" transform="rotate(-90 25 25)"/><circle cx="25" cy="25" r="18" fill="none" stroke="#a855f7" strokeWidth="6" strokeDasharray="20 93" strokeDashoffset="-58" transform="rotate(-90 25 25)"/><circle cx="25" cy="25" r="18" fill="none" stroke="#06b6d4" strokeWidth="6" strokeDasharray="10 103" strokeDashoffset="-78" transform="rotate(-90 25 25)"/></svg>
+                    <div style={{fontSize:7,color:"#94a3b8",marginBottom:4,fontWeight:500}}>SHARE OF VOICE</div>
+                    <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                      <svg width="40" height="40" viewBox="0 0 50 50"><circle cx="25" cy="25" r="18" fill="none" stroke="#3b82f6" strokeWidth="6" strokeDasharray="33 80" transform="rotate(-90 25 25)"/><circle cx="25" cy="25" r="18" fill="none" stroke="#f97316" strokeWidth="6" strokeDasharray="25 88" strokeDashoffset="-33" transform="rotate(-90 25 25)"/><circle cx="25" cy="25" r="18" fill="none" stroke="#a855f7" strokeWidth="6" strokeDasharray="20 93" strokeDashoffset="-58" transform="rotate(-90 25 25)"/></svg>
                       <div style={{flex:1}}>
-                        {[{name:"Acme Corp",pct:"30%",color:"#3b82f6"},{name:"Competitor A",pct:"23%",color:"#f97316"},{name:"Competitor B",pct:"18%",color:"#a855f7"}].map((c,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}><div style={{width:6,height:6,borderRadius:"50%",background:c.color}}/><span style={{fontSize:7,color:"#64748b",flex:1}}>{c.name}</span><span style={{fontSize:7,fontWeight:500,color:"#0f172a"}}>{c.pct}</span></div>))}
+                        {[{name:"Acme Corp",pct:"30%",color:"#3b82f6"},{name:"Competitor A",pct:"23%",color:"#f97316"},{name:"Competitor B",pct:"18%",color:"#a855f7"}].map((c,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:4,marginBottom:1}}><div style={{width:5,height:5,borderRadius:"50%",background:c.color}}/><span style={{fontSize:6,color:"#64748b",flex:1}}>{c.name}</span><span style={{fontSize:6,fontWeight:500,color:"#0f172a"}}>{c.pct}</span></div>))}
                       </div>
                     </div>
                   </div>
@@ -2754,21 +2767,21 @@ function LandingPage({ onGetStarted }) {
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
             </div>
             <div style={{fontSize:17,fontWeight:500,color:"#0f172a",marginBottom:8}}>Visibility Scoring</div>
-            <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>Understand your brand's presence across ChatGPT, Gemini, Perplexity, and Google AI. Each query is classified as Cited, Mentioned, or Absent, then scored and weighted by regional engine usage.</div>
+            <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>See when ChatGPT, Gemini, Perplexity, and Google AI mention, cite, or ignore your brand across 60 real queries.</div>
           </div>
           <div style={{background:"#fff",borderRadius:16,padding:"32px 28px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
             <div style={{width:48,height:48,borderRadius:12,background:"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
             </div>
             <div style={{fontSize:17,fontWeight:500,color:"#0f172a",marginBottom:8}}>Competitive Intelligence</div>
-            <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>Compare your share of voice against competitors on every AI engine. See who gets recommended, how often, and identify the specific queries where you are losing ground.</div>
+            <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>Compare your share of voice against competitors on every AI engine and find the queries where you're losing.</div>
           </div>
           <div style={{background:"#fff",borderRadius:16,padding:"32px 28px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
             <div style={{width:48,height:48,borderRadius:12,background:"#fef3c7",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
             </div>
             <div style={{fontSize:17,fontWeight:500,color:"#0f172a",marginBottom:8}}>90-Day Action Plan</div>
-            <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>Receive a phased roadmap with specific tasks: content to create, platforms to target, and technical fixes to implement. Each action is tied to a projected visibility improvement.</div>
+            <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>Get a phased roadmap with specific content, platform, and technical actions tied to projected improvements.</div>
           </div>
         </div>
       </div>
