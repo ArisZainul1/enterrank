@@ -2639,6 +2639,8 @@ function LandingPage({ onGetStarted }) {
         @keyframes floatDash{0%,100%{transform:perspective(1400px) rotateY(-12deg) rotateX(5deg) translateY(0)}50%{transform:perspective(1400px) rotateY(-12deg) rotateX(5deg) translateY(-10px)}}
         @keyframes slideInRight{from{opacity:0;transform:translateX(80px)}to{opacity:1;transform:translateX(0)}}
         @keyframes pulse{0%,100%{opacity:0.4;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
+        #lp-scroll::-webkit-scrollbar{display:none}
+        #lp-scroll{scrollbar-width:none;-ms-overflow-style:none}
       `}</style>
 
       {/* ===== FIXED NAV BAR ===== */}
@@ -2669,7 +2671,7 @@ function LandingPage({ onGetStarted }) {
         </div>
         <div style={{display:"flex",alignItems:"center",gap:48,maxWidth:1400,margin:"0 auto",width:"100%",position:"relative",zIndex:1}}>
           <div style={{flex:"0 0 42%",maxWidth:500}}>
-            <div style={{fontSize:11,fontWeight:500,color:"#2563eb",letterSpacing:".1em",textTransform:"uppercase",marginBottom:20}}>Audit · Analyse · Optimise</div>
+            <div style={{fontSize:12,fontWeight:500,color:"#2563eb",letterSpacing:".08em",textTransform:"uppercase",marginBottom:20}}>Audit · Analyse · Optimise</div>
             <h1 style={{fontSize:50,fontWeight:500,color:"#0f172a",letterSpacing:"-.04em",margin:"0 0 20px",lineHeight:1.08}}>
               Own Your Brand's<br/><span style={{color:"#2563eb"}}>AI Visibility</span>
             </h1>
@@ -2748,8 +2750,8 @@ function LandingPage({ onGetStarted }) {
       {/* ===== SECTION 2: WHAT YOU'LL DISCOVER ===== */}
       <div id="section-features" style={{padding:"100px 24px",maxWidth:1100,margin:"0 auto"}}>
         <div style={{textAlign:"center",marginBottom:48}}>
-          <div style={{fontSize:13,fontWeight:500,color:"#2563eb",letterSpacing:".06em",textTransform:"uppercase",marginBottom:8}}>What You'll Discover</div>
-          <div style={{fontSize:28,fontWeight:500,color:"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Actionable intelligence from every AI engine</div>
+          <div style={{fontSize:12,fontWeight:500,color:"#2563eb",letterSpacing:".08em",textTransform:"uppercase",marginBottom:8}}>What You'll Discover</div>
+          <div style={{fontSize:32,fontWeight:500,color:"#0f172a"}}>Actionable intelligence from every AI engine</div>
           <div style={{fontSize:14,color:"#64748b",marginTop:8,maxWidth:560,margin:"8px auto 0"}}>Your brand's AI visibility, measured across every major engine in one audit</div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:24}}>
@@ -2783,14 +2785,14 @@ function LandingPage({ onGetStarted }) {
       <div id="section-how" style={{padding:"100px 48px"}}>
         <div style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{textAlign:"center",marginBottom:48}}>
-            <div style={{fontSize:11,fontWeight:500,color:"#2563eb",letterSpacing:".1em",textTransform:"uppercase",marginBottom:12}}>How It Works</div>
-            <h2 style={{fontSize:36,fontWeight:500,color:"#0f172a",letterSpacing:"-.03em",margin:"0 0 12px"}}>Four steps from setup to strategy</h2>
-            <p style={{fontSize:15,color:"#64748b",maxWidth:520,margin:"0 auto"}}>EnterRank tests real queries on 4 live AI engines, classifies every response, and delivers actionable insights grounded in data, not guesses.</p>
+            <div style={{fontSize:12,fontWeight:500,color:"#2563eb",letterSpacing:".08em",textTransform:"uppercase",marginBottom:12}}>How It Works</div>
+            <h2 style={{fontSize:32,fontWeight:500,color:"#0f172a",letterSpacing:"-.03em",margin:"0 0 12px"}}>Four steps from setup to strategy</h2>
+            <p style={{fontSize:14,color:"#64748b",maxWidth:520,margin:"0 auto"}}>EnterRank tests real queries on 4 live AI engines, classifies every response, and delivers actionable insights grounded in data, not guesses.</p>
           </div>
           <div style={{display:"flex",justifyContent:"center",gap:0,marginBottom:40}}>
             {steps.map((step,i)=>(
               <div key={i} onClick={()=>{setActiveStep(i);setAutoPlay(false);}} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 24px",cursor:"pointer",borderBottom:activeStep===i?"2px solid "+step.color:"2px solid transparent",transition:"all .2s"}}>
-                <span style={{fontSize:11,fontWeight:500,color:activeStep===i?step.color:"#94a3b8",fontFamily:"'Space Mono',monospace"}}>{step.number}</span>
+                <span style={{fontSize:11,fontWeight:500,color:activeStep===i?step.color:"#94a3b8",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{step.number}</span>
                 <span style={{fontSize:13,fontWeight:activeStep===i?500:400,color:activeStep===i?"#0f172a":"#94a3b8"}}>{step.title}</span>
               </div>
             ))}
@@ -2798,7 +2800,7 @@ function LandingPage({ onGetStarted }) {
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:40,alignItems:"center"}} key={activeStep}>
             <div style={{animation:"fadeInUp .4s ease-out"}}>
               <div style={{fontSize:12,fontWeight:500,color:steps[activeStep].color,marginBottom:8}}>{steps[activeStep].subtitle}</div>
-              <h3 style={{fontSize:28,fontWeight:500,color:"#0f172a",margin:"0 0 16px",letterSpacing:"-.02em"}}>{steps[activeStep].title}</h3>
+              <h3 style={{fontSize:22,fontWeight:500,color:"#0f172a",margin:"0 0 16px",letterSpacing:"-.02em"}}>{steps[activeStep].title}</h3>
               <p style={{fontSize:14,color:"#64748b",lineHeight:1.8,margin:0}}>{steps[activeStep].desc}</p>
             </div>
             <div style={{animation:"fadeInUp .5s ease-out"}}>
@@ -2825,7 +2827,7 @@ function LandingPage({ onGetStarted }) {
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <img src="/enterank-icon.svg" alt="EnterRank" style={{width:24,height:24,opacity:0.8}}/>
             <div>
-              <div style={{fontSize:13,fontWeight:500,color:"#e2e8f0"}}>EnterRank</div>
+              <div style={{fontSize:15,fontWeight:500,color:"#e2e8f0"}}>EnterRank</div>
               <div style={{fontSize:11,color:"#64748b"}}>AI Engine Visibility Platform by Entermind AI</div>
             </div>
           </div>
