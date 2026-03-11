@@ -67,7 +67,8 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       result: text,
-      citations: citations
+      citations: citations,
+      usage: data.usage || null
     });
 
   } catch (e) {

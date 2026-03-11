@@ -104,6 +104,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       result: responseText,
       citations: citations,
+      usage: data.usage || null,
       rateLimit: { remaining, resetMs }
     });
 

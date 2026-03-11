@@ -186,6 +186,20 @@ function validateResponse(raw,minLength=10){
   return text;
 }
 
+// Token usage accumulator — reset per audit run, written to by wrapper functions
+const _tokenUsage = {
+  openai: { input: 0, output: 0, calls: 0 },
+  openaiSearch: { input: 0, output: 0, calls: 0 },
+  gemini: { input: 0, output: 0, calls: 0 },
+  perplexity: { input: 0, output: 0, calls: 0 },
+  serpapi: { searches: 0 }
+};
+function _resetTokenUsage(){ _tokenUsage.openai={input:0,output:0,calls:0}; _tokenUsage.openaiSearch={input:0,output:0,calls:0}; _tokenUsage.gemini={input:0,output:0,calls:0}; _tokenUsage.perplexity={input:0,output:0,calls:0}; _tokenUsage.serpapi={searches:0}; }
+function _trackOpenAI(usage){ if(!usage)return; _tokenUsage.openai.input+=usage.prompt_tokens||usage.input_tokens||0; _tokenUsage.openai.output+=usage.completion_tokens||usage.output_tokens||0; _tokenUsage.openai.calls++; }
+function _trackOpenAISearch(usage){ if(!usage)return; _tokenUsage.openaiSearch.input+=usage.input_tokens||usage.prompt_tokens||0; _tokenUsage.openaiSearch.output+=usage.output_tokens||usage.completion_tokens||0; _tokenUsage.openaiSearch.calls++; }
+function _trackGemini(usage){ if(!usage)return; _tokenUsage.gemini.input+=usage.promptTokenCount||0; _tokenUsage.gemini.output+=usage.candidatesTokenCount||0; _tokenUsage.gemini.calls++; }
+function _trackPerplexity(usage){ if(!usage)return; _tokenUsage.perplexity.input+=usage.prompt_tokens||0; _tokenUsage.perplexity.output+=usage.completion_tokens||0; _tokenUsage.perplexity.calls++; }
+
 async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst."){
   return callWithRetry(async()=>{
     const controller=new AbortController();
@@ -197,6 +211,7 @@ async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst.")
       if(!res.ok)throw new Error(res.status+" "+res.statusText);
       const data=await res.json();
       if(data.error){throw new Error("API: "+data.error);}
+      _trackOpenAI(data.usage);
       if(data.rateLimit?.remaining&&parseInt(data.rateLimit.remaining)<5)await new Promise(r=>setTimeout(r,3000));
       return validateResponse(data.text)||"";
     }catch(e){clearTimeout(timeout);throw e;}
@@ -214,6 +229,7 @@ async function callOpenAI4o(prompt, systemPrompt="You are an expert AEO analyst.
       if(!res.ok)throw new Error(res.status+" "+res.statusText);
       const data=await res.json();
       if(data.error){throw new Error("API: "+data.error);}
+      _trackOpenAI(data.usage);
       if(data.rateLimit?.remaining&&parseInt(data.rateLimit.remaining)<5)await new Promise(r=>setTimeout(r,3000));
       return validateResponse(data.text)||"";
     }catch(e){clearTimeout(timeout);throw e;}
@@ -234,6 +250,7 @@ async function callGemini(prompt, systemPrompt="You are an expert AEO analyst.")
         if(data.error.includes("SAFETY")||data.error.includes("block"))return "";
         throw new Error("API: "+data.error);
       }
+      _trackGemini(data.usage);
       return validateResponse(data.text)||"";
     }catch(e){clearTimeout(timeout);throw e;}
   });
@@ -244,6 +261,7 @@ async function callGeminiWithCitations(prompt, systemPrompt="You are an expert A
     const __token=await getAuthToken();const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,systemPrompt})});
     if(!res.ok)return{text:"",citations:[]};
     const data=await res.json();
+    _trackGemini(data.usage);
     return{
       text:data.text||(typeof data==="string"?data:""),
       citations:data.citations||[]
@@ -265,6 +283,7 @@ async function callOpenAISearch(query, region){
       if(!r.ok)throw new Error(r.status+" "+r.statusText);
       const d=await r.json();
       if(d.error&&!d.result){throw new Error("API: "+d.error);}
+      _trackOpenAISearch(d.usage);
       if(d.rateLimit?.remaining&&parseInt(d.rateLimit.remaining)<5)await new Promise(r=>setTimeout(r,3000));
       return{text:d.result||"",citations:d.citations||[]};
     }catch(e){clearTimeout(timeout);throw e;}
@@ -276,6 +295,7 @@ async function callPerplexity(query, systemPrompt){
     const __token=await getAuthToken();const res=await fetch("/api/perplexity",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt:query,systemPrompt:systemPrompt||""})});
     if(!res.ok)return{text:"",citations:[]};
     const data=await res.json();
+    _trackPerplexity(data.usage);
     return{text:data.result||"",citations:(data.citations||[]).map(c=>({url:c.url||c,title:c.title||""}))};
   }catch(e){
     console.error("Perplexity call failed:",e);
@@ -289,6 +309,7 @@ async function callGoogleAI(query, region){
     if(!res.ok)return{text:"",citations:[]};
     const data=await res.json();
     if(data.error){console.warn("Google AI Mode not available:",data.error);return{text:"",citations:[]};}
+    _tokenUsage.serpapi.searches++;
     return{text:data.result||"",citations:(data.citations||[]).map(c=>({url:c.url||"",title:c.title||""}))};
   }catch(e){console.error("Google AI Mode call failed:",e);return{text:"",citations:[]};}
 }
@@ -534,6 +555,7 @@ async function runRealAudit(cd, onProgress){
   const engineSystemPrompt=`You are an AEO (Answer Engine Optimization) analyst. Respond ONLY with valid JSON, no markdown fences, no explanations.`;
   const accumulated = {};
   let queryArchetypeMap = {};
+  _resetTokenUsage();
 
   // ── Step 1: Crawl brand website AND competitor websites ──
   onProgress("Crawling brand website...",2);
@@ -1926,6 +1948,33 @@ Rules:
 
   accumulated.narratives = narratives || {};
 
+  // ── Token Usage Summary ──
+  const tokenUsage = JSON.parse(JSON.stringify(_tokenUsage));
+  tokenUsage.total = {
+    input: tokenUsage.openai.input + tokenUsage.openaiSearch.input + tokenUsage.gemini.input + tokenUsage.perplexity.input,
+    output: tokenUsage.openai.output + tokenUsage.openaiSearch.output + tokenUsage.gemini.output + tokenUsage.perplexity.output
+  };
+  const estimatedCost = {
+    openai_mini: ((tokenUsage.openai.input * 0.00000015) + (tokenUsage.openai.output * 0.0000006)).toFixed(4),
+    openai_search: ((tokenUsage.openaiSearch.input * 0.0000025) + (tokenUsage.openaiSearch.output * 0.00001) + (tokenUsage.openaiSearch.calls * 0.025)).toFixed(4),
+    gemini: ((tokenUsage.gemini.input * 0.0000001) + (tokenUsage.gemini.output * 0.0000004)).toFixed(4),
+    perplexity: ((tokenUsage.perplexity.input * 0.000003) + (tokenUsage.perplexity.output * 0.000015)).toFixed(4),
+    serpapi: (tokenUsage.serpapi.searches * 0.015).toFixed(4)
+  };
+  const totalCost = (parseFloat(estimatedCost.openai_mini) + parseFloat(estimatedCost.openai_search) + parseFloat(estimatedCost.gemini) + parseFloat(estimatedCost.perplexity) + parseFloat(estimatedCost.serpapi)).toFixed(4);
+  console.log("═══ AUDIT TOKEN USAGE ═══");
+  console.log("OpenAI (gpt-4o-mini):", tokenUsage.openai);
+  console.log("OpenAI Search (gpt-4o):", tokenUsage.openaiSearch);
+  console.log("Gemini:", tokenUsage.gemini);
+  console.log("Perplexity:", tokenUsage.perplexity);
+  console.log("SerpApi searches:", tokenUsage.serpapi.searches);
+  console.log("Total tokens — Input:", tokenUsage.total.input, "Output:", tokenUsage.total.output);
+  console.log("Estimated cost:", estimatedCost);
+  console.log("Total estimated:", totalCost, "USD");
+  console.log("═════════════════════════");
+  tokenUsage.estimatedCost = estimatedCost;
+  tokenUsage.totalCostUSD = totalCost;
+
   try {
     return {
       engineData:{
@@ -1956,7 +2005,8 @@ Rules:
       guidelinesData:typeof guidelinesData!=="undefined"?guidelinesData:null,
       narratives:typeof narratives!=="undefined"?narratives:{},
       engineWeights:getEngineWeights(region),
-      verifiedChannelGaps:typeof verifiedChannelGaps!=="undefined"?verifiedChannelGaps:[]
+      verifiedChannelGaps:typeof verifiedChannelGaps!=="undefined"?verifiedChannelGaps:[],
+      tokenUsage
     };
   } catch(returnError) {
     console.error("CRITICAL: runRealAudit return assembly failed:",returnError);

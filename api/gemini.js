@@ -81,7 +81,7 @@ export default async function handler(req, res) {
       // Grounding metadata not available — that's fine
     }
 
-    return res.status(200).json({ text, citations });
+    return res.status(200).json({ text, citations, usage: data.usageMetadata || null });
   } catch (error) {
     console.error('Gemini proxy error:', error);
     return res.status(500).json({ error: error.name === 'AbortError' ? 'Request timed out' : 'Internal server error' });

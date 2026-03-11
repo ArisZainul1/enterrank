@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     const text = data.choices?.[0]?.message?.content || '';
     const remaining = response.headers.get("x-ratelimit-remaining-requests");
     const resetMs = response.headers.get("x-ratelimit-reset-requests");
-    return res.status(200).json({ text, rateLimit: { remaining, resetMs } });
+    return res.status(200).json({ text, usage: data.usage || null, rateLimit: { remaining, resetMs } });
   } catch (error) {
     console.error('OpenAI proxy error:', error);
     return res.status(500).json({ error: error.name === 'AbortError' ? 'Request timed out' : 'Internal server error' });
