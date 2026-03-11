@@ -6923,7 +6923,7 @@ async function sbDeleteContent(contentId) {
 }
 
 /* ─── PROJECT HUB ─── */
-function ProjectHub({onSelect,onNew,onLogout}){
+function ProjectHub({onSelect,onNew,onLogout,isAdmin,onAdminClick}){
   const[projects,setProjects]=useState(null);
   const[loading,setLoading]=useState(true);
   const[deleting,setDeleting]=useState(null);
@@ -7035,6 +7035,28 @@ function ProjectHub({onSelect,onNew,onLogout}){
         </div>
       </div>
 
+      {/* Admin button */}
+      {isAdmin&&<div onClick={onAdminClick} style={{
+        display:"flex",alignItems:"center",justifyContent:"space-between",
+        padding:"14px 20px",marginBottom:20,
+        background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,
+        cursor:"pointer",transition:"all 0.15s ease",
+        boxShadow:"0 1px 3px rgba(0,0,0,0.04)"
+      }}
+        onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.07)";e.currentTarget.style.borderColor="#cbd5e1";}}
+        onMouseLeave={e=>{e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04)";e.currentTarget.style.borderColor="#e2e8f0";}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <div style={{width:36,height:36,borderRadius:8,background:"#1e293b",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          </div>
+          <div>
+            <div style={{fontSize:14,fontWeight:500,color:"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Admin Dashboard</div>
+            <div style={{fontSize:11,color:"#64748b",marginTop:1}}>Platform usage, costs, and user management</div>
+          </div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>}
+
       {/* Workspaces section */}
       <div style={{border:`1px solid ${C.border}`,borderRadius:14,overflow:"hidden",background:"#fff"}}>
         <div style={{padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.border}`}}>
@@ -7103,7 +7125,7 @@ function ProjectHub({onSelect,onNew,onLogout}){
 }
 
 /* ─── ADMIN DASHBOARD PAGE ─── */
-function AdminDashboardPage({ data, users, loading }) {
+function AdminDashboardPage({ data, users, loading, setScreen }) {
   if (loading) return (
     <div style={{ padding: 60, textAlign: "center" }}>
       <div style={{ width: 24, height: 24, border: "2.5px solid " + C.borderSoft, borderTopColor: C.accent, borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 12px" }} />
@@ -7119,6 +7141,16 @@ function AdminDashboardPage({ data, users, loading }) {
 
   return (
     <div>
+      {setScreen&&<div onClick={()=>setScreen("hub")} style={{
+        display:"inline-flex",alignItems:"center",gap:4,fontSize:12,color:C.muted,
+        cursor:"pointer",marginBottom:16,padding:"4px 0"
+      }}
+        onMouseEnter={e=>e.currentTarget.style.color=C.text}
+        onMouseLeave={e=>e.currentTarget.style.color=C.muted}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Back to Workspaces
+      </div>}
+
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ fontSize: 22, fontWeight: 500, color: C.text, margin: 0, fontFamily: "'Satoshi',-apple-system,sans-serif" }}>Admin Dashboard</h2>
         <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Platform usage and cost overview</p>
@@ -7416,7 +7448,7 @@ export default function App(){
   if(!authed)return <LoginForm onLogin={handleLogin} onSignUp={handleSignUp} error={loginError} loading={loggingIn} onBack={() => setShowLanding(true)}/>;
 
   if(screen==="hub")return(<>
-    <ProjectHub onSelect={handleSelectProject} onNew={handleNewProject} onLogout={handleLogout}/>
+    <ProjectHub onSelect={handleSelectProject} onNew={handleNewProject} onLogout={handleLogout} isAdmin={isAdmin} onAdminClick={()=>{setScreen("admin");setStep("dashboard");loadAdminData();}}/>
     {projectPrompt&&(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,animation:"fadeIn .2s ease-out"}} onClick={()=>setProjectPrompt(null)}>
       <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,padding:"36px 32px 28px",width:"100%",maxWidth:420,boxShadow:"0 20px 60px rgba(0,0,0,.15)",animation:"fadeIn .25s ease-out"}}>
         <div style={{textAlign:"center",marginBottom:24}}>
@@ -7628,7 +7660,7 @@ export default function App(){
     <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",marginLeft:sideCollapsed?60:220,transition:"margin-left .2s ease"}}>
       <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto"}}>
         <div key={step} style={{animation:"fadeIn 0.2s ease"}}>
-        {screen==="admin"&&isAdmin&&<ErrorBoundary><AdminDashboardPage data={adminData} users={adminUsers} loading={adminLoading}/></ErrorBoundary>}
+        {screen==="admin"&&isAdmin&&<ErrorBoundary><AdminDashboardPage data={adminData} users={adminUsers} loading={adminLoading} setScreen={setScreen}/></ErrorBoundary>}
         {screen!=="admin"&&<>
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={runAuditProgressive} history={history}/>}
         {step==="dashboard"&&!results&&(auditInProgress||auditError)&&<AuditLoadingInline progress={dashboardLoadProgress} stage={auditStage} error={auditError} onClearError={()=>{setAuditError(null);setStep("input");}}/>}
