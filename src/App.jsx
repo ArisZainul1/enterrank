@@ -1814,26 +1814,18 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
     const topDomains=Object.entries(domainCounts).sort((a,b)=>b[1]-a[1]).slice(0,20).map(([domain,count])=>({domain,count}));
     if(topDomains.length>0){
       const domainListStr=topDomains.map(d=>d.domain+" ("+d.count+" citations)").join("\n");
-      console.log("[ChannelVerify] topDomains count:",topDomains.length);
-      console.log("[ChannelVerify] topDomains:",topDomains.map(d=>d.domain+"("+d.count+")").join(", "));
       const verifyPrompt=`You are verifying platform opportunities for the brand "${brand}" (website: ${brandWebsite}) in the ${cd.industry||"general"} industry in ${cd.region||"Global"}.\n\nKnown competitors: ${compData?.competitors?.map(c=>c.name+" ("+(c.website||"")+")").join(", ")||"none"}\n\nBelow are third-party platforms that AI engines cited when answering queries about this industry. For EACH platform, determine:\n\n1. COMPETITOR: Is this a competitor, competitor sub-brand, or competitor-owned property? (true/false)\n2. RELEVANT: Is this platform relevant to ${brand}'s industry? (true/false)\n3. PRESENT: Does ${brand} have an active, findable presence on this platform? Search the web to verify. (true/false/unknown)\n4. ACTIONABLE: Can a brand realistically take action to establish or improve their presence here? (true/false)\n5. DESCRIPTION: One line describing what this platform is and why it matters for this industry.\n6. ACTION: If this is a genuine gap, one specific action ${brand} should take.\n\nPlatforms to verify:\n${domainListStr}\n\nCRITICAL RULES:\n- Actually search the web to check if ${brand} has a presence on each platform\n- Social media platforms — search for the brand's official page/channel before marking as not present\n- If you're unsure about presence, mark as "unknown" not "false"\n- Be strict about competitor detection — include sub-brands, sister companies\n- Only mark as ACTIONABLE if the brand can directly influence their presence\n\nRespond in JSON only. No preamble, no markdown backticks.\n{"platforms": [{"domain": "example.com","citations": 5,"isCompetitor": false,"isRelevant": true,"brandPresent": false,"isActionable": true,"description": "Leading review platform","action": "Submit product pages for review"}]}`;
       const verifyResp=await callOpenAISearch(verifyPrompt);
-      console.log("[ChannelVerify] raw response type:",typeof verifyResp,typeof verifyResp?.text);
-      console.log("[ChannelVerify] raw response preview:",(verifyResp?.text||verifyResp||"").substring(0,300));
       try{
         const cleaned=(verifyResp?.text||verifyResp||"").replace(/```json|```/g,"").trim();
         const parsed=safeJSON(cleaned)||JSON.parse(cleaned);
-        console.log("[ChannelVerify] parsed platforms:",(parsed.platforms||[]).length);
         // Loosen filter to handle string/boolean mismatches from AI
         verifiedChannelGaps=(parsed.platforms||[]).filter(p=>{const isComp=p.isCompetitor===true||p.isCompetitor==="true";const isRel=p.isRelevant===true||p.isRelevant==="true";const notPresent=p.brandPresent===false||p.brandPresent==="false"||p.brandPresent==="no";const isAction=p.isActionable===true||p.isActionable==="true";return !isComp&&isRel&&notPresent&&isAction;}).map(p=>({domain:p.domain,citations:p.citations||domainCounts[p.domain]||0,description:p.description||"",action:p.action||""}));
         // Include unknown presence as uncertain gaps
         const uncertainGaps=(parsed.platforms||[]).filter(p=>{const isComp=p.isCompetitor===true||p.isCompetitor==="true";const isRel=p.isRelevant===true||p.isRelevant==="true";const isUnknown=p.brandPresent==="unknown"||p.brandPresent===null||p.brandPresent===undefined;const isAction=p.isActionable===true||p.isActionable==="true";return !isComp&&isRel&&isUnknown&&isAction;}).map(p=>({domain:p.domain,citations:p.citations||domainCounts[p.domain]||0,description:p.description||"",action:p.action||"",uncertain:true}));
         verifiedChannelGaps=[...verifiedChannelGaps,...uncertainGaps].sort((a,b)=>b.citations-a.citations);
-        console.log("[ChannelVerify] filtered gaps:",verifiedChannelGaps.length,"uncertain:",uncertainGaps.length);
-        // Log filter reasons
-        (parsed.platforms||[]).forEach(p=>{const reasons=[];if(p.isCompetitor===true||p.isCompetitor==="true")reasons.push("competitor");if(!(p.isRelevant===true||p.isRelevant==="true"))reasons.push("not relevant");if(!(p.brandPresent===false||p.brandPresent==="false"||p.brandPresent==="no"||p.brandPresent==="unknown"||p.brandPresent===null||p.brandPresent===undefined))reasons.push("brand present: "+p.brandPresent);if(!(p.isActionable===true||p.isActionable==="true"))reasons.push("not actionable");if(reasons.length>0)console.log("[ChannelVerify] FILTERED OUT:",p.domain,"—",reasons.join(", "));else console.log("[ChannelVerify] KEPT:",p.domain);});
-      }catch(e){console.error("[ChannelVerify] Parse error:",e.message);console.log("[ChannelVerify] Raw text that failed:",(verifyResp?.text||verifyResp||"").substring(0,500));}
-    }else{console.log("[ChannelVerify] No topDomains found — citationSources.all has",allCitations.length,"items");}
+      }catch(e){console.error("[ChannelVerify] Parse error:",e.message);}
+    }else{/* no topDomains found */}
   }catch(e){console.error("Channel verification failed:",e);}
 
   // ── Step: Generate narrative summaries ──
@@ -1964,16 +1956,6 @@ Rules:
     serpapi: (tokenUsage.serpapi.searches * 0.015).toFixed(4)
   };
   const totalCost = (parseFloat(estimatedCost.openai_mini) + parseFloat(estimatedCost.openai_search) + parseFloat(estimatedCost.gemini) + parseFloat(estimatedCost.perplexity) + parseFloat(estimatedCost.serpapi)).toFixed(4);
-  console.log("═══ AUDIT TOKEN USAGE ═══");
-  console.log("OpenAI (gpt-4o-mini):", tokenUsage.openai);
-  console.log("OpenAI Search (gpt-4o):", tokenUsage.openaiSearch);
-  console.log("Gemini:", tokenUsage.gemini);
-  console.log("Perplexity:", tokenUsage.perplexity);
-  console.log("SerpApi searches:", tokenUsage.serpapi.searches);
-  console.log("Total tokens — Input:", tokenUsage.total.input, "Output:", tokenUsage.total.output);
-  console.log("Estimated cost:", estimatedCost);
-  console.log("Total estimated:", totalCost, "USD");
-  console.log("═════════════════════════");
   tokenUsage.estimatedCost = estimatedCost;
   tokenUsage.totalCostUSD = totalCost;
 
@@ -7734,12 +7716,12 @@ export default function App(){
     <link href="https://fonts.cdnfonts.com/css/satoshi" rel="stylesheet"/>
     <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}@keyframes blink{50%{opacity:0}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes loadingSlide{0%{transform:translateX(-100%);opacity:0.5}30%{opacity:1}100%{transform:translateX(350%);opacity:0.3}}*{box-sizing:border-box}::selection{background:${C.accent}18}input:focus{border-color:${C.accent}!important;box-shadow:0 0 0 3px ${C.accent}08!important}.field-autofilled input{background:#f3f4f6!important;color:${C.sub}!important;transition:all .15s}.field-autofilled input:focus{background:#fff!important;color:${C.text}!important}`}</style>
 
-    {/* Sidebar */}
-    <Sidebar step={step} setStep={(s)=>{if(screen==="admin")setScreen("dashboard");setStep(s);}} results={results} brand={results?.clientData?.brand||data.brand} onBack={handleBackToHub} isLocal={isLocal} onLogout={handleLogout} collapsed={sideCollapsed} setCollapsed={setSideCollapsed} sectionReady={sectionReady} auditInProgress={auditInProgress} isAdmin={isAdmin} screen={screen} onAdminClick={()=>{setScreen("admin");loadAdminData();}}/>
+    {/* Sidebar — hide on admin screen */}
+    {screen!=="admin"&&<Sidebar step={step} setStep={(s)=>{if(screen==="admin")setScreen("dashboard");setStep(s);}} results={results} brand={results?.clientData?.brand||data.brand} onBack={handleBackToHub} isLocal={isLocal} onLogout={handleLogout} collapsed={sideCollapsed} setCollapsed={setSideCollapsed} sectionReady={sectionReady} auditInProgress={auditInProgress} isAdmin={isAdmin} screen={screen} onAdminClick={()=>{setScreen("admin");loadAdminData();}}/>}
 
-    {/* Main content */}
-    <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",marginLeft:sideCollapsed?60:220,transition:"margin-left .2s ease"}}>
-      <div style={{flex:1,overflowY:"auto",padding:"28px 32px",maxWidth:1060,width:"100%",margin:"0 auto"}}>
+    {/* Main content — full width on admin screen */}
+    <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",marginLeft:screen==="admin"?0:(sideCollapsed?60:220),transition:"margin-left .2s ease"}}>
+      <div style={{flex:1,overflowY:"auto",padding:screen==="admin"?"32px 40px":"28px 32px",maxWidth:screen==="admin"?1200:1060,width:"100%",margin:"0 auto"}}>
         <div key={step} style={{animation:"fadeIn 0.2s ease"}}>
         {screen==="admin"&&isAdmin&&<ErrorBoundary><AdminDashboardPage data={adminData} users={adminUsers} loading={adminLoading} setScreen={setScreen} health={adminHealth}/></ErrorBoundary>}
         {screen!=="admin"&&<>
