@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   if (!OPENAI_API_KEY) return res.status(500).json({ error: 'OPENAI_API_KEY not configured' });
 
   try {
-    const { prompt, systemPrompt, model } = req.body;
+    const { prompt, systemPrompt, model, temperature } = req.body;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 58000); // 58s safety (Vercel 60s limit)
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: model || 'gpt-4o-mini',
         max_tokens: 4000,
-        temperature: 0.2,
+        temperature: temperature !== undefined ? temperature : 0,
         messages: [
           { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
           { role: 'user', content: prompt },

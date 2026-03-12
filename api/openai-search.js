@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   if (!OPENAI_API_KEY) return res.status(500).json({ error: "OPENAI_API_KEY not configured" });
 
   try {
-    const { query, region } = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    const { query, region, temperature } = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
     if (!query) return res.status(400).json({ error: "Missing query" });
 
     const controller = new AbortController();
@@ -58,7 +58,7 @@ export default async function handler(req, res) {
           ...(countryCode ? { user_location: { type: "approximate", country: countryCode } } : {})
         }
       ],
-      temperature: 0.2,
+      temperature: temperature !== undefined ? temperature : 0,
     };
 
     const response = await fetch("https://api.openai.com/v1/responses", {

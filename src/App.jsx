@@ -202,12 +202,12 @@ function _trackOpenAISearch(usage){ if(!usage)return; _tokenUsage.openaiSearch.i
 function _trackGemini(usage){ if(!usage)return; _tokenUsage.gemini.input+=usage.promptTokenCount||0; _tokenUsage.gemini.output+=usage.candidatesTokenCount||0; _tokenUsage.gemini.calls++; }
 function _trackPerplexity(usage){ if(!usage)return; _tokenUsage.perplexity.input+=usage.prompt_tokens||0; _tokenUsage.perplexity.output+=usage.completion_tokens||0; _tokenUsage.perplexity.calls++; }
 
-async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst."){
+async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst.", temperature){
   return callWithRetry(async()=>{
     const controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),55000);
     try{
-      const __token=await getAuthToken();const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,systemPrompt}),signal:controller.signal});
+      const __token=await getAuthToken();const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,systemPrompt,...(temperature!==undefined?{temperature}:{})}),signal:controller.signal});
       clearTimeout(timeout);
       if(!res.ok&&[400,401,404].includes(res.status))return null;
       if(!res.ok)throw new Error(res.status+" "+res.statusText);
@@ -220,12 +220,12 @@ async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst.")
   });
 }
 
-async function callOpenAI4o(prompt, systemPrompt="You are an expert AEO analyst."){
+async function callOpenAI4o(prompt, systemPrompt="You are an expert AEO analyst.", temperature){
   return callWithRetry(async()=>{
     const controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),55000);
     try{
-      const __token=await getAuthToken();const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,systemPrompt,model:"gpt-4o"}),signal:controller.signal});
+      const __token=await getAuthToken();const res=await fetch("/api/openai",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,systemPrompt,model:"gpt-4o",...(temperature!==undefined?{temperature}:{})}),signal:controller.signal});
       clearTimeout(timeout);
       if(!res.ok&&[400,401,404].includes(res.status))return null;
       if(!res.ok)throw new Error(res.status+" "+res.statusText);
@@ -238,12 +238,12 @@ async function callOpenAI4o(prompt, systemPrompt="You are an expert AEO analyst.
   });
 }
 
-async function callGemini(prompt, systemPrompt="You are an expert AEO analyst."){
+async function callGemini(prompt, systemPrompt="You are an expert AEO analyst.", temperature){
   return callWithRetry(async()=>{
     const controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),55000);
     try{
-      const __token=await getAuthToken();const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,systemPrompt}),signal:controller.signal});
+      const __token=await getAuthToken();const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,systemPrompt,...(temperature!==undefined?{temperature}:{})}),signal:controller.signal});
       clearTimeout(timeout);
       if(!res.ok&&[400,401,404].includes(res.status))return null;
       if(!res.ok)throw new Error(res.status+" "+res.statusText);
@@ -258,9 +258,9 @@ async function callGemini(prompt, systemPrompt="You are an expert AEO analyst.")
   });
 }
 
-async function callGeminiWithCitations(prompt, systemPrompt="You are an expert AEO analyst."){
+async function callGeminiWithCitations(prompt, systemPrompt="You are an expert AEO analyst.", temperature){
   try{
-    const __token=await getAuthToken();const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,systemPrompt})});
+    const __token=await getAuthToken();const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,systemPrompt,...(temperature!==undefined?{temperature}:{})})});
     if(!res.ok)return{text:"",citations:[]};
     const data=await res.json();
     _trackGemini(data.usage);
@@ -274,12 +274,12 @@ async function callGeminiWithCitations(prompt, systemPrompt="You are an expert A
   }
 }
 
-async function callOpenAISearch(query, region){
+async function callOpenAISearch(query, region, temperature){
   return callWithRetry(async()=>{
     const controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),75000);
     try{
-      const __token=await getAuthToken();const r=await fetch("/api/openai-search",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({query,region}),signal:controller.signal});
+      const __token=await getAuthToken();const r=await fetch("/api/openai-search",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({query,region,...(temperature!==undefined?{temperature}:{})}),signal:controller.signal});
       clearTimeout(timeout);
       if(!r.ok&&[400,401,404].includes(r.status))return null;
       if(!r.ok)throw new Error(r.status+" "+r.statusText);
@@ -292,9 +292,9 @@ async function callOpenAISearch(query, region){
   })||{text:"",citations:[]};
 }
 
-async function callPerplexity(query, systemPrompt){
+async function callPerplexity(query, systemPrompt, temperature){
   try{
-    const __token=await getAuthToken();const res=await fetch("/api/perplexity",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt:query,systemPrompt:systemPrompt||""})});
+    const __token=await getAuthToken();const res=await fetch("/api/perplexity",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt:query,systemPrompt:systemPrompt||"",...(temperature!==undefined?{temperature}:{})})});
     if(!res.ok)return{text:"",citations:[]};
     const data=await res.json();
     _trackPerplexity(data.usage);
@@ -1345,7 +1345,7 @@ Return JSON:
 
 IMPORTANT: All output must be in English. Do not translate or localize the language. Use regional context (local competitors, local pricing, local regulations, local currency) but always respond in English.
 Be accurate for ${region}. All demographics, behaviors, and prompts must reflect ${region}-specific context. ${brand} likely has low visibility on most prompts — use "Absent" where appropriate. ChatGPT and Gemini may differ.`;
-  const archRaw=await callOpenAI(archPrompt, engineSystemPrompt);
+  const archRaw=await callOpenAI(archPrompt, engineSystemPrompt, 0.5);
   archData=safeJSON(archRaw)||{stakeholders:[]};
 
   // Now ask Gemini to verify/correct the engine statuses
@@ -1605,8 +1605,8 @@ Suggest content strategies relevant to the ${region} market. Content should targ
 IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, markup), video, social, PR, research, partnerships. Vary the owners — dev team for technical, PR for outreach, analytics for research. Each content type must tie back to a specific finding from the audit.`;
 
   const[contentGptRaw,contentGemRaw]=await Promise.all([
-    callOpenAI(contentPrompt, engineSystemPrompt),
-    callGemini(contentPrompt, engineSystemPrompt)
+    callOpenAI(contentPrompt, engineSystemPrompt, 0.5),
+    callGemini(contentPrompt, engineSystemPrompt, 0.5)
   ]);
   const contentGpt=safeJSON(contentGptRaw)||{contentTypes:[]};
   const contentGem=safeJSON(contentGemRaw)||{contentTypes:[]};
@@ -3511,7 +3511,7 @@ All queries must be in English.
 
 Return JSON only:
 {"topics": ["query 1", "query 2", "query 3", "query 4", "query 5", "query 6", "query 7", "query 8", "query 9", "query 10", "query 11", "query 12", "query 13", "query 14", "query 15"]}`;
-      const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.");
+      const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.",0.5);
       const result=safeJSON(raw);
       if(result&&result.topics&&Array.isArray(result.topics)){
         const validTopics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>5).map(t=>t.trim()).slice(0,15);
@@ -3602,7 +3602,7 @@ All queries must be in English.
 
 Return JSON only:
 {"topics": ["query 1", "query 2", "query 3", "query 4", "query 5", "query 6", "query 7", "query 8", "query 9", "query 10", "query 11", "query 12", "query 13", "query 14", "query 15"]}`;
-      const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.");
+      const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.",0.5);
       const parsed=safeJSON(raw);
       const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(topics&&Array.isArray(topics)&&topics.length>0){
@@ -3651,7 +3651,7 @@ All queries must be in English.
 
 Return JSON only:
 {"topics": ["query 1", "query 2", "query 3", "query 4", "query 5"]}`;
-      const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.");
+      const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.",0.5);
       const parsed=safeJSON(raw);
       const newTopics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(newTopics&&Array.isArray(newTopics)&&newTopics.length>0){
@@ -3688,7 +3688,7 @@ Requirements:
 
 Return JSON only:
 [{"name":"<specific archetype name>","description":"<1-2 sentences about their AI search behavior>","demographics":"<age range, key characteristic>"}]`;
-      const raw=await callOpenAI(prompt,"You are a market research expert specializing in AI search behavior. Return ONLY valid JSON arrays, no markdown fences.");
+      const raw=await callOpenAI(prompt,"You are a market research expert specializing in AI search behavior. Return ONLY valid JSON arrays, no markdown fences.",0.5);
       const parsed=safeJSON(raw);
       if(parsed&&Array.isArray(parsed)&&parsed.length>0){
         const cleaned=parsed.filter(a=>a.name&&a.description).slice(0,7).map((a,i)=>({id:"arch-"+Date.now()+"-"+i,name:a.name.trim(),description:a.description.trim(),demographics:(a.demographics||"").trim()}));
@@ -3710,7 +3710,7 @@ Generate 3 MORE DIFFERENT audience archetypes for people who search for ${data.i
 
 Return JSON only:
 [{"name":"...","description":"...","demographics":"..."}]`;
-      const raw=await callOpenAI(prompt,"You are a market research expert. Return ONLY valid JSON arrays.");
+      const raw=await callOpenAI(prompt,"You are a market research expert. Return ONLY valid JSON arrays.",0.5);
       const parsed=safeJSON(raw);
       if(parsed&&Array.isArray(parsed)){
         const cleaned=parsed.filter(a=>a.name&&a.description).slice(0,3).map((a,i)=>({id:"arch-"+Date.now()+"-"+i,name:a.name.trim(),description:a.description.trim(),demographics:(a.demographics||"").trim()}));
@@ -3753,7 +3753,7 @@ You MUST return exactly 15 topics. Count them. If you have fewer than 15, add mo
 
 Return JSON only:
 {"topics": ["topic 1", "topic 2", ..., "topic 15"]}`;
-      const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Return ONLY valid JSON.");
+      const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Return ONLY valid JSON.",0.5);
       const parsed=safeJSON(raw);
       const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(topics&&Array.isArray(topics)&&topics.length>0){
@@ -4950,7 +4950,7 @@ Generate 2-3 stakeholder groups with 2-3 archetypes each. Each archetype needs a
 Return JSON:
 {"stakeholders":[{"group":"<name>","icon":"<emoji>","desc":"<1 sentence>","archetypes":[{"name":"<name>","icon":"<emoji>","demo":"<demographics>","behavior":"<search behavior>","intent":"<intent>","size":25,"brandVisibility":30,"opportunity":"medium","prompts":["p1","p2"],"journey":[{"stage":"Awareness","color":"#6366f1","prompts":[{"query":"<prompt>","status":"Absent","engines":{"gpt":"Absent","gemini":"Absent"}}]},{"stage":"Consideration","color":"#8b5cf6","prompts":[...]},{"stage":"Transaction","color":"#ec4899","prompts":[...]},{"stage":"Retention","color":"#f59e0b","prompts":[...]}]}]}]}
 Return JSON only.`;
-      const raw=await callOpenAI(prompt,"You are an AEO analyst. Return ONLY valid JSON.");
+      const raw=await callOpenAI(prompt,"You are an AEO analyst. Return ONLY valid JSON.",0.5);
       const parsed=safeJSON(raw);
       if(parsed?.stakeholders?.length>0&&onUpdate)onUpdate(prev=>({...prev,stakeholders:parsed.stakeholders}));
     }catch(e){console.error("Archetype regeneration failed:",e);}
@@ -6273,7 +6273,7 @@ CONTENT STRATEGY RULE: This content exists to fill SPECIFIC gaps in ${brand}'s A
     const userPrompt=typePrompts[type]||`Create ${type} content about: "${topic}"`;
 
     try{
-      const result=await callOpenAI(userPrompt,systemPrompt);
+      const result=await callOpenAI(userPrompt,systemPrompt,0.5);
       const title=topic.length>60?topic.substring(0,57)+"...":topic;
       const newContent={type,title,content:result,channel:channel||null,source_query:sourceQuery||null,source_roadmap_item:sourceRoadmapItem||null,status:"draft"};
       if(projectId){
@@ -6312,7 +6312,7 @@ ${editText.substring(0,3000)}
 
 Generate all relevant schema types (Organization, FAQPage, Article, Product, HowTo, BreadcrumbList) as appropriate for this content. Output ONLY valid JSON-LD wrapped in <script type="application/ld+json"> tags, ready to paste into a webpage. No explanation, no markdown.`;
     try{
-      const result=await callOpenAI(prompt,"You are an SEO specialist. Output ONLY valid JSON-LD schema markup in <script> tags. No explanation.");
+      const result=await callOpenAI(prompt,"You are an SEO specialist. Output ONLY valid JSON-LD schema markup in <script> tags. No explanation.",0.5);
       setSeoMarkup(result||"");
     }catch(e){console.error("SEO markup generation failed:",e);}
     setGeneratingSeo(false);
@@ -6328,7 +6328,7 @@ Generate all relevant schema types (Organization, FAQPage, Article, Product, How
           const brand=r.clientData?.brand||"Brand",industry=r.clientData?.industry||"Technology";
           const prompt=`For "${brand}" in ${industry}, create a content strategy grid with 8-10 content types. For each provide: type name, target channels (array), publishing frequency, priority (P0/P1/P2), suggested owner/department, and a rationale.
 Return JSON only: [{"type":"...","channels":["..."],"freq":"Weekly","p":"P0","owner":"Marketing","rationale":"..."}]`;
-          const raw=await callGemini(prompt,"You are a content strategist. Return ONLY valid JSON array.");
+          const raw=await callGemini(prompt,"You are a content strategist. Return ONLY valid JSON array.",0.5);
           const parsed=safeJSON(raw);
           if(Array.isArray(parsed)&&parsed.length>0&&onUpdate)onUpdate(prev=>({...prev,contentTypes:parsed}));
         }catch(e){console.error("Grid regeneration failed:",e);}

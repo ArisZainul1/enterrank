@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   if (!GOOGLE_AI_KEY) return res.status(500).json({ error: 'GOOGLE_AI_KEY not configured' });
 
   try {
-    const { prompt, systemPrompt } = req.body;
+    const { prompt, systemPrompt, temperature } = req.body;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 55000);
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
       systemInstruction: { parts: [{ text: systemPrompt || 'You are a helpful assistant.' }] },
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.2,
+        temperature: temperature !== undefined ? temperature : 0,
         maxOutputTokens: 4000,
         responseMimeType: 'text/plain',
       },

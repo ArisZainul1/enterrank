@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   if (!rateLimit(user.id)) return res.status(429).json({ error: "Rate limit exceeded" });
 
   try {
-    const { prompt, systemPrompt } = req.body;
+    const { prompt, systemPrompt, temperature } = req.body;
     if (!prompt) return res.status(400).json({ error: 'No prompt provided' });
 
     const apiKey = process.env.PERPLEXITY_API_KEY;
@@ -38,6 +38,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'sonar-pro',
+        ...(temperature !== undefined ? { temperature } : {}),
         messages: [
           ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
           { role: 'user', content: prompt }
