@@ -6753,11 +6753,16 @@ async function sbSaveProject(projectData) {
 }
 
 async function sbSaveAudit(projectId, apiData, computedScores) {
+  const userId = await sbGetUserId();
+  if (!userId) {
+    console.error("Cannot save audit — no authenticated user");
+    return null;
+  }
   const { data, error } = await supabase
     .from('audits')
     .insert({
       project_id: projectId,
-      user_id: (await sbGetUserId()) || 'default',
+      user_id: userId,
       results: apiData,
       overall_score: computedScores?.overall ?? null,
       mention_rate: computedScores?.mentions ?? null,
@@ -6982,49 +6987,29 @@ function ProjectHub({onSelect,onNew,onLogout,isAdmin,onAdminClick}){
   const[hovered,setHovered]=useState(null);
 
   React.useEffect(()=>{
-    const localProjects=lsGetProjects();
     sbLoadProjects().then(sbProjects=>{
-      if(sbProjects.length>0){
-        // Map Supabase projects to the shape the hub expects
-        const mapped=sbProjects.map(p=>{
-          const audits=(p.audits||[]).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-          const latest=audits[0];
-          return{
-            id:p.id,
-            brand:p.brand,
-            website:p.website,
-            industry:p.industry,
-            region:p.region,
-            topics:p.topics,
-            competitors:p.competitors,
-            auditCount:audits.length,
-            lastScore:latest?.overall_score||null,
-            lastAudit:latest?.created_at||p.updated_at||p.created_at,
-            createdAt:p.created_at,
-            _supabase:true
-          };
-        });
-        // Merge: Supabase projects win, add any local-only
-        const merged=[...mapped];
-        localProjects.forEach(lp=>{if(!merged.find(sp=>sp.brand===lp.brand))merged.push(lp);});
-        setProjects(merged);setLoading(false);
-      }else{
-        // Fallback to API + localStorage
-        getAuthToken().then(__tk=>fetch("/api/projects",{headers:{"Authorization":"Bearer "+__tk}})).then(r=>r.json()).then(d=>{
-          const apiProjects=d.projects||[];
-          const merged=[...apiProjects];
-          localProjects.forEach(lp=>{if(!merged.find(ap=>ap.id===lp.id))merged.push(lp);});
-          setProjects(merged);setLoading(false);
-        }).catch(()=>{setProjects(localProjects);setLoading(false);});
-      }
+      // Supabase is the single source of truth — no fallbacks
+      const mapped=(sbProjects||[]).map(p=>{
+        const audits=(p.audits||[]).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+        const latest=audits[0];
+        return{
+          id:p.id,
+          brand:p.brand,
+          website:p.website,
+          industry:p.industry,
+          region:p.region,
+          topics:p.topics,
+          competitors:p.competitors,
+          auditCount:audits.length,
+          lastScore:latest?.overall_score||null,
+          lastAudit:latest?.created_at||p.updated_at||p.created_at,
+          createdAt:p.created_at,
+          _supabase:true
+        };
+      });
+      setProjects(mapped);setLoading(false);
     }).catch(()=>{
-      // Supabase failed — fallback to API + localStorage
-      getAuthToken().then(__tk=>fetch("/api/projects",{headers:{"Authorization":"Bearer "+__tk}})).then(r=>r.json()).then(d=>{
-        const apiProjects=d.projects||[];
-        const merged=[...apiProjects];
-        localProjects.forEach(lp=>{if(!merged.find(ap=>ap.id===lp.id))merged.push(lp);});
-        setProjects(merged);setLoading(false);
-      }).catch(()=>{setProjects(localProjects);setLoading(false);});
+      setProjects([]);setLoading(false);
     });
   },[]);
 
