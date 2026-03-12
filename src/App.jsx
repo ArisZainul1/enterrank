@@ -4534,8 +4534,9 @@ function DashboardPage({r,history,goTo}){
         rawData.forEach(d=>{const key=d.date;if(!dayMap.has(key)||d._ts>dayMap.get(key)._ts)dayMap.set(key,d);});
         if(r&&r.overall){
           const todayKey=formatAuditDate(new Date()).replace(/\s\d{4}$/,"");
-          const currentMentions=Math.round(((r.engines?.[0]?.mentionRate||0)+(r.engines?.[1]?.mentionRate||0))/2);
-          const currentCitations=Math.round(((r.engines?.[0]?.citationRate||0)+(r.engines?.[1]?.citationRate||0))/2);
+          const cWeights=r.engineWeights||getEngineWeights(r.clientData?.region);
+          const currentMentions=Math.round((r.engines||[]).reduce((sum,e)=>{const w=cWeights[e.id]||(1/(r.engines||[]).length);return sum+(e.mentionRate||0)*w;},0));
+          const currentCitations=Math.round((r.engines||[]).reduce((sum,e)=>{const w=cWeights[e.id]||(1/(r.engines||[]).length);return sum+(e.citationRate||0)*w;},0));
           dayMap.set(todayKey,{date:todayKey,fullDate:formatAuditDate(new Date()),overall:r.overall||0,mentions:currentMentions,citations:currentCitations,_ts:Date.now()});
         }
         const chartData=[...dayMap.values()].map(({_ts,...rest})=>rest);
@@ -4575,20 +4576,35 @@ function DashboardPage({r,history,goTo}){
         const first=chartData[0],last=chartData[chartData.length-1];
         const chartDelta=last.overall-first.overall;
 
-        return(
+        const ChartWithTooltip=()=>{
+          const[hovered,setHovered]=useState(null);
+          return(
           <div style={{padding:24,background:C.card,border:"1px solid "+C.border,borderRadius:14}}>
             <div style={{display:"flex",gap:20,marginBottom:20,fontSize:12}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:3,borderRadius:2,background:C.accent}}/><span style={{color:C.muted}}>Overall Score</span></div>
               <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:3,borderRadius:2,background:"#22c55e"}}/><span style={{color:C.muted}}>Mention Rate</span></div>
               <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:3,borderRadius:2,background:"#f59e0b"}}/><span style={{color:C.muted}}>Citation Rate</span></div>
             </div>
+            <div style={{position:"relative"}}>
             <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",overflow:"visible"}}>
               {yTicks.map(tick=><g key={tick}><line x1={padL} x2={W-padR} y1={getY(tick)} y2={getY(tick)} stroke={C.border} strokeWidth={1} strokeDasharray={tick===0?"none":"4,4"}/><text x={padL-8} y={getY(tick)+4} textAnchor="end" fontSize={10} fill={C.muted}>{tick}%</text></g>)}
               {lines.map(line=><path key={line.key} d={makePath(line.key)} fill="none" stroke={line.color} strokeWidth={line.width} strokeLinecap="round" strokeLinejoin="round"/>)}
-              {lines.map(line=>chartData.map((d,i)=><circle key={`${line.key}-${i}`} cx={getX(i)} cy={getY(d[line.key])} r={3} fill={line.color} stroke="#fff" strokeWidth={1.5}><title>{line.key}: {d[line.key]}% — {d.fullDate}</title></circle>))}
+              {lines.map(line=>chartData.map((d,i)=><circle key={`${line.key}-${i}`} cx={getX(i)} cy={getY(d[line.key])} r={hovered===i?5:3} fill={line.color} stroke="#fff" strokeWidth={1.5} style={{cursor:"pointer",transition:"r .15s"}}/>))}
+              {/* Invisible wider hit areas for each data point column */}
+              {chartData.map((d,i)=>{const colW=plotW/(n-1||1);return <rect key={`hit-${i}`} x={getX(i)-colW/2} y={padT} width={colW} height={plotH} fill="transparent" style={{cursor:"pointer"}} onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}/>;
+              })}
               {chartData.map((d,i)=><text key={i} x={getX(i)} y={H-5} textAnchor="middle" fontSize={10} fill={C.muted}>{d.date}</text>)}
               {lines.map(line=><text key={`lbl-${line.key}`} x={getX(n-1)+8} y={getY(last[line.key])+4} fontSize={10} fontWeight={500} fill={line.color}>{last[line.key]}%</text>)}
             </svg>
+            {hovered!==null&&(()=>{const d=chartData[hovered];const pct=getX(hovered)/W*100;const leftStyle=pct>70?{right:`${100-pct+2}%`}:{left:`${pct+2}%`};return(
+              <div style={{position:"absolute",top:0,...leftStyle,background:"#fff",border:"1px solid #e2e8f0",borderRadius:8,boxShadow:"0 4px 12px rgba(0,0,0,0.08)",padding:"10px 14px",fontSize:12,zIndex:10,pointerEvents:"none",fontFamily:"'Satoshi',-apple-system,sans-serif",minWidth:140}}>
+                <div style={{fontWeight:500,color:"#0f172a",marginBottom:6}}>{d.fullDate}</div>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}><div style={{width:8,height:8,borderRadius:"50%",background:C.accent}}/><span style={{color:C.sub}}>Overall: <span style={{fontWeight:500,color:C.text}}>{d.overall}%</span></span></div>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}><div style={{width:8,height:8,borderRadius:"50%",background:"#22c55e"}}/><span style={{color:C.sub}}>Mentions: <span style={{fontWeight:500,color:C.text}}>{d.mentions}%</span></span></div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:8,height:8,borderRadius:"50%",background:"#f59e0b"}}/><span style={{color:C.sub}}>Citations: <span style={{fontWeight:500,color:C.text}}>{d.citations}%</span></span></div>
+              </div>
+            );})()}
+            </div>
             <div style={{marginTop:16,padding:"12px 16px",background:chartDelta>=0?"rgba(220,252,231,0.06)":"rgba(254,226,226,0.06)",borderRadius:10,display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:13,color:C.text}}>
                 Overall score {chartDelta>=0?"improved":"decreased"} by <span style={{fontWeight:500,color:chartDelta>=0?"#166534":"#991b1b"}}>{Math.abs(chartDelta)}%</span> since first audit
@@ -4602,8 +4618,8 @@ function DashboardPage({r,history,goTo}){
                 :`${chartData.length} audits recorded. Consistent tracking helps measure the impact of your GEO strategy.`
               }
             </div>
-          </div>
-        );
+          </div>);};
+        return <ChartWithTooltip/>;
       })()}
     </div>
 
