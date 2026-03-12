@@ -7580,10 +7580,10 @@ export default function App(){
     setResults(null);
     setStep("input");
     setScreen("dashboard");
-    document.title="EnterRank \u2014 AI Engine Visibility Platform";
+    document.title="EnterRank | AI Visibility Auditing Platform";
   };
 
-  const handleBackToHub=()=>{setScreen("hub");setResults(null);setStep("input");document.title="EnterRank \u2014 AI Engine Visibility Platform";};
+  const handleBackToHub=()=>{setScreen("hub");setResults(null);setStep("input");document.title="EnterRank | AI Visibility Auditing Platform";};
 
   const loadAdminData = async () => {
     setAdminLoading(true);
