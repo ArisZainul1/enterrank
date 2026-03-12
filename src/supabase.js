@@ -29,3 +29,17 @@ export const sbGetSession = async () => {
 export const sbOnAuthChange = (callback) => {
   return supabase.auth.onAuthStateChange(callback);
 };
+
+export const sbResetPassword = async (email) => {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin
+  });
+  if (error) return { error: error.message };
+  return { success: true };
+};
+
+export const sbUpdatePassword = async (newPassword) => {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) return { error: error.message };
+  return { success: true };
+};

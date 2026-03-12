@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { supabase, sbSignUp, sbSignIn, sbSignOut, sbGetSession, sbOnAuthChange } from './supabase';
+import { supabase, sbSignUp, sbSignIn, sbSignOut, sbGetSession, sbOnAuthChange, sbResetPassword, sbUpdatePassword } from './supabase';
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
@@ -2888,6 +2888,10 @@ function LoginForm({ onLogin, onSignUp, error, loading, onBack }) {
   const [showPw, setShowPw] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [localError, setLocalError] = useState("");
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSent, setResetSent] = useState(false);
+  const [resetError, setResetError] = useState("");
 
   const ok = email.length > 3 && pw.length >= 6 && (!isSignUp || confirmPw.length >= 6);
 
@@ -2929,86 +2933,152 @@ function LoginForm({ onLogin, onSignUp, error, loading, onBack }) {
       <div style={{position:"relative",zIndex:1,width:"100%",maxWidth:400,padding:"0 24px",animation:"fadeIn .6s ease-out"}}>
         <div style={{background:"#ffffff",borderRadius:16,border:"1px solid #e2e8f0",boxShadow:"0 16px 48px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.03)",padding:"40px 36px"}}>
 
-          {/* Logo + title */}
+          {/* Logo */}
           <div style={{textAlign:"center",marginBottom:32}}>
             <img src="/enterank-icon.svg" alt="EnterRank" style={{width:40,height:40,display:"block",margin:"0 auto 14px",cursor:"pointer"}} onClick={onBack}/>
-            <div style={{fontSize:20,fontWeight:500,color:"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>{isSignUp ? "Create your account" : "Welcome back"}</div>
-            <div style={{fontSize:13,color:"#94a3b8",marginTop:4}}>{isSignUp ? "Get started with EnterRank" : "Sign in to EnterRank"}</div>
           </div>
 
-          {/* Form fields */}
-          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          {showReset ? (
             <div>
-              <label style={{display:"block",fontSize:12,fontWeight:500,color:"#374151",marginBottom:5}}>Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && submit()}
-                placeholder="you@company.com"
-                style={{width:"100%",padding:"11px 14px",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,fontSize:14,color:"#0f172a",outline:"none",fontFamily:"inherit",transition:"all .15s"}}
-              />
-            </div>
+              <div style={{fontSize:18,fontWeight:500,color:"#0f172a",marginBottom:4,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Reset Password</div>
+              <div style={{fontSize:12,color:"#94a3b8",marginBottom:20}}>Enter your email and we'll send you a reset link</div>
 
-            <div>
-              <label style={{display:"block",fontSize:12,fontWeight:500,color:"#374151",marginBottom:5}}>Password</label>
-              <div style={{position:"relative"}}>
-                <input
-                  type={showPw ? "text" : "password"}
-                  value={pw}
-                  onChange={e => setPw(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && submit()}
-                  placeholder={isSignUp ? "Min. 6 characters" : "Enter your password"}
-                  style={{width:"100%",padding:"11px 14px",paddingRight:52,background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,fontSize:14,color:"#0f172a",outline:"none",fontFamily:"inherit",transition:"all .15s"}}
-                />
-                <span onClick={() => setShowPw(!showPw)} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",cursor:"pointer",fontSize:12,color:"#94a3b8",userSelect:"none",fontWeight:500}}>{showPw ? "Hide" : "Show"}</span>
+              {resetSent ? (
+                <div style={{padding:"16px 20px",background:"#f0fdf4",border:"1px solid #dcfce7",borderRadius:8,marginBottom:16}}>
+                  <div style={{fontSize:13,color:"#059669",fontWeight:500,marginBottom:4}}>Reset link sent</div>
+                  <div style={{fontSize:12,color:"#064e3b"}}>Check your email for the password reset link. It may take a minute to arrive.</div>
+                </div>
+              ) : (
+                <>
+                  {resetError && (
+                    <div style={{padding:"10px 14px",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,marginBottom:12,fontSize:12,color:"#dc2626"}}>{resetError}</div>
+                  )}
+                  <div style={{marginBottom:12}}>
+                    <label style={{fontSize:12,fontWeight:500,color:"#374151",marginBottom:5,display:"block"}}>Email</label>
+                    <input
+                      type="email"
+                      value={resetEmail}
+                      onChange={e => setResetEmail(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter" && resetEmail) e.currentTarget.closest("div").parentNode.querySelector("button").click(); }}
+                      placeholder="you@company.com"
+                      style={{width:"100%",padding:"11px 14px",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,fontSize:14,color:"#0f172a",outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}
+                    />
+                  </div>
+                  <button onClick={async () => {
+                    setResetError("");
+                    if (!resetEmail) { setResetError("Please enter your email"); return; }
+                    try {
+                      const result = await sbResetPassword(resetEmail.trim());
+                      if (result.error) { setResetError(result.error); return; }
+                      setResetSent(true);
+                    } catch (e) {
+                      setResetError("Something went wrong. Please try again.");
+                    }
+                  }} style={{
+                    width:"100%",padding:"12px",fontSize:14,fontWeight:500,
+                    background:"#2563eb",color:"#fff",border:"none",borderRadius:8,
+                    cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif"
+                  }}>
+                    Send Reset Link
+                  </button>
+                </>
+              )}
+
+              <div onClick={() => { setShowReset(false); setResetSent(false); setResetError(""); setResetEmail(""); }} style={{
+                fontSize:12,color:"#2563eb",cursor:"pointer",marginTop:16,textAlign:"center"
+              }}>
+                Back to login
               </div>
             </div>
-
-            {isSignUp && (
-              <div>
-                <label style={{display:"block",fontSize:12,fontWeight:500,color:"#374151",marginBottom:5}}>Confirm Password</label>
-                <input
-                  type="password"
-                  value={confirmPw}
-                  onChange={e => setConfirmPw(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && submit()}
-                  placeholder="Confirm your password"
-                  style={{width:"100%",padding:"11px 14px",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,fontSize:14,color:"#0f172a",outline:"none",fontFamily:"inherit",transition:"all .15s"}}
-                />
+          ) : (
+            <div>
+              <div style={{textAlign:"center",marginBottom:24}}>
+                <div style={{fontSize:20,fontWeight:500,color:"#0f172a",fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>{isSignUp ? "Create your account" : "Welcome back"}</div>
+                <div style={{fontSize:13,color:"#94a3b8",marginTop:4}}>{isSignUp ? "Get started with EnterRank" : "Sign in to EnterRank"}</div>
               </div>
-            )}
-          </div>
 
-          {/* Error */}
-          {displayError && (
-            <div style={{marginTop:12,padding:"10px 14px",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,fontSize:12,color:"#dc2626"}}>{displayError}</div>
+              {/* Form fields */}
+              <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                <div>
+                  <label style={{display:"block",fontSize:12,fontWeight:500,color:"#374151",marginBottom:5}}>Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && submit()}
+                    placeholder="you@company.com"
+                    style={{width:"100%",padding:"11px 14px",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,fontSize:14,color:"#0f172a",outline:"none",fontFamily:"inherit",transition:"all .15s"}}
+                  />
+                </div>
+
+                <div>
+                  <label style={{display:"block",fontSize:12,fontWeight:500,color:"#374151",marginBottom:5}}>Password</label>
+                  <div style={{position:"relative"}}>
+                    <input
+                      type={showPw ? "text" : "password"}
+                      value={pw}
+                      onChange={e => setPw(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && submit()}
+                      placeholder={isSignUp ? "Min. 6 characters" : "Enter your password"}
+                      style={{width:"100%",padding:"11px 14px",paddingRight:52,background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,fontSize:14,color:"#0f172a",outline:"none",fontFamily:"inherit",transition:"all .15s"}}
+                    />
+                    <span onClick={() => setShowPw(!showPw)} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",cursor:"pointer",fontSize:12,color:"#94a3b8",userSelect:"none",fontWeight:500}}>{showPw ? "Hide" : "Show"}</span>
+                  </div>
+                </div>
+
+                {isSignUp && (
+                  <div>
+                    <label style={{display:"block",fontSize:12,fontWeight:500,color:"#374151",marginBottom:5}}>Confirm Password</label>
+                    <input
+                      type="password"
+                      value={confirmPw}
+                      onChange={e => setConfirmPw(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && submit()}
+                      placeholder="Confirm your password"
+                      style={{width:"100%",padding:"11px 14px",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,fontSize:14,color:"#0f172a",outline:"none",fontFamily:"inherit",transition:"all .15s"}}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Forgot password */}
+              {!isSignUp && (
+                <div onClick={() => { setShowReset(true); setResetEmail(email); }} style={{fontSize:12,color:"#2563eb",cursor:"pointer",marginTop:8,textAlign:"right"}}>
+                  Forgot password?
+                </div>
+              )}
+
+              {/* Error */}
+              {displayError && (
+                <div style={{marginTop:12,padding:"10px 14px",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,fontSize:12,color:"#dc2626"}}>{displayError}</div>
+              )}
+
+              {/* Submit button */}
+              <button
+                onClick={submit}
+                disabled={!ok || loading}
+                style={{width:"100%",marginTop:18,padding:"12px",background:ok && !loading ? "#2563eb" : "#e2e8f0",color:ok && !loading ? "#fff" : "#94a3b8",border:"none",borderRadius:8,fontSize:14,fontWeight:500,cursor:ok && !loading ? "pointer" : "not-allowed",fontFamily:"'Satoshi',-apple-system,sans-serif",transition:"all .2s"}}
+              >
+                {loading ? (
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                    <div style={{width:14,height:14,border:"2px solid rgba(255,255,255,0.3)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>
+                    {isSignUp ? "Creating account..." : "Signing in..."}
+                  </div>
+                ) : (
+                  isSignUp ? "Create Account" : "Sign In"
+                )}
+              </button>
+
+              {/* Toggle */}
+              <div style={{textAlign:"center",marginTop:20,fontSize:13,color:"#94a3b8"}}>
+                {isSignUp ? (
+                  <>Already have an account? <span onClick={() => { setIsSignUp(false); setConfirmPw(""); setLocalError(""); }} style={{color:"#2563eb",cursor:"pointer",fontWeight:500}}>Sign in</span></>
+                ) : (
+                  <>Don't have an account? <span onClick={() => { setIsSignUp(true); setLocalError(""); }} style={{color:"#2563eb",cursor:"pointer",fontWeight:500}}>Create account</span></>
+                )}
+              </div>
+            </div>
           )}
-
-          {/* Submit button */}
-          <button
-            onClick={submit}
-            disabled={!ok || loading}
-            style={{width:"100%",marginTop:18,padding:"12px",background:ok && !loading ? "#2563eb" : "#e2e8f0",color:ok && !loading ? "#fff" : "#94a3b8",border:"none",borderRadius:8,fontSize:14,fontWeight:500,cursor:ok && !loading ? "pointer" : "not-allowed",fontFamily:"'Satoshi',-apple-system,sans-serif",transition:"all .2s"}}
-          >
-            {loading ? (
-              <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                <div style={{width:14,height:14,border:"2px solid rgba(255,255,255,0.3)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>
-                {isSignUp ? "Creating account..." : "Signing in..."}
-              </div>
-            ) : (
-              isSignUp ? "Create Account" : "Sign In"
-            )}
-          </button>
-
-          {/* Toggle */}
-          <div style={{textAlign:"center",marginTop:20,fontSize:13,color:"#94a3b8"}}>
-            {isSignUp ? (
-              <>Already have an account? <span onClick={() => { setIsSignUp(false); setConfirmPw(""); setLocalError(""); }} style={{color:"#2563eb",cursor:"pointer",fontWeight:500}}>Sign in</span></>
-            ) : (
-              <>Don't have an account? <span onClick={() => { setIsSignUp(true); setLocalError(""); }} style={{color:"#2563eb",cursor:"pointer",fontWeight:500}}>Create account</span></>
-            )}
-          </div>
         </div>
 
       </div>
@@ -7304,6 +7374,8 @@ function AdminDashboardPage({ data, users, loading, setScreen, health }) {
   );
 }
 
+const SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
+
 export default function App(){
   const isLocal=typeof window!=="undefined"&&window.location.hostname==="localhost";
   const[authed,setAuthed]=useState(()=>{if(isLocal)return true;return false;});
@@ -7334,12 +7406,39 @@ export default function App(){
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminHealth, setAdminHealth] = useState(null);
 
+  const checkSessionTimeout = () => {
+    const loginTime = localStorage.getItem("enterrank_login_time");
+    if (loginTime) {
+      const elapsed = Date.now() - parseInt(loginTime);
+      if (elapsed > SESSION_TIMEOUT_MS) {
+        localStorage.removeItem("enterrank_login_time");
+        sbSignOut();
+        setAuthed(false);
+        setAuthUser(null);
+        setShowLanding(true);
+        return true;
+      }
+    }
+    return false;
+  };
+
   React.useEffect(() => {
     if (isLocal) return;
     const checkSession = async () => {
+      if (checkSessionTimeout()) { setAuthLoading(false); return; }
       try {
         const session = await sbGetSession();
-        if (session) { setAuthed(true); setAuthUser(session.user); }
+        if (session) {
+          const loginTime = localStorage.getItem("enterrank_login_time");
+          if (!loginTime || (Date.now() - parseInt(loginTime)) > SESSION_TIMEOUT_MS) {
+            await sbSignOut();
+            localStorage.removeItem("enterrank_login_time");
+            setShowLanding(true);
+            setAuthLoading(false);
+            return;
+          }
+          setAuthed(true); setAuthUser(session.user);
+        }
       } catch(e) {}
       setAuthLoading(false);
     };
@@ -7347,8 +7446,29 @@ export default function App(){
     const { data: listener } = sbOnAuthChange((event, session) => {
       if (event === "SIGNED_IN" && session) { setAuthed(true); setAuthUser(session.user); }
       else if (event === "SIGNED_OUT") { setAuthed(false); setAuthUser(null); }
+      else if (event === "PASSWORD_RECOVERY") {
+        const newPassword = prompt("Enter your new password (minimum 6 characters):");
+        if (newPassword && newPassword.length >= 6) {
+          sbUpdatePassword(newPassword).then((result) => {
+            if (result.error) {
+              alert("Failed to update password: " + result.error);
+            } else {
+              alert("Password updated successfully. Please log in with your new password.");
+              sbSignOut();
+              localStorage.removeItem("enterrank_login_time");
+            }
+          });
+        }
+      }
     });
     return () => listener?.subscription?.unsubscribe();
+  }, []);
+
+  // Check session timeout every minute
+  React.useEffect(() => {
+    if (isLocal) return;
+    const interval = setInterval(() => { checkSessionTimeout(); }, 60000);
+    return () => clearInterval(interval);
   }, []);
 
 
@@ -7358,7 +7478,7 @@ export default function App(){
     try {
       const result = await sbSignIn(email, password);
       if (result.error) { setLoginError(result.error); }
-      else { setAuthed(true); setAuthUser(result.user); }
+      else { setAuthed(true); setAuthUser(result.user); localStorage.setItem("enterrank_login_time", Date.now().toString()); }
     } catch(e) { setLoginError("Connection error. Please try again."); }
     setLoggingIn(false);
   };
@@ -7371,7 +7491,7 @@ export default function App(){
       else {
         const signInResult = await sbSignIn(email, password);
         if (signInResult.error) { setLoginError("Account created! Please sign in."); }
-        else { setAuthed(true); setAuthUser(signInResult.user); }
+        else { setAuthed(true); setAuthUser(signInResult.user); localStorage.setItem("enterrank_login_time", Date.now().toString()); }
       }
     } catch(e) { setLoginError("Connection error. Please try again."); }
     setLoggingIn(false);
@@ -7379,6 +7499,7 @@ export default function App(){
 
   const handleLogout = async () => {
     if (isLocal) { setResults(null); setStep("input"); return; }
+    localStorage.removeItem("enterrank_login_time");
     try { await sbSignOut(); } catch(e) {}
     setAuthed(false);
     setAuthUser(null);
