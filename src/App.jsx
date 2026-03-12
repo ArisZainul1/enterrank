@@ -4054,6 +4054,7 @@ Return JSON only:
 function DashboardPage({r,history,goTo}){
   if(!r)return <div style={{padding:40,textAlign:"center",color:C.muted}}>No audit data available. Please run an audit first.</div>;
   const[expandedComp,setExpandedComp]=useState(null);
+  const[histMetric,setHistMetric]=useState("overall");
 
   // ── Metric calculations ──
   const dWeights=r.engineWeights||getEngineWeights(r.clientData?.region);
@@ -4515,8 +4516,24 @@ function DashboardPage({r,history,goTo}){
 
     {/* ═══ TIER 4: HISTORICAL ═══ */}
     <div style={{marginBottom:32}}>
-      <div style={{fontSize:15,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text,marginBottom:4}}>Historical Performance</div>
-      <div style={{fontSize:12,color:C.muted,marginBottom:16}}>Track {r.clientData.brand}'s AI visibility over time</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div>
+          <div style={{fontSize:15,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",color:C.text}}>Historical Performance</div>
+          <div style={{fontSize:12,color:C.muted,marginTop:2}}>Track {r.clientData?.brand||"your brand"}'s AI visibility over time</div>
+        </div>
+        <select value={histMetric} onChange={e=>setHistMetric(e.target.value)} style={{
+          padding:"6px 28px 6px 12px",fontSize:12,borderRadius:8,border:"1px solid "+C.border,
+          background:"#fff",color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif",outline:"none",
+          cursor:"pointer",appearance:"none",
+          backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' stroke='%2394a3b8' fill='none' stroke-width='1.5'/%3E%3C/svg%3E\")",
+          backgroundRepeat:"no-repeat",backgroundPosition:"right 8px center"
+        }}>
+          <option value="overall">Overall Score</option>
+          <option value="mentions">Mention Rate</option>
+          <option value="citations">Citation Rate</option>
+          <option value="all">All Metrics</option>
+        </select>
+      </div>
 
       {(()=>{
         // Deduplicate history entries by date
@@ -4571,43 +4588,49 @@ function DashboardPage({r,history,goTo}){
         const getX=(i)=>padL+(i/(n-1))*plotW;
         const getY=(val)=>padT+plotH-(val/maxVal)*plotH;
         const makePath=(key)=>chartData.map((d,i)=>`${i===0?"M":"L"}${getX(i).toFixed(1)},${getY(d[key]).toFixed(1)}`).join(" ");
-        const lines=[{key:"overall",color:C.accent,width:2.5},{key:"mentions",color:"#22c55e",width:1.5},{key:"citations",color:"#f59e0b",width:1.5}];
+        const allLines=[{key:"overall",label:"Overall Score",color:C.accent,width:2.5},{key:"mentions",label:"Mention Rate",color:"#22c55e",width:1.5},{key:"citations",label:"Citation Rate",color:"#f59e0b",width:1.5}];
+        const visibleLines=histMetric==="all"?allLines:allLines.filter(l=>l.key===histMetric);
         const yTicks=[0,25,50,75,100];
         const first=chartData[0],last=chartData[chartData.length-1];
-        const chartDelta=last.overall-first.overall;
+        const summaryKey=histMetric==="all"?"overall":histMetric;
+        const summaryLabel=summaryKey==="overall"?"Overall score":summaryKey==="mentions"?"Mention rate":"Citation rate";
+        const chartDelta=last[summaryKey]-first[summaryKey];
 
         const ChartWithTooltip=()=>{
           const[hovered,setHovered]=useState(null);
           return(
           <div style={{padding:24,background:C.card,border:"1px solid "+C.border,borderRadius:14}}>
             <div style={{display:"flex",gap:20,marginBottom:20,fontSize:12}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:3,borderRadius:2,background:C.accent}}/><span style={{color:C.muted}}>Overall Score</span></div>
-              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:3,borderRadius:2,background:"#22c55e"}}/><span style={{color:C.muted}}>Mention Rate</span></div>
-              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:3,borderRadius:2,background:"#f59e0b"}}/><span style={{color:C.muted}}>Citation Rate</span></div>
+              {visibleLines.map(line=>(
+                <div key={line.key} style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:3,borderRadius:2,background:line.color}}/><span style={{color:C.muted}}>{line.label}</span></div>
+              ))}
             </div>
             <div style={{position:"relative"}}>
             <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",overflow:"visible"}}>
               {yTicks.map(tick=><g key={tick}><line x1={padL} x2={W-padR} y1={getY(tick)} y2={getY(tick)} stroke={C.border} strokeWidth={1} strokeDasharray={tick===0?"none":"4,4"}/><text x={padL-8} y={getY(tick)+4} textAnchor="end" fontSize={10} fill={C.muted}>{tick}%</text></g>)}
-              {lines.map(line=><path key={line.key} d={makePath(line.key)} fill="none" stroke={line.color} strokeWidth={line.width} strokeLinecap="round" strokeLinejoin="round"/>)}
-              {lines.map(line=>chartData.map((d,i)=><circle key={`${line.key}-${i}`} cx={getX(i)} cy={getY(d[line.key])} r={hovered===i?5:3} fill={line.color} stroke="#fff" strokeWidth={1.5} style={{cursor:"pointer",transition:"r .15s"}}/>))}
+              {visibleLines.map(line=><path key={line.key} d={makePath(line.key)} fill="none" stroke={line.color} strokeWidth={line.width} strokeLinecap="round" strokeLinejoin="round"/>)}
+              {visibleLines.map(line=>chartData.map((d,i)=><circle key={`${line.key}-${i}`} cx={getX(i)} cy={getY(d[line.key])} r={hovered===i?5:3} fill={line.color} stroke="#fff" strokeWidth={1.5} style={{cursor:"pointer",transition:"r .15s"}}/>))}
               {/* Invisible wider hit areas for each data point column */}
               {chartData.map((d,i)=>{const colW=plotW/(n-1||1);return <rect key={`hit-${i}`} x={getX(i)-colW/2} y={padT} width={colW} height={plotH} fill="transparent" style={{cursor:"pointer"}} onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}/>;
               })}
               {chartData.map((d,i)=><text key={i} x={getX(i)} y={H-5} textAnchor="middle" fontSize={10} fill={C.muted}>{d.date}</text>)}
-              {lines.map(line=><text key={`lbl-${line.key}`} x={getX(n-1)+8} y={getY(last[line.key])+4} fontSize={10} fontWeight={500} fill={line.color}>{last[line.key]}%</text>)}
+              {visibleLines.map(line=><text key={`lbl-${line.key}`} x={getX(n-1)+8} y={getY(last[line.key])+4} fontSize={10} fontWeight={500} fill={line.color}>{last[line.key]}%</text>)}
             </svg>
             {hovered!==null&&(()=>{const d=chartData[hovered];const pct=getX(hovered)/W*100;const leftStyle=pct>70?{right:`${100-pct+2}%`}:{left:`${pct+2}%`};return(
               <div style={{position:"absolute",top:0,...leftStyle,background:"#fff",border:"1px solid #e2e8f0",borderRadius:8,boxShadow:"0 4px 12px rgba(0,0,0,0.08)",padding:"10px 14px",fontSize:12,zIndex:10,pointerEvents:"none",fontFamily:"'Satoshi',-apple-system,sans-serif",minWidth:140}}>
                 <div style={{fontWeight:500,color:"#0f172a",marginBottom:6}}>{d.fullDate}</div>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}><div style={{width:8,height:8,borderRadius:"50%",background:C.accent}}/><span style={{color:C.sub}}>Overall: <span style={{fontWeight:500,color:C.text}}>{d.overall}%</span></span></div>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}><div style={{width:8,height:8,borderRadius:"50%",background:"#22c55e"}}/><span style={{color:C.sub}}>Mentions: <span style={{fontWeight:500,color:C.text}}>{d.mentions}%</span></span></div>
-                <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:8,height:8,borderRadius:"50%",background:"#f59e0b"}}/><span style={{color:C.sub}}>Citations: <span style={{fontWeight:500,color:C.text}}>{d.citations}%</span></span></div>
+                {visibleLines.map(line=>(
+                  <div key={line.key} style={{display:"flex",alignItems:"center",gap:6,marginBottom:line.key===visibleLines[visibleLines.length-1].key?0:3}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:line.color}}/>
+                    <span style={{color:C.sub}}>{line.label}: <span style={{fontWeight:500,color:C.text}}>{d[line.key]}%</span></span>
+                  </div>
+                ))}
               </div>
             );})()}
             </div>
             <div style={{marginTop:16,padding:"12px 16px",background:chartDelta>=0?"rgba(220,252,231,0.06)":"rgba(254,226,226,0.06)",borderRadius:10,display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:13,color:C.text}}>
-                Overall score {chartDelta>=0?"improved":"decreased"} by <span style={{fontWeight:500,color:chartDelta>=0?"#166534":"#991b1b"}}>{Math.abs(chartDelta)}%</span> since first audit
+                {summaryLabel} {chartDelta>=0?"improved":"decreased"} by <span style={{fontWeight:500,color:chartDelta>=0?"#166534":"#991b1b"}}>{Math.abs(chartDelta)}%</span> since first audit
                 <span style={{color:C.muted}}> ({first.fullDate} → {last.fullDate})</span>
               </span>
             </div>
