@@ -321,15 +321,15 @@ async function callClaude(prompt, temperature=0){
   }
 }
 
-async function callGoogleAI(prompt, temperature=0){
+async function callGoogleAI(query, region){
   try{
-    const __token=await getAuthToken();const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),60000);
-    const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,temperature,model:"gemini-2.5-pro-preview-05-06",maxOutputTokens:1024}),signal:controller.signal});
-    clearTimeout(timeout);
-    if(!res.ok){const errorText=await res.text();console.error("Google AI Overview error:",res.status,errorText);return{text:"",response:"",citations:[],usage:null};}
+    const __token=await getAuthToken();const res=await fetch("/api/serpapi",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({query,region:region||""})});
+    if(!res.ok)return{text:"",citations:[]};
     const data=await res.json();
-    return{text:data.text||"",response:data.text||"",citations:data.citations||[],usage:data.usage||null};
-  }catch(e){console.error("Google AI (Gemini Pro) call failed:",e);return{text:"",response:"",citations:[],usage:null};}
+    if(data.error){console.warn("Google AI Mode not available:",data.error);return{text:"",citations:[]};}
+    _tokenUsage.serpapi.searches++;
+    return{text:data.result||"",citations:(data.citations||[]).map(c=>({url:c.url||"",title:c.title||""}))};
+  }catch(e){console.error("Google AI Mode call failed:",e);return{text:"",citations:[]};}
 }
 
 // Call a specific engine by name, with fallback to OpenAI
