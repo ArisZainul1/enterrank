@@ -743,6 +743,7 @@ async function runRealAudit(cd, onProgress){
       })().catch(e=>{console.error("Google AI testing failed:",e.message);return[];})
     ]);
     gptResponses=gR||[];gemResponses=gmR||[];pplxResponses=pR||[];googleAIResponses=gaiR||[];
+    console.log("[GoogleAI] Responses:", googleAIResponses.map(r => ({ query: r.query, responseLength: (r.response || "").length, hasText: !!(r.response || r.text) })));
     try{
       const claudeTasks=searchQueries.map((q,i)=>async()=>{
         try{
@@ -2005,7 +2006,10 @@ Each department: 2-3 specific tasks. Total 5-7 tasks per phase. All tasks tailor
       const claudeQ = (claudeData.queries || [])[i];
       if ((gptQ && gptQ.status !== "Absent") || (gemQ && gemQ.status !== "Absent") || (pplxQ && pplxQ.status !== "Absent") || (gaiQ && gaiQ.status !== "Absent") || (claudeQ && claudeQ.status !== "Absent")) catBreakdown[cat].visible++;
     });
-    const catSummary = Object.entries(catBreakdown).map(([cat, d]) => `${cat}: ${d.visible}/${d.total} visible`).join(", ");
+    const catSummary = Object.entries(catBreakdown).map(([cat, d]) => `${cat}: ${d.total} queries, ${d.total>0?Math.round(d.visible/d.total*100):0}% win rate (${d.visible}/${d.total} visible)`).join(", ");
+    const totalCatCited = Object.values(catBreakdown).reduce((s,d)=>s+d.visible,0);
+    const totalCatTotal = Object.values(catBreakdown).reduce((s,d)=>s+d.total,0);
+    const totalCatAbsent = totalCatTotal - totalCatCited;
 
     const ppSummary = (mergedPainPoints || []).map(pp => `${(pp.label||"").split("/")[0].trim()}: ${pp.score}%`).join(", ");
     const weakPPs = (mergedPainPoints || []).filter(pp => pp.score < 40).map(pp => (pp.label||"").split("/")[0].trim());
@@ -2056,7 +2060,7 @@ Return JSON only:
   "dashboard": "<3-4 sentences. Start with what the score means in context. Compare to top competitor. Highlight the biggest gap or opportunity. End with the single most important thing to focus on.>",
   "dashboardLabel": "<5-8 words contextualizing the score label>",
   "sentiment": "<3-4 sentences. Describe HOW AI engines talk about the brand. What narrative are they pushing? How does this compare to competitors? What perception gap exists?>",
-  "queryCategories": "<3-4 sentences. Summarise which query TYPES (recommendation, comparison, how-to, etc.) the brand performs best and worst on. Use percentages, NOT fractions like X out of Y. Name the weakest category and recommend a specific action. Be specific: e.g. cited in 85% of recommendation queries but only 40% of comparison queries.>",
+  "queryCategories": "Summarise query category performance for ${brand}. Use ONLY these exact numbers — do NOT make up percentages:\\n${Object.entries(catBreakdown).map(([cat, d]) => "- " + cat + ": " + d.total + " queries, " + (d.total>0?Math.round(d.visible/d.total*100):0) + "% win rate (" + d.visible + "/" + d.total + " visible)").join("\\n")}\\nTotal: ${totalCatTotal} queries across ${Object.keys(catBreakdown).length} categories. Visible: ${totalCatCited}, Absent: ${totalCatAbsent}. Use these EXACT numbers. Name the weakest category and recommend a specific action. Be concise, 3-4 sentences.",
   "categoryHealth": "<3-4 sentences. Translate technical scores into business language. Which website signals are helping visibility? Which gaps are holding the brand back? Be specific about what is missing.>",
   "citationSources": "<2-3 sentences. What types of sources are AI engines pulling from? Are they authoritative? Are there obvious sources missing that competitors likely have?>",
   "competitiveLandscape": "<2-3 sentences. How does the brand compare overall? Who is the biggest threat? What are competitors doing differently that is working?>"
@@ -6888,7 +6892,7 @@ Return JSON only:
           </div>
           {p.departments.map((d,di)=>(<div key={di} style={{marginBottom:di<p.departments.length-1?10:0}}>
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}><div style={{width:3,height:14,borderRadius:2,background:d.color}}/><span style={{fontSize:12,fontWeight:500,color:d.color}}>{d.dept}</span></div>
-            <div style={{display:"flex",flexDirection:"column",gap:3,marginLeft:10}}>{d.tasks.map((tk,ti)=>(<div key={ti} style={{padding:"6px 8px",background:C.bg,borderRadius:5,fontSize:11,color:C.sub,display:"flex",gap:6}}><span style={{color:d.color,fontSize:10}}>→</span>{tk}</div>))}</div>
+            <div style={{display:"flex",flexDirection:"column",gap:3,marginLeft:10}}>{d.tasks.map((tk,ti)=>(<div key={ti} style={{padding:"6px 8px",background:C.bg,borderRadius:5,fontSize:11,color:C.sub,display:"flex",gap:6}}><span style={{color:d.color,fontSize:10}}>→</span>{(tk||"").replace(/\s*\(\+?\d+\.?\d*%?\)\s*$/g,"").replace(/\s*\(\d+\.?\d*%?\)\s*$/g,"")}</div>))}</div>
           </div>))}
         </Card>
       </div>))}
