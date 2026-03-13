@@ -3697,37 +3697,36 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     if(!industry||industry.trim().length<2)return;
     setGeneratingTopics(true);
     try{
-      const compNamesStr=(competitorNames||[]).filter(n=>n&&n.trim().length>1).map(n=>n.trim()).join(", ");
-      let crawlSummary="";try{const cached=getCachedCrawl(data.website||"");if(cached){crawlSummary=summariseCrawl(cached);}else if(data.website){const cr=await crawlWebsite(data.website);if(cr){crawlCacheRef.current={url:data.website,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
-      const prompt=`You are generating search topics for an AI visibility audit of ${data.brand||"Brand"} in ${region||"Global"}.
+      const prompt=`You are generating search queries that REAL consumers type into AI engines like ChatGPT, Gemini, and Perplexity.
 
-BRAND: ${data.brand||"Brand"}
 INDUSTRY: ${industry}
-WEBSITE: ${data.website||""}
-COMPETITORS: ${compNamesStr||"None specified"}
+REGION: ${region||"Global"}
+YEAR: 2026
 
-${crawlSummary?"BRAND WEBSITE CONTENT (this tells you what the brand ACTUALLY sells):\n"+crawlSummary:""}
+Generate exactly 15 search queries that people in this industry and region would realistically type into an AI chatbot in 2026.
 
-Generate exactly 15 search queries that a REAL CONSUMER would type into ChatGPT or Google when looking for products or services that ${data.brand||"Brand"} actually provides.
+CRITICAL RULES:
+- Queries must be BRAND-NEUTRAL. Do NOT mention, reference, or tailor queries toward any specific brand, company, product name, or website.
+- Queries should reflect what a REAL consumer in ${region||"this region"} would actually ask an AI engine.
+- Each query should be a natural question or request — the way a real person talks to ChatGPT, not an SEO keyword.
+- Mix query intents:
+  * 5 recommendation queries ("What is the best...", "Recommend me a...", "Top X for...")
+  * 3 comparison queries ("Compare...", "X vs Y category...", "Which is better for...")
+  * 3 how-to/informational queries ("How do I...", "What should I look for when...", "Guide to...")
+  * 2 transactional queries ("Where can I buy...", "Best deals on...", "Cheapest...")
+  * 2 general industry queries ("What are the latest trends in...", "Is X worth it in 2026...")
+- Queries must be relevant to the ${industry} industry in ${region||"Global"}.
+- Queries must be diverse — do NOT generate 5 variations of the same question.
+- Do NOT include any brand or competitor names in queries.
+- All queries must be in the primary language used in ${region||"this region"} for AI searches (English for US/UK/Singapore/Malaysia, etc).
 
-STRICT RULES:
-1. Every query MUST be for a product or service that ${data.brand||"Brand"} actually sells or offers. Check the website content above.
-2. For telecommunications brands: focus heavily on mobile data plans, postpaid plans, prepaid plans, 5G coverage, roaming packages, device bundles, number porting, network coverage, broadband/fibre ONLY if they offer it.
-3. Do NOT generate queries about products the brand does not sell. Examples of what to EXCLUDE for a telco: satellite phones, satellite dishes, home security systems, wireless earbuds, noise cancelling headphones, smartphones (unless the brand sells devices), wireless routers (unless the brand sells them), cordless phones, walkie talkies, smart home devices.
-4. Queries should be diverse across the brand's ACTUAL service categories. Mix comparison queries, best-of queries, how-to queries, and recommendation queries.
-5. Include the region naturally where relevant (e.g. 'in ${region||"Global"}' or '${region||"Global"} ${new Date().getFullYear()}').
-6. Each query should be 10-25 words, natural language, like a real person asking ChatGPT.
-7. At least 10 out of 15 queries should be about the brand's PRIMARY product category.
-8. Do NOT mention ${data.brand||"Brand"} by name in any query — these should be generic category queries where ${data.brand||"Brand"} SHOULD appear in the answer.
-${compNamesStr?"9. Do NOT mention these competitor names: "+compNamesStr:""}
-All queries must be in English.
-
-Return JSON only:
-{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5", "query 6", "query 7", "query 8", "query 9", "query 10", "query 11", "query 12", "query 13", "query 14", "query 15"]}`;
-      const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.",0.5);
+Return ONLY a JSON array of 15 query strings. No explanation, no numbering, no markdown.
+Example format: ["query 1", "query 2", ...]`;
+      const raw=await callOpenAI(prompt,"You generate brand-neutral search queries for industry research. Never include any brand or company names. Return ONLY valid JSON.",0.5);
       const result=safeJSON(raw);
-      if(result&&result.topics&&Array.isArray(result.topics)){
-        const validTopics=result.topics.filter(t=>typeof t==="string"&&t.trim().length>5).map(t=>t.trim()).slice(0,15);
+      const topicArr=result&&result.topics?result.topics:Array.isArray(result)?result:null;
+      if(topicArr&&Array.isArray(topicArr)){
+        const validTopics=topicArr.filter(t=>typeof t==="string"&&t.trim().length>5).map(t=>t.trim()).slice(0,15);
         if(validTopics.length>0){
           setData(prev=>{
             const hasExisting=(prev.topics||[]).some(t=>(typeof t==="string"?t:"").trim().length>3);
@@ -3787,35 +3786,32 @@ Return JSON only:
     const nw=normalizeUrl(data.website);const nc=(data.competitors||[]).map(c=>({...c,website:normalizeUrl(c.website||"")}));
     if(nw!==data.website||JSON.stringify(nc)!==JSON.stringify(data.competitors))setData(d=>({...d,website:nw,competitors:nc}));
     try{
-      const compNamesStr=nc.filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
-      let crawlSummary="";try{const cached=getCachedCrawl(nw);if(cached){crawlSummary=summariseCrawl(cached);}else if(nw){const cr=await crawlWebsite(nw);if(cr){crawlCacheRef.current={url:nw,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
-      const prompt=`You are generating search topics for an AI visibility audit of ${data.brand||"Brand"} in ${data.region||"Global"}.
+      const prompt=`You are generating search queries that REAL consumers type into AI engines like ChatGPT, Gemini, and Perplexity.
 
-BRAND: ${data.brand||"Brand"}
-INDUSTRY: ${data.industry||"Technology"}
-WEBSITE: ${data.website||""}
-COMPETITORS: ${compNamesStr||"None specified"}
+INDUSTRY: ${data.industry||"general"}
+REGION: ${data.region||"Global"}
+YEAR: 2026
 
-${crawlSummary?"BRAND WEBSITE CONTENT (this tells you what the brand ACTUALLY sells):\n"+crawlSummary:""}
+Generate exactly 15 search queries that people in this industry and region would realistically type into an AI chatbot in 2026.
 
-Generate exactly 15 search queries that a REAL CONSUMER would type into ChatGPT or Google when looking for products or services that ${data.brand||"Brand"} actually provides.
+CRITICAL RULES:
+- Queries must be BRAND-NEUTRAL. Do NOT mention, reference, or tailor queries toward any specific brand, company, product name, or website.
+- Queries should reflect what a REAL consumer in ${data.region||"this region"} would actually ask an AI engine.
+- Each query should be a natural question or request — the way a real person talks to ChatGPT, not an SEO keyword.
+- Mix query intents:
+  * 5 recommendation queries ("What is the best...", "Recommend me a...", "Top X for...")
+  * 3 comparison queries ("Compare...", "X vs Y category...", "Which is better for...")
+  * 3 how-to/informational queries ("How do I...", "What should I look for when...", "Guide to...")
+  * 2 transactional queries ("Where can I buy...", "Best deals on...", "Cheapest...")
+  * 2 general industry queries ("What are the latest trends in...", "Is X worth it in 2026...")
+- Queries must be relevant to the ${data.industry||"general"} industry in ${data.region||"Global"}.
+- Queries must be diverse — do NOT generate 5 variations of the same question.
+- Do NOT include any brand or competitor names in queries.
+- All queries must be in the primary language used in ${data.region||"this region"} for AI searches (English for US/UK/Singapore/Malaysia, etc).
 
-STRICT RULES:
-1. Every query MUST be for a product or service that ${data.brand||"Brand"} actually sells or offers. Check the website content above.
-2. For telecommunications brands: focus heavily on mobile data plans, postpaid plans, prepaid plans, 5G coverage, roaming packages, device bundles, number porting, network coverage, broadband/fibre ONLY if they offer it.
-3. Do NOT generate queries about products the brand does not sell. Examples of what to EXCLUDE for a telco: satellite phones, satellite dishes, home security systems, wireless earbuds, noise cancelling headphones, smartphones (unless the brand sells devices), wireless routers (unless the brand sells them), cordless phones, walkie talkies, smart home devices.
-4. Queries should be diverse across the brand's ACTUAL service categories. Mix comparison queries, best-of queries, how-to queries, and recommendation queries.
-5. Include the region naturally where relevant (e.g. 'in ${data.region||"Global"}' or '${data.region||"Global"} ${new Date().getFullYear()}').
-6. When including a year in any query, ALWAYS use ${new Date().getFullYear()}. NEVER use 2023, 2024, or any past year.
-7. Each query should be 10-25 words, natural language, like a real person asking ChatGPT.
-8. At least 10 out of 15 queries should be about the brand's PRIMARY product category.
-9. Do NOT mention ${data.brand||"Brand"} by name in any query — these should be generic category queries where ${data.brand||"Brand"} SHOULD appear in the answer.
-${compNamesStr?"10. Do NOT mention these competitor names: "+compNamesStr:""}
-All queries must be in English.
-
-Return JSON only:
-{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5", "query 6", "query 7", "query 8", "query 9", "query 10", "query 11", "query 12", "query 13", "query 14", "query 15"]}`;
-      const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.",0.5);
+Return ONLY a JSON array of 15 query strings. No explanation, no numbering, no markdown.
+Example format: ["query 1", "query 2", ...]`;
+      const raw=await callOpenAI(prompt,"You generate brand-neutral search queries for industry research. Never include any brand or company names. Return ONLY valid JSON.",0.5);
       const parsed=safeJSON(raw);
       const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(topics&&Array.isArray(topics)&&topics.length>0){
@@ -3835,36 +3831,29 @@ Return JSON only:
     setGenTopics(true);setError(null);
     try{
       const existing=data.topics.join("; ");
-      const compNamesStr=(data.competitors||[]).filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
-      let crawlSummary="";try{const cached=getCachedCrawl(data.website||"");if(cached){crawlSummary=summariseCrawl(cached);}else if(data.website){const cr=await crawlWebsite(data.website);if(cr){crawlCacheRef.current={url:data.website,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
-      const prompt=`You are generating additional search topics for an AI visibility audit of ${data.brand||"Brand"} in ${data.region||"Global"}.
+      const prompt=`You are generating search queries that REAL consumers type into AI engines like ChatGPT, Gemini, and Perplexity.
 
-BRAND: ${data.brand||"Brand"}
-INDUSTRY: ${data.industry||"Technology"}
-WEBSITE: ${data.website||""}
-COMPETITORS: ${compNamesStr||"None specified"}
-
-${crawlSummary?"BRAND WEBSITE CONTENT (this tells you what the brand ACTUALLY sells):\n"+crawlSummary:""}
+INDUSTRY: ${data.industry||"general"}
+REGION: ${data.region||"Global"}
+YEAR: 2026
 
 I already have these queries (do NOT duplicate them): ${existing}
 
-Generate exactly 5 NEW and DIFFERENT search queries that a REAL CONSUMER would type into ChatGPT or Google when looking for products or services that ${data.brand||"Brand"} actually provides.
+Generate exactly 5 NEW and DIFFERENT search queries that people in this industry and region would realistically type into an AI chatbot in 2026.
 
-STRICT RULES:
-1. Every query MUST be for a product or service that ${data.brand||"Brand"} actually sells or offers. Check the website content above.
-2. For telecommunications brands: focus heavily on mobile data plans, postpaid plans, prepaid plans, 5G coverage, roaming packages, device bundles, number porting, network coverage, broadband/fibre ONLY if they offer it.
-3. Do NOT generate queries about products the brand does not sell. Examples of what to EXCLUDE for a telco: satellite phones, satellite dishes, home security systems, wireless earbuds, noise cancelling headphones, smartphones (unless the brand sells devices), wireless routers (unless the brand sells them), cordless phones, walkie talkies, smart home devices.
-4. Queries should be diverse across the brand's ACTUAL service categories. Mix comparison queries, best-of queries, how-to queries, and recommendation queries.
-5. Include the region naturally where relevant (e.g. 'in ${data.region||"Global"}' or '${data.region||"Global"} ${new Date().getFullYear()}').
-6. When including a year in any query, ALWAYS use ${new Date().getFullYear()}. NEVER use 2023, 2024, or any past year.
-7. Each query should be 10-25 words, natural language, like a real person asking ChatGPT.
-8. Do NOT mention ${data.brand||"Brand"} by name in any query — these should be generic category queries where ${data.brand||"Brand"} SHOULD appear in the answer.
-${compNamesStr?"9. Do NOT mention these competitor names: "+compNamesStr:""}
-All queries must be in English.
+CRITICAL RULES:
+- Queries must be BRAND-NEUTRAL. Do NOT mention, reference, or tailor queries toward any specific brand, company, product name, or website.
+- Queries should reflect what a REAL consumer in ${data.region||"this region"} would actually ask an AI engine.
+- Each query should be a natural question or request — the way a real person talks to ChatGPT, not an SEO keyword.
+- Mix query intents: recommendation, comparison, how-to, transactional, or general industry queries.
+- Queries must be relevant to the ${data.industry||"general"} industry in ${data.region||"Global"}.
+- Queries must be diverse — do NOT generate variations of existing queries.
+- Do NOT include any brand or competitor names in queries.
+- All queries must be in the primary language used in ${data.region||"this region"} for AI searches.
 
-Return JSON only:
-{"topics": ["query 1", "query 2", "query 3", "query 4", "query 5"]}`;
-      const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Queries must be about products the brand actually sells based on website content. Never include any brand or company names. Return ONLY valid JSON.",0.5);
+Return ONLY a JSON array of 5 query strings. No explanation, no numbering, no markdown.
+Example format: ["query 1", "query 2", ...]`;
+      const raw=await callOpenAI(prompt,"You generate brand-neutral search queries for industry research. Never include any brand or company names. Return ONLY valid JSON.",0.5);
       const parsed=safeJSON(raw);
       const newTopics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(newTopics&&Array.isArray(newTopics)&&newTopics.length>0){
@@ -3877,30 +3866,25 @@ Return JSON only:
 
   const generateArchetypes=async()=>{
     setGeneratingArchetypes(true);
-    setArchLoadMsg("Analysing brand context...");
+    setArchLoadMsg("Generating audience archetypes...");
     try{
-      const compNamesStr=(data.competitors||[]).filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
-      let crawlSummary="";
-      setArchLoadMsg("Crawling website for brand signals...");
-      try{const cached=getCachedCrawl(data.website||"");if(cached){crawlSummary=summariseCrawl(cached);}else{const cr=await crawlWebsite(data.website||"");if(cr){crawlCacheRef.current={url:data.website,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
-      setArchLoadMsg("Generating audience archetypes...");
-      const prompt=`For "${data.brand}" in "${data.industry}" (${data.region||"Global"}).
-Website: ${data.website||"unknown"}
-Competitors: ${compNamesStr||"none"}
-${crawlSummary?"Website content:\n"+crawlSummary.slice(0,400):""}
+      const prompt=`Generate 6 audience archetypes for the ${data.industry||"general"} industry in ${data.region||"Global"}.
 
-Generate 6 distinct audience archetypes — real customer segments who would search for ${data.industry} products/services on AI engines (ChatGPT, Gemini) in ${data.region||"their region"}.
+These are the types of people who search for products and services in this industry using AI engines like ChatGPT.
 
-Requirements:
+Each archetype should represent a distinct consumer persona with different needs, budgets, and priorities.
+
+RULES:
+- Archetypes must be GENERIC to the industry, not tailored to any specific brand
 - Generate EXACTLY 3 everyday consumer archetypes AND 3 specialist/stakeholder archetypes
-- EVERYDAY CONSUMERS (first 3): Regular people who search AI engines for ${data.industry} products/services in daily life. Think: families, students, budget-conscious shoppers, rewards/loyalty chasers, first-time buyers, commuters. These represent the HIGHEST VOLUME of AI queries.
-- SPECIALIST STAKEHOLDERS (last 3): Professional or niche segments with specific ${data.industry} needs. Think: procurement managers, investors, industry analysts, business owners, researchers.
-- Each archetype must be SPECIFIC to ${data.industry} in ${data.region}, not generic personas
-- Demographics should include age range and 1-2 defining characteristics
-- Everyday consumers should reflect how REAL PEOPLE casually search AI engines — "best X near me", "X vs Y which is better", "cheapest X in ${data.region}"
+- EVERYDAY CONSUMERS (first 3): Regular people who search AI engines for ${data.industry||"general"} products/services in daily life. Think: families, students, budget-conscious shoppers, rewards/loyalty chasers, first-time buyers, commuters.
+- SPECIALIST STAKEHOLDERS (last 3): Professional or niche segments with specific ${data.industry||"general"} needs. Think: procurement managers, investors, industry analysts, business owners, researchers.
+- Each archetype must be SPECIFIC to ${data.industry||"general"} in ${data.region||"Global"}, not generic personas
+- Cover a range: budget-conscious, premium, technical, first-time buyer, business buyer, comparison shopper
+- Each archetype needs: name (2-3 words), description (1-2 sentences about their AI search behavior), demographics (age range, key characteristic), search intent (what they typically ask AI)
 
 Return JSON only:
-[{"name":"<specific archetype name>","description":"<1-2 sentences about their AI search behavior>","demographics":"<age range, key characteristic>"}]`;
+[{"name":"...","description":"...","demographics":"...","intent":"..."}]`;
       const raw=await callOpenAI(prompt,"You are a market research expert specializing in AI search behavior. Return ONLY valid JSON arrays, no markdown fences.",0.5);
       const parsed=safeJSON(raw);
       if(parsed&&Array.isArray(parsed)&&parsed.length>0){
@@ -3916,10 +3900,11 @@ Return JSON only:
     setGeneratingArchetypes(true);
     try{
       const existing2=availableArchetypes.map(a=>a.name).join(", ");
-      const prompt=`For "${data.brand}" in "${data.industry}" (${data.region||"Global"}).
+      const prompt=`For the ${data.industry||"general"} industry in ${data.region||"Global"}.
 I already have these archetypes: ${existing2}
 
-Generate 3 MORE DIFFERENT audience archetypes for people who search for ${data.industry} on AI engines in ${data.region}. Do NOT duplicate existing ones.
+Generate 3 MORE DIFFERENT audience archetypes for people who search for ${data.industry||"general"} products/services on AI engines in ${data.region||"Global"}. Do NOT duplicate existing ones.
+Archetypes must be GENERIC to the industry, not tailored to any specific brand.
 
 Return JSON only:
 [{"name":"...","description":"...","demographics":"..."}]`;
@@ -3936,37 +3921,38 @@ Return JSON only:
   const generateTopicsFromArchetypes=async(archs)=>{
     setGenTopics(true);setError(null);
     try{
-      const compNamesStr=(data.competitors||[]).filter(c=>c.name&&c.name.trim().length>1).map(c=>c.name.trim()).join(", ");
-      let crawlSummary="";try{const cached=getCachedCrawl(data.website||"");if(cached){crawlSummary=summariseCrawl(cached);}else{const cr=await crawlWebsite(data.website||"");if(cr){crawlCacheRef.current={url:data.website,result:cr};crawlSummary=summariseCrawl(cr);}}}catch(e){}
-      const archContext=archs.map((a,i)=>`${i+1}. ${a.name} (${a.demographics||"general"}): ${a.description}`).join("\n");
-      const prompt=`You are generating search topics for an AI visibility audit of "${data.brand}" in "${data.industry}" (${data.region||"Global"}).
+      const selectedArchetypes=archs;
+      const archContext=selectedArchetypes.map((a,i)=>`${i+1}. ${typeof a==="string"?a:a.name||a.label||a}`).join("\n");
+      const prompt=`You are generating search queries that REAL consumers type into AI engines like ChatGPT, Gemini, and Perplexity.
 
-BRAND: ${data.brand}
-INDUSTRY: ${data.industry}
-WEBSITE: ${data.website||"unknown"}
-COMPETITORS: ${compNamesStr||"None specified"}
+INDUSTRY: ${data.industry||"general"}
+REGION: ${data.region||"Global"}
+YEAR: 2026
 
-${crawlSummary?"BRAND WEBSITE CONTENT:\n"+crawlSummary.slice(0,600)+"\n":""}
-TARGET AUDIENCE ARCHETYPES (ranked by priority):
+AUDIENCE PERSONAS (who is searching):
 ${archContext}
 
-Generate exactly 15 search topics that these archetypes would actually search for on AI engines (ChatGPT, Gemini).
+Generate exactly 15 search queries that people in this industry and region would realistically type into an AI chatbot in 2026.
 
 CRITICAL RULES:
-1. Topics must be weighted by archetype priority — archetype #1 should influence ~6 topics, #2 ~5 topics, #3 ~4 topics
-2. Each topic should reflect what that archetype ACTUALLY searches for
-3. Topics must be about products/services ${data.brand} actually offers (check website content)
-4. Do NOT mention ${data.brand} by name — these are generic queries where ${data.brand} SHOULD appear
-5. Mix of comparison, recommendation, how-to, and transactional queries
-6. Include the region naturally where relevant
-7. Each topic should be 10-25 words, natural language
-${compNamesStr?"8. Do NOT mention competitor names: "+compNamesStr:""}
+- Queries must be BRAND-NEUTRAL. Do NOT mention, reference, or tailor queries toward any specific brand, company, product name, or website.
+- Queries should reflect what a REAL consumer in ${data.region||"this region"} would actually ask an AI engine.
+- Each query should be a natural question or request — the way a real person talks to ChatGPT, not an SEO keyword.
+- Distribute queries across the audience personas provided.
+- Mix query intents:
+  * 5 recommendation queries ("What is the best...", "Recommend me a...", "Top X for...")
+  * 3 comparison queries ("Compare...", "X vs Y category...", "Which is better for...")
+  * 3 how-to/informational queries ("How do I...", "What should I look for when...", "Guide to...")
+  * 2 transactional queries ("Where can I buy...", "Best deals on...", "Cheapest...")
+  * 2 general industry queries ("What are the latest trends in...", "Is X worth it in 2026...")
+- Queries must be relevant to the ${data.industry||"general"} industry in ${data.region||"Global"}.
+- Queries must be diverse — do NOT generate 5 variations of the same question.
+- Do NOT include the brand being audited or any competitor names in queries.
+- All queries must be in the primary language used in ${data.region||"this region"} for AI searches (English for US/UK/Singapore/Malaysia, etc).
 
-You MUST return exactly 15 topics. Count them. If you have fewer than 15, add more until you reach exactly 15.
-
-Return JSON only:
-{"topics": ["topic 1", "topic 2", ..., "topic 15"]}`;
-      const raw=await callOpenAI(prompt,"You generate search queries for an AI visibility audit. Return ONLY valid JSON.",0.5);
+Return ONLY a JSON array of 15 query strings. No explanation, no numbering, no markdown.
+Example format: ["query 1", "query 2", ...]`;
+      const raw=await callOpenAI(prompt,"You generate brand-neutral search queries for industry research. Never include any brand or company names. Return ONLY valid JSON.",0.5);
       const parsed=safeJSON(raw);
       const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(topics&&Array.isArray(topics)&&topics.length>0){
