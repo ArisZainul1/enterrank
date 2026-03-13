@@ -1732,12 +1732,18 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
     const gaiStatus=(googleAIVisibility[brand]?.queries||[])[i]?.status||"Absent";
     const claudeStatus=(claudeVisibility[brand]?.queries||[])[i]?.status||"Absent";
     return gptStatus==="Absent"&&gemStatus==="Absent"&&pplxStatus==="Absent"&&gaiStatus==="Absent"&&claudeStatus==="Absent";
-  }).map(q=>typeof q==="string"?q:q.query).slice(0,5);
+  }).map(q=>typeof q==="string"?q:q.query).slice(0,10);
 
   const absentOnSome=searchQueries.filter((_q,i)=>{
     const statuses=[(gptVisibility[brand]?.queries||[])[i]?.status||"Absent",(gemVisibility[brand]?.queries||[])[i]?.status||"Absent",(pplxVisibility[brand]?.queries||[])[i]?.status||"Absent",(googleAIVisibility[brand]?.queries||[])[i]?.status||"Absent",(claudeVisibility[brand]?.queries||[])[i]?.status||"Absent"];
     const absentCount=statuses.filter(s=>s==="Absent").length;
     return absentCount>0&&absentCount<5;
+  }).map(q=>typeof q==="string"?q:q.query).slice(0,5);
+
+  // Queries where brand is mentioned but not cited
+  const mentionedNotCited=searchQueries.filter((_q,i)=>{
+    const statuses=[(gptVisibility[brand]?.queries||[])[i]?.status||"Absent",(gemVisibility[brand]?.queries||[])[i]?.status||"Absent",(pplxVisibility[brand]?.queries||[])[i]?.status||"Absent",(googleAIVisibility[brand]?.queries||[])[i]?.status||"Absent",(claudeVisibility[brand]?.queries||[])[i]?.status||"Absent"];
+    return statuses.some(s=>s==="Mentioned")&&!statuses.some(s=>s==="Cited");
   }).map(q=>typeof q==="string"?q:q.query).slice(0,5);
 
   // Missing schema from crawl
@@ -1771,22 +1777,44 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
 
   const roadmapWeightedReadiness=Math.round((mergedPainPoints||[]).reduce((sum,pp)=>sum+(pp.score*getCategoryWeight(pp.label)),0));
   const aiCrawlerSummaryForRoadmap=(()=>{try{const ac=brandCrawl?.mainPage?.aiCrawlerAccess;if(!ac)return null;const r=ac.robotsTxt;const l=ac.llmsTxt;let s=r?.found?ac.summary:"robots.txt not found";if(r?.found){const blocked=(r.crawlers||[]).filter(c=>c.blocked);if(blocked.length>0)s+=": "+blocked.map(c=>`${c.agent} (${c.engine})`).join(", ");}s+=l?.found?" | llms.txt present":" | llms.txt not found";return s;}catch(e){return null;}})();
-  const roadmapPrompt=`Create a 90-day AEO roadmap for "${brand}" in ${industry}, specifically for improving visibility in ${region}.
 
-AUDIT FINDINGS TO ADDRESS:
+  // Engine ranking for roadmap
+  const engineScoresForRoadmap=[{name:"ChatGPT",score:gptData.score||0},{name:"Gemini",score:gemData.score||0},{name:"Perplexity",score:pplxData.score||0},{name:"Google AI",score:googleAIData.score||0},{name:"Claude",score:claudeData.score||0}].sort((a,b)=>b.score-a.score);
+  const bestEngine=engineScoresForRoadmap[0];
+  const weakestEngine=engineScoresForRoadmap[engineScoresForRoadmap.length-1];
+  const mentionRate=Math.round(((gptData.mentionRate||0)+(gemData.mentionRate||0)+(pplxData.mentionRate||0)+(googleAIData.mentionRate||0)+(claudeData.mentionRate||0))/5);
+  const citationRate=Math.round(((gptData.citationRate||0)+(gemData.citationRate||0)+(pplxData.citationRate||0)+(googleAIData.citationRate||0)+(claudeData.citationRate||0))/5);
+  const compScoresForRoadmap=(compData.competitors||[]).slice(0,5).map(c=>({name:c.name,score:c.score||0})).sort((a,b)=>b.score-a.score);
+  const expandedCompList=[...(expandedCompDomains||[])];
+  const negThemes=(sentimentSignals?.themes||[]).filter(t=>t.sentiment==="negative").map(t=>typeof t==="string"?t:(t.name||t.theme||"")).filter(Boolean);
+  const roadmapPrompt=`You are a senior AI visibility strategist creating a detailed 90-day transformation roadmap for "${brand}" in the ${industry} industry in ${region}.
+
+CURRENT AUDIT RESULTS:
 - Overall visibility score: ${overallScore}%
-- ChatGPT score: ${gptData.score||0}%, Gemini score: ${gemData.score||0}%, Perplexity score: ${pplxData.score||0}%, Google AI score: ${googleAIData.score||0}%, Claude score: ${claudeData.score||0}%
+- Engine scores: ${engineScoresForRoadmap.map(e=>e.name+": "+e.score+"%").join(", ")}
+- Mention rate: ${mentionRate}% | Citation rate: ${citationRate}%
+- Best engine: ${bestEngine.name} (${bestEngine.score}%) | Weakest engine: ${weakestEngine.name} (${weakestEngine.score}%)
+- Website readiness score: ${roadmapWeightedReadiness||"N/A"}%
+- AI crawler access: ${aiCrawlerSummaryForRoadmap||"not checked"}
 - Critical categories: ${criticalCats||"none"}
 - Warning categories: ${weakCats||"none"}
 - Missing channels: ${channelGaps||"none"}
 - Website issues from crawl: ${crawlSummary.slice(0,500)}
-- Overall website readiness: ${roadmapWeightedReadiness||"N/A"}% (weighted by category importance for AI citations)
-- AI crawler access: ${aiCrawlerSummaryForRoadmap||"not checked"}
-- Top competitor advantages: ${(compData.competitors||[]).slice(0,3).map(c=>`${c.name} (${c.score}%): ${c.topStrength||"N/A"}`).join("; ")}
 
-SPECIFIC QUERY GAPS (content MUST target these):
-- Absent on ALL engines: ${absentOnAll.length>0?absentOnAll.map(q=>`"${q}"`).join(", "):"None — good coverage"}
-- Absent on some engines: ${absentOnSome.length>0?absentOnSome.map(q=>`"${q}"`).join(", "):"None"}
+QUERIES WHERE BRAND IS ABSENT ON ALL ENGINES (highest priority):
+${absentOnAll.length>0?absentOnAll.map(q=>'- "'+q+'"').join("\n"):"- None — good coverage across all engines"}
+
+QUERIES WHERE BRAND IS ABSENT ON SOME ENGINES:
+${absentOnSome.length>0?absentOnSome.map(q=>'- "'+q+'"').join("\n"):"- None"}
+
+QUERIES WHERE BRAND IS MENTIONED BUT NOT CITED (convert to citations):
+${mentionedNotCited.length>0?mentionedNotCited.map(q=>'- "'+q+'"').join("\n"):"- None — brand is either cited or absent"}
+
+COMPETITIVE LANDSCAPE:
+${compScoresForRoadmap.map(c=>"- "+c.name+": "+c.score+"% overall").join("\n")||"- No competitor data"}
+${compAdvantages.length>0?"\nCompetitor advantages to counter:\n"+compAdvantages.map(a=>"- "+a).join("\n"):""}
+
+${negThemes.length>0?"NEGATIVE SENTIMENT THEMES TO ADDRESS:\n"+negThemes.slice(0,5).map(t=>"- "+t).join("\n"):"BRAND PERCEPTION: Sentiment is positive or neutral. Focus on amplifying existing strengths and expanding into new topic areas. Do NOT generate defensive PR tasks or crisis management recommendations."}
 
 MISSING SCHEMA MARKUP (technical tasks):
 ${missingSchemaList.length>0?missingSchemaList.map(s=>"- "+s).join("\n"):"- All key schemas detected"}
@@ -1794,87 +1822,95 @@ ${missingSchemaList.length>0?missingSchemaList.map(s=>"- "+s).join("\n"):"- All 
 MISSING E-E-A-T SIGNALS:
 ${missingEEAT.length>0?missingEEAT.map(s=>"- "+s).join("\n"):"- All key EEAT signals present"}
 
-AI CRAWLER ACCESS (from robots.txt):
-${(()=>{try{const ac=brandCrawl?.mainPage?.aiCrawlerAccess;if(!ac||!ac.robotsTxt?.found)return"- robots.txt not found \u2014 AI crawlers may not index content";const blocked=(ac.robotsTxt.crawlers||[]).filter(c=>c.blocked);if(blocked.length===0)return"- All AI crawlers allowed \u2714";return blocked.map(c=>"- BLOCKED: "+c.agent+" ("+c.engine+")").join("\n");}catch(e){return"- Could not check";}})()}
-${(()=>{try{const ac=brandCrawl?.mainPage?.aiCrawlerAccess;return ac?.llmsTxt?.found?"- llms.txt present \u2714 (AI-friendly site description)":"- llms.txt NOT found \u2014 consider adding for better AI engine understanding";}catch(e){return"";}})()}
+AI CRAWLER ACCESS:
+${(()=>{try{const ac=brandCrawl?.mainPage?.aiCrawlerAccess;if(!ac||!ac.robotsTxt?.found)return"- robots.txt not found";const blocked=(ac.robotsTxt.crawlers||[]).filter(c=>c.blocked);if(blocked.length===0)return"- All AI crawlers allowed";return blocked.map(c=>"- BLOCKED: "+c.agent+" ("+c.engine+")").join("\n");}catch(e){return"- Could not check";}})()}
+${(()=>{try{const ac=brandCrawl?.mainPage?.aiCrawlerAccess;return ac?.llmsTxt?.found?"- llms.txt present":"- llms.txt NOT found";}catch(e){return"";}})()}
 
-COMPETITOR ADVANTAGES TO COUNTER:
-${compAdvantages.length>0?compAdvantages.map(a=>"- "+a).join("\n"):"- No major competitor advantages detected"}
+CITATION SOURCE GAPS (authoritative third-party platforms to target — NEVER competitor sites):
+${(()=>{try{const allSrc=citationSources?.all||[];const isComp=(domain)=>{const dl=domain.toLowerCase();for(const comp of expandedCompList){if(dl.includes(comp)||comp.includes(dl.split(".")[0]))return true;}return false;};const lowQ=["shopee","lazada","aliexpress","temu","wish.com","priceshop","mudah.my"];const topDomains=Object.entries(allSrc.reduce((acc,c)=>{const h=c.domain||"";if(h&&!isComp(h)&&!lowQ.some(lq=>h.includes(lq)))acc[h]=(acc[h]||0)+1;return acc;},{})).sort((a,b)=>b[1]-a[1]).slice(0,8);return topDomains.length>0?topDomains.map(([d,n])=>"- "+d+" (cited "+n+" times)").join("\n"):"- No citation source data available";}catch(e){return"- No citation source data available";}})()}
 
-${(()=>{try{const neg=(sentimentSignals?.negative||[]).map(t=>typeof t==="string"?t:t.theme||t.name||"").filter(Boolean);if(neg.length>0){return"NEGATIVE BRAND PERCEPTION (address in content/PR):\n"+neg.slice(0,5).map(t=>"- "+t).join("\n");}else{return"BRAND PERCEPTION: Sentiment is neutral or positive. No negative themes to address. Do NOT generate defensive PR tasks. Instead, focus PR efforts on amplifying existing positive positioning and expanding into new topic areas where the brand is currently absent.";}}catch(e){return"BRAND PERCEPTION: Sentiment is neutral or positive. No negative themes to address. Do NOT generate defensive PR tasks. Instead, focus PR efforts on amplifying existing positive positioning and expanding into new topic areas where the brand is currently absent.";}})()}
+COMPETITOR DOMAINS — ABSOLUTELY DO NOT RECOMMEND THESE:
+${expandedCompList.slice(0,20).join(", ")||"none identified"}
+Known competitors: ${(cd.competitors||[]).map(c=>c.name+" ("+(c.website||"")+")").join(", ")}
 
-CITATION SOURCE GAPS (authoritative third-party platforms to target):
-IMPORTANT: The following are AUTHORITATIVE third-party sources where AI engines cite content. These are NOT competitor-owned websites. Do NOT recommend partnering with competitor sites or low-quality/irrelevant platforms. Only recommend establishing presence on reputable industry publications, review platforms, and directories.
-${(()=>{try{const allSrc=citationSources?.all||[];const compDomainSet=new Set();(cd.competitors||[]).forEach(c=>{const name=(c.name||"").toLowerCase().replace(/\s+/g,"");const website=c.website||"";if(website){try{const hostname=new URL(website.startsWith("http")?website:"https://"+website).hostname.replace("www.","").toLowerCase();compDomainSet.add(hostname);hostname.split(".").slice(0,-1).forEach(part=>{if(part.length>3)compDomainSet.add(part);});}catch(e){}}if(name.length>3)compDomainSet.add(name);});const isCompDomain=(domain)=>{const dl=domain.toLowerCase();for(const comp of compDomainSet){if(dl.includes(comp)||comp.includes(dl.split(".")[0]))return true;}return false;};const lowQuality=["shopee","lazada","aliexpress","temu","wish.com","priceshop","mudah.my"];const topDomains=Object.entries(allSrc.reduce((acc,c)=>{try{const h=new URL(c.url).hostname.replace("www.","");if(!isCompDomain(h)&&!lowQuality.some(lq=>h.toLowerCase().includes(lq)))acc[h]=(acc[h]||0)+1;}catch(e){}return acc;},{})).sort((a,b)=>b[1]-a[1]).slice(0,8).map(d=>d[0]);return topDomains.length>0?topDomains.slice(0,5).map(d=>"- "+d+" (cited "+allSrc.filter(c=>{try{return new URL(c.url).hostname.replace("www.","")===d;}catch(e){return false;}}).length+" times)").join("\n"):"- No citation source data available";}catch(e){return"- No citation source data available";}})()}
+ABSOLUTE RULES:
+- NEVER recommend reaching out to, collaborating with, or getting cited on ANY competitor or competitor sub-brand website
+- NEVER recommend getting featured on a domain that belongs to a competitor
+- If unsure whether a domain is a competitor, DO NOT recommend it
+- Only recommend NEUTRAL third-party platforms (news sites, review platforms, industry publications, directories)
+- If no negative themes are detected, do NOT recommend defensive PR campaigns
+- Every task must reference a SPECIFIC finding from the audit data above
 
-CURRENT BRAND VISIBILITY SCORE: ${overallScore}%
+CREATE A DETAILED 90-DAY ROADMAP:
 
-CRITICAL LIFT RULES:
-- The brand currently scores ${overallScore}%. All projected improvements must be realistic relative to this baseline.
-- Phase 1 (Days 1-30): Target score should be ${Math.min(overallScore + Math.round((100 - overallScore) * 0.25), 95)}% (closing ~25% of the gap to 100%)
-- Phase 2 (Days 31-60): Target score should be ${Math.min(overallScore + Math.round((100 - overallScore) * 0.45), 97)}% (closing ~45% of the gap)
-- Phase 3 (Days 61-90): Target score should be ${Math.min(overallScore + Math.round((100 - overallScore) * 0.6), 98)}% (closing ~60% of the gap)
-- Each task's estimated lift must be a SPECIFIC number (not a range like "10-15%") and all task lifts in a phase must sum to approximately the phase's total improvement
-- For example: if current score is 83%, Phase 1 target is ~87%, so total Phase 1 lift is ~4 points spread across 3-4 tasks (e.g. +1.5%, +1%, +0.8%, +0.7%)
-- If current score is 40%, Phase 1 target is ~55%, so total Phase 1 lift is ~15 points spread across tasks
-- NEVER project a score above 95% — diminishing returns make this unrealistic
-- Each task's lift should be proportional to its impact — technical fixes are smaller lifts, content creation is larger
+PHASE 1 (Days 1-30): "Quick Wins & Foundation"
+Target score: ${Math.min(overallScore+Math.round((100-overallScore)*0.25),95)}% (lift: ~${Math.round((100-overallScore)*0.25)}%)
+5-7 specific tasks across these departments:
+* SEO & Technical: Schema markup, structured data, meta optimisation for ${brand}'s weak categories
+* Content: 3-4 specific content pieces addressing the exact queries where ${brand} is absent (reference actual queries above)
+* PR & Outreach: Specific third-party platforms from the citation gaps (ONLY neutral platforms, NEVER competitors)
+* Product/UX: Website improvements to increase citation likelihood
 
-CRITICAL RULES:
-- NEVER recommend the brand get cited on competitor-owned websites (${(cd.competitors||[]).map(c=>c.name).join(", ")} domains)
-- NEVER recommend partnerships with price comparison sites, discount aggregators, or low-quality directories
-- Only recommend authoritative sources: industry publications, review platforms (G2, TrustRadius, Capterra), major news outlets, Wikipedia, LinkedIn, YouTube
-- If no negative themes are detected, do NOT recommend defensive PR campaigns, crisis management, or reputation repair. Instead focus on growth: expanding visibility into new query categories and strengthening existing advantages.
-- Every PR & Outreach task must make logical sense — do NOT recommend "countering negativity" when sentiment is positive.
+PHASE 2 (Days 31-60): "Authority Building"
+Target score: ${Math.min(overallScore+Math.round((100-overallScore)*0.45),97)}% (lift: ~${Math.round((100-overallScore)*0.2)}% additional)
+5-7 specific tasks:
+* Content Authority: Long-form content, thought leadership, expertise signals
+* Citation Building: Specific outreach to authoritative sources
+* Engine-Specific: Targeted improvements for the weakest engine (${weakestEngine.name} at ${weakestEngine.score}%)
+* Competitive Response: Strategies to close the gap with ${compScoresForRoadmap[0]?.name||"top competitor"}
 
-Every task in the roadmap MUST reference a specific finding from above. Format each task as "[Finding] → [Action]". For example:
-- "Missing FAQ schema → Implement FAQPage JSON-LD on top 5 service pages"
-- "Absent for 'best prepaid plans in Malaysia' → Create comparison guide targeting this query"
-- "Maxis beats you on Content Authority → Publish 2 long-form guides per week to close content gap"
-- "Negative perception: 'Premium Pricing Concerns' → Publish value-comparison content showing ROI vs competitors"
-- "Not cited on g2.com → Create and optimise G2 listing with verified reviews"
-- "GPTBot blocked in robots.txt → Unblock GPTBot user agent to allow ChatGPT to index content"
-- "No llms.txt → Create llms.txt with structured brand description for AI engines"
-Do NOT include generic tasks like "optimize website" or "improve SEO" without tying them to a specific finding.
+PHASE 3 (Days 61-90): "Scale & Optimise"
+Target score: ${Math.min(overallScore+Math.round((100-overallScore)*0.6),98)}% (lift: ~${Math.round((100-overallScore)*0.15)}% additional)
+5-7 specific tasks:
+* Monitoring: Re-audit cadence, tracking framework
+* Advanced Content: Multi-format content (video, FAQ, comparison pages) for remaining gaps
+* Partnership: Strategic content partnerships with industry publications
+* Continuous Improvement: Process for ongoing AI visibility management
+
+Each task MUST have: title, specific description (2-3 sentences), department owner, estimated lift (specific %, must add up to phase total), priority (high/medium/low).
+Reference SPECIFIC queries, engines, and data from the audit. Be actionable — tell them exactly WHAT to do. NEVER project above 95%.
 
 Return JSON:
 {
   "day30": {
-    "title": "Foundation Sprint",
+    "title": "Quick Wins & Foundation",
     "sub": "Days 1-30",
     "accent": "#ef4444",
-    "lift": "${Math.min(overallScore + Math.round((100 - overallScore) * 0.25), 95) - overallScore}%",
+    "lift": "${Math.min(overallScore+Math.round((100-overallScore)*0.25),95)-overallScore}%",
     "departments": [
-      {"dept": "Technical", "color": "#0c4cfc", "tasks": ["<specific task addressing critical issues>", "<task>", "<task>"]},
-      {"dept": "Content", "color": "#059669", "tasks": ["<specific task>", "<task>", "<task>"]},
-      {"dept": "PR & Outreach", "color": "#8b5cf6", "tasks": ["<specific task addressing channel gaps>", "<task>", "<task>"]}
+      {"dept": "SEO & Technical", "color": "#0c4cfc", "tasks": ["[Finding] → [Specific action with lift %]", "..."]},
+      {"dept": "Content", "color": "#059669", "tasks": ["[Finding] → [Specific action with lift %]", "..."]},
+      {"dept": "PR & Outreach", "color": "#8b5cf6", "tasks": ["[Finding] → [Specific action with lift %]", "..."]},
+      {"dept": "Product/UX", "color": "#f59e0b", "tasks": ["[Finding] → [Specific action with lift %]", "..."]}
     ]
   },
   "day60": {
     "title": "Authority Building",
     "sub": "Days 31-60",
     "accent": "#f59e0b",
-    "lift": "${Math.min(overallScore + Math.round((100 - overallScore) * 0.45), 97) - overallScore}%",
+    "lift": "${Math.min(overallScore+Math.round((100-overallScore)*0.45),97)-overallScore}%",
     "departments": [
-      {"dept": "Technical", "color": "#0c4cfc", "tasks": [...]},
-      {"dept": "Content", "color": "#059669", "tasks": [...]},
-      {"dept": "PR & Outreach", "color": "#8b5cf6", "tasks": [...]}
+      {"dept": "Content Authority", "color": "#059669", "tasks": [...]},
+      {"dept": "Citation Building", "color": "#8b5cf6", "tasks": [...]},
+      {"dept": "Engine-Specific", "color": "#0c4cfc", "tasks": [...]},
+      {"dept": "Competitive Response", "color": "#dc2626", "tasks": [...]}
     ]
   },
   "day90": {
-    "title": "Dominance & Scale",
+    "title": "Scale & Optimise",
     "sub": "Days 61-90",
     "accent": "#10b981",
-    "lift": "${Math.min(overallScore + Math.round((100 - overallScore) * 0.6), 98) - overallScore}%",
+    "lift": "${Math.min(overallScore+Math.round((100-overallScore)*0.6),98)-overallScore}%",
     "departments": [
-      {"dept": "Technical", "color": "#0c4cfc", "tasks": [...]},
-      {"dept": "Content", "color": "#059669", "tasks": [...]},
-      {"dept": "PR & Outreach", "color": "#8b5cf6", "tasks": [...]}
+      {"dept": "Monitoring", "color": "#0c4cfc", "tasks": [...]},
+      {"dept": "Advanced Content", "color": "#059669", "tasks": [...]},
+      {"dept": "Partnership", "color": "#8b5cf6", "tasks": [...]},
+      {"dept": "Continuous Improvement", "color": "#f59e0b", "tasks": [...]}
     ]
   }
 }
 
-Each department: 3-5 specific tasks that directly address the audit findings above. Reference actual issues found. All tasks must be tailored to the ${region} market — include regional content creation, local partnerships, and ${region}-specific PR outreach. Respond in English only.`;
+Each department: 2-3 specific tasks. Total 5-7 tasks per phase. All tasks tailored to the ${region} market. Respond in English only.`;
   const roadRaw=await callOpenAI(roadmapPrompt, engineSystemPrompt);
   roadData=safeJSON(roadRaw)||null;
   }catch(stepError){
