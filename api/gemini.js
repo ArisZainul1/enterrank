@@ -1,5 +1,5 @@
 // /api/gemini.js — Vercel Serverless Function
-// Proxies requests to the Google Gemini API (gemini-3-flash-preview with Google Search grounding)
+// Proxies requests to the Google Gemini API (configurable model with Google Search grounding)
 
 import verifyAuth from "./_auth.js";
 import rateLimit from "./_rateLimit.js";
@@ -24,8 +24,9 @@ export default async function handler(req, res) {
   if (!GOOGLE_AI_KEY) return res.status(500).json({ error: 'GOOGLE_AI_KEY not configured' });
 
   try {
-    const { prompt, systemPrompt, temperature } = req.body;
+    const { prompt, systemPrompt, temperature, model, maxOutputTokens } = req.body;
 
+    const geminiModel = model || "gemini-2.0-flash";
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 55000);
 
@@ -34,14 +35,14 @@ export default async function handler(req, res) {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: temperature !== undefined ? temperature : 0,
-        maxOutputTokens: 4000,
+        maxOutputTokens: maxOutputTokens || 8192,
         responseMimeType: 'text/plain',
       },
       tools: [{ google_search: {} }],
     };
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GOOGLE_AI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${GOOGLE_AI_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
