@@ -981,41 +981,90 @@ Return JSON only:
   accumulated.compVisibilityData = compScoresMap || {};
   }catch(e){console.error("First emission data assembly failed:",e.message||e);}
   // Collect citation URLs from both engines
-  let citationSources = { gpt: [], gemini: [], all: [] };
+  let citationSources = { gpt: [], gemini: [], perplexity: [], googleai: [], claude: [], all: [] };
   try {
     const seen = new Set();
+    // Helper: resolve vertexaisearch proxy URLs via title
+    function resolveGeminiUrl(url, title) {
+      if (!url || (!url.includes("vertexaisearch.cloud.google.com") && !url.includes("grounding-api-redirect"))) return url;
+      // Try extracting domain from title: "Page Title - example.com" or bare "example.com"
+      if (!title) return "";
+      const titleParts = title.split(" - ");
+      const lastPart = (titleParts[titleParts.length - 1] || "").trim();
+      if (lastPart.includes(".") && !lastPart.includes(" ")) return "https://" + lastPart.replace(/^(https?:\/\/)?/,"").replace(/^www\./,"");
+      if (title.includes(".") && !title.includes(" ")) return "https://" + title.replace(/^(https?:\/\/)?/,"").replace(/^www\./,"");
+      // Try to find a domain-like pattern anywhere in the title
+      const domainMatch = title.match(/([a-z0-9][-a-z0-9]*\.[a-z]{2,}(?:\.[a-z]{2,})?)/i);
+      if (domainMatch) return "https://" + domainMatch[1].toLowerCase();
+      return "";
+    }
+    function getDomain(url) { try { return new URL(url).hostname.replace("www.","").toLowerCase(); } catch(e) { return ""; } }
     (gptResponses || []).forEach(r => {
       (r.citations || []).forEach(c => {
-        if (c.url && !seen.has(c.url)) { seen.add(c.url); citationSources.gpt.push({ url: c.url, title: c.title || "", query: r.query }); citationSources.all.push({ url: c.url, title: c.title || "", engine: "chatgpt", query: r.query }); }
+        if (c.url && !seen.has(c.url)) { seen.add(c.url); const domain=getDomain(c.url); citationSources.gpt.push({ url: c.url, title: c.title || "", query: r.query, domain }); citationSources.all.push({ url: c.url, title: c.title || "", engine: "chatgpt", query: r.query, domain }); }
       });
     });
     (gemResponses || []).forEach(r => {
       (r.citations || []).forEach(c => {
-        if (!c.url) return;
-        let url = c.url;
-        let title = c.title || "";
-        // Gemini returns proxy URLs via vertexaisearch — resolve via title or skip
-        if (url.includes("vertexaisearch.cloud.google.com") || url.includes("grounding-api-redirect")) {
-          if (title && !title.includes(" ") && title.includes(".")) {
-            url = "https://" + title.replace(/^(https?:\/\/)?/,"").replace(/^www\./,"");
-          } else { return; }
-        }
-        if (!seen.has(url)) { seen.add(url); citationSources.gemini.push({ url, title, query: r.query }); citationSources.all.push({ url, title, engine: "gemini", query: r.query }); }
+        let url = c.url || c.uri || (c.web && c.web.uri) || "";
+        let title = c.title || (c.web && c.web.title) || "";
+        if (!url && !title) return;
+        const resolved = resolveGeminiUrl(url, title);
+        if (resolved) url = resolved;
+        else if (!url) return;
+        const domain = getDomain(url);
+        if (!domain || domain.length < 4) return;
+        const key = domain + "|" + (r.query || "");
+        if (seen.has(key)) return; seen.add(key);
+        citationSources.gemini.push({ url, title, query: r.query, domain }); citationSources.all.push({ url, title, engine: "gemini", query: r.query, domain });
       });
     });
     (pplxResponses || []).forEach(r => {
       (r.citations || []).forEach(c => {
-        if (c.url && !seen.has(c.url)) { seen.add(c.url); citationSources.perplexity = citationSources.perplexity || []; citationSources.perplexity.push({ url: c.url, title: c.title || "", query: r.query }); citationSources.all.push({ url: c.url, title: c.title || "", engine: "perplexity", query: r.query }); }
+        if (c.url && !seen.has(c.url)) { seen.add(c.url); const domain=getDomain(c.url); citationSources.perplexity.push({ url: c.url, title: c.title || "", query: r.query, domain }); citationSources.all.push({ url: c.url, title: c.title || "", engine: "perplexity", query: r.query, domain }); }
       });
     });
     (googleAIResponses || []).forEach(r => {
       (r.citations || []).forEach(c => {
-        if (c.url && !seen.has(c.url)) { seen.add(c.url); citationSources.googleai = citationSources.googleai || []; citationSources.googleai.push({ url: c.url, title: c.title || "", query: r.query }); citationSources.all.push({ url: c.url, title: c.title || "", engine: "googleai", query: r.query }); }
+        let url = c.url || c.uri || (c.web && c.web.uri) || "";
+        let title = c.title || (c.web && c.web.title) || "";
+        if (!url && !title) return;
+        const resolved = resolveGeminiUrl(url, title);
+        if (resolved) url = resolved;
+        else if (!url) return;
+        const domain = getDomain(url);
+        if (!domain || domain.length < 4) return;
+        const key = domain + "|gai|" + (r.query || "");
+        if (seen.has(key)) return; seen.add(key);
+        citationSources.googleai.push({ url, title, query: r.query, domain }); citationSources.all.push({ url, title, engine: "googleai", query: r.query, domain });
       });
     });
-    citationSources.claude = [];
   } catch(e) { console.error("Citation collection failed:", e); }
+
+  // Build expanded competitor domain list using AI
+  let expandedCompDomains = new Set();
+  try {
+    (cd.competitors||[]).forEach(c => {
+      const w = c.website || "";
+      if (w) { try { const h = new URL(w.startsWith("http") ? w : "https://" + w).hostname.replace("www.", "").toLowerCase(); expandedCompDomains.add(h); h.split(".").slice(0, -1).forEach(p => { if (p.length > 3) expandedCompDomains.add(p); }); } catch(e) {} }
+      const name = (c.name || "").toLowerCase().replace(/\s+/g, "");
+      if (name.length > 3) expandedCompDomains.add(name);
+    });
+    const allCitationDomains = new Set();
+    (citationSources.all || []).forEach(c => { if (c.domain) allCitationDomains.add(c.domain); });
+    if (allCitationDomains.size > 0) {
+      const domainList = [...allCitationDomains].slice(0, 50).join(", ");
+      const compCheckPrompt = `The brand being audited is "${brand}" (${cd.industry || ""} industry, ${cd.region || ""}).\nKnown competitors: ${(cd.competitors||[]).map(c=>c.name).join(", ")}\n\nFrom this list of domains found in AI engine citations, identify which ones belong to competitors, competitor sub-brands, sister companies, or brands owned by the same parent company as a competitor. Also identify any domain that is a DIRECT competitor even if not listed above.\n\nDomains: ${domainList}\n\nReturn ONLY a JSON array of competitor domain strings. No explanation. Example: ["hotlink.com.my", "redone.com.my"]`;
+      const compResp = await callOpenAI(compCheckPrompt, "You are a competitive intelligence analyst. Return ONLY valid JSON.", 0);
+      try {
+        const parsed = safeJSON(compResp);
+        if (Array.isArray(parsed)) parsed.forEach(d => expandedCompDomains.add(String(d).toLowerCase().replace("www.", "")));
+      } catch(e) {}
+    }
+  } catch(e) { console.error("Expanded competitor detection failed:", e); }
+
   accumulated.citationSources = citationSources;
+  accumulated.expandedCompetitorDomains = [...expandedCompDomains];
   try{onProgress("Engine data ready — analyzing sentiment...", null, {...accumulated});}catch(emitErr){console.error("Emission 1 failed:",emitErr);}
 
   // ── Parallel Group: Sentiment + Signals + Source Channels + Competitors + Pain Points ──
@@ -2045,6 +2094,7 @@ Rules:
       narratives:typeof narratives!=="undefined"?narratives:{},
       engineWeights:getEngineWeights(region),
       verifiedChannelGaps:typeof verifiedChannelGaps!=="undefined"?verifiedChannelGaps:[],
+      expandedCompetitorDomains:typeof expandedCompDomains!=="undefined"?[...expandedCompDomains]:[],
       tokenUsage
     };
   } catch(returnError) {
@@ -2538,7 +2588,7 @@ function generateAll(cd, apiData){
   const verifiedChannelGaps=(hasApi&&apiData.verifiedChannelGaps)?apiData.verifiedChannelGaps:[];
   const narratives=(hasApi&&apiData.narratives)?apiData.narratives:{};
   const engineWeights=hasApi?(apiData.engineWeights||gWeights):gWeights;
-  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,queryArchetypeMap,channelSourceData,citationSources,narratives,sovData,engineWeights,websiteReadinessScore,verifiedChannelGaps,auditDate:apiData.auditDate||new Date().toISOString(),clientData:cd};
+  return{overall,scoreLabel:getScoreLabel(overall),scoreDesc:getScoreDesc(overall,cd.brand),engines,painPoints,competitors,stakeholders,funnelStages,aeoChannels,brandGuidelines,contentTypes,roadmap,outputReqs,sentiment,sentimentSignals,brandCrawl,compCrawlData,searchQueries,queryArchetypeMap,channelSourceData,citationSources,narratives,sovData,engineWeights,websiteReadinessScore,verifiedChannelGaps,expandedCompetitorDomains:apiData.expandedCompetitorDomains||[],auditDate:apiData.auditDate||new Date().toISOString(),clientData:cd};
 }
 
 function generatePartial(cd, partial) {
@@ -2563,7 +2613,8 @@ function generatePartial(cd, partial) {
     queryArchetypeMap: partial.queryArchetypeMap || {},
     channelSourceData: partial.channelSourceData || { sourceChannels: [], opportunities: [] },
     citationSources: partial.citationSources || { gpt: [], gemini: [], all: [] },
-    narratives: partial.narratives || {}
+    narratives: partial.narratives || {},
+    expandedCompetitorDomains: partial.expandedCompetitorDomains || []
   };
   try { return generateAll(cd, safeApiData); } catch(e) { console.error("generatePartial error:", e); return null; }
 }
@@ -5448,9 +5499,10 @@ function CitationSourcesPage({ r }) {
   const cs = r?.citationSources || { gpt: [], gemini: [], all: [] };
   const brandName = r?.clientData?.brand || "Your brand";
 
-  // Build competitor domain detection
+  // Build competitor domain detection — use expanded list from audit if available
   const compDomainParts = React.useMemo(() => {
     const parts = new Set();
+    (r?.expandedCompetitorDomains || []).forEach(d => parts.add(d));
     (r?.competitors || []).forEach(c => {
       const name = (c.name || "").toLowerCase().replace(/\s+/g, "");
       const website = c.website || "";
@@ -5464,7 +5516,7 @@ function CitationSourcesPage({ r }) {
       if (name.length > 3) parts.add(name);
     });
     return parts;
-  }, [r?.competitors]);
+  }, [r?.competitors, r?.expandedCompetitorDomains]);
   const isCompDomain = (domain) => {
     const d = (domain || "").toLowerCase();
     for (const comp of compDomainParts) {
@@ -5476,17 +5528,17 @@ function CitationSourcesPage({ r }) {
   // Build sources list from the actual data shape
   const sources = (cs.all || []).map(s => {
     let url = s.url || "";
+    let domain = s.domain || "";
     // Handle Gemini proxy URLs in display
     if (url.includes("vertexaisearch.cloud.google.com") || url.includes("grounding-api-redirect")) {
       if (s.title && !s.title.includes(" ") && s.title.includes(".")) url = "https://" + s.title.replace(/^(https?:\/\/)?/,"").replace(/^www\./,"");
-      else return null;
+      else if (!domain) return null;
     }
-    const domain = (() => { try { return new URL(url).hostname.replace("www.", ""); } catch(e) { return ""; } })();
+    if (!domain && url) { try { domain = new URL(url).hostname.replace("www.", ""); } catch(e) {} }
     if (!domain || domain.length < 3 || domain === "unknown") return null;
     return {
-      ...s, url,
-      engine: s.engine === "chatgpt" ? "ChatGPT" : s.engine === "gemini" ? "Gemini" : s.engine === "perplexity" ? "Perplexity" : s.engine === "googleai" ? "Google AI" : s.engine === "claude" ? "Claude" : s.engine,
-      domain
+      ...s, url, domain,
+      engine: s.engine === "chatgpt" ? "ChatGPT" : s.engine === "gemini" ? "Gemini" : s.engine === "perplexity" ? "Perplexity" : s.engine === "googleai" ? "Google AI" : s.engine === "claude" ? "Claude" : s.engine
     };
   }).filter(Boolean);
 
@@ -5495,18 +5547,21 @@ function CitationSourcesPage({ r }) {
     : activeTab === "chatgpt" ? sources.filter(s => s.engine === "ChatGPT")
     : activeTab === "gemini" ? sources.filter(s => s.engine === "Gemini")
     : activeTab === "perplexity" ? sources.filter(s => s.engine === "Perplexity")
-    : sources.filter(s => s.engine === "Google AI");
+    : activeTab === "googleai" ? sources.filter(s => s.engine === "Google AI")
+    : activeTab === "claude" ? sources.filter(s => s.engine === "Claude")
+    : sources;
   const filtered = hideCompetitors ? tabFiltered.filter(s => !isCompDomain(s.domain)) : tabFiltered;
 
   // Group by domain
   const domainMap = {};
   filtered.forEach(s => {
     const d = s.domain;
-    if (!domainMap[d]) domainMap[d] = { domain: d, entries: [], chatgpt: 0, gemini: 0, perplexity: 0, googleai: 0 };
+    if (!domainMap[d]) domainMap[d] = { domain: d, entries: [], chatgpt: 0, gemini: 0, perplexity: 0, googleai: 0, claude: 0 };
     domainMap[d].entries.push(s);
     if (s.engine === "ChatGPT") domainMap[d].chatgpt++;
     else if (s.engine === "Gemini") domainMap[d].gemini++;
     else if (s.engine === "Google AI") domainMap[d].googleai++;
+    else if (s.engine === "Claude") domainMap[d].claude++;
     else domainMap[d].perplexity++;
   });
 
@@ -5518,6 +5573,7 @@ function CitationSourcesPage({ r }) {
   const geminiSources = statSources.filter(s => s.engine === "Gemini").length;
   const pplxSources = statSources.filter(s => s.engine === "Perplexity").length;
   const gaiSources = statSources.filter(s => s.engine === "Google AI").length;
+  const claudeSources = statSources.filter(s => s.engine === "Claude").length;
 
   return (
     <div>
@@ -5561,7 +5617,8 @@ function CitationSourcesPage({ r }) {
           { id: "chatgpt", label: "ChatGPT Sources" },
           { id: "gemini", label: "Gemini Sources" },
           { id: "perplexity", label: "Perplexity Sources" },
-          { id: "googleai", label: "Google AI Sources" }
+          { id: "googleai", label: "Google AI Sources" },
+          { id: "claude", label: "Claude" }
         ].map(tab => (
           <button key={tab.id} onClick={() => { setActiveTab(tab.id); setExpandedDomain(null); }} style={{
             padding: "8px 16px", fontSize: 12, fontWeight: activeTab === tab.id ? 500 : 400,
@@ -5585,6 +5642,13 @@ function CitationSourcesPage({ r }) {
           {hideCompetitors ? "Show Competitor Domains" : "Showing Competitor Domains"}
         </button>
       </div>
+
+      {/* Claude empty state */}
+      {activeTab === "claude" && filtered.length === 0 && (
+        <div style={{ background: "#fff", border: "1px solid " + C.border, borderRadius: 12, padding: "24px", textAlign: "center", marginBottom: 16 }}>
+          <div style={{ fontSize: 13, color: C.muted }}>Claude does not use web search and therefore does not provide citation sources. Claude's responses are based on its training data.</div>
+        </div>
+      )}
 
       {/* Domain list */}
       {domains.length > 0 ? (
