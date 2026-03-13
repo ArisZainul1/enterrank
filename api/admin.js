@@ -65,7 +65,7 @@ export default async function handler(req, res) {
       });
 
       // Token usage and cost from audit results
-      let totalTokens = { openai: { input: 0, output: 0 }, gemini: { input: 0, output: 0 }, perplexity: { input: 0, output: 0 }, serpapi: { searches: 0 } };
+      let totalTokens = { openai: { input: 0, output: 0 }, gemini: { input: 0, output: 0 }, perplexity: { input: 0, output: 0 }, claude: { input: 0, output: 0 }, serpapi: { searches: 0 } };
       let auditsWithTokenData = 0;
 
       (audits || []).forEach(a => {
@@ -91,6 +91,10 @@ export default async function handler(req, res) {
             totalTokens.perplexity.input += tokenUsage.perplexity?.input || 0;
             totalTokens.perplexity.output += tokenUsage.perplexity?.output || 0;
           }
+          if (tokenUsage.claude) {
+            totalTokens.claude.input += tokenUsage.claude?.input || 0;
+            totalTokens.claude.output += tokenUsage.claude?.output || 0;
+          }
           if (tokenUsage.serpapi) {
             totalTokens.serpapi.searches += tokenUsage.serpapi?.searches || 0;
           }
@@ -102,9 +106,10 @@ export default async function handler(req, res) {
         openai: (totalTokens.openai.input / 1000000 * 2.50) + (totalTokens.openai.output / 1000000 * 10),
         gemini: (totalTokens.gemini.input / 1000000 * 0.10) + (totalTokens.gemini.output / 1000000 * 0.40),
         perplexity: (totalTokens.perplexity.input / 1000000 * 3) + (totalTokens.perplexity.output / 1000000 * 15),
+        claude: (totalTokens.claude.input / 1000000 * 1) + (totalTokens.claude.output / 1000000 * 5),
         serpapi: totalTokens.serpapi.searches * 0.015
       };
-      costs.total = costs.openai + costs.gemini + costs.perplexity + costs.serpapi;
+      costs.total = costs.openai + costs.gemini + costs.perplexity + costs.claude + costs.serpapi;
 
       // Audit log timeline — last 20 audits with cost per audit
       const auditLog = (audits || [])
@@ -122,8 +127,9 @@ export default async function handler(req, res) {
             auditCost += (oIn / 1000000 * 2.50) + (oOut / 1000000 * 10);
             auditCost += ((tu.gemini?.input || 0) / 1000000 * 0.10) + ((tu.gemini?.output || 0) / 1000000 * 0.40);
             auditCost += ((tu.perplexity?.input || 0) / 1000000 * 3) + ((tu.perplexity?.output || 0) / 1000000 * 15);
+            auditCost += ((tu.claude?.input || 0) / 1000000 * 1) + ((tu.claude?.output || 0) / 1000000 * 5);
             auditCost += (tu.serpapi?.searches || 0) * 0.015;
-            totalTok = oIn + oOut + (tu.gemini?.input || 0) + (tu.gemini?.output || 0) + (tu.perplexity?.input || 0) + (tu.perplexity?.output || 0);
+            totalTok = oIn + oOut + (tu.gemini?.input || 0) + (tu.gemini?.output || 0) + (tu.perplexity?.input || 0) + (tu.perplexity?.output || 0) + (tu.claude?.input || 0) + (tu.claude?.output || 0);
           }
           const brand = results?.clientData?.brand || apiData?.results?.clientData?.brand || a.brand || "Unknown";
           return {
@@ -151,6 +157,7 @@ export default async function handler(req, res) {
         c += (((tu.openai?.input || 0) + (tu.openaiSearch?.input || 0)) / 1000000 * 2.50) + (((tu.openai?.output || 0) + (tu.openaiSearch?.output || 0)) / 1000000 * 10);
         c += ((tu.gemini?.input || 0) / 1000000 * 0.10) + ((tu.gemini?.output || 0) / 1000000 * 0.40);
         c += ((tu.perplexity?.input || 0) / 1000000 * 3) + ((tu.perplexity?.output || 0) / 1000000 * 15);
+        c += ((tu.claude?.input || 0) / 1000000 * 1) + ((tu.claude?.output || 0) / 1000000 * 5);
         c += (tu.serpapi?.searches || 0) * 0.015;
         return sum + c;
       }, 0);
@@ -174,6 +181,7 @@ export default async function handler(req, res) {
           openai: Math.round(costs.openai * 100) / 100,
           gemini: Math.round(costs.gemini * 100) / 100,
           perplexity: Math.round(costs.perplexity * 100) / 100,
+          claude: Math.round(costs.claude * 100) / 100,
           serpapi: Math.round(costs.serpapi * 100) / 100,
           total: Math.round(costs.total * 100) / 100
         },
@@ -223,6 +231,12 @@ export default async function handler(req, res) {
           const r = await fetch("https://api.perplexity.ai/chat/completions", { method: "POST", headers: { "Authorization": "Bearer " + key, "Content-Type": "application/json" }, body: JSON.stringify({ model: "sonar", messages: [{ role: "user", content: "ping" }] }), signal: AbortSignal.timeout(10000) });
           if (!r.ok && r.status !== 429) throw new Error("HTTP " + r.status);
         }),
+        ping("claude", async () => {
+          const key = process.env.ANTHROPIC_API_KEY;
+          if (!key) throw new Error("Key not configured");
+          const r = await fetch("https://api.anthropic.com/v1/models", { headers: { "x-api-key": key, "anthropic-version": "2023-06-01" }, signal: AbortSignal.timeout(8000) });
+          if (!r.ok) throw new Error("HTTP " + r.status);
+        }),
         ping("serpapi", async () => {
           const key = process.env.SERPAPI_API_KEY;
           if (!key) throw new Error("Key not configured");
@@ -237,8 +251,34 @@ export default async function handler(req, res) {
 
       return res.json({ services: checks, checkedAt: new Date().toISOString() });
 
+    } else if (action === "deleteUser") {
+      const targetUserId = req.body.userId;
+      if (!targetUserId) return res.status(400).json({ error: "userId required" });
+      if (targetUserId === user.id) return res.status(400).json({ error: "Cannot delete your own account" });
+
+      try {
+        await supabase.from("audits").delete().eq("user_id", targetUserId);
+
+        const { data: userProjects } = await supabase.from("projects").select("id").eq("user_id", targetUserId);
+        if (userProjects && userProjects.length > 0) {
+          const projectIds = userProjects.map(p => p.id);
+          await supabase.from("generated_content").delete().in("project_id", projectIds);
+          await supabase.from("brand_playbook").delete().in("project_id", projectIds);
+        }
+
+        await supabase.from("projects").delete().eq("user_id", targetUserId);
+
+        const { error: authError } = await supabase.auth.admin.deleteUser(targetUserId);
+        if (authError) throw authError;
+
+        return res.json({ success: true, message: "User and all associated data deleted" });
+      } catch (err) {
+        console.error("Delete user error:", err);
+        return res.status(500).json({ error: "Failed to delete user: " + err.message });
+      }
+
     } else {
-      return res.status(400).json({ error: "Unknown action. Use: overview, users, health" });
+      return res.status(400).json({ error: "Unknown action. Use: overview, users, health, deleteUser" });
     }
   } catch (err) {
     console.error("Admin API error:", err);

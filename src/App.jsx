@@ -3037,6 +3037,9 @@ function LoginForm({ onLogin, onSignUp, error, loading, onBack }) {
   const [showPw, setShowPw] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [localError, setLocalError] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [inviteError, setInviteError] = useState("");
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetSent, setResetSent] = useState(false);
@@ -3050,13 +3053,36 @@ function LoginForm({ onLogin, onSignUp, error, loading, onBack }) {
     if (isSignUp) {
       if (pw !== confirmPw) { setLocalError("Passwords don't match"); return; }
       if (pw.length < 6) { setLocalError("Password must be at least 6 characters"); return; }
+      const VALID_INVITE_CODES = ["RankEnter2026"];
+      if (!VALID_INVITE_CODES.includes(inviteCode.trim())) { setInviteError("Invalid invite code. Contact your administrator for access."); return; }
       onSignUp(email.trim(), pw);
     } else {
       onLogin(email.trim(), pw);
     }
   };
 
-  const displayError = localError || error;
+  const isConfirmation = error === "__CONFIRM__";
+  const displayError = isConfirmation ? "" : (localError || error);
+
+  if (isConfirmation) return (
+    <div style={{height:"100vh",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Satoshi',-apple-system,BlinkMacSystemFont,sans-serif",position:"relative",background:"#ffffff"}}>
+      <div style={{position:"relative",zIndex:1,width:"100%",maxWidth:400,padding:"0 24px",animation:"fadeIn .6s ease-out"}}>
+        <div style={{background:"#ffffff",borderRadius:16,border:"1px solid #e2e8f0",boxShadow:"0 16px 48px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.03)",padding:"40px 36px",textAlign:"center"}}>
+          <div style={{fontSize:36,marginBottom:12}}>✉️</div>
+          <div style={{fontSize:16,fontWeight:500,color:"#0f172a",marginBottom:8,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Check your email</div>
+          <div style={{fontSize:13,color:"#94a3b8",marginBottom:16,lineHeight:1.6}}>
+            We've sent a confirmation link to your email address. Click the link to activate your account and start using EnterRank.
+          </div>
+          <button onClick={() => { setIsSignUp(false); setConfirmPw(""); setInviteCode(""); setLocalError(""); }} style={{
+            padding:"8px 20px",fontSize:12,background:"none",border:"1px solid #e2e8f0",
+            borderRadius:8,cursor:"pointer",color:"#94a3b8",fontFamily:"inherit"
+          }}>
+            Back to login
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{height:"100vh",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Satoshi',-apple-system,BlinkMacSystemFont,sans-serif",position:"relative",background:"#ffffff"}}>
@@ -3186,6 +3212,20 @@ function LoginForm({ onLogin, onSignUp, error, loading, onBack }) {
                       placeholder="Confirm your password"
                       style={{width:"100%",padding:"11px 14px",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,fontSize:14,color:"#0f172a",outline:"none",fontFamily:"inherit",transition:"all .15s"}}
                     />
+                  </div>
+                )}
+                {isSignUp && (
+                  <div>
+                    <label style={{display:"block",fontSize:12,fontWeight:500,color:"#374151",marginBottom:5}}>Invite Code *</label>
+                    <input
+                      type="text"
+                      value={inviteCode}
+                      onChange={e => { setInviteCode(e.target.value); setInviteError(""); }}
+                      onKeyDown={e => e.key === "Enter" && submit()}
+                      placeholder="Enter your invite code"
+                      style={{width:"100%",padding:"11px 14px",background:"#f8fafc",border:"1px solid "+(inviteError?"#dc2626":"#e2e8f0"),borderRadius:8,fontSize:14,color:"#0f172a",outline:"none",fontFamily:"inherit",transition:"all .15s",boxSizing:"border-box"}}
+                    />
+                    {inviteError && <div style={{fontSize:11,color:"#dc2626",marginTop:4}}>{inviteError}</div>}
                   </div>
                 )}
               </div>
@@ -7386,7 +7426,7 @@ function ProjectHub({onSelect,onNew,onLogout,isAdmin,onAdminClick}){
 }
 
 /* ─── ADMIN DASHBOARD PAGE ─── */
-function AdminDashboardPage({ data, users, loading, setScreen, health }) {
+function AdminDashboardPage({ data, users, loading, setScreen, health, onRefresh }) {
   if (loading) return (
     <div style={{ padding: 60, textAlign: "center" }}>
       <div style={{ width: 24, height: 24, border: "2.5px solid " + C.borderSoft, borderTopColor: C.accent, borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 12px" }} />
@@ -7435,11 +7475,12 @@ function AdminDashboardPage({ data, users, loading, setScreen, health }) {
       {/* Cost Breakdown */}
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "20px 24px", marginBottom: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
         <div style={{ fontSize: 15, fontWeight: 500, color: C.text, marginBottom: 16 }}>Cost Breakdown</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12 }}>
           {[
             { label: "OpenAI", cost: data.estimatedCosts?.openai, color: "#10A37F" },
             { label: "Gemini", cost: data.estimatedCosts?.gemini, color: "#4285F4" },
             { label: "Perplexity", cost: data.estimatedCosts?.perplexity, color: "#20808D" },
+            { label: "Claude", cost: data.estimatedCosts?.claude, color: "#D97706" },
             { label: "SerpApi", cost: data.estimatedCosts?.serpapi, color: "#EA4335" },
             { label: "Avg/Audit", cost: data.avgCostPerAudit, color: C.text }
           ].map((item, i) => (
@@ -7457,11 +7498,12 @@ function AdminDashboardPage({ data, users, loading, setScreen, health }) {
       {/* Token Usage */}
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "20px 24px", marginBottom: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
         <div style={{ fontSize: 15, fontWeight: 500, color: C.text, marginBottom: 16 }}>Token Usage</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
           {[
             { label: "OpenAI", input: data.totalTokens?.openai?.input, output: data.totalTokens?.openai?.output },
             { label: "Gemini", input: data.totalTokens?.gemini?.input, output: data.totalTokens?.gemini?.output },
             { label: "Perplexity", input: data.totalTokens?.perplexity?.input, output: data.totalTokens?.perplexity?.output },
+            { label: "Claude", input: data.totalTokens?.claude?.input, output: data.totalTokens?.claude?.output },
             { label: "SerpApi", input: null, output: null, searches: data.totalTokens?.serpapi?.searches }
           ].map((item, i) => (
             <div key={i} style={{ padding: "12px", background: "#f8fafc", borderRadius: 8 }}>
@@ -7483,18 +7525,41 @@ function AdminDashboardPage({ data, users, loading, setScreen, health }) {
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "20px 24px", marginBottom: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
         <div style={{ fontSize: 15, fontWeight: 500, color: C.text, marginBottom: 16 }}>Users ({mergedUsers.length})</div>
         <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 2fr", padding: "10px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 2fr auto", padding: "10px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
             <span style={{ fontSize: 11, fontWeight: 500, color: C.muted }}>Email</span>
             <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "center" }}>Projects</span>
             <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "center" }}>Audits</span>
             <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "right" }}>Last Activity</span>
+            <span style={{ fontSize: 11, fontWeight: 500, color: C.muted, textAlign: "center", minWidth: 60 }}>Actions</span>
           </div>
           {mergedUsers.map((u, i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 2fr", padding: "10px 16px", borderBottom: i < mergedUsers.length - 1 ? "1px solid #f1f5f9" : "none" }}>
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 2fr auto", padding: "10px 16px", borderBottom: i < mergedUsers.length - 1 ? "1px solid #f1f5f9" : "none", alignItems: "center" }}>
               <span style={{ fontSize: 12, color: C.text }}>{u.email}</span>
               <span style={{ fontSize: 12, color: C.sub, textAlign: "center" }}>{u.projects}</span>
               <span style={{ fontSize: 12, color: C.sub, textAlign: "center" }}>{u.audits}</span>
               <span style={{ fontSize: 11, color: C.muted, textAlign: "right" }}>{u.lastActivity ? new Date(u.lastActivity).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Never"}</span>
+              <span style={{ textAlign: "center", minWidth: 60 }}>
+                {u.email !== "admin@entermind.com" ? (
+                  <button onClick={async () => {
+                    if (!confirm("Delete user " + u.email + " and ALL their projects and audits? This cannot be undone.")) return;
+                    try {
+                      const token = await getAuthToken();
+                      const resp = await fetch("/api/admin", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+                        body: JSON.stringify({ action: "deleteUser", userId: u.id })
+                      });
+                      const result = await resp.json();
+                      if (result.success) { if (onRefresh) onRefresh(); }
+                      else { alert("Failed to delete user: " + (result.error || "Unknown error")); }
+                    } catch (e) { alert("Error deleting user: " + e.message); }
+                  }} style={{
+                    padding: "4px 10px", fontSize: 10, color: "#dc2626", background: "none",
+                    border: "1px solid #fecaca", borderRadius: 6, cursor: "pointer",
+                    fontFamily: "inherit", transition: "all 0.15s ease"
+                  }}>Remove</button>
+                ) : <span style={{ fontSize: 10, color: C.muted }}>—</span>}
+              </span>
             </div>
           ))}
           {mergedUsers.length === 0 && (
@@ -7530,11 +7595,12 @@ function AdminDashboardPage({ data, users, loading, setScreen, health }) {
             <div style={{ fontSize: 15, fontWeight: 500, color: C.text }}>System Health</div>
             {health.checkedAt && <div style={{ fontSize: 11, color: C.muted }}>Checked: {new Date(health.checkedAt).toLocaleTimeString()}</div>}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12 }}>
             {[
               { key: "openai", label: "OpenAI", color: "#10A37F" },
               { key: "gemini", label: "Gemini", color: "#4285F4" },
               { key: "perplexity", label: "Perplexity", color: "#20808D" },
+              { key: "claude", label: "Claude", color: "#D97706" },
               { key: "serpapi", label: "SerpApi", color: "#EA4335" },
               { key: "supabase", label: "Supabase", color: "#3ECF8E" }
             ].map((svc, i) => {
@@ -7697,7 +7763,10 @@ export default function App(){
     try {
       const result = await sbSignUp(email, password);
       if (result.error) { setLoginError(result.error); }
-      else {
+      else if (result.user && !result.session) {
+        // Email confirmation required — show confirmation message
+        setLoginError("__CONFIRM__");
+      } else {
         const signInResult = await sbSignIn(email, password);
         if (signInResult.error) { setLoginError("Account created! Please sign in."); }
         else { setAuthed(true); setAuthUser(signInResult.user); localStorage.setItem("enterrank_login_time", Date.now().toString()); }
@@ -8053,7 +8122,7 @@ export default function App(){
     <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",marginLeft:screen==="admin"?0:(sideCollapsed?60:220),transition:"margin-left .2s ease"}}>
       <div style={{flex:1,overflowY:"auto",padding:screen==="admin"?"32px 40px":"28px 32px",maxWidth:screen==="admin"?1200:1060,width:"100%",margin:"0 auto"}}>
         <div key={step} style={{animation:"fadeIn 0.2s ease"}}>
-        {screen==="admin"&&isAdmin&&<ErrorBoundary><AdminDashboardPage data={adminData} users={adminUsers} loading={adminLoading} setScreen={setScreen} health={adminHealth}/></ErrorBoundary>}
+        {screen==="admin"&&isAdmin&&<ErrorBoundary><AdminDashboardPage data={adminData} users={adminUsers} loading={adminLoading} setScreen={setScreen} health={adminHealth} onRefresh={loadAdminData}/></ErrorBoundary>}
         {screen!=="admin"&&<>
         {step==="input"&&<NewAuditPage data={data} setData={setData} onRun={runAuditProgressive} history={history}/>}
         {step==="dashboard"&&!results&&(auditInProgress||auditError)&&<AuditLoadingInline progress={dashboardLoadProgress} stage={auditStage} error={auditError} onClearError={()=>{setAuditError(null);setStep("input");}}/>}
