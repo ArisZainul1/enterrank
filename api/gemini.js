@@ -26,7 +26,7 @@ export default async function handler(req, res) {
   try {
     const { prompt, systemPrompt, temperature, model, maxOutputTokens } = req.body;
 
-    const geminiModel = model || "gemini-2.0-flash";
+    const geminiModel = model || "gemini-3-flash-preview";
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 55000);
 
