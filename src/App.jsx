@@ -2960,22 +2960,22 @@ function LandingPage({ onGetStarted }) {
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:24}}>
           <div style={{background:"#fff",borderRadius:12,padding:"32px 28px",border:"1px solid #e2e8f0",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
-            <div style={{width:48,height:48,borderRadius:12,background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <div style={{width:44,height:44,borderRadius:10,background:"#f8fafc",border:"1px solid #e2e8f0",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </div>
             <div style={{fontSize:17,fontWeight:500,color:"#0f172a",marginBottom:8}}>Visibility Scoring</div>
             <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>See when ChatGPT, Gemini, Perplexity, Google AI Overview, and Claude mention, cite, or ignore your brand across 75 real queries.</div>
           </div>
           <div style={{background:"#fff",borderRadius:12,padding:"32px 28px",border:"1px solid #e2e8f0",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
-            <div style={{width:48,height:48,borderRadius:12,background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2" strokeLinecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+            <div style={{width:44,height:44,borderRadius:10,background:"#f8fafc",border:"1px solid #e2e8f0",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
             </div>
             <div style={{fontSize:17,fontWeight:500,color:"#0f172a",marginBottom:8}}>Competitive Intelligence</div>
             <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>Compare your share of voice against competitors on every AI engine and find the queries where you're losing.</div>
           </div>
           <div style={{background:"#fff",borderRadius:12,padding:"32px 28px",border:"1px solid #e2e8f0",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
-            <div style={{width:48,height:48,borderRadius:12,background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+            <div style={{width:44,height:44,borderRadius:10,background:"#f8fafc",border:"1px solid #e2e8f0",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
             </div>
             <div style={{fontSize:17,fontWeight:500,color:"#0f172a",marginBottom:8}}>90-Day Action Plan</div>
             <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>Get a phased roadmap with specific content, platform, and technical actions tied to projected improvements.</div>
@@ -3010,13 +3010,13 @@ function LandingPage({ onGetStarted }) {
             <div style={{animation:"fadeInUp .5s ease-out"}}>
               <div style={{background:"#fff",borderRadius:12,boxShadow:"0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.06)",border:"1px solid #e2e8f0",overflow:"hidden"}}>
                 <div style={{display:"flex",alignItems:"center",gap:6,padding:"10px 16px",background:"#fafafa",borderBottom:"1px solid #f1f5f9"}}>
-                  <div style={{width:7,height:7,borderRadius:"50%",background:"#e2e8f0"}}/>
-                  <div style={{width:7,height:7,borderRadius:"50%",background:"#e2e8f0"}}/>
-                  <div style={{width:7,height:7,borderRadius:"50%",background:"#e2e8f0"}}/>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:"#ef4444",opacity:0.7}}/>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:"#f59e0b",opacity:0.7}}/>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:"#22c55e",opacity:0.7}}/>
                   <div style={{flex:1}}/>
                   <div style={{fontSize:9,color:"#94a3b8"}}>{steps[activeStep].title}</div>
                 </div>
-                <div style={{minHeight:320,maxHeight:320,overflow:"hidden"}}>
+                <div style={{minHeight:340}}>
                   {steps[activeStep].visual}
                 </div>
               </div>
