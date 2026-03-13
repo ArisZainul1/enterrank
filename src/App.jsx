@@ -2700,35 +2700,33 @@ function LandingPage({ onGetStarted }) {
     {
       number:"01",title:"Configure",subtitle:"Define your brand context",
       desc:"Enter your brand name, website, region, and industry. EnterRank automatically crawls your website to understand your products and positioning. Add competitors for head-to-head comparison, then select from AI-generated audience archetypes that represent your key customer segments. These archetypes drive the 15 real queries across 5 engines your audit will test.",
-      color:"#2563eb",
+      color:"#3b82f6",
       visual:(
-        <div style={{display:"flex",flexDirection:"column",gap:10,padding:24}}>
-          <div style={{display:"flex",gap:8}}>
-            <div style={{flex:1,padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
-              <div style={{fontSize:9,color:"#94a3b8",marginBottom:2}}>Brand Name</div>
-              <div style={{fontSize:13,color:"#0f172a",fontWeight:500}}>Your Brand</div>
-            </div>
-            <div style={{flex:1,padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
-              <div style={{fontSize:9,color:"#94a3b8",marginBottom:2}}>Region</div>
-              <div style={{fontSize:13,color:"#0f172a",fontWeight:500}}>United States</div>
-            </div>
+        <div style={{padding:"24px 28px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+            {[{label:"Brand",value:"Your Brand"},{label:"Region",value:"United States"},{label:"Industry",value:"Technology"},{label:"Website",value:"yourbrand.com"}].map((f,i)=>(
+              <div key={i} style={{padding:"10px 14px",borderRadius:8,border:"1px solid #e2e8f0"}}>
+                <div style={{fontSize:9,color:"#94a3b8",marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>{f.label}</div>
+                <div style={{fontSize:12,color:"#0f172a",fontWeight:500}}>{f.value}</div>
+              </div>
+            ))}
           </div>
-          <div style={{padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
-            <div style={{fontSize:9,color:"#94a3b8",marginBottom:4}}>Detected Competitors</div>
+          <div style={{padding:"12px 14px",borderRadius:8,border:"1px solid #e2e8f0",marginBottom:14}}>
+            <div style={{fontSize:9,color:"#94a3b8",marginBottom:6,textTransform:"uppercase",letterSpacing:".04em"}}>Competitors</div>
             <div style={{display:"flex",gap:6}}>
-              {["Competitor A","Competitor B","Competitor C"].map((c,i)=>(<span key={i} style={{fontSize:11,padding:"3px 10px",background:"#fff",borderRadius:6,border:"1px solid #e2e8f0",color:"#374151"}}>{c}</span>))}
-            </div>
-          </div>
-          <div style={{padding:"10px 14px",background:"#eff6ff",borderRadius:8,border:"1px solid #bfdbfe"}}>
-            <div style={{fontSize:9,color:"#2563eb",marginBottom:4}}>Target Archetypes (ranked)</div>
-            <div style={{display:"flex",flexDirection:"column",gap:4}}>
-              {["Enterprise Decision Maker","Technical Evaluator","Budget-Conscious Buyer"].map((a,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:6}}>
-                  <span style={{width:18,height:18,borderRadius:6,background:"#2563eb",color:"#fff",fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:500}}>{i+1}</span>
-                  <span style={{fontSize:11,color:"#1e40af"}}>{a}</span>
-                </div>
+              {["Competitor A","Competitor B","Competitor C"].map((c,i)=>(
+                <span key={i} style={{fontSize:10,padding:"4px 12px",borderRadius:20,border:"1px solid #e2e8f0",color:"#334155",background:"#fafafa"}}>{c}</span>
               ))}
             </div>
+          </div>
+          <div style={{padding:"12px 14px",borderRadius:8,border:"1px solid #3b82f630",background:"#3b82f605"}}>
+            <div style={{fontSize:9,color:"#3b82f6",marginBottom:8,textTransform:"uppercase",letterSpacing:".04em"}}>Target Audiences</div>
+            {["Enterprise Decision Maker","Technical Evaluator","Budget-Conscious Buyer"].map((a,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0"}}>
+                <span style={{width:20,height:20,borderRadius:6,background:"#3b82f6",color:"#fff",fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:500,flexShrink:0}}>{i+1}</span>
+                <span style={{fontSize:11,color:"#334155"}}>{a}</span>
+              </div>
+            ))}
           </div>
         </div>
       )
@@ -2736,75 +2734,72 @@ function LandingPage({ onGetStarted }) {
     {
       number:"02",title:"Test",subtitle:"Live queries on 5 AI engines",
       desc:"Each of your 15 topics is sent as a real query to ChatGPT, Gemini, Perplexity, Google AI Overview, and Claude. That\u2019s 75 live data points collected in under three minutes. Every response is captured in full, including citation URLs and source references.",
-      color:"#059669",
+      color:"#3b82f6",
       visual:(
-        <div style={{padding:24}}>
-          <div style={{display:"flex",justifyContent:"center",gap:16,marginBottom:20}}>
-            {[{name:"ChatGPT",color:"#10A37F"},{name:"Gemini",color:"#4285F4"},{name:"Perplexity",color:"#20808D"},{name:"Google AI",color:"#EA4335"},{name:"Claude",color:"#D97706"}].map((e,i)=>(
-              <div key={i} style={{textAlign:"center"}}>
-                <div style={{width:40,height:40,borderRadius:10,background:e.color+"15",border:"1px solid "+e.color+"30",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 6px"}}>
-                  <div style={{width:12,height:12,borderRadius:"50%",background:e.color}}/>
-                </div>
-                <div style={{fontSize:10,color:e.color,fontWeight:500}}>{e.name}</div>
+        <div style={{padding:"24px 28px"}}>
+          <div style={{display:"flex",gap:6,marginBottom:18}}>
+            {[{name:"ChatGPT",done:true},{name:"Gemini",done:true},{name:"Perplexity",done:false},{name:"Google AI",done:false},{name:"Claude",done:false}].map((e,i)=>(
+              <div key={i} style={{flex:1,textAlign:"center",padding:"8px 4px",borderRadius:8,border:"1px solid #e2e8f0",background:e.done?"#3b82f608":"#fff"}}>
+                <div style={{fontSize:9,color:e.done?"#3b82f6":"#94a3b8",fontWeight:500}}>{e.name}</div>
+                <div style={{fontSize:8,color:e.done?"#3b82f6":"#cbd5e1",marginTop:3}}>{e.done?"Done":"Queued"}</div>
               </div>
             ))}
           </div>
-          <div style={{display:"flex",flexDirection:"column",gap:6}}>
-            {["Best project management tools for remote teams","Compare top CRM platforms for startups","Most reliable cloud hosting providers 2026"].map((q,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
-                <div style={{width:6,height:6,borderRadius:3,background:i===0?"#059669":"#e2e8f0"}}/>
-                <span style={{fontSize:11,color:"#64748b",flex:1}}>{q}</span>
-                <span style={{fontSize:9,color:"#059669",fontWeight:500}}>{i===0?"Testing...":"Queued"}</span>
-              </div>
-            ))}
+          {[{q:"Best project management tools for teams",done:true},{q:"Compare top CRM platforms for startups",done:true},{q:"Most reliable cloud hosting providers",done:false},{q:"Enterprise security solutions comparison",done:false},{q:"Top analytics platforms for mid-size companies",done:false}].map((item,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<4?"1px solid #f1f5f9":"none"}}>
+              <div style={{width:6,height:6,borderRadius:"50%",background:item.done?"#3b82f6":"#e2e8f0",flexShrink:0}}/>
+              <span style={{fontSize:11,color:"#475569",flex:1}}>{item.q}</span>
+              <span style={{fontSize:9,color:item.done?"#3b82f6":"#cbd5e1",fontWeight:500}}>{item.done?"5/5":"0/5"}</span>
+            </div>
+          ))}
+          <div style={{marginTop:14}}>
+            <div style={{height:3,borderRadius:2,background:"#f1f5f9"}}><div style={{width:"40%",height:3,borderRadius:2,background:"#3b82f6"}}/></div>
+            <div style={{fontSize:9,color:"#94a3b8",marginTop:6,textAlign:"center"}}>15 queries across 5 engines</div>
           </div>
-          <div style={{textAlign:"center",marginTop:12,fontSize:10,color:"#94a3b8"}}>15 queries × 5 engines = 75 live data points</div>
         </div>
       )
     },
     {
       number:"03",title:"Analyse",subtitle:"Classify, score, and compare",
       desc:"Responses are classified as Cited, Mentioned, or Absent for each engine. Scores are weighted by estimated engine market share in your region, so your visibility score reflects how real users discover brands through AI.",
-      color:"#8b5cf6",
+      color:"#3b82f6",
       visual:(
-        <div style={{padding:24}}>
-          <div style={{display:"flex",gap:8,marginBottom:16}}>
-            {[{label:"Cited",count:8,color:"#dcfce7",textColor:"#166534"},{label:"Mentioned",count:4,color:"#dbeafe",textColor:"#1e40af"},{label:"Absent",count:3,color:"#fee2e2",textColor:"#991b1b"}].map((s,i)=>(
-              <div key={i} style={{flex:1,textAlign:"center",padding:"12px 8px",background:s.color,borderRadius:8}}>
-                <div style={{fontSize:20,fontWeight:500,color:s.textColor}}>{s.count}</div>
-                <div style={{fontSize:10,color:s.textColor}}>{s.label}</div>
+        <div style={{padding:"24px 28px"}}>
+          <div style={{display:"flex",gap:8,marginBottom:18}}>
+            {[{label:"Cited",count:43,pct:"57%"},{label:"Mentioned",count:12,pct:"16%"},{label:"Absent",count:20,pct:"27%"}].map((s,i)=>(
+              <div key={i} style={{flex:1,textAlign:"center",padding:"12px 8px",borderRadius:8,border:"1px solid #e2e8f0",background:i===0?"#3b82f608":"#fff"}}>
+                <div style={{fontSize:18,fontWeight:500,color:i===0?"#3b82f6":"#0f172a"}}>{s.count}</div>
+                <div style={{fontSize:9,color:"#64748b",marginTop:2}}>{s.label} ({s.pct})</div>
               </div>
             ))}
           </div>
-          <div style={{marginBottom:12}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:10,color:"#64748b"}}>Your Brand</span><span style={{fontSize:10,fontWeight:500,color:"#0f172a"}}>62%</span></div>
-            <div style={{height:6,borderRadius:3,background:"#e2e8f0"}}><div style={{width:"62%",height:6,borderRadius:3,background:"#2563eb"}}/></div>
-          </div>
-          <div>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:10,color:"#64748b"}}>Competitor A</span><span style={{fontSize:10,fontWeight:500,color:"#0f172a"}}>78%</span></div>
-            <div style={{height:6,borderRadius:3,background:"#e2e8f0"}}><div style={{width:"78%",height:6,borderRadius:3,background:"#f97316"}}/></div>
-          </div>
-          <div style={{textAlign:"center",marginTop:12,fontSize:10,color:"#94a3b8"}}>Weighted by regional engine market share</div>
+          <div style={{fontSize:9,color:"#94a3b8",marginBottom:10,textTransform:"uppercase",letterSpacing:".04em"}}>Visibility Comparison</div>
+          {[{name:"Your Brand",score:72},{name:"Competitor A",score:65},{name:"Competitor B",score:58},{name:"Competitor C",score:41}].map((b,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+              <span style={{fontSize:10,color:"#64748b",width:85,textAlign:"right"}}>{b.name}</span>
+              <div style={{flex:1,height:6,borderRadius:3,background:"#f1f5f9"}}><div style={{width:b.score+"%",height:6,borderRadius:3,background:i===0?"#3b82f6":"#cbd5e1"}}/></div>
+              <span style={{fontSize:10,fontWeight:500,color:"#0f172a",width:30}}>{b.score}%</span>
+            </div>
+          ))}
+          <div style={{textAlign:"center",marginTop:12,fontSize:9,color:"#94a3b8"}}>Weighted by regional engine market share</div>
         </div>
       )
     },
     {
       number:"04",title:"Optimise",subtitle:"Actionable strategy backed by evidence",
       desc:"Review key findings with specific actions, sentiment analysis, citation source mapping, and competitive share of voice. Export a 90-day transformation roadmap your team can start executing on day one.",
-      color:"#d97706",
+      color:"#3b82f6",
       visual:(
-        <div style={{padding:24}}>
-          <div style={{padding:"12px 16px",background:"#f0fdf4",borderRadius:8,borderLeft:"3px solid #059669",marginBottom:10}}>
-            <div style={{fontSize:10,fontWeight:500,color:"#166534",marginBottom:2}}>Key Finding</div>
-            <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Your brand is absent from 40% of recommendation queries. Competitor A is cited in all of them.</div>
-          </div>
-          <div style={{padding:"12px 16px",background:"#eff6ff",borderRadius:8,borderLeft:"3px solid #2563eb",marginBottom:10}}>
-            <div style={{fontSize:10,fontWeight:500,color:"#1e40af",marginBottom:2}}>Action</div>
-            <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Create comparison guide targeting high-intent recommendation queries with structured data and feature breakdowns.</div>
-          </div>
-          <div style={{padding:"12px 16px",background:"#fef3c7",borderRadius:8,borderLeft:"3px solid #d97706"}}>
-            <div style={{fontSize:10,fontWeight:500,color:"#92400e",marginBottom:2}}>Citation Gap</div>
-            <div style={{fontSize:11,color:"#374151",lineHeight:1.5}}>Competitors are cited via industry publications and review platforms. Your brand has no presence on either.</div>
+        <div style={{padding:"24px 28px"}}>
+          {[{type:"Key Finding",text:"Your brand is absent from 40% of recommendation queries. Competitor A appears in all of them.",border:"#3b82f6",label:"#3b82f6"},{type:"Priority Action",text:"Create a comparison guide targeting high-intent queries with structured data and feature breakdowns.",border:"#0f172a",label:"#0f172a"},{type:"Citation Gap",text:"Competitors are cited via industry publications and review platforms where your brand has no presence.",border:"#94a3b8",label:"#64748b"}].map((item,i)=>(
+            <div key={i} style={{padding:"14px 16px",marginBottom:10,borderRadius:8,border:"1px solid #e2e8f0",borderLeft:"3px solid "+item.border}}>
+              <div style={{fontSize:9,fontWeight:500,color:item.label,marginBottom:4,textTransform:"uppercase",letterSpacing:".04em"}}>{item.type}</div>
+              <div style={{fontSize:11,color:"#334155",lineHeight:1.6}}>{item.text}</div>
+            </div>
+          ))}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:6,padding:"10px",borderRadius:8,border:"1px solid #e2e8f0"}}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            <span style={{fontSize:10,color:"#64748b"}}>Export full report as PDF</span>
           </div>
         </div>
       )
@@ -2968,38 +2963,41 @@ function LandingPage({ onGetStarted }) {
       <div id="section-how" style={{padding:"100px 48px"}}>
         <div style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{textAlign:"center",marginBottom:48}}>
-            <div style={{fontSize:12,fontWeight:500,color:"#2563eb",letterSpacing:".08em",textTransform:"uppercase",marginBottom:12}}>How It Works</div>
+            <div style={{fontSize:12,fontWeight:500,color:"#3b82f6",letterSpacing:".08em",textTransform:"uppercase",marginBottom:12}}>How It Works</div>
             <h2 style={{fontSize:32,fontWeight:500,color:"#0f172a",letterSpacing:"-.03em",margin:"0 0 12px"}}>Four steps from setup to strategy</h2>
-            <p style={{fontSize:14,color:"#64748b",maxWidth:520,margin:"0 auto"}}>EnterRank tests real queries on 4 live AI engines, classifies every response, and delivers actionable insights grounded in data, not guesses.</p>
+            <p style={{fontSize:14,color:"#64748b",maxWidth:520,margin:"0 auto"}}>EnterRank tests real queries on 5 live AI engines, classifies every response, and delivers actionable insights grounded in data, not guesses.</p>
           </div>
           <div style={{display:"flex",justifyContent:"center",gap:0,marginBottom:40}}>
             {steps.map((step,i)=>(
-              <div key={i} onClick={()=>{setActiveStep(i);setAutoPlay(false);}} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 24px",cursor:"pointer",borderBottom:activeStep===i?"2px solid "+step.color:"2px solid transparent",transition:"all .2s"}}>
-                <span style={{fontSize:11,fontWeight:500,color:activeStep===i?step.color:"#94a3b8",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{step.number}</span>
+              <div key={i} onClick={()=>{setActiveStep(i);setAutoPlay(false);}} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 24px",cursor:"pointer",borderBottom:activeStep===i?"2px solid #3b82f6":"2px solid transparent",transition:"all .2s"}}>
+                <span style={{fontSize:11,fontWeight:500,color:activeStep===i?"#3b82f6":"#94a3b8",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{step.number}</span>
                 <span style={{fontSize:13,fontWeight:activeStep===i?500:400,color:activeStep===i?"#0f172a":"#94a3b8"}}>{step.title}</span>
               </div>
             ))}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:40,alignItems:"center"}} key={activeStep}>
             <div style={{animation:"fadeInUp .4s ease-out"}}>
-              <div style={{fontSize:12,fontWeight:500,color:steps[activeStep].color,marginBottom:8}}>{steps[activeStep].subtitle}</div>
+              <div style={{fontSize:12,fontWeight:500,color:"#3b82f6",marginBottom:8}}>{steps[activeStep].subtitle}</div>
               <h3 style={{fontSize:22,fontWeight:500,color:"#0f172a",margin:"0 0 16px",letterSpacing:"-.02em"}}>{steps[activeStep].title}</h3>
               <p style={{fontSize:14,color:"#64748b",lineHeight:1.8,margin:0}}>{steps[activeStep].desc}</p>
             </div>
             <div style={{animation:"fadeInUp .5s ease-out"}}>
-              <div style={{background:"#fff",borderRadius:16,border:"1px solid #e2e8f0",boxShadow:"0 8px 32px rgba(0,0,0,0.04)",overflow:"hidden"}}>
-                <div style={{padding:"10px 16px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:6}}>
-                  <div style={{width:8,height:8,borderRadius:"50%",background:"#ef4444"}}/>
-                  <div style={{width:8,height:8,borderRadius:"50%",background:"#f59e0b"}}/>
-                  <div style={{width:8,height:8,borderRadius:"50%",background:"#22c55e"}}/>
-                  <span style={{fontSize:10,color:"#94a3b8",marginLeft:8}}>Step {steps[activeStep].number}: {steps[activeStep].title}</span>
+              <div style={{background:"#fff",borderRadius:12,boxShadow:"0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.06)",border:"1px solid #e2e8f0",overflow:"hidden"}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,padding:"10px 16px",background:"#fafafa",borderBottom:"1px solid #f1f5f9"}}>
+                  <div style={{width:7,height:7,borderRadius:"50%",background:"#e2e8f0"}}/>
+                  <div style={{width:7,height:7,borderRadius:"50%",background:"#e2e8f0"}}/>
+                  <div style={{width:7,height:7,borderRadius:"50%",background:"#e2e8f0"}}/>
+                  <div style={{flex:1}}/>
+                  <div style={{fontSize:9,color:"#94a3b8"}}>{steps[activeStep].title}</div>
                 </div>
-                {steps[activeStep].visual}
+                <div style={{minHeight:300}}>
+                  {steps[activeStep].visual}
+                </div>
               </div>
             </div>
           </div>
           <div style={{display:"flex",justifyContent:"center",gap:8,marginTop:32}}>
-            {steps.map((s,i)=>(<div key={i} onClick={()=>{setActiveStep(i);setAutoPlay(false);}} style={{width:activeStep===i?24:8,height:8,borderRadius:4,background:activeStep===i?s.color:"#e2e8f0",cursor:"pointer",transition:"all .3s"}}/>))}
+            {steps.map((s,i)=>(<div key={i} onClick={()=>{setActiveStep(i);setAutoPlay(false);}} style={{width:activeStep===i?24:8,height:8,borderRadius:4,background:activeStep===i?"#3b82f6":"#e2e8f0",cursor:"pointer",transition:"all .3s"}}/>))}
           </div>
         </div>
       </div>
