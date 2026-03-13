@@ -305,6 +305,18 @@ async function callPerplexity(query, systemPrompt, temperature){
   }
 }
 
+async function callClaude(prompt, temperature=0){
+  try{
+    const __token=await getAuthToken();const res=await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,...(temperature!==undefined?{temperature}:{})})});
+    if(!res.ok)return{text:"",response:"",usage:null};
+    const data=await res.json();
+    return{text:data.text||"",response:data.text||"",usage:data.usage||null};
+  }catch(e){
+    console.error("Claude call failed:",e);
+    return{text:"",response:"",usage:null};
+  }
+}
+
 async function callGoogleAI(query, region){
   try{
     const __token=await getAuthToken();const res=await fetch("/api/serpapi",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({query,region:region||""})});
