@@ -19,31 +19,31 @@ const GeminiLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 2
 const C={bg:"#f8f9fb",surface:"#ffffff",border:"#e2e8f0",borderSoft:"#f0f2f5",text:"#111827",sub:"#4b5563",muted:"#9ca3af",accent:"#2563eb",green:"#059669",amber:"#d97706",red:"#dc2626",r:12,rs:8};
 const CARD={base:{background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:"20px 24px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",transition:"all 0.15s ease"},hover:{boxShadow:"0 4px 12px rgba(0,0,0,0.07)",borderColor:"#cbd5e1",transform:"translateY(-1px)"}};
 const ENGINE_WEIGHTS={
-  "Global":{chatgpt:0.35,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.04},
-  "United States":{chatgpt:0.38,googleai:0.33,gemini:0.16,perplexity:0.07,claude:0.06},
-  "United Kingdom":{chatgpt:0.38,googleai:0.33,gemini:0.16,perplexity:0.07,claude:0.06},
-  "Canada":{chatgpt:0.37,googleai:0.34,gemini:0.16,perplexity:0.07,claude:0.06},
-  "Australia":{chatgpt:0.37,googleai:0.34,gemini:0.16,perplexity:0.07,claude:0.06},
-  "Malaysia":{chatgpt:0.32,googleai:0.40,gemini:0.20,perplexity:0.04,claude:0.04},
-  "Singapore":{chatgpt:0.33,googleai:0.38,gemini:0.20,perplexity:0.05,claude:0.04},
-  "Indonesia":{chatgpt:0.30,googleai:0.42,gemini:0.20,perplexity:0.04,claude:0.04},
-  "Thailand":{chatgpt:0.30,googleai:0.42,gemini:0.20,perplexity:0.04,claude:0.04},
-  "Philippines":{chatgpt:0.32,googleai:0.40,gemini:0.20,perplexity:0.04,claude:0.04},
-  "Vietnam":{chatgpt:0.30,googleai:0.42,gemini:0.20,perplexity:0.04,claude:0.04},
-  "Southeast Asia":{chatgpt:0.32,googleai:0.40,gemini:0.20,perplexity:0.04,claude:0.04},
-  "India":{chatgpt:0.35,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.04},
-  "Japan":{chatgpt:0.36,googleai:0.36,gemini:0.18,perplexity:0.05,claude:0.05},
-  "South Korea":{chatgpt:0.36,googleai:0.36,gemini:0.18,perplexity:0.05,claude:0.05},
-  "China":{chatgpt:0.30,googleai:0.35,gemini:0.20,perplexity:0.05,claude:0.10},
-  "Germany":{chatgpt:0.38,googleai:0.34,gemini:0.16,perplexity:0.06,claude:0.06},
-  "France":{chatgpt:0.38,googleai:0.34,gemini:0.16,perplexity:0.06,claude:0.06},
-  "Europe":{chatgpt:0.38,googleai:0.34,gemini:0.16,perplexity:0.06,claude:0.06},
-  "Middle East":{chatgpt:0.35,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.04},
-  "UAE":{chatgpt:0.35,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.04},
-  "Saudi Arabia":{chatgpt:0.35,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.04},
-  "Brazil":{chatgpt:0.36,googleai:0.36,gemini:0.18,perplexity:0.05,claude:0.05},
-  "Africa":{chatgpt:0.35,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.04},
-  "Asia Pacific":{chatgpt:0.33,googleai:0.38,gemini:0.20,perplexity:0.05,claude:0.04}
+  "Global":{chatgpt:0.36,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.03},
+  "United States":{chatgpt:0.39,googleai:0.33,gemini:0.16,perplexity:0.07,claude:0.05},
+  "United Kingdom":{chatgpt:0.39,googleai:0.33,gemini:0.16,perplexity:0.07,claude:0.05},
+  "Canada":{chatgpt:0.38,googleai:0.34,gemini:0.16,perplexity:0.07,claude:0.05},
+  "Australia":{chatgpt:0.38,googleai:0.34,gemini:0.16,perplexity:0.07,claude:0.05},
+  "Malaysia":{chatgpt:0.33,googleai:0.40,gemini:0.20,perplexity:0.04,claude:0.03},
+  "Singapore":{chatgpt:0.34,googleai:0.38,gemini:0.20,perplexity:0.05,claude:0.03},
+  "Indonesia":{chatgpt:0.31,googleai:0.42,gemini:0.20,perplexity:0.04,claude:0.03},
+  "Thailand":{chatgpt:0.31,googleai:0.42,gemini:0.20,perplexity:0.04,claude:0.03},
+  "Philippines":{chatgpt:0.33,googleai:0.40,gemini:0.20,perplexity:0.04,claude:0.03},
+  "Vietnam":{chatgpt:0.31,googleai:0.42,gemini:0.20,perplexity:0.04,claude:0.03},
+  "Southeast Asia":{chatgpt:0.33,googleai:0.40,gemini:0.20,perplexity:0.04,claude:0.03},
+  "India":{chatgpt:0.36,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.03},
+  "Japan":{chatgpt:0.37,googleai:0.36,gemini:0.18,perplexity:0.05,claude:0.04},
+  "South Korea":{chatgpt:0.37,googleai:0.36,gemini:0.18,perplexity:0.05,claude:0.04},
+  "China":{chatgpt:0.30,googleai:0.35,gemini:0.20,perplexity:0.06,claude:0.09},
+  "Germany":{chatgpt:0.39,googleai:0.34,gemini:0.16,perplexity:0.06,claude:0.05},
+  "France":{chatgpt:0.39,googleai:0.34,gemini:0.16,perplexity:0.06,claude:0.05},
+  "Europe":{chatgpt:0.39,googleai:0.34,gemini:0.16,perplexity:0.06,claude:0.05},
+  "Middle East":{chatgpt:0.36,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.03},
+  "UAE":{chatgpt:0.36,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.03},
+  "Saudi Arabia":{chatgpt:0.36,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.03},
+  "Brazil":{chatgpt:0.37,googleai:0.36,gemini:0.18,perplexity:0.05,claude:0.04},
+  "Africa":{chatgpt:0.36,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.03},
+  "Asia Pacific":{chatgpt:0.34,googleai:0.38,gemini:0.20,perplexity:0.05,claude:0.03}
 };
 function getEngineWeights(region){
   if(!region)return ENGINE_WEIGHTS["Global"];
@@ -324,8 +324,10 @@ async function callClaude(prompt, temperature=0){
 async function callGoogleAI(prompt, temperature=0){
   try{
     const __token=await getAuthToken();const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),60000);
-    const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,temperature,model:"gemini-2.5-pro",maxOutputTokens:1024}),signal:controller.signal});
-    clearTimeout(timeout);const data=await res.json();
+    const res=await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+__token},body:JSON.stringify({prompt,temperature,model:"gemini-2.5-pro-preview-05-06",maxOutputTokens:1024}),signal:controller.signal});
+    clearTimeout(timeout);
+    if(!res.ok){const errorText=await res.text();console.error("Google AI Overview error:",res.status,errorText);return{text:"",response:"",citations:[],usage:null};}
+    const data=await res.json();
     return{text:data.text||"",response:data.text||"",citations:data.citations||[],usage:data.usage||null};
   }catch(e){console.error("Google AI (Gemini Pro) call failed:",e);return{text:"",response:"",citations:[],usage:null};}
 }
