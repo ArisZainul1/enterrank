@@ -575,6 +575,23 @@ async function runRealAudit(cd, onProgress){
   let queryArchetypeMap = {};
   _resetTokenUsage();
 
+  // Build brand name variations for detection
+  const _suffixes=[" insurance"," group"," bank"," corp"," corporation"," inc"," ltd"," limited"," co"," company"," technologies"," technology"," solutions"," services"," holdings"," international"," global"," plc"," sdn bhd"," berhad"];
+  const _prefixes=["the ","pt ","pt. "];
+  function _buildVariations(name,website){
+    const vars=[name.toLowerCase()];
+    const nl=name.toLowerCase();
+    _suffixes.forEach(s=>{if(nl.endsWith(s))vars.push(nl.replace(s,"").trim());});
+    _prefixes.forEach(p=>{if(nl.startsWith(p))vars.push(nl.replace(p,"").trim());});
+    const words=name.split(/\s+/).filter(w=>w.length>1);
+    if(words.length>=2){const acr=words.map(w=>w[0]).join("").toUpperCase();if(acr.length>=2&&acr.length<=6)vars.push(acr.toLowerCase());}
+    vars.push(nl.replace(/\s+/g,""));
+    if(website){try{const dp=new URL(website.startsWith("http")?website:"https://"+website).hostname.replace("www.","").split(".");if(dp[0].length>=2)vars.push(dp[0].toLowerCase());}catch(e){}}
+    return[...new Set(vars)].filter(v=>v.length>=2);
+  }
+  const uniqueVariations=_buildVariations(brand,cd.website);
+  console.log("[BrandDetection] Variations for '"+brand+"':",uniqueVariations);
+
   // ── Step 1: Crawl brand website AND competitor websites ──
   onProgress("Crawling brand website...",2);
   let brandCrawl=null;
@@ -607,19 +624,23 @@ async function runRealAudit(cd, onProgress){
   const allBrandNames = [brand, ...compNames.filter(n => n)].slice(0, 6);
 
   // Build detection helpers
-  const buildDetectors = (brandName, website) => {
-    const escaped = brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const nameRegex = new RegExp('\\b' + escaped + '\\b', 'i');
+  const buildDetectors = (brandName, website, variations) => {
+    const allNames = variations && variations.length > 0 ? variations : [brandName.toLowerCase()];
+    const escapedNames = allNames.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const nameRegex = new RegExp('\\b(' + escapedNames.join('|') + ')\\b', 'i');
     let domain = "";
     if (website) {
-      try { domain = new URL(website.startsWith("http") ? website : "https://" + website).hostname.replace("www.", ""); } catch(e) {}
+      try { domain = new URL(website.startsWith("http") ? website : "https://" + website).hostname.replace("www.", "").toLowerCase(); } catch(e) {}
     }
-    return { nameRegex, domain, brandName };
+    return { nameRegex, domain, brandName, variations: allNames };
   };
 
   const brandDetectors = allBrandNames.map((name, i) => {
     const compObj = i === 0 ? { website: cd.website } : (cd.competitors || []).find(c => (typeof c === "string" ? c : c.name) === name);
-    return buildDetectors(name, (typeof compObj === "object" ? compObj.website : "") || "");
+    const ws = (typeof compObj === "object" ? compObj.website : "") || "";
+    const vars = i === 0 ? uniqueVariations : _buildVariations(name, ws);
+    if (i > 0) console.log("[BrandDetection] Variations for '" + name + "':", vars);
+    return buildDetectors(name, ws, vars);
   });
 
   function classifyResponse(responseText, detector, citationUrls) {
@@ -644,7 +665,8 @@ async function runRealAudit(cd, onProgress){
     // If brand's domain in text — Cited
     if (textUrlFound) return { status: "Cited", confidence: "high" };
 
-    const bn = detector.brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const bnVariations = (detector.variations || [detector.brandName.toLowerCase()]).map(v => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const bn = '(?:' + bnVariations.join('|') + ')';
 
     // Quick check: brand is #1 in a numbered list
     const numListMatch = text.match(/(?:^|\n)\s*1[\.\)]\s*\*?\*?([^\n]{5,100})/m);
@@ -1081,8 +1103,8 @@ Return JSON only:
   await Promise.all([
   // ── Sentiment Analysis — comprehensive analysis of ALL responses ──
   (async()=>{try{
-    const brandEscaped=brand.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-    const brandRegex=new RegExp('\\b'+brandEscaped+'\\b','i');
+    const _sentimentVars=uniqueVariations.map(v=>v.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+    const brandRegex=new RegExp('\\b('+_sentimentVars.join('|')+')\\b','i');
     const positivePatterns=/\b(recommend|excellent|leading|best|top|innovative|reliable|trusted|strong|great|popular|preferred|outstanding|impressive|affordable|competitive|comprehensive|advanced|superior|premium|award|efficient)\b/i;
     const negativePatterns=/\b(expensive|poor|slow|lack|behind|weak|complaint|issue|problem|criticism|drawback|limitation|costly|overpriced|disappointing|outdated|unreliable|inferior|struggling)\b/i;
     const allResponses=[
