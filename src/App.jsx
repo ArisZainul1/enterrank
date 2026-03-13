@@ -19,29 +19,31 @@ const GeminiLogo=({size=24})=>(<svg width={size} height={size} viewBox="0 0 24 2
 const C={bg:"#f8f9fb",surface:"#ffffff",border:"#e2e8f0",borderSoft:"#f0f2f5",text:"#111827",sub:"#4b5563",muted:"#9ca3af",accent:"#2563eb",green:"#059669",amber:"#d97706",red:"#dc2626",r:12,rs:8};
 const CARD={base:{background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:"20px 24px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",transition:"all 0.15s ease"},hover:{boxShadow:"0 4px 12px rgba(0,0,0,0.07)",borderColor:"#cbd5e1",transform:"translateY(-1px)"}};
 const ENGINE_WEIGHTS={
-  "Global":{chatgpt:0.45,gemini:0.20,perplexity:0.03,googleai:0.32},
-  "United States":{chatgpt:0.42,gemini:0.15,perplexity:0.06,googleai:0.37},
-  "United Kingdom":{chatgpt:0.40,gemini:0.18,perplexity:0.06,googleai:0.36},
-  "Malaysia":{chatgpt:0.38,gemini:0.22,perplexity:0.04,googleai:0.36},
-  "Singapore":{chatgpt:0.37,gemini:0.23,perplexity:0.04,googleai:0.36},
-  "Indonesia":{chatgpt:0.35,gemini:0.25,perplexity:0.04,googleai:0.36},
-  "India":{chatgpt:0.40,gemini:0.20,perplexity:0.04,googleai:0.36},
-  "Australia":{chatgpt:0.40,gemini:0.18,perplexity:0.06,googleai:0.36},
-  "Germany":{chatgpt:0.38,gemini:0.20,perplexity:0.06,googleai:0.36},
-  "France":{chatgpt:0.38,gemini:0.20,perplexity:0.06,googleai:0.36},
-  "Japan":{chatgpt:0.40,gemini:0.20,perplexity:0.04,googleai:0.36},
-  "South Korea":{chatgpt:0.37,gemini:0.22,perplexity:0.05,googleai:0.36},
-  "Brazil":{chatgpt:0.42,gemini:0.18,perplexity:0.04,googleai:0.36},
-  "Canada":{chatgpt:0.40,gemini:0.16,perplexity:0.07,googleai:0.37},
-  "UAE":{chatgpt:0.38,gemini:0.22,perplexity:0.05,googleai:0.35},
-  "Saudi Arabia":{chatgpt:0.38,gemini:0.22,perplexity:0.05,googleai:0.35},
-  "Philippines":{chatgpt:0.37,gemini:0.23,perplexity:0.04,googleai:0.36},
-  "Thailand":{chatgpt:0.36,gemini:0.24,perplexity:0.04,googleai:0.36},
-  "Vietnam":{chatgpt:0.35,gemini:0.25,perplexity:0.04,googleai:0.36},
-  "Europe":{chatgpt:0.38,gemini:0.20,perplexity:0.06,googleai:0.36},
-  "Southeast Asia":{chatgpt:0.36,gemini:0.24,perplexity:0.04,googleai:0.36},
-  "Middle East":{chatgpt:0.38,gemini:0.22,perplexity:0.05,googleai:0.35},
-  "Asia Pacific":{chatgpt:0.38,gemini:0.22,perplexity:0.04,googleai:0.36}
+  "Global":{chatgpt:0.35,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.04},
+  "United States":{chatgpt:0.38,googleai:0.33,gemini:0.16,perplexity:0.07,claude:0.06},
+  "United Kingdom":{chatgpt:0.38,googleai:0.33,gemini:0.16,perplexity:0.07,claude:0.06},
+  "Canada":{chatgpt:0.37,googleai:0.34,gemini:0.16,perplexity:0.07,claude:0.06},
+  "Australia":{chatgpt:0.37,googleai:0.34,gemini:0.16,perplexity:0.07,claude:0.06},
+  "Malaysia":{chatgpt:0.32,googleai:0.40,gemini:0.20,perplexity:0.04,claude:0.04},
+  "Singapore":{chatgpt:0.33,googleai:0.38,gemini:0.20,perplexity:0.05,claude:0.04},
+  "Indonesia":{chatgpt:0.30,googleai:0.42,gemini:0.20,perplexity:0.04,claude:0.04},
+  "Thailand":{chatgpt:0.30,googleai:0.42,gemini:0.20,perplexity:0.04,claude:0.04},
+  "Philippines":{chatgpt:0.32,googleai:0.40,gemini:0.20,perplexity:0.04,claude:0.04},
+  "Vietnam":{chatgpt:0.30,googleai:0.42,gemini:0.20,perplexity:0.04,claude:0.04},
+  "Southeast Asia":{chatgpt:0.32,googleai:0.40,gemini:0.20,perplexity:0.04,claude:0.04},
+  "India":{chatgpt:0.35,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.04},
+  "Japan":{chatgpt:0.36,googleai:0.36,gemini:0.18,perplexity:0.05,claude:0.05},
+  "South Korea":{chatgpt:0.36,googleai:0.36,gemini:0.18,perplexity:0.05,claude:0.05},
+  "China":{chatgpt:0.30,googleai:0.35,gemini:0.20,perplexity:0.05,claude:0.10},
+  "Germany":{chatgpt:0.38,googleai:0.34,gemini:0.16,perplexity:0.06,claude:0.06},
+  "France":{chatgpt:0.38,googleai:0.34,gemini:0.16,perplexity:0.06,claude:0.06},
+  "Europe":{chatgpt:0.38,googleai:0.34,gemini:0.16,perplexity:0.06,claude:0.06},
+  "Middle East":{chatgpt:0.35,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.04},
+  "UAE":{chatgpt:0.35,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.04},
+  "Saudi Arabia":{chatgpt:0.35,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.04},
+  "Brazil":{chatgpt:0.36,googleai:0.36,gemini:0.18,perplexity:0.05,claude:0.05},
+  "Africa":{chatgpt:0.35,googleai:0.38,gemini:0.18,perplexity:0.05,claude:0.04},
+  "Asia Pacific":{chatgpt:0.33,googleai:0.38,gemini:0.20,perplexity:0.05,claude:0.04}
 };
 function getEngineWeights(region){
   if(!region)return ENGINE_WEIGHTS["Global"];
@@ -194,13 +196,15 @@ const _tokenUsage = {
   openaiSearch: { input: 0, output: 0, calls: 0 },
   gemini: { input: 0, output: 0, calls: 0 },
   perplexity: { input: 0, output: 0, calls: 0 },
+  claude: { input: 0, output: 0, calls: 0 },
   serpapi: { searches: 0 }
 };
-function _resetTokenUsage(){ _tokenUsage.openai={input:0,output:0,calls:0}; _tokenUsage.openaiSearch={input:0,output:0,calls:0}; _tokenUsage.gemini={input:0,output:0,calls:0}; _tokenUsage.perplexity={input:0,output:0,calls:0}; _tokenUsage.serpapi={searches:0}; }
+function _resetTokenUsage(){ _tokenUsage.openai={input:0,output:0,calls:0}; _tokenUsage.openaiSearch={input:0,output:0,calls:0}; _tokenUsage.gemini={input:0,output:0,calls:0}; _tokenUsage.perplexity={input:0,output:0,calls:0}; _tokenUsage.claude={input:0,output:0,calls:0}; _tokenUsage.serpapi={searches:0}; }
 function _trackOpenAI(usage){ if(!usage)return; _tokenUsage.openai.input+=usage.prompt_tokens||usage.input_tokens||0; _tokenUsage.openai.output+=usage.completion_tokens||usage.output_tokens||0; _tokenUsage.openai.calls++; }
 function _trackOpenAISearch(usage){ if(!usage)return; _tokenUsage.openaiSearch.input+=usage.input_tokens||usage.prompt_tokens||0; _tokenUsage.openaiSearch.output+=usage.output_tokens||usage.completion_tokens||0; _tokenUsage.openaiSearch.calls++; }
 function _trackGemini(usage){ if(!usage)return; _tokenUsage.gemini.input+=usage.promptTokenCount||0; _tokenUsage.gemini.output+=usage.candidatesTokenCount||0; _tokenUsage.gemini.calls++; }
 function _trackPerplexity(usage){ if(!usage)return; _tokenUsage.perplexity.input+=usage.prompt_tokens||0; _tokenUsage.perplexity.output+=usage.completion_tokens||0; _tokenUsage.perplexity.calls++; }
+function _trackClaude(usage){ if(!usage)return; _tokenUsage.claude.input+=usage.input_tokens||0; _tokenUsage.claude.output+=usage.output_tokens||0; _tokenUsage.claude.calls++; }
 
 async function callOpenAI(prompt, systemPrompt="You are an expert AEO analyst.", temperature){
   return callWithRetry(async()=>{
@@ -702,8 +706,9 @@ async function runRealAudit(cd, onProgress){
   }
 
   // Run all three engines simultaneously
-  let gptResponses=[],gemResponses=[],pplxResponses=[],googleAIResponses=[];
+  let gptResponses=[],gemResponses=[],pplxResponses=[],googleAIResponses=[],claudeResponses=[];
   let googleAIData={score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]};
+  let claudeData={score:0,mentionRate:0,citationRate:0,queries:[],strengths:["Analysis unavailable"],weaknesses:["Analysis unavailable"]};
   try{
     const [gR,gmR,pR,gaiR]=await Promise.all([
       runGptSearchBatches(searchQueries, region, 3, 500).catch(e=>{console.error("ChatGPT testing failed:",e.message);return[];}),
@@ -736,7 +741,18 @@ async function runRealAudit(cd, onProgress){
       })().catch(e=>{console.error("Google AI testing failed:",e.message);return[];})
     ]);
     gptResponses=gR||[];gemResponses=gmR||[];pplxResponses=pR||[];googleAIResponses=gaiR||[];
-    const failedEngines=[!gptResponses.length&&"ChatGPT",!gemResponses.length&&"Gemini",!pplxResponses.length&&"Perplexity",!googleAIResponses.length&&"Google AI"].filter(Boolean);
+    try{
+      const claudeTasks=searchQueries.map((q,i)=>async()=>{
+        try{
+          onProgress("Testing on Claude... ("+(i+1)+"/"+searchQueries.length+")",61+Math.round((i/searchQueries.length)*5));
+          const result=await callClaude(typeof q==="string"?q:q.query||"",0);
+          _trackClaude(result.usage);
+          return{query:typeof q==="string"?q:q.query||"",response:result.text||result.response||"",citations:[]};
+        }catch(e){console.error("Claude query failed:",q,e.message);return{query:typeof q==="string"?q:q.query||"",response:"",citations:[]};}
+      });
+      claudeResponses=await runInBatches(claudeTasks,3,500);
+    }catch(e){console.error("Claude engine failed:",e);}
+    const failedEngines=[!gptResponses.length&&"ChatGPT",!gemResponses.length&&"Gemini",!pplxResponses.length&&"Perplexity",!googleAIResponses.length&&"Google AI",!claudeResponses.length&&"Claude"].filter(Boolean);
     if(failedEngines.length>=2)onProgress("Warning: "+failedEngines.join(" and ")+" testing failed, continuing with limited data...",61);
     else if(failedEngines.length===1)onProgress("Warning: "+failedEngines[0]+" testing failed, continuing with other engines...",61);
   }catch(stepError){
@@ -746,7 +762,7 @@ async function runRealAudit(cd, onProgress){
 
   // ── Step 4: Classify responses — scan real text for brand names and URLs ──
   onProgress("Classifying responses...", 62);
-  let gptVisibility={},gemVisibility={},pplxVisibility={},googleAIVisibility={};
+  let gptVisibility={},gemVisibility={},pplxVisibility={},googleAIVisibility={},claudeVisibility={};
   const emptyVis={mentionRate:0,citationRate:0,queries:searchQueries.map(q=>({query:q,status:"Absent",confidence:"fallback"}))};
   try{
 
@@ -781,10 +797,12 @@ async function runRealAudit(cd, onProgress){
   const gemVisRaw = computeVisibility(gemResponses, brandDetectors);
   const pplxVisRaw = computeVisibility(pplxResponses, brandDetectors);
   const gaiVisRaw = computeVisibility(googleAIResponses, brandDetectors);
+  const claudeVisRaw = computeVisibility(claudeResponses, brandDetectors);
   gptVisibility = gptVisRaw.result;
   gemVisibility = gemVisRaw.result;
   pplxVisibility = pplxVisRaw.result;
   googleAIVisibility = gaiVisRaw.result;
+  claudeVisibility = claudeVisRaw.result;
 
   // Batch reclassify ambiguous cases via AI
   async function batchReclassify(ambiguousCases, callFn, visibility) {
@@ -835,11 +853,14 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
   if (gaiVisRaw.ambiguousCases.length > 0) {
     await batchReclassify(gaiVisRaw.ambiguousCases, callOpenAI, googleAIVisibility);
   }
+  if (claudeVisRaw.ambiguousCases.length > 0) {
+    await batchReclassify(claudeVisRaw.ambiguousCases, callOpenAI, claudeVisibility);
+  }
   }catch(stepError){
     console.error("Visibility computation failed:",stepError.message);
     onProgress("Warning: visibility analysis had an issue, continuing...",65);
     const fallbackBrands=[brand,...compNames.filter(n=>n)];
-    fallbackBrands.forEach(n=>{if(!gptVisibility[n])gptVisibility[n]=emptyVis;if(!gemVisibility[n])gemVisibility[n]=emptyVis;if(!pplxVisibility[n])pplxVisibility[n]=emptyVis;if(!googleAIVisibility[n])googleAIVisibility[n]=emptyVis;});
+    fallbackBrands.forEach(n=>{if(!gptVisibility[n])gptVisibility[n]=emptyVis;if(!gemVisibility[n])gemVisibility[n]=emptyVis;if(!pplxVisibility[n])pplxVisibility[n]=emptyVis;if(!googleAIVisibility[n])googleAIVisibility[n]=emptyVis;if(!claudeVisibility[n])claudeVisibility[n]=emptyVis;});
   }
 
   // Build compScoresMap with real data for all competitors
@@ -850,14 +871,16 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
     const gm = gemVisibility[name] || { mentionRate: 0, citationRate: 0 };
     const pv = pplxVisibility[name] || emptyVis;
     const gaiv = googleAIVisibility[name] || emptyVis;
+    const clv = claudeVisibility[name] || emptyVis;
     compScoresMap[name] = {
       gpt: { mentionRate: gv.mentionRate, citationRate: gv.citationRate, score: Math.round(gv.mentionRate * 0.5 + gv.citationRate * 0.5) },
       gemini: { mentionRate: gm.mentionRate, citationRate: gm.citationRate, score: Math.round(gm.mentionRate * 0.5 + gm.citationRate * 0.5) },
       perplexity: { mentionRate: pv.mentionRate, citationRate: pv.citationRate, score: Math.round(pv.mentionRate * 0.5 + pv.citationRate * 0.5) },
       googleai: { mentionRate: gaiv.mentionRate, citationRate: gaiv.citationRate, score: Math.round(gaiv.mentionRate * 0.5 + gaiv.citationRate * 0.5) },
-      avgMentionRate: Math.round((gv.mentionRate + gm.mentionRate + pv.mentionRate + gaiv.mentionRate) / 4),
-      avgCitationRate: Math.round((gv.citationRate + gm.citationRate + pv.citationRate + gaiv.citationRate) / 4),
-      avgScore: Math.round(((gv.mentionRate * 0.5 + gv.citationRate * 0.5) + (gm.mentionRate * 0.5 + gm.citationRate * 0.5) + (pv.mentionRate * 0.5 + pv.citationRate * 0.5) + (gaiv.mentionRate * 0.5 + gaiv.citationRate * 0.5)) / 4)
+      claude: { mentionRate: clv.mentionRate, citationRate: clv.citationRate, score: Math.round(clv.mentionRate * 0.5 + clv.citationRate * 0.5) },
+      avgMentionRate: Math.round((gv.mentionRate + gm.mentionRate + pv.mentionRate + gaiv.mentionRate + clv.mentionRate) / 5),
+      avgCitationRate: Math.round((gv.citationRate + gm.citationRate + pv.citationRate + gaiv.citationRate + clv.citationRate) / 5),
+      avgScore: Math.round(((gv.mentionRate * 0.5 + gv.citationRate * 0.5) + (gm.mentionRate * 0.5 + gm.citationRate * 0.5) + (pv.mentionRate * 0.5 + pv.citationRate * 0.5) + (gaiv.mentionRate * 0.5 + gaiv.citationRate * 0.5) + (clv.mentionRate * 0.5 + clv.citationRate * 0.5)) / 5)
     };
   });
   }catch(e){console.error("Competitor visibility map failed:",e.message||e);}
@@ -869,6 +892,7 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
   const brandGemVis = gemVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
   const brandPplxVis = pplxVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
   const brandGaiVis = googleAIVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
+  const brandClaudeVis = claudeVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
 
   let swGpt={},swGem={};
   try{
@@ -930,6 +954,14 @@ Return JSON only:
       strengths: ["Analysis via Google AI Mode"],
       weaknesses: ["Analysis via Google AI Mode"]
     };
+    claudeData = {
+      score: Math.round(brandClaudeVis.mentionRate * 0.5 + brandClaudeVis.citationRate * 0.5),
+      mentionRate: brandClaudeVis.mentionRate,
+      citationRate: brandClaudeVis.citationRate,
+      queries: brandClaudeVis.queries || [],
+      strengths: ["Analysis via Claude"],
+      weaknesses: ["Analysis via Claude"]
+    };
   }catch(e){console.error("Engine data construction failed:",e.message||e);}
 
   try{
@@ -937,7 +969,8 @@ Return JSON only:
     {id:"chatgpt", ...gptData, queries:(gptData.queries||[]).slice(0,8)},
     {id:"gemini", ...gemData, queries:(gemData.queries||[]).slice(0,8)},
     {id:"perplexity", ...pplxData, queries:(pplxData.queries||[]).slice(0,8)},
-    {id:"googleai", ...googleAIData, queries:(googleAIData.queries||[]).slice(0,8)}
+    {id:"googleai", ...googleAIData, queries:(googleAIData.queries||[]).slice(0,8)},
+    {id:"claude", ...claudeData, queries:(claudeData.queries||[]).slice(0,8)}
   ], painPoints: null };
   accumulated.searchQueries = searchQueries || [];
   accumulated.queryArchetypeMap = queryArchetypeMap || {};
@@ -978,6 +1011,7 @@ Return JSON only:
         if (c.url && !seen.has(c.url)) { seen.add(c.url); citationSources.googleai = citationSources.googleai || []; citationSources.googleai.push({ url: c.url, title: c.title || "", query: r.query }); citationSources.all.push({ url: c.url, title: c.title || "", engine: "googleai", query: r.query }); }
       });
     });
+    citationSources.claude = [];
   } catch(e) { console.error("Citation collection failed:", e); }
   accumulated.citationSources = citationSources;
   try{onProgress("Engine data ready — analyzing sentiment...", null, {...accumulated});}catch(emitErr){console.error("Emission 1 failed:",emitErr);}
@@ -1003,7 +1037,8 @@ Return JSON only:
       ...(gptResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"ChatGPT",query:r.query||""})),
       ...(gemResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"Gemini",query:r.query||""})),
       ...(pplxResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"Perplexity",query:r.query||""})),
-      ...(googleAIResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"Google AI Overview",query:r.query||""}))
+      ...(googleAIResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"Google AI Overview",query:r.query||""})),
+      ...(claudeResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"Claude",query:r.query||""}))
     ];
     const totalResponses=allResponses.length;
     const brandMentions=[];
@@ -1076,7 +1111,8 @@ Return JSON only:
     const gemTexts=(gemResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"Gemini"})).filter(r=>r.text.length>50);
     const pplxTexts=(pplxResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"Perplexity"})).filter(r=>r.text.length>50);
     const gaiTexts=(googleAIResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"Google AI"})).filter(r=>r.text.length>50);
-    const allTexts=[...gptTexts,...gemTexts,...pplxTexts,...gaiTexts];
+    const claudeTexts=(claudeResponses||[]).map(r=>({text:typeof r==="string"?r:(r.response||""),engine:"Claude"})).filter(r=>r.text.length>50);
+    const allTexts=[...gptTexts,...gemTexts,...pplxTexts,...gaiTexts,...claudeTexts];
     const brandLower=brand.toLowerCase();
     const relevantTexts=allTexts.filter(r=>r.text.toLowerCase().includes(brandLower));
     if(relevantTexts.length===0){sentimentSignals={themes:[],summary:"Brand not found in AI engine responses."};return;}
@@ -1588,7 +1624,7 @@ IMPORTANT: Only mark Not Present if you are CERTAIN after searching. If you find
   const contentPrompt=`For "${brand}" in ${industry} (${region}), topics: ${topicList}.
 
 AUDIT DATA TO BASE RECOMMENDATIONS ON:
-- ChatGPT score: ${gptData.score||0}%, Gemini score: ${gemData.score||0}%, Perplexity score: ${pplxData.score||0}%, Google AI score: ${googleAIData.score||0}%
+- ChatGPT score: ${gptData.score||0}%, Gemini score: ${gemData.score||0}%, Perplexity score: ${pplxData.score||0}%, Google AI score: ${googleAIData.score||0}%, Claude score: ${claudeData.score||0}%
 - Critical AEO categories: ${critCats||"none"}
 - Warning categories: ${warnCats||"none"}
 - Channel gaps: ${chGaps||"none"}
@@ -1632,7 +1668,7 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
   (async()=>{
   onProgress("Building 90-day roadmap...",88);
   try{
-  const overallScore=Math.round(((gptData.score||0)+(gemData.score||0)+(pplxData.score||0)+(googleAIData.score||0))/4);
+  const overallScore=Math.round(((gptData.score||0)+(gemData.score||0)+(pplxData.score||0)+(googleAIData.score||0)+(claudeData.score||0))/5);
   const criticalCats=(mergedPainPoints||[]).filter(p=>p.severity==="critical").map(p=>p.label).join(", ");
   const weakCats=(mergedPainPoints||[]).filter(p=>p.severity==="warning").map(p=>p.label).join(", ");
   const channelGaps=(chData.channels||[]).filter(c=>c.status==="Not Present").map(c=>c.channel).join(", ");
@@ -1643,13 +1679,14 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
     const gemStatus=(gemVisibility[brand]?.queries||[])[i]?.status||"Absent";
     const pplxStatus=(pplxVisibility[brand]?.queries||[])[i]?.status||"Absent";
     const gaiStatus=(googleAIVisibility[brand]?.queries||[])[i]?.status||"Absent";
-    return gptStatus==="Absent"&&gemStatus==="Absent"&&pplxStatus==="Absent"&&gaiStatus==="Absent";
+    const claudeStatus=(claudeVisibility[brand]?.queries||[])[i]?.status||"Absent";
+    return gptStatus==="Absent"&&gemStatus==="Absent"&&pplxStatus==="Absent"&&gaiStatus==="Absent"&&claudeStatus==="Absent";
   }).map(q=>typeof q==="string"?q:q.query).slice(0,5);
 
   const absentOnSome=searchQueries.filter((_q,i)=>{
-    const statuses=[(gptVisibility[brand]?.queries||[])[i]?.status||"Absent",(gemVisibility[brand]?.queries||[])[i]?.status||"Absent",(pplxVisibility[brand]?.queries||[])[i]?.status||"Absent",(googleAIVisibility[brand]?.queries||[])[i]?.status||"Absent"];
+    const statuses=[(gptVisibility[brand]?.queries||[])[i]?.status||"Absent",(gemVisibility[brand]?.queries||[])[i]?.status||"Absent",(pplxVisibility[brand]?.queries||[])[i]?.status||"Absent",(googleAIVisibility[brand]?.queries||[])[i]?.status||"Absent",(claudeVisibility[brand]?.queries||[])[i]?.status||"Absent"];
     const absentCount=statuses.filter(s=>s==="Absent").length;
-    return absentCount>0&&absentCount<4;
+    return absentCount>0&&absentCount<5;
   }).map(q=>typeof q==="string"?q:q.query).slice(0,5);
 
   // Missing schema from crawl
@@ -1687,7 +1724,7 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
 
 AUDIT FINDINGS TO ADDRESS:
 - Overall visibility score: ${overallScore}%
-- ChatGPT score: ${gptData.score||0}%, Gemini score: ${gemData.score||0}%, Perplexity score: ${pplxData.score||0}%, Google AI score: ${googleAIData.score||0}%
+- ChatGPT score: ${gptData.score||0}%, Gemini score: ${gemData.score||0}%, Perplexity score: ${pplxData.score||0}%, Google AI score: ${googleAIData.score||0}%, Claude score: ${claudeData.score||0}%
 - Critical categories: ${criticalCats||"none"}
 - Warning categories: ${weakCats||"none"}
 - Missing channels: ${channelGaps||"none"}
@@ -1843,7 +1880,7 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
   try {
     onProgress("Writing executive insights...", 95);
 
-    const allEngineScores = [{name:"ChatGPT",score:gptData.score||0},{name:"Gemini",score:gemData.score||0},{name:"Perplexity",score:pplxData.score||0},{name:"Google AI",score:googleAIData.score||0}].sort((a,b)=>b.score-a.score);
+    const allEngineScores = [{name:"ChatGPT",score:gptData.score||0},{name:"Gemini",score:gemData.score||0},{name:"Perplexity",score:pplxData.score||0},{name:"Google AI",score:googleAIData.score||0},{name:"Claude",score:claudeData.score||0}].sort((a,b)=>b.score-a.score);
     const bestEngine = allEngineScores[0];
     const worstEngine = allEngineScores[allEngineScores.length-1];
     const nCompNames = (compData?.competitors || []).map(c => c.name).filter(n => n).slice(0, 5);
@@ -1854,9 +1891,9 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
     const topCompetitor = compScoresArr[0] || { name: "competitors", score: 0 };
 
     const nWeights = getEngineWeights(region);
-    const overallScore = Math.round((gptData.score||0)*nWeights.chatgpt + (gemData.score||0)*nWeights.gemini + (pplxData.score||0)*nWeights.perplexity + (googleAIData.score||0)*(nWeights.googleai||0));
-    const avgMentions = Math.round((gptData.mentionRate||0)*nWeights.chatgpt + (gemData.mentionRate||0)*nWeights.gemini + (pplxData.mentionRate||0)*nWeights.perplexity);
-    const avgCitations = Math.round((gptData.citationRate||0)*nWeights.chatgpt + (gemData.citationRate||0)*nWeights.gemini + (pplxData.citationRate||0)*nWeights.perplexity);
+    const overallScore = Math.round((gptData.score||0)*nWeights.chatgpt + (gemData.score||0)*nWeights.gemini + (pplxData.score||0)*nWeights.perplexity + (googleAIData.score||0)*(nWeights.googleai||0) + (claudeData.score||0)*(nWeights.claude||0));
+    const avgMentions = Math.round((gptData.mentionRate||0)*nWeights.chatgpt + (gemData.mentionRate||0)*nWeights.gemini + (pplxData.mentionRate||0)*nWeights.perplexity + (claudeData.mentionRate||0)*(nWeights.claude||0));
+    const avgCitations = Math.round((gptData.citationRate||0)*nWeights.chatgpt + (gemData.citationRate||0)*nWeights.gemini + (pplxData.citationRate||0)*nWeights.perplexity + (claudeData.citationRate||0)*(nWeights.claude||0));
 
     const sentLabel = (sentimentData?.brand?.avg || 50) >= 55 ? "positive" : (sentimentData?.brand?.avg || 50) >= 45 ? "neutral" : "negative";
     const themeNames = (sentimentSignals?.themes || []).slice(0, 5).map(t => `${t.name} (${t.sentiment})`).join(", ");
@@ -1877,7 +1914,9 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
       const gptQ = (gptData.queries || [])[i];
       const gemQ = (gemData.queries || [])[i];
       const pplxQ = (pplxData.queries || [])[i];
-      if ((gptQ && gptQ.status !== "Absent") || (gemQ && gemQ.status !== "Absent") || (pplxQ && pplxQ.status !== "Absent")) catBreakdown[cat].visible++;
+      const gaiQ = (googleAIData.queries || [])[i];
+      const claudeQ = (claudeData.queries || [])[i];
+      if ((gptQ && gptQ.status !== "Absent") || (gemQ && gemQ.status !== "Absent") || (pplxQ && pplxQ.status !== "Absent") || (gaiQ && gaiQ.status !== "Absent") || (claudeQ && claudeQ.status !== "Absent")) catBreakdown[cat].visible++;
     });
     const catSummary = Object.entries(catBreakdown).map(([cat, d]) => `${cat}: ${d.visible}/${d.total} visible`).join(", ");
 
@@ -1889,7 +1928,9 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
       const gptQ = (gptData.queries || [])[i];
       const gemQ = (gemData.queries || [])[i];
       const pplxQ = (pplxData.queries || [])[i];
-      return (!gptQ || gptQ.status === "Absent") && (!gemQ || gemQ.status === "Absent") && (!pplxQ || pplxQ.status === "Absent");
+      const gaiQ2 = (googleAIData.queries || [])[i];
+      const claudeQ2 = (claudeData.queries || [])[i];
+      return (!gptQ || gptQ.status === "Absent") && (!gemQ || gemQ.status === "Absent") && (!pplxQ || pplxQ.status === "Absent") && (!gaiQ2 || gaiQ2.status === "Absent") && (!claudeQ2 || claudeQ2.status === "Absent");
     }).map(q => typeof q === "string" ? q : q.query).slice(0, 5);
 
     const citationDomains = [...new Set(
@@ -1904,7 +1945,7 @@ Each department: 3-5 specific tasks that directly address the audit findings abo
 
 AUDIT DATA:
 - Overall visibility score: ${overallScore}%
-- ChatGPT: ${gptData.score||0}% | Gemini: ${gemData.score||0}% | Perplexity: ${pplxData.score||0}% | Google AI: ${googleAIData.score||0}%
+- ChatGPT: ${gptData.score||0}% | Gemini: ${gemData.score||0}% | Perplexity: ${pplxData.score||0}% | Google AI: ${googleAIData.score||0}% | Claude: ${claudeData.score||0}%
 - Best engine: ${bestEngine.name} (${bestEngine.score}%) | Weakest: ${worstEngine.name} (${worstEngine.score}%)
 - Mention rate: ${avgMentions}% | Citation rate: ${avgCitations}%
 - Top competitor: ${topCompetitor.name} at ${topCompetitor.score}%
@@ -1919,7 +1960,7 @@ AUDIT DATA:
 - Strong areas: ${strongPPs.join(", ") || "none"}
 - AI crawler access: ${aiCrawlerSummary || "not checked"}
 - Citation sources referencing brand: ${citationDomains.join(", ") || "none found"}
-- Scoring weights for ${region}: ChatGPT ${Math.round(nWeights.chatgpt*100)}%, Gemini ${Math.round(nWeights.gemini*100)}%, Perplexity ${Math.round(nWeights.perplexity*100)}%, Google AI ${Math.round((nWeights.googleai||0)*100)}% (based on estimated user share in this region)
+- Scoring weights for ${region}: ChatGPT ${Math.round(nWeights.chatgpt*100)}%, Gemini ${Math.round(nWeights.gemini*100)}%, Perplexity ${Math.round(nWeights.perplexity*100)}%, Google AI ${Math.round((nWeights.googleai||0)*100)}%, Claude ${Math.round((nWeights.claude||0)*100)}% (based on estimated user share in this region)
 
 Generate narrative summaries in consultant tone — professional, direct, strategic. No jargon. Speak to a CEO, not a technical SEO person.
 
@@ -1955,17 +1996,18 @@ Rules:
   // ── Token Usage Summary ──
   const tokenUsage = JSON.parse(JSON.stringify(_tokenUsage));
   tokenUsage.total = {
-    input: tokenUsage.openai.input + tokenUsage.openaiSearch.input + tokenUsage.gemini.input + tokenUsage.perplexity.input,
-    output: tokenUsage.openai.output + tokenUsage.openaiSearch.output + tokenUsage.gemini.output + tokenUsage.perplexity.output
+    input: tokenUsage.openai.input + tokenUsage.openaiSearch.input + tokenUsage.gemini.input + tokenUsage.perplexity.input + ((tokenUsage.claude||{}).input||0),
+    output: tokenUsage.openai.output + tokenUsage.openaiSearch.output + tokenUsage.gemini.output + tokenUsage.perplexity.output + ((tokenUsage.claude||{}).output||0)
   };
   const estimatedCost = {
     openai_mini: ((tokenUsage.openai.input * 0.00000015) + (tokenUsage.openai.output * 0.0000006)).toFixed(4),
     openai_search: ((tokenUsage.openaiSearch.input * 0.0000025) + (tokenUsage.openaiSearch.output * 0.00001) + (tokenUsage.openaiSearch.calls * 0.025)).toFixed(4),
     gemini: ((tokenUsage.gemini.input * 0.0000001) + (tokenUsage.gemini.output * 0.0000004)).toFixed(4),
     perplexity: ((tokenUsage.perplexity.input * 0.000003) + (tokenUsage.perplexity.output * 0.000015)).toFixed(4),
+    claude: (((tokenUsage.claude||{}).input||0) * 0.0000008 + ((tokenUsage.claude||{}).output||0) * 0.000004).toFixed(4),
     serpapi: (tokenUsage.serpapi.searches * 0.015).toFixed(4)
   };
-  const totalCost = (parseFloat(estimatedCost.openai_mini) + parseFloat(estimatedCost.openai_search) + parseFloat(estimatedCost.gemini) + parseFloat(estimatedCost.perplexity) + parseFloat(estimatedCost.serpapi)).toFixed(4);
+  const totalCost = (parseFloat(estimatedCost.openai_mini) + parseFloat(estimatedCost.openai_search) + parseFloat(estimatedCost.gemini) + parseFloat(estimatedCost.perplexity) + parseFloat(estimatedCost.serpapi) + parseFloat(estimatedCost.claude||0)).toFixed(4);
   tokenUsage.estimatedCost = estimatedCost;
   tokenUsage.totalCostUSD = totalCost;
 
@@ -1976,7 +2018,8 @@ Rules:
           {id:"chatgpt",...(typeof gptData!=="undefined"&&gptData?gptData:{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}),queries:((typeof gptData!=="undefined"&&gptData?gptData.queries:null)||[])},
           {id:"gemini",...(typeof gemData!=="undefined"&&gemData?gemData:{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}),queries:((typeof gemData!=="undefined"&&gemData?gemData.queries:null)||[])},
           {id:"perplexity",...(typeof pplxData!=="undefined"&&pplxData?pplxData:{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}),queries:((typeof pplxData!=="undefined"&&pplxData?pplxData.queries:null)||[])},
-          {id:"googleai",...(typeof googleAIData!=="undefined"&&googleAIData?googleAIData:{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}),queries:((typeof googleAIData!=="undefined"&&googleAIData?googleAIData.queries:null)||[])}
+          {id:"googleai",...(typeof googleAIData!=="undefined"&&googleAIData?googleAIData:{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}),queries:((typeof googleAIData!=="undefined"&&googleAIData?googleAIData.queries:null)||[])},
+          {id:"claude",...(typeof claudeData!=="undefined"&&claudeData?claudeData:{score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}),queries:((typeof claudeData!=="undefined"&&claudeData?claudeData.queries:null)||[])}
         ],
         painPoints:typeof mergedPainPoints!=="undefined"&&mergedPainPoints&&mergedPainPoints.length>0?mergedPainPoints.slice(0,6):[]
       },
@@ -2005,7 +2048,7 @@ Rules:
   } catch(returnError) {
     console.error("CRITICAL: runRealAudit return assembly failed:",returnError);
     return {
-      engineData:{engines:[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"gemini",name:"Gemini",color:"#4285F4",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"perplexity",name:"Perplexity",color:"#20808D",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"googleai",name:"Google AI",color:"#EA4335",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}],painPoints:[]},
+      engineData:{engines:[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"gemini",name:"Gemini",color:"#4285F4",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"perplexity",name:"Perplexity",color:"#20808D",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"googleai",name:"Google AI",color:"#EA4335",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]},{id:"claude",name:"Claude",color:"#D97706",score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:[]}],painPoints:[]},
       sentimentData:{brand:{gpt:50,gemini:50,perplexity:50,avg:50,summary:""},competitors:[]},
       sentimentSignals:{positive:[],negative:[],quotes:[],competitorSentiment:[],rawSnippets:[]},
       competitorData:{competitors:[]},
@@ -2136,20 +2179,22 @@ function exportPDF(r){
   const pplxQueries=pplxE.queries||[];
   const searchQueries=r.searchQueries||gptQueries.map(q=>q.query||q);
   const gaiQueries=(r.engines[3]||{}).queries||[];
+  const claudeQueries=(r.engines[4]||{}).queries||[];
   const queryTableData=searchQueries.map((q,i)=>{
     const qText=typeof q==="string"?q:q.query||q;
     const gptStatus=gptQueries[i]?.status||"Absent";
     const gemStatus=gemQueries[i]?.status||"Absent";
     const pplxStatus=pplxQueries[i]?.status||"Absent";
     const gaiStatus=gaiQueries[i]?.status||"Absent";
-    return[qText,gptStatus,gemStatus,pplxStatus,gaiStatus];
+    const claudeStatus=claudeQueries[i]?.status||"Absent";
+    return[qText,gptStatus,gemStatus,pplxStatus,gaiStatus,claudeStatus];
   });
   if(queryTableData.length>0){
-    doc.autoTable({startY:y,head:[["Query","ChatGPT","Gemini","Perplexity","Google AI"]],body:queryTableData,margin:{left:margin,right:margin},
+    doc.autoTable({startY:y,head:[["Query","ChatGPT","Gemini","Perplexity","Google AI","Claude"]],body:queryTableData,margin:{left:margin,right:margin},
       styles:{fontSize:7,cellPadding:3},headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold",fontSize:8},
-      columnStyles:{0:{cellWidth:contentW-88},1:{cellWidth:22,halign:"center"},2:{cellWidth:22,halign:"center"},3:{cellWidth:22,halign:"center"},4:{cellWidth:22,halign:"center"}},
+      columnStyles:{0:{cellWidth:contentW-110},1:{cellWidth:22,halign:"center"},2:{cellWidth:22,halign:"center"},3:{cellWidth:22,halign:"center"},4:{cellWidth:22,halign:"center"},5:{cellWidth:22,halign:"center"}},
       didParseCell:function(data){
-        if(data.section==="body"&&data.column.index>=1&&data.column.index<=4){
+        if(data.section==="body"&&data.column.index>=1&&data.column.index<=5){
           const val=data.cell.raw;
           if(val==="Cited")data.cell.styles.textColor=green;
           else if(val==="Mentioned")data.cell.styles.textColor=accent;
@@ -2319,7 +2364,7 @@ function exportPDF(r){
     let url=s.url||"";if(url.includes("vertexaisearch")||url.includes("grounding-api-redirect")){if(s.title&&!s.title.includes(" ")&&s.title.includes("."))url="https://"+s.title.replace(/^(https?:\/\/)?/,"").replace(/^www\./,"");else return null;}
     const domain=(()=>{try{return new URL(url).hostname.replace("www.","");}catch(e){return"";}})();
     if(!domain||domain.length<3)return null;
-    return{domain,engine:s.engine==="chatgpt"?"ChatGPT":s.engine==="gemini"?"Gemini":s.engine==="perplexity"?"Perplexity":s.engine==="googleai"?"Google AI":s.engine};
+    return{domain,engine:s.engine==="chatgpt"?"ChatGPT":s.engine==="gemini"?"Gemini":s.engine==="perplexity"?"Perplexity":s.engine==="googleai"?"Google AI":s.engine==="claude"?"Claude":s.engine};
   }).filter(Boolean);
   if(allCite.length>0){
     checkPage(40);sectionHeader("Citation Sources");
@@ -2394,7 +2439,8 @@ function generateAll(cd, apiData){
   const hasApi=apiData&&apiData.engineData;
   const PerplexityLogo=()=><svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="#20808D" strokeWidth="1.5"/><path d="M5 5l6 6M11 5l-6 6" stroke="#20808D" strokeWidth="1.5" strokeLinecap="round"/></svg>;
   const GoogleAILogo=()=><svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="#EA4335" strokeWidth="1.5"/><path d="M4 8h8M8 4v8" stroke="#EA4335" strokeWidth="1.5" strokeLinecap="round"/></svg>;
-  const engineMeta=[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",Logo:ChatGPTLogo},{id:"gemini",name:"Gemini",color:"#4285F4",Logo:GeminiLogo},{id:"perplexity",name:"Perplexity",color:"#20808D",Logo:PerplexityLogo},{id:"googleai",name:"Google AI Overview",color:"#EA4335",Logo:GoogleAILogo}];
+  const ClaudeLogo=()=><svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="#D97706" strokeWidth="1.5"/><text x="8" y="11" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#D97706">C</text></svg>;
+  const engineMeta=[{id:"chatgpt",name:"ChatGPT",color:"#10A37F",Logo:ChatGPTLogo},{id:"gemini",name:"Gemini",color:"#4285F4",Logo:GeminiLogo},{id:"perplexity",name:"Perplexity",color:"#20808D",Logo:PerplexityLogo},{id:"googleai",name:"Google AI Overview",color:"#EA4335",Logo:GoogleAILogo},{id:"claude",name:"Claude",color:"#D97706",Logo:ClaudeLogo}];
   const badP=["specific strength","specific weakness","data unavailable","REPLACE WITH","as a language model","as an ai","limited knowledge"];
   const fB=(arr,fb)=>{if(!arr||!Array.isArray(arr))return fb;const f=arr.filter(s=>s&&typeof s==="string"&&!badP.some(bp=>s.toLowerCase().includes(bp))&&s.length>10);return f.length>=2?f:fb;};
   const engines=engineMeta.map((e,i)=>{
@@ -2560,7 +2606,7 @@ function LandingPage({ onGetStarted }) {
   const steps = [
     {
       number:"01",title:"Configure",subtitle:"Define your brand context",
-      desc:"Enter your brand name, website, region, and industry. EnterRank automatically crawls your website to understand your products and positioning. Add competitors for head-to-head comparison, then select from AI-generated audience archetypes that represent your key customer segments. These archetypes drive the 15 real queries across 4 engines your audit will test.",
+      desc:"Enter your brand name, website, region, and industry. EnterRank automatically crawls your website to understand your products and positioning. Add competitors for head-to-head comparison, then select from AI-generated audience archetypes that represent your key customer segments. These archetypes drive the 15 real queries across 5 engines your audit will test.",
       color:"#2563eb",
       visual:(
         <div style={{display:"flex",flexDirection:"column",gap:10,padding:24}}>
@@ -2595,13 +2641,13 @@ function LandingPage({ onGetStarted }) {
       )
     },
     {
-      number:"02",title:"Test",subtitle:"Live queries on 4 AI engines",
-      desc:"Each of your 15 topics is sent as a real query to ChatGPT, Gemini, Perplexity, and Google AI Overview. That\u2019s 60 live data points collected in under three minutes. Every response is captured in full, including citation URLs and source references.",
+      number:"02",title:"Test",subtitle:"Live queries on 5 AI engines",
+      desc:"Each of your 15 topics is sent as a real query to ChatGPT, Gemini, Perplexity, Google AI Overview, and Claude. That\u2019s 75 live data points collected in under three minutes. Every response is captured in full, including citation URLs and source references.",
       color:"#059669",
       visual:(
         <div style={{padding:24}}>
           <div style={{display:"flex",justifyContent:"center",gap:16,marginBottom:20}}>
-            {[{name:"ChatGPT",color:"#10A37F"},{name:"Gemini",color:"#4285F4"},{name:"Perplexity",color:"#20808D"},{name:"Google AI",color:"#EA4335"}].map((e,i)=>(
+            {[{name:"ChatGPT",color:"#10A37F"},{name:"Gemini",color:"#4285F4"},{name:"Perplexity",color:"#20808D"},{name:"Google AI",color:"#EA4335"},{name:"Claude",color:"#D97706"}].map((e,i)=>(
               <div key={i} style={{textAlign:"center"}}>
                 <div style={{width:40,height:40,borderRadius:10,background:e.color+"15",border:"1px solid "+e.color+"30",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 6px"}}>
                   <div style={{width:12,height:12,borderRadius:"50%",background:e.color}}/>
@@ -2619,7 +2665,7 @@ function LandingPage({ onGetStarted }) {
               </div>
             ))}
           </div>
-          <div style={{textAlign:"center",marginTop:12,fontSize:10,color:"#94a3b8"}}>15 queries × 4 engines = 60 live data points</div>
+          <div style={{textAlign:"center",marginTop:12,fontSize:10,color:"#94a3b8"}}>15 queries × 5 engines = 75 live data points</div>
         </div>
       )
     },
@@ -2720,7 +2766,7 @@ function LandingPage({ onGetStarted }) {
               Own Your Brand's<br/><span style={{color:"#2563eb"}}>AI Visibility</span>
             </h1>
             <p style={{fontSize:16,color:"#64748b",margin:"0 0 32px",lineHeight:1.7,maxWidth:440}}>
-              Test real queries on ChatGPT, Gemini, Perplexity, and Google AI Overview. See exactly when AI engines mention, cite, or ignore your brand. Then build the strategy to change it.
+              Test real queries on ChatGPT, Gemini, Perplexity, Google AI Overview, and Claude. See exactly when AI engines mention, cite, or ignore your brand. Then build the strategy to change it.
             </p>
             <div style={{display:"flex",gap:12}}>
               <button onClick={onGetStarted} onMouseEnter={()=>setHoverCTA(true)} onMouseLeave={()=>setHoverCTA(false)} style={{padding:"15px 32px",background:hoverCTA?"#1d4ed8":"#2563eb",color:"#fff",border:"none",borderRadius:10,fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit",transition:"all .25s",boxShadow:hoverCTA?"0 8px 28px rgba(37,99,235,0.3)":"0 4px 16px rgba(37,99,235,0.15)",transform:hoverCTA?"translateY(-2px)":"translateY(0)",display:"flex",alignItems:"center",gap:8}}>
@@ -2765,8 +2811,8 @@ function LandingPage({ onGetStarted }) {
                   </div>
                   <div style={{marginBottom:12}}>
                     <div style={{fontSize:7,color:"#94a3b8",marginBottom:6,fontWeight:500}}>ENGINE PERFORMANCE</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6}}>
-                      {[{name:"ChatGPT",score:77,color:"#10A37F"},{name:"Gemini",score:87,color:"#4285F4"},{name:"Perplexity",score:82,color:"#20808D"},{name:"Google AI",score:85,color:"#EA4335"}].map((e,i)=>(<div key={i} style={{background:"#f8fafc",borderRadius:6,padding:"6px 8px",textAlign:"center"}}><div style={{fontSize:7,color:e.color,fontWeight:500,marginBottom:2}}>{e.name}</div><div style={{fontSize:13,fontWeight:500,color:"#0f172a"}}>{e.score}%</div><div style={{height:3,background:"#e2e8f0",borderRadius:2,marginTop:3}}><div style={{width:e.score+"%",height:"100%",background:e.color,borderRadius:2}}/></div></div>))}
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:6}}>
+                      {[{name:"ChatGPT",score:77,color:"#10A37F"},{name:"Gemini",score:87,color:"#4285F4"},{name:"Perplexity",score:82,color:"#20808D"},{name:"Google AI",score:85,color:"#EA4335"},{name:"Claude",score:79,color:"#D97706"}].map((e,i)=>(<div key={i} style={{background:"#f8fafc",borderRadius:6,padding:"6px 8px",textAlign:"center"}}><div style={{fontSize:7,color:e.color,fontWeight:500,marginBottom:2}}>{e.name}</div><div style={{fontSize:13,fontWeight:500,color:"#0f172a"}}>{e.score}%</div><div style={{height:3,background:"#e2e8f0",borderRadius:2,marginTop:3}}><div style={{width:e.score+"%",height:"100%",background:e.color,borderRadius:2}}/></div></div>))}
                     </div>
                   </div>
                   {/* Key finding insight */}
@@ -2804,7 +2850,7 @@ function LandingPage({ onGetStarted }) {
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
             </div>
             <div style={{fontSize:17,fontWeight:500,color:"#0f172a",marginBottom:8}}>Visibility Scoring</div>
-            <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>See when ChatGPT, Gemini, Perplexity, and Google AI Overview mention, cite, or ignore your brand across 60 real queries.</div>
+            <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>See when ChatGPT, Gemini, Perplexity, Google AI Overview, and Claude mention, cite, or ignore your brand across 75 real queries.</div>
           </div>
           <div style={{background:"#fff",borderRadius:16,padding:"36px 32px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
             <div style={{width:48,height:48,borderRadius:12,background:"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
@@ -4053,7 +4099,7 @@ Return JSON only:
         {(data.competitors||[]).length<8&&<button onClick={()=>setData({...data,competitors:[...(data.competitors||[]),{name:"",website:""}]})} style={{padding:"6px 14px",background:"none",border:`1px dashed ${C.border}`,borderRadius:C.rs,fontSize:12,color:C.muted,cursor:"pointer",fontFamily:"inherit"}}>+ Add competitor</button>}
       </div>
     <div style={{marginTop:20,paddingTop:18,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div style={{display:"flex",gap:12,alignItems:"center",opacity:fieldsLocked?0.4:1,transition:"opacity .3s ease"}}><span style={{fontSize:11,color:C.muted}}>Engines:</span><ChatGPTLogo size={18}/><GeminiLogo size={18}/><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 0L14 4V12L8 16L2 12V4L8 0Z" fill="#20808D"/><path d="M8 3L11.5 5.5V10.5L8 13L4.5 10.5V5.5L8 3Z" fill="white" opacity="0.9"/></svg><svg width="18" height="18" viewBox="0 0 16 16" fill="none" title="Google AI Overview"><path d="M8 1L14.5 4.5V11.5L8 15L1.5 11.5V4.5L8 1Z" fill="#EA4335" opacity="0.85"/><text x="8" y="11" textAnchor="middle" fontSize="7" fontWeight="bold" fill="white">G</text></svg></div>
+      <div style={{display:"flex",gap:12,alignItems:"center",opacity:fieldsLocked?0.4:1,transition:"opacity .3s ease"}}><span style={{fontSize:11,color:C.muted}}>Engines:</span><ChatGPTLogo size={18}/><GeminiLogo size={18}/><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 0L14 4V12L8 16L2 12V4L8 0Z" fill="#20808D"/><path d="M8 3L11.5 5.5V10.5L8 13L4.5 10.5V5.5L8 3Z" fill="white" opacity="0.9"/></svg><svg width="18" height="18" viewBox="0 0 16 16" fill="none" title="Google AI Overview"><path d="M8 1L14.5 4.5V11.5L8 15L1.5 11.5V4.5L8 1Z" fill="#EA4335" opacity="0.85"/><text x="8" y="11" textAnchor="middle" fontSize="7" fontWeight="bold" fill="white">G</text></svg><svg width="18" height="18" viewBox="0 0 16 16" fill="none" title="Claude"><circle cx="8" cy="8" r="7" fill="#D97706" opacity="0.85"/><text x="8" y="11" textAnchor="middle" fontSize="7" fontWeight="bold" fill="white">C</text></svg></div>
       <button onClick={()=>{setAuditStep("archetypes");if(availableArchetypes.length===0)generateArchetypes();}} disabled={!inputOk||genTopics} style={{padding:"10px 24px",background:inputOk&&!genTopics?C.accent:"#dde1e7",color:inputOk&&!genTopics?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:inputOk&&!genTopics?"pointer":"not-allowed",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{genTopics?"Generating...":"Select Audience →"}</button>
     </div>
     {error&&<div style={{marginTop:12,padding:"10px 16px",background:`${C.red}08`,border:`1px solid ${C.red}20`,borderRadius:8,fontSize:12,color:C.red}}>{error}</div>}
@@ -4183,7 +4229,7 @@ function DashboardPage({r,history,goTo}){
           {label:"Mention Rate",value:avgMentions+"%",prev:prev?.mentions,color:C.accent,tip:"Percentage of queries where AI engines mention your brand. Averaged across all engines, weighted by regional market share."},
           {label:"Citation Rate",value:avgCitations+"%",prev:prev?.citations,color:"#8b5cf6",tip:"Percentage of queries where AI engines specifically recommend or link to your brand. Citations are stronger signals than mentions."},
           {label:"Sentiment Score",value:sentimentReady?(avgSentiment>=50?"Positive":avgSentiment>=30?"Neutral":"Negative"):"...",prev:null,color:sentimentReady?(avgSentiment>=50?C.green:avgSentiment>=30?C.amber:C.red):C.muted,tip:"How positively AI engines describe your brand, based on language analysis of all responses that mention you."},
-          {label:"Best Engine",value:bestEngine.name.length>12?(bestEngine.name||"").replace(" Overview",""):bestEngine.name,color:bestEngine.name==="ChatGPT"?"#10A37F":(bestEngine.name||"").includes("Google")?"#EA4335":bestEngine.name==="Perplexity"?"#20808D":"#4285F4",tip:"The AI engine where your brand has the highest visibility score."}
+          {label:"Best Engine",value:bestEngine.name.length>12?(bestEngine.name||"").replace(" Overview",""):bestEngine.name,color:bestEngine.name==="ChatGPT"?"#10A37F":(bestEngine.name||"").includes("Google")?"#EA4335":bestEngine.name==="Perplexity"?"#20808D":bestEngine.name==="Claude"?"#D97706":"#4285F4",tip:"The AI engine where your brand has the highest visibility score."}
         ].map((kpi,i)=>(
           <div key={i} style={{...CARD.base,padding:"16px 20px",textAlign:"center"}}>
             <div style={{fontSize:11,fontWeight:500,color:C.muted,letterSpacing:".01em",marginBottom:8}}>{kpi.label}{kpi.tip&&<InfoTip text={kpi.tip}/>}</div>
@@ -4679,16 +4725,18 @@ function QueryCategoriesPage({ r }) {
       const website = r.clientData?.website || "";
       const region = r.clientData?.region || "";
       const neutralSys = "You are a helpful AI assistant. Answer the user's question directly and thoroughly. If you know of specific companies, products, or services relevant to the question, name them.";
-      const [gptResult, gemResult, pplxResult, gaiResult] = await Promise.all([
+      const [gptResult, gemResult, pplxResult, gaiResult, claudeResult] = await Promise.all([
         callOpenAISearch(query, region),
         callGeminiWithCitations(query, neutralSys),
         callPerplexity(query, neutralSys),
-        callGoogleAI(query, r.clientData?.region || "")
+        callGoogleAI(query, r.clientData?.region || ""),
+        callClaude(query, 0).then(r => ({ text: r.text || r.response || "", response: r.text || r.response || "", citations: [] }))
       ]);
       const gptText = typeof gptResult === "string" ? gptResult : (gptResult?.response || gptResult?.text || "");
       const gemText = typeof gemResult === "string" ? gemResult : (gemResult?.text || gemResult?.response || "");
       const pplxText = typeof pplxResult === "string" ? pplxResult : (pplxResult?.text || pplxResult?.response || "");
       const gaiText = typeof gaiResult === "string" ? gaiResult : (gaiResult?.text || gaiResult?.response || "");
+      const claudeText = typeof claudeResult === "string" ? claudeResult : (claudeResult?.text || claudeResult?.response || "");
       const gptCitations = gptResult?.citations || [];
       const classifyText = (text, citations) => {
         if (!text || text.length < 20) return "Absent";
@@ -4713,13 +4761,14 @@ function QueryCategoriesPage({ r }) {
       const gemStatus = classifyText(gemText, gemResult?.citations || []);
       const pplxStatus = classifyText(pplxText, pplxResult?.citations || []);
       const gaiStatus = classifyText(gaiText, gaiResult?.citations || []);
-      const result = { query, gptStatus, gemStatus, pplxStatus, gaiStatus, gptText: gptText.slice(0, 500), gemText: gemText.slice(0, 500), pplxText: pplxText.slice(0, 500), gaiText: gaiText.slice(0, 500) };
+      const claudeStatus = classifyText(claudeText, []);
+      const result = { query, gptStatus, gemStatus, pplxStatus, gaiStatus, claudeStatus, gptText: gptText.slice(0, 500), gemText: gemText.slice(0, 500), pplxText: pplxText.slice(0, 500), gaiText: gaiText.slice(0, 500), claudeText: claudeText.slice(0, 500) };
       setTestResults(result);
       setTestedPrompts(prev => [result, ...prev]);
       setTestQuery("");
     } catch(e) {
       console.error("Test prompt failed:", e);
-      setTestResults({ query, gptStatus: "Error", gemStatus: "Error", pplxStatus: "Error", gaiStatus: "Error", error: true });
+      setTestResults({ query, gptStatus: "Error", gemStatus: "Error", pplxStatus: "Error", gaiStatus: "Error", claudeStatus: "Error", error: true });
     }
     setTestingPrompt(false);
   };
@@ -4728,19 +4777,22 @@ function QueryCategoriesPage({ r }) {
   const gemQueries = r.engines[1]?.queries || [];
   const pplxQueries = r.engines[2]?.queries || [];
   const gaiQueries = r.engines[3]?.queries || [];
+  const claudeQueries = r.engines[4]?.queries || [];
   const allQueries = (r.searchQueries || gptQueries.map(q => q.query)).map((query, i) => {
     const qText = typeof query === "string" ? query : query.query;
     const gptMatch = gptQueries.find(q => q.query === qText) || gptQueries[i];
     const gemMatch = gemQueries.find(q => q.query === qText) || gemQueries[i];
     const pplxMatch = pplxQueries.find(q => q.query === qText) || pplxQueries[i];
     const gaiMatch = gaiQueries.find(q => q.query === qText) || gaiQueries[i];
+    const claudeMatch = claudeQueries.find(q => q.query === qText) || claudeQueries[i];
     return {
       query: qText,
       gptStatus: gptMatch?.status || "Absent",
       gemStatus: gemMatch?.status || "Absent",
       pplxStatus: pplxMatch?.status || "Absent",
       gaiStatus: gaiMatch?.status || "Absent",
-      bestStatus: (gptMatch?.status === "Cited" || gemMatch?.status === "Cited" || pplxMatch?.status === "Cited" || gaiMatch?.status === "Cited") ? "Cited" : (gptMatch?.status === "Mentioned" || gemMatch?.status === "Mentioned" || pplxMatch?.status === "Mentioned" || gaiMatch?.status === "Mentioned") ? "Mentioned" : "Absent",
+      claudeStatus: claudeMatch?.status || "Absent",
+      bestStatus: (gptMatch?.status === "Cited" || gemMatch?.status === "Cited" || pplxMatch?.status === "Cited" || gaiMatch?.status === "Cited" || claudeMatch?.status === "Cited") ? "Cited" : (gptMatch?.status === "Mentioned" || gemMatch?.status === "Mentioned" || pplxMatch?.status === "Mentioned" || gaiMatch?.status === "Mentioned" || claudeMatch?.status === "Mentioned") ? "Mentioned" : "Absent",
       archetype: (r.queryArchetypeMap||{})[qText]||""
     };
   });
@@ -4784,9 +4836,9 @@ function QueryCategoriesPage({ r }) {
   };
 
   const categories = Object.entries(categorized).map(([name, queries]) => {
-    const cited = queries.reduce((sum, q) => sum + (q.gptStatus === "Cited" ? 1 : 0) + (q.gemStatus === "Cited" ? 1 : 0) + (q.pplxStatus === "Cited" ? 1 : 0) + (q.gaiStatus === "Cited" ? 1 : 0), 0);
-    const mentioned = queries.reduce((sum, q) => sum + (q.gptStatus === "Mentioned" ? 1 : 0) + (q.gemStatus === "Mentioned" ? 1 : 0) + (q.pplxStatus === "Mentioned" ? 1 : 0) + (q.gaiStatus === "Mentioned" ? 1 : 0), 0);
-    const totalEngineResponses = queries.length * 4;
+    const cited = queries.reduce((sum, q) => sum + (q.gptStatus === "Cited" ? 1 : 0) + (q.gemStatus === "Cited" ? 1 : 0) + (q.pplxStatus === "Cited" ? 1 : 0) + (q.gaiStatus === "Cited" ? 1 : 0) + (q.claudeStatus === "Cited" ? 1 : 0), 0);
+    const mentioned = queries.reduce((sum, q) => sum + (q.gptStatus === "Mentioned" ? 1 : 0) + (q.gemStatus === "Mentioned" ? 1 : 0) + (q.pplxStatus === "Mentioned" ? 1 : 0) + (q.gaiStatus === "Mentioned" ? 1 : 0) + (q.claudeStatus === "Mentioned" ? 1 : 0), 0);
+    const totalEngineResponses = queries.length * 5;
     const absent = totalEngineResponses - cited - mentioned;
     const winRate = Math.round(((cited + mentioned) / Math.max(totalEngineResponses, 1)) * 100);
     return { name, queries, cited, mentioned, absent, total: totalEngineResponses, winRate, color: categoryColors[name] || "#6b7280", desc: categoryDescs[name] || "" };
@@ -4794,7 +4846,7 @@ function QueryCategoriesPage({ r }) {
 
   let totalCited = 0, totalMentioned = 0, totalAbsent = 0;
   allQueries.forEach(q => {
-    ["gptStatus", "gemStatus", "pplxStatus", "gaiStatus"].forEach(key => {
+    ["gptStatus", "gemStatus", "pplxStatus", "gaiStatus", "claudeStatus"].forEach(key => {
       const status = q[key];
       if (status === "Cited") totalCited++;
       else if (status === "Mentioned") totalMentioned++;
@@ -4884,6 +4936,7 @@ function QueryCategoriesPage({ r }) {
                           <span style={statusBadge(q.gemStatus)}>Gem: {q.gemStatus}</span>
                           <span style={statusBadge(q.pplxStatus)}>Pplx: {q.pplxStatus}</span>
                           <span style={statusBadge(q.gaiStatus)}>GAI: {q.gaiStatus}</span>
+                          <span style={statusBadge(q.claudeStatus)}>CL: {q.claudeStatus}</span>
                         </div>
                       </div>
                     ))}
@@ -4923,6 +4976,7 @@ function QueryCategoriesPage({ r }) {
               <span style={{ fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 6, background: testResults.gemStatus === "Cited" ? "#dcfce7" : testResults.gemStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: testResults.gemStatus === "Cited" ? "#166534" : testResults.gemStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>Gemini: {testResults.gemStatus}</span>
               <span style={{ fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 6, background: testResults.pplxStatus === "Cited" ? "#dcfce7" : testResults.pplxStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: testResults.pplxStatus === "Cited" ? "#166534" : testResults.pplxStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>Perplexity: {testResults.pplxStatus}</span>
               <span style={{ fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 6, background: testResults.gaiStatus === "Cited" ? "#dcfce7" : testResults.gaiStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: testResults.gaiStatus === "Cited" ? "#166534" : testResults.gaiStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>Google AI: {testResults.gaiStatus}</span>
+              <span style={{ fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 6, background: testResults.claudeStatus === "Cited" ? "#dcfce7" : testResults.claudeStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: testResults.claudeStatus === "Cited" ? "#166534" : testResults.claudeStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>Claude: {testResults.claudeStatus}</span>
             </div>
           </div>
         )}
@@ -4936,6 +4990,7 @@ function QueryCategoriesPage({ r }) {
                 <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: tp.gemStatus === "Cited" ? "#dcfce7" : tp.gemStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: tp.gemStatus === "Cited" ? "#166534" : tp.gemStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>{tp.gemStatus}</span>
                 <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: tp.pplxStatus === "Cited" ? "#dcfce7" : tp.pplxStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: tp.pplxStatus === "Cited" ? "#166534" : tp.pplxStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>{tp.pplxStatus}</span>
                 <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: tp.gaiStatus === "Cited" ? "#dcfce7" : tp.gaiStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: tp.gaiStatus === "Cited" ? "#166534" : tp.gaiStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>{tp.gaiStatus}</span>
+                <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: tp.claudeStatus === "Cited" ? "#dcfce7" : tp.claudeStatus === "Mentioned" ? "#dbeafe" : "#fee2e2", color: tp.claudeStatus === "Cited" ? "#166534" : tp.claudeStatus === "Mentioned" ? "#1e40af" : "#991b1b" }}>{tp.claudeStatus}</span>
               </div>
             ))}
           </div>
@@ -5190,6 +5245,8 @@ function IntentPage({r,goTo}){
   const gptQueries=r.engines[0]?.queries||[];
   const gemQueries=r.engines[1]?.queries||[];
   const pplxQueries=r.engines[2]?.queries||[];
+  const gaiQueries2=r.engines[3]?.queries||[];
+  const claudeQueries=r.engines[4]?.queries||[];
   const allSearchQueries=r.searchQueries||gptQueries.map(q=>q.query);
 
   const normalizeStatus=(s)=>{if(!s)return"Absent";const l=s.trim().toLowerCase();if(l==="cited")return"Cited";if(l==="mentioned")return"Mentioned";return"Absent";};
@@ -5198,7 +5255,9 @@ function IntentPage({r,goTo}){
     const gptMatch=gptQueries.find(q=>q.query===qText)||gptQueries[i];
     const gemMatch=gemQueries.find(q=>q.query===qText)||gemQueries[i];
     const pplxMatch=pplxQueries.find(q=>q.query===qText)||pplxQueries[i];
-    return{query:qText,gptStatus:normalizeStatus(gptMatch?.status),gemStatus:normalizeStatus(gemMatch?.status),pplxStatus:normalizeStatus(pplxMatch?.status),archetype:(r.queryArchetypeMap||{})[qText]||""};
+    const gaiMatch2=gaiQueries2.find(q=>q.query===qText)||gaiQueries2[i];
+    const claudeMatch=claudeQueries.find(q=>q.query===qText)||claudeQueries[i];
+    return{query:qText,gptStatus:normalizeStatus(gptMatch?.status),gemStatus:normalizeStatus(gemMatch?.status),pplxStatus:normalizeStatus(pplxMatch?.status),gaiStatus:normalizeStatus(gaiMatch2?.status),claudeStatus:normalizeStatus(claudeMatch?.status),archetype:(r.queryArchetypeMap||{})[qText]||""};
   });
 
   // Status badge helper
@@ -5284,7 +5343,7 @@ function IntentPage({r,goTo}){
     {/* Header */}
     <div style={{marginBottom:32}}>
       <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Query Results</h2>
-      <p style={{color:"#6b7280",fontSize:13,marginTop:4}}>Audit query results across ChatGPT, Gemini, Perplexity, and Google AI for {r.clientData.brand}</p>
+      <p style={{color:"#6b7280",fontSize:13,marginTop:4}}>Audit query results across ChatGPT, Gemini, Perplexity, Google AI, and Claude for {r.clientData.brand}</p>
     </div>
 
     {/* Overall summary */}
@@ -5298,26 +5357,28 @@ function IntentPage({r,goTo}){
 
     {combinedQueries.length===0?<div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:24,textAlign:"center",color:C.muted,fontSize:13}}>No query data available. Run an audit to see results.</div>
     :<div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,overflow:"hidden"}}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px",padding:"12px 20px",borderBottom:"1px solid "+C.border,fontSize:11,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em"}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px 80px",padding:"12px 20px",borderBottom:"1px solid "+C.border,fontSize:11,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em"}}>
         <span>Query</span>
         <span style={{textAlign:"center"}}>ChatGPT</span>
         <span style={{textAlign:"center"}}>Gemini</span>
         <span style={{textAlign:"center"}}>Perplexity</span>
         <span style={{textAlign:"center"}}>Google AI</span>
+        <span style={{textAlign:"center"}}>Claude</span>
       </div>
-      {combinedQueries.map((q,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px",padding:"14px 20px",alignItems:"center",borderBottom:i<combinedQueries.length-1?"1px solid "+C.border+"30":"none",background:i%2===0?"transparent":C.border+"10"}}>
+      {combinedQueries.map((q,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px 80px",padding:"14px 20px",alignItems:"center",borderBottom:i<combinedQueries.length-1?"1px solid "+C.border+"30":"none",background:i%2===0?"transparent":C.border+"10"}}>
         <span style={{fontSize:13,lineHeight:1.5,color:C.text,paddingRight:12}}>{q.query}{q.archetype&&<span style={{display:"inline-block",fontSize:9,fontWeight:500,padding:"2px 7px",borderRadius:4,background:C.accent+"10",color:C.accent,marginLeft:8,verticalAlign:"middle",whiteSpace:"nowrap"}}>{q.archetype}</span>}</span>
         <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gptStatus)}</div>
         <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gemStatus)}</div>
         <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.pplxStatus)}</div>
         <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gaiStatus||"Absent")}</div>
+        <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.claudeStatus||"Absent")}</div>
       </div>))}
     </div>}
 
     {/* Section B: Test a Prompt */}
     <div style={{marginTop:40,...CARD.base}}>
       <div style={{fontSize:15,fontWeight:500,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em",color:C.text,marginBottom:4}}>Test a Prompt</div>
-      <p style={{fontSize:12,color:C.muted,marginBottom:16,marginTop:0}}>Type any search query to test whether {r.clientData.brand} gets cited or mentioned on ChatGPT, Gemini, Perplexity, and Google AI.</p>
+      <p style={{fontSize:12,color:C.muted,marginBottom:16,marginTop:0}}>Type any search query to test whether {r.clientData.brand} gets cited or mentioned on ChatGPT, Gemini, Perplexity, Google AI, and Claude.</p>
 
       <div style={{display:"flex",gap:8}}>
         <input value={testQuery} onChange={e=>setTestQuery(e.target.value)}
@@ -5362,12 +5423,13 @@ function IntentPage({r,goTo}){
       {/* History of tested prompts */}
       {testedPrompts.length>0&&<div style={{marginTop:16}}>
         <div style={{fontSize:11,color:C.muted,marginBottom:8}}>Previously tested</div>
-        {testedPrompts.map((tp,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px",gap:8,padding:"8px 0",borderBottom:`1px solid ${C.border}30`,alignItems:"center"}}>
+        {testedPrompts.map((tp,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px 80px",gap:8,padding:"8px 0",borderBottom:`1px solid ${C.border}30`,alignItems:"center"}}>
           <span style={{fontSize:12,color:C.text}}>{tp.query}</span>
           <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(tp.gpt)}</div>
           <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(tp.gem)}</div>
           <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(tp.pplx)}</div>
           <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(tp.gai||"Absent")}</div>
+          <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(tp.claude||"Absent")}</div>
         </div>))}
       </div>}
     </div>
@@ -5421,7 +5483,7 @@ function CitationSourcesPage({ r }) {
     if (!domain || domain.length < 3 || domain === "unknown") return null;
     return {
       ...s, url,
-      engine: s.engine === "chatgpt" ? "ChatGPT" : s.engine === "gemini" ? "Gemini" : s.engine === "perplexity" ? "Perplexity" : s.engine === "googleai" ? "Google AI" : s.engine,
+      engine: s.engine === "chatgpt" ? "ChatGPT" : s.engine === "gemini" ? "Gemini" : s.engine === "perplexity" ? "Perplexity" : s.engine === "googleai" ? "Google AI" : s.engine === "claude" ? "Claude" : s.engine,
       domain
     };
   }).filter(Boolean);
@@ -5571,7 +5633,7 @@ function CitationSourcesPage({ r }) {
                           <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>Query: {entry.query}</div>
                         </div>
                         <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
-                          <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: entry.engine === "ChatGPT" ? "#10A37F15" : entry.engine === "Gemini" ? "#4285F415" : entry.engine === "Google AI" ? "#EA433515" : "#20808D15", color: entry.engine === "ChatGPT" ? "#10A37F" : entry.engine === "Gemini" ? "#4285F4" : entry.engine === "Google AI" ? "#EA4335" : "#20808D" }}>{entry.engine}</span>
+                          <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: entry.engine === "ChatGPT" ? "#10A37F15" : entry.engine === "Gemini" ? "#4285F415" : entry.engine === "Google AI" ? "#EA433515" : entry.engine === "Claude" ? "#D9770615" : "#20808D15", color: entry.engine === "ChatGPT" ? "#10A37F" : entry.engine === "Gemini" ? "#4285F4" : entry.engine === "Google AI" ? "#EA4335" : entry.engine === "Claude" ? "#D97706" : "#20808D" }}>{entry.engine}</span>
                           {(() => { const ek = entry.engine === "ChatGPT" ? "gpt" : entry.engine === "Gemini" ? "gemini" : entry.engine === "Perplexity" ? "perplexity" : "googleai"; const isBrand = (cs[ek] || []).some(b => b.url === entry.url || (b.query === entry.query && b.title === entry.title)); return (<span style={{ fontSize: 9, fontWeight: 500, padding: "2px 6px", borderRadius: 4, background: isBrand ? "#dcfce7" : "#fef3c7", color: isBrand ? "#166534" : "#92400e" }}>{isBrand ? "Your Brand" : "Competitor"}</span>); })()}
                         </div>
                       </div>
@@ -5590,7 +5652,7 @@ function CitationSourcesPage({ r }) {
 
       {/* Methodology note */}
       <div style={{ marginTop: 16, fontSize: 11, color: C.muted, padding: "0 4px", lineHeight: 1.5 }}>
-        Citation sources are extracted from real-time web searches performed by ChatGPT, Gemini, Perplexity, and Google AI during the audit. These are the actual URLs each engine referenced when generating its response.
+        Citation sources are extracted from real-time web searches performed by ChatGPT, Gemini, Perplexity, Google AI, and Claude during the audit. These are the actual URLs each engine referenced when generating its response.
       </div>
     </div>
   );
@@ -5953,7 +6015,7 @@ function SentimentPage({r}){
     <div style={{marginBottom:24}}>
       <div style={{display:"flex",alignItems:"center",gap:6}}>
         <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Sentiment Analysis</h2>
-        <InfoTip text="How AI engines describe your brand in their responses. This is engine sentiment \u2014 what ChatGPT, Gemini, Perplexity, and Google AI say about you \u2014 not social media sentiment."/>
+        <InfoTip text="How AI engines describe your brand in their responses. This is engine sentiment \u2014 what ChatGPT, Gemini, Perplexity, Google AI, and Claude say about you \u2014 not social media sentiment."/>
       </div>
       <p style={{fontSize:13,color:C.muted,marginTop:4}}>Extracted from {totalResponses} AI engine responses across {(r.engines||[]).length} engines</p>
     </div>
@@ -6063,7 +6125,7 @@ function SentimentPage({r}){
             const sBorder=mention.sentiment==="positive"?"#059669":mention.sentiment==="negative"?"#dc2626":"#d97706";
             const sBg=mention.sentiment==="positive"?"#f0fdf4":mention.sentiment==="negative"?"#fef2f2":"#fffbeb";
             const sColor=mention.sentiment==="positive"?"#059669":mention.sentiment==="negative"?"#dc2626":"#d97706";
-            const engineColors={"ChatGPT":"#10A37F","Gemini":"#4285F4","Perplexity":"#20808D","Google AI Overview":"#EA4335"};
+            const engineColors={"ChatGPT":"#10A37F","Gemini":"#4285F4","Perplexity":"#20808D","Google AI Overview":"#EA4335","Claude":"#D97706"};
             return(
               <div key={i} style={{...CARD.base,borderRadius:10,borderLeft:"3px solid "+sBorder,padding:"14px 18px"}}>
                 <div style={{fontSize:13,color:C.sub,lineHeight:1.7,marginBottom:10,fontStyle:"italic"}}>
