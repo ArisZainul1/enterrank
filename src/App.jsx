@@ -2694,7 +2694,7 @@ function LandingPage({ onGetStarted }) {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const navLinkStyle = (id) => ({fontSize:13,color:activeSection===id?"#2563eb":"#64748b",cursor:"pointer",fontWeight:activeSection===id?500:400,transition:"all .15s",textDecoration:"none"});
+  const navLinkStyle = (id) => ({fontSize:13,color:activeSection===id?"#3b82f6":"#64748b",cursor:"pointer",fontWeight:activeSection===id?500:400,transition:"all .15s",textDecoration:"none"});
 
   const steps = [
     {
@@ -2833,31 +2833,26 @@ function LandingPage({ onGetStarted }) {
             <span onClick={()=>scrollTo("how")} style={navLinkStyle("how")}>How It Works</span>
           </div>
         </div>
-        <button onClick={onGetStarted} style={{padding:"8px 20px",background:"#2563eb",color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>Get Started</button>
+        <button onClick={onGetStarted} style={{padding:"8px 20px",background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>Get Started</button>
       </div>
 
       {/* ===== SCROLLABLE CONTENT ===== */}
       <div id="lp-scroll" style={{overflowY:"auto",height:"100vh",paddingTop:56}}>
 
       {/* ===== SECTION 1: HERO ===== */}
-      <div id="section-hero" style={{minHeight:"calc(100vh - 56px)",display:"flex",alignItems:"center",padding:"0 48px",paddingTop:8,position:"relative"}}>
-        <div style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden"}}>
-          <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle at 1px 1px, rgba(0,0,0,0.02) 1px, transparent 0)",backgroundSize:"32px 32px"}}/>
-          <div style={{position:"absolute",top:"-15%",right:"-5%",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle, rgba(37,99,235,0.07) 0%, rgba(99,102,241,0.03) 40%, transparent 65%)",filter:"blur(40px)"}}/>
-          <div style={{position:"absolute",top:"30%",left:"-8%",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle, rgba(59,130,246,0.05) 0%, rgba(147,51,234,0.02) 40%, transparent 65%)",filter:"blur(50px)"}}/>
-          <div style={{position:"absolute",bottom:"-10%",right:"20%",width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle, rgba(14,165,233,0.04) 0%, rgba(37,99,235,0.02) 40%, transparent 65%)",filter:"blur(45px)"}}/>
-        </div>
+      <div id="section-hero" style={{minHeight:"calc(100vh - 56px)",display:"flex",alignItems:"center",padding:"0 48px",paddingTop:8,position:"relative",background:"radial-gradient(ellipse at 70% 50%, rgba(59,130,246,0.04) 0%, transparent 50%)"}}>
+
         <div style={{display:"flex",alignItems:"center",gap:48,maxWidth:1400,margin:"0 auto",width:"100%",position:"relative",zIndex:1}}>
           <div style={{flex:"0 0 42%",maxWidth:500}}>
-            <div style={{fontSize:12,fontWeight:500,color:"#2563eb",letterSpacing:".08em",textTransform:"uppercase",marginBottom:20}}>Audit · Analyse · Optimise</div>
-            <h1 style={{fontSize:50,fontWeight:500,color:"#0f172a",letterSpacing:"-.04em",margin:"0 0 20px",lineHeight:1.08}}>
-              Own Your Brand's<br/><span style={{color:"#2563eb"}}>AI Visibility</span>
+            <div style={{fontSize:12,fontWeight:500,color:"#3b82f6",letterSpacing:".08em",textTransform:"uppercase",marginBottom:20}}>Audit · Analyse · Optimise</div>
+            <h1 style={{fontSize:48,fontWeight:500,color:"#0f172a",letterSpacing:"-.04em",margin:"0 0 20px",lineHeight:1.08}}>
+              Own Your Brand's<br/><span style={{color:"#3b82f6"}}>AI Visibility</span>
             </h1>
             <p style={{fontSize:16,color:"#64748b",margin:"0 0 32px",lineHeight:1.7,maxWidth:440}}>
               Test real queries on ChatGPT, Gemini, Perplexity, Google AI Overview, and Claude. See exactly when AI engines mention, cite, or ignore your brand. Then build the strategy to change it.
             </p>
             <div style={{display:"flex",gap:12}}>
-              <button onClick={onGetStarted} onMouseEnter={()=>setHoverCTA(true)} onMouseLeave={()=>setHoverCTA(false)} style={{padding:"15px 32px",background:hoverCTA?"#1d4ed8":"#2563eb",color:"#fff",border:"none",borderRadius:10,fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit",transition:"all .25s",boxShadow:hoverCTA?"0 8px 28px rgba(37,99,235,0.3)":"0 4px 16px rgba(37,99,235,0.15)",transform:hoverCTA?"translateY(-2px)":"translateY(0)",display:"flex",alignItems:"center",gap:8}}>
+              <button onClick={onGetStarted} onMouseEnter={()=>setHoverCTA(true)} onMouseLeave={()=>setHoverCTA(false)} style={{padding:"15px 32px",background:hoverCTA?"#2563eb":"#3b82f6",color:"#fff",border:"none",borderRadius:10,fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit",transition:"all .25s",boxShadow:hoverCTA?"0 8px 28px rgba(59,130,246,0.3)":"0 4px 16px rgba(59,130,246,0.15)",transform:hoverCTA?"translateY(-2px)":"translateY(0)",display:"flex",alignItems:"center",gap:8}}>
                 Run Audit Now <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
               <button onClick={()=>scrollTo("how")} style={{padding:"15px 24px",background:"transparent",color:"#64748b",border:"1px solid #e2e8f0",borderRadius:10,fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>See How It Works</button>
@@ -2865,57 +2860,66 @@ function LandingPage({ onGetStarted }) {
           </div>
           <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"center",animation:"slideInRight 1s ease-out"}}>
             <div style={{position:"relative",width:"100%",maxWidth:540,perspective:"1200px",margin:"0 auto"}}>
-              <div style={{position:"absolute",top:"10%",left:"10%",right:"10%",bottom:"10%",background:"radial-gradient(ellipse at center, rgba(59,130,246,0.15) 0%, transparent 70%)",filter:"blur(40px)",zIndex:0,borderRadius:"50%"}}/>
-              <div style={{position:"relative",zIndex:1,background:"#fff",borderRadius:16,boxShadow:"0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)",border:"1px solid rgba(226,232,240,0.8)",transform:"rotateY(-8deg) rotateX(4deg)",animation:"floatDash 6s ease-in-out infinite",overflow:"hidden",display:"flex",width:"100%",height:360}}>
+              <div style={{position:"absolute",top:"10%",left:"10%",right:"10%",bottom:"10%",background:"radial-gradient(ellipse at center, rgba(59,130,246,0.08) 0%, transparent 70%)",filter:"blur(40px)",zIndex:0,borderRadius:"50%"}}/>
+              <div style={{position:"relative",zIndex:1,background:"#fff",borderRadius:16,boxShadow:"0 1px 3px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.06)",border:"1px solid #e2e8f0",transform:"rotateY(-6deg) rotateX(3deg)",animation:"floatDash 6s ease-in-out infinite",overflow:"hidden",display:"flex",width:"100%",maxWidth:540,height:380}}>
                 {/* Sidebar */}
-                <div style={{width:140,background:"#f8fafc",borderRight:"1px solid #e2e8f0",padding:"14px 0",flexShrink:0}}>
-                  <div style={{padding:"0 12px",marginBottom:16}}>
+                <div style={{width:150,background:"#fafafa",borderRight:"1px solid #f1f5f9",padding:"16px 0",flexShrink:0}}>
+                  <div style={{padding:"0 14px",marginBottom:18}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <img src="/enterank-icon.svg" alt="" style={{width:18,height:18,borderRadius:6}}/>
-                      <span style={{fontSize:9,fontWeight:500,color:"#0f172a"}}>EnterRank</span>
+                      <img src="/enterank-icon.svg" alt="" style={{width:18,height:18}}/>
+                      <span style={{fontSize:10,fontWeight:500,color:"#0f172a"}}>EnterRank</span>
                     </div>
                   </div>
-                  <div style={{fontSize:7,color:"#94a3b8",padding:"0 12px",marginBottom:6,textTransform:"uppercase",letterSpacing:".05em"}}>Analysis</div>
-                  {[{name:"Dashboard",active:true},{name:"Sentiment",active:false},{name:"Query Categories",active:false},{name:"Citation Sources",active:false}].map((item,i)=>(<div key={i} style={{padding:"6px 12px",fontSize:8,color:item.active?"#0f172a":"#94a3b8",fontWeight:item.active?500:400,background:item.active?"#fff":"transparent",borderLeft:item.active?"2px solid #3b82f6":"2px solid transparent",marginBottom:1}}>{item.name}</div>))}
-                  <div style={{fontSize:7,color:"#94a3b8",padding:"0 12px",marginTop:10,marginBottom:6,textTransform:"uppercase",letterSpacing:".05em"}}>Strategy</div>
-                  {["Target Channels","Content Hub","90-Day Roadmap"].map((name,i)=>(<div key={i} style={{padding:"6px 12px",fontSize:8,color:"#94a3b8",borderLeft:"2px solid transparent",marginBottom:1}}>{name}</div>))}
+                  <div style={{fontSize:8,color:"#94a3b8",padding:"0 14px",marginBottom:6,textTransform:"uppercase",letterSpacing:".05em"}}>Analysis</div>
+                  {["Dashboard","Sentiment","Query Categories","Citation Sources"].map((item,i)=>(
+                    <div key={i} style={{padding:"6px 14px",fontSize:9,color:i===0?"#0f172a":"#94a3b8",fontWeight:i===0?500:400,borderLeft:i===0?"2px solid #3b82f6":"2px solid transparent",background:i===0?"#fff":"transparent"}}>{item}</div>
+                  ))}
+                  <div style={{fontSize:8,color:"#94a3b8",padding:"0 14px",marginTop:12,marginBottom:6,textTransform:"uppercase",letterSpacing:".05em"}}>Strategy</div>
+                  {["Target Channels","Content Hub","90-Day Roadmap"].map((item,i)=>(
+                    <div key={i} style={{padding:"6px 14px",fontSize:9,color:"#94a3b8"}}>{item}</div>
+                  ))}
                 </div>
                 {/* Main content */}
-                <div style={{flex:1,padding:"16px 18px",overflowY:"hidden"}}>
-                  <div style={{marginBottom:12,paddingBottom:8,borderBottom:"1px solid #f1f5f9"}}>
-                    <div style={{fontSize:11,fontWeight:500,color:"#0f172a"}}>Acme Corp Visibility Report</div>
-                    <div style={{fontSize:7,color:"#94a3b8",marginTop:2}}>Technology · United States · March 2026</div>
+                <div style={{flex:1,padding:"16px 20px",overflow:"hidden"}}>
+                  <div style={{marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f1f5f9"}}>
+                    <div style={{fontSize:12,fontWeight:500,color:"#0f172a"}}>Acme Corp Visibility Report</div>
+                    <div style={{fontSize:8,color:"#94a3b8",marginTop:2}}>Technology · United States · March 2026</div>
                   </div>
-                  <div style={{display:"flex",gap:12,marginBottom:12,alignItems:"center"}}>
+                  <div style={{display:"flex",gap:12,marginBottom:14,alignItems:"center"}}>
                     <div style={{textAlign:"center",flexShrink:0}}>
-                      <svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="#e2e8f0" strokeWidth="4"/><circle cx="32" cy="32" r="26" fill="none" stroke="#3b82f6" strokeWidth="4" strokeDasharray={2*Math.PI*26} strokeDashoffset={2*Math.PI*26*(1-0.83)} strokeLinecap="round" transform="rotate(-90 32 32)"/><text x="32" y="35" textAnchor="middle" fontSize="14" fontWeight="500" fill="#0f172a">83%</text></svg>
-                      <div style={{fontSize:6,color:"#94a3b8",marginTop:1}}>Visibility Score</div>
+                      <svg width="70" height="70" viewBox="0 0 70 70"><circle cx="35" cy="35" r="28" fill="none" stroke="#f1f5f9" strokeWidth="5"/><circle cx="35" cy="35" r="28" fill="none" stroke="#3b82f6" strokeWidth="5" strokeDasharray={2*Math.PI*28} strokeDashoffset={2*Math.PI*28*(1-0.73)} strokeLinecap="round" transform="rotate(-90 35 35)"/><text x="35" y="38" textAnchor="middle" fontSize="16" fontWeight="500" fill="#0f172a">73%</text></svg>
                     </div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,flex:1}}>
-                      <div style={{background:"#f8fafc",borderRadius:6,padding:"6px 8px",textAlign:"center"}}><div style={{fontSize:6,color:"#94a3b8",marginBottom:2}}>MENTION RATE</div><div style={{fontSize:12,fontWeight:500,color:"#1e40af"}}>86%</div></div>
-                      <div style={{background:"#f8fafc",borderRadius:6,padding:"6px 8px",textAlign:"center"}}><div style={{fontSize:6,color:"#94a3b8",marginBottom:2}}>CITATION RATE</div><div style={{fontSize:12,fontWeight:500,color:"#1e40af"}}>72%</div></div>
-                      <div style={{background:"#f8fafc",borderRadius:6,padding:"6px 8px",textAlign:"center"}}><div style={{fontSize:6,color:"#94a3b8",marginBottom:2}}>SENTIMENT</div><div style={{fontSize:10,fontWeight:500,color:"#059669"}}>Positive</div></div>
+                      {[{label:"MENTION RATE",value:"77%"},{label:"CITATION RATE",value:"69%"},{label:"SENTIMENT",value:"Positive"}].map((kpi,i)=>(
+                        <div key={i} style={{padding:"6px 8px",borderRadius:6,border:"1px solid #f1f5f9",textAlign:"center"}}>
+                          <div style={{fontSize:7,color:"#94a3b8",marginBottom:2}}>{kpi.label}</div>
+                          <div style={{fontSize:12,fontWeight:500,color:i===2?"#3b82f6":"#0f172a"}}>{kpi.value}</div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <div style={{marginBottom:12}}>
-                    <div style={{fontSize:7,color:"#94a3b8",marginBottom:6,fontWeight:500}}>ENGINE PERFORMANCE</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:6}}>
-                      {[{name:"ChatGPT",score:77,color:"#10A37F"},{name:"Gemini",score:87,color:"#4285F4"},{name:"Perplexity",score:82,color:"#20808D"},{name:"Google AI",score:85,color:"#EA4335"},{name:"Claude",score:79,color:"#D97706"}].map((e,i)=>(<div key={i} style={{background:"#f8fafc",borderRadius:6,padding:"6px 8px",textAlign:"center"}}><div style={{fontSize:7,color:e.color,fontWeight:500,marginBottom:2}}>{e.name}</div><div style={{fontSize:13,fontWeight:500,color:"#0f172a"}}>{e.score}%</div><div style={{height:3,background:"#e2e8f0",borderRadius:2,marginTop:3}}><div style={{width:e.score+"%",height:"100%",background:e.color,borderRadius:2}}/></div></div>))}
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(5, 1fr)",gap:4,marginBottom:14}}>
+                    {[{name:"ChatGPT",score:"80%"},{name:"Gemini",score:"93%"},{name:"Perplexity",score:"87%"},{name:"Google AI",score:"64%"},{name:"Claude",score:"45%"}].map((e,i)=>(
+                      <div key={i} style={{textAlign:"center",padding:"6px 2px",borderRadius:6,border:"1px solid #f1f5f9"}}>
+                        <div style={{fontSize:7,color:"#64748b"}}>{e.name}</div>
+                        <div style={{fontSize:12,fontWeight:500,color:"#0f172a",marginTop:1}}>{e.score}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{padding:"8px 10px",borderRadius:6,borderLeft:"3px solid #3b82f6",background:"#3b82f606",marginBottom:10}}>
+                    <div style={{fontSize:8,color:"#3b82f6",fontWeight:500,marginBottom:2}}>KEY FINDING</div>
+                    <div style={{fontSize:9,color:"#334155",lineHeight:1.5}}>Absent from 40% of recommendation queries. Competitor A cited in all.</div>
+                  </div>
+                  <div style={{fontSize:8,color:"#94a3b8",marginBottom:6,textTransform:"uppercase",letterSpacing:".04em"}}>Query Results</div>
+                  {[{q:"Best cloud platforms for startups",s1:true,s2:true},{q:"Enterprise CRM comparison",s1:false,s2:true},{q:"Project management for remote teams",s1:true,s2:false}].map((item,i)=>(
+                    <div key={i} style={{display:"flex",alignItems:"center",padding:"4px 0",borderBottom:"1px solid #f8fafc"}}>
+                      <span style={{fontSize:9,color:"#475569",flex:1}}>{item.q}</span>
+                      <div style={{display:"flex",gap:3}}>
+                        <span style={{fontSize:7,padding:"2px 6px",borderRadius:3,background:item.s1?"#3b82f612":"#f1f5f9",color:item.s1?"#3b82f6":"#94a3b8"}}>{item.s1?"Cited":"Absent"}</span>
+                        <span style={{fontSize:7,padding:"2px 6px",borderRadius:3,background:item.s2?"#3b82f612":"#f1f5f9",color:item.s2?"#3b82f6":"#94a3b8"}}>{item.s2?"Cited":"Absent"}</span>
+                      </div>
                     </div>
-                  </div>
-                  {/* Key finding insight */}
-                  <div style={{padding:"6px 8px",background:"#eff6ff",borderRadius:6,borderLeft:"2px solid #3b82f6",marginBottom:10}}>
-                    <div style={{fontSize:6,color:"#3b82f6",fontWeight:500,marginBottom:1}}>KEY FINDING</div>
-                    <div style={{fontSize:7,color:"#334155",lineHeight:1.4}}>Absent from 40% of recommendation queries. Competitor A cited in all.</div>
-                  </div>
-                  {/* Mini query results */}
-                  <div style={{marginBottom:10}}>
-                    <div style={{fontSize:7,color:"#94a3b8",marginBottom:4,fontWeight:500}}>QUERY RESULTS</div>
-                    <div style={{borderRadius:4,border:"1px solid #f1f5f9",overflow:"hidden"}}>
-                      {[{q:"Best cloud platforms for startups",g:"Cited",m:"Cited"},{q:"Enterprise CRM comparison",g:"Mentioned",m:"Absent"},{q:"Project management for remote teams",g:"Cited",m:"Mentioned"},{q:"Best mobile plan for small businesses",g:"Cited",m:"Cited"}].map((r,i)=>{const bc=(s)=>({fontSize:6,fontWeight:500,padding:"1px 3px",borderRadius:2,background:s==="Cited"?"#dcfce7":s==="Mentioned"?"#dbeafe":"#fee2e2",color:s==="Cited"?"#166534":s==="Mentioned"?"#1e40af":"#991b1b"});return(<div key={i} style={{display:"flex",alignItems:"center",padding:"3px 6px",borderBottom:i<3?"1px solid #f1f5f9":"none",gap:3}}><div style={{flex:1,fontSize:7,color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.q}</div><span style={bc(r.g)}>{r.g}</span><span style={bc(r.m)}>{r.m}</span></div>);})}
-                    </div>
-                  </div>
-
+                  ))}
                 </div>
               </div>
             </div>
@@ -2928,28 +2932,28 @@ function LandingPage({ onGetStarted }) {
       {/* ===== SECTION 2: WHAT YOU'LL DISCOVER ===== */}
       <div id="section-features" style={{padding:"100px 24px",maxWidth:1100,margin:"0 auto"}}>
         <div style={{textAlign:"center",marginBottom:48}}>
-          <div style={{fontSize:12,fontWeight:500,color:"#2563eb",letterSpacing:".08em",textTransform:"uppercase",marginBottom:8}}>What You'll Discover</div>
+          <div style={{fontSize:12,fontWeight:500,color:"#3b82f6",letterSpacing:".08em",textTransform:"uppercase",marginBottom:8}}>What You'll Discover</div>
           <div style={{fontSize:32,fontWeight:500,color:"#0f172a"}}>Actionable intelligence from every AI engine</div>
           <div style={{fontSize:14,color:"#64748b",marginTop:8,maxWidth:560,margin:"8px auto 0"}}>Your brand's AI visibility, measured across every major engine in one audit</div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:24}}>
-          <div style={{background:"#fff",borderRadius:16,padding:"36px 32px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
-            <div style={{width:48,height:48,borderRadius:12,background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
+          <div style={{background:"#fff",borderRadius:12,padding:"32px 28px",border:"1px solid #e2e8f0",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+            <div style={{width:48,height:48,borderRadius:12,background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
             </div>
             <div style={{fontSize:17,fontWeight:500,color:"#0f172a",marginBottom:8}}>Visibility Scoring</div>
             <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>See when ChatGPT, Gemini, Perplexity, Google AI Overview, and Claude mention, cite, or ignore your brand across 75 real queries.</div>
           </div>
-          <div style={{background:"#fff",borderRadius:16,padding:"36px 32px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
-            <div style={{width:48,height:48,borderRadius:12,background:"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+          <div style={{background:"#fff",borderRadius:12,padding:"32px 28px",border:"1px solid #e2e8f0",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+            <div style={{width:48,height:48,borderRadius:12,background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2" strokeLinecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
             </div>
             <div style={{fontSize:17,fontWeight:500,color:"#0f172a",marginBottom:8}}>Competitive Intelligence</div>
             <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>Compare your share of voice against competitors on every AI engine and find the queries where you're losing.</div>
           </div>
-          <div style={{background:"#fff",borderRadius:16,padding:"36px 32px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
-            <div style={{width:48,height:48,borderRadius:12,background:"#fef3c7",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+          <div style={{background:"#fff",borderRadius:12,padding:"32px 28px",border:"1px solid #e2e8f0",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+            <div style={{width:48,height:48,borderRadius:12,background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
             </div>
             <div style={{fontSize:17,fontWeight:500,color:"#0f172a",marginBottom:8}}>90-Day Action Plan</div>
             <div style={{fontSize:13,color:"#64748b",lineHeight:1.7}}>Get a phased roadmap with specific content, platform, and technical actions tied to projected improvements.</div>
@@ -2961,7 +2965,7 @@ function LandingPage({ onGetStarted }) {
 
       {/* ===== SECTION 3: HOW IT WORKS ===== */}
       <div id="section-how" style={{padding:"100px 48px"}}>
-        <div style={{maxWidth:1200,margin:"0 auto"}}>
+        <div style={{maxWidth:1100,margin:"0 auto"}}>
           <div style={{textAlign:"center",marginBottom:48}}>
             <div style={{fontSize:12,fontWeight:500,color:"#3b82f6",letterSpacing:".08em",textTransform:"uppercase",marginBottom:12}}>How It Works</div>
             <h2 style={{fontSize:32,fontWeight:500,color:"#0f172a",letterSpacing:"-.03em",margin:"0 0 12px"}}>Four steps from setup to strategy</h2>
@@ -2990,7 +2994,7 @@ function LandingPage({ onGetStarted }) {
                   <div style={{flex:1}}/>
                   <div style={{fontSize:9,color:"#94a3b8"}}>{steps[activeStep].title}</div>
                 </div>
-                <div style={{minHeight:300}}>
+                <div style={{minHeight:320,maxHeight:320,overflow:"hidden"}}>
                   {steps[activeStep].visual}
                 </div>
               </div>
@@ -3004,7 +3008,7 @@ function LandingPage({ onGetStarted }) {
 
       {/* ===== FOOTER ===== */}
       <div style={{padding:"48px 40px",background:"#0f172a",width:"100%",boxSizing:"border-box"}}>
-        <div style={{maxWidth:1200,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <img src="/enterank-icon.svg" alt="EnterRank" style={{width:24,height:24,opacity:0.8}}/>
             <div>
@@ -3014,10 +3018,10 @@ function LandingPage({ onGetStarted }) {
           </div>
           <div style={{display:"flex",alignItems:"center",gap:24}}>
             <a href="https://entermind.com/privacy-policy" target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:"#64748b",textDecoration:"none"}}>Privacy Policy</a>
-            <a href="https://entermind.ai" target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:"#60a5fa",textDecoration:"none",fontWeight:500}}>Visit Entermind AI →</a>
+            <a href="https://entermind.ai" target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:"#3b82f6",textDecoration:"none",fontWeight:500}}>Visit Entermind AI →</a>
           </div>
         </div>
-        <div style={{maxWidth:1200,margin:"16px auto 0",paddingTop:16,borderTop:"1px solid #1e293b",fontSize:11,color:"#475569"}}>
+        <div style={{maxWidth:1100,margin:"16px auto 0",paddingTop:16,borderTop:"1px solid #1e293b",fontSize:11,color:"#475569"}}>
           © 2026 Entermind AI. All rights reserved.
         </div>
       </div>
