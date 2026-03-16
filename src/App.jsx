@@ -2010,25 +2010,46 @@ Each department: 2-3 specific tasks. Total 5-7 tasks per phase. All tasks tailor
     const themeNames = (sentimentSignals?.themes || []).slice(0, 5).map(t => `${t.name} (${t.sentiment})`).join(", ");
 
     const catBreakdown = {};
-    (searchQueries || []).forEach((q, i) => {
-      const qText = typeof q === "string" ? q : q.query;
-      const qLower = (qText||"").toLowerCase();
-      let cat = "General";
-      if (/\bbest\b|top\s+\d|recommend|which\s+(is|are)|should\s+i/i.test(qLower)) cat = "Recommendation";
-      else if (/\bvs\b|compar|versus|difference/i.test(qLower)) cat = "Comparison";
-      else if (/\bhow\s+(to|do|does|can|much)|guide|tutorial/i.test(qLower)) cat = "How-To";
-      else if (/\bbuy\b|price|cost|plan|package|subscription/i.test(qLower)) cat = "Transactional";
-      else if (/\breview|rating|experience|worth/i.test(qLower)) cat = "Evaluation";
-      else if (/\bwhat\s+(is|are)|explain|meaning/i.test(qLower)) cat = "Informational";
-      if (!catBreakdown[cat]) catBreakdown[cat] = { total: 0, visible: 0 };
-      catBreakdown[cat].total++;
-      const gptQ = (gptData.queries || [])[i];
-      const gemQ = (gemData.queries || [])[i];
-      const pplxQ = (pplxData.queries || [])[i];
-      const gaiQ = (googleAIData.queries || [])[i];
-      const claudeQ = (claudeData.queries || [])[i];
-      if ((gptQ && gptQ.status !== "Absent") || (gemQ && gemQ.status !== "Absent") || (pplxQ && pplxQ.status !== "Absent") || (gaiQ && gaiQ.status !== "Absent") || (claudeQ && claudeQ.status !== "Absent")) catBreakdown[cat].visible++;
-    });
+    const narrativeTopicGroups = cd.topicGroups || [];
+    if (narrativeTopicGroups.length > 0) {
+      // Use topic groups for category breakdown
+      narrativeTopicGroups.forEach(tg => {
+        catBreakdown[tg.topic] = { total: 0, visible: 0 };
+        tg.queries.forEach(qText => {
+          const idx = (searchQueries || []).findIndex(sq => (typeof sq === "string" ? sq : sq.query) === qText);
+          catBreakdown[tg.topic].total++;
+          if (idx >= 0) {
+            const gptQ = (gptData.queries || [])[idx];
+            const gemQ = (gemData.queries || [])[idx];
+            const pplxQ = (pplxData.queries || [])[idx];
+            const gaiQ = (googleAIData.queries || [])[idx];
+            const claudeQ = (claudeData.queries || [])[idx];
+            if ((gptQ && gptQ.status !== "Absent") || (gemQ && gemQ.status !== "Absent") || (pplxQ && pplxQ.status !== "Absent") || (gaiQ && gaiQ.status !== "Absent") || (claudeQ && claudeQ.status !== "Absent")) catBreakdown[tg.topic].visible++;
+          }
+        });
+      });
+    } else {
+      // Legacy: AI-classified categories
+      (searchQueries || []).forEach((q, i) => {
+        const qText = typeof q === "string" ? q : q.query;
+        const qLower = (qText||"").toLowerCase();
+        let cat = "General";
+        if (/\bbest\b|top\s+\d|recommend|which\s+(is|are)|should\s+i/i.test(qLower)) cat = "Recommendation";
+        else if (/\bvs\b|compar|versus|difference/i.test(qLower)) cat = "Comparison";
+        else if (/\bhow\s+(to|do|does|can|much)|guide|tutorial/i.test(qLower)) cat = "How-To";
+        else if (/\bbuy\b|price|cost|plan|package|subscription/i.test(qLower)) cat = "Transactional";
+        else if (/\breview|rating|experience|worth/i.test(qLower)) cat = "Evaluation";
+        else if (/\bwhat\s+(is|are)|explain|meaning/i.test(qLower)) cat = "Informational";
+        if (!catBreakdown[cat]) catBreakdown[cat] = { total: 0, visible: 0 };
+        catBreakdown[cat].total++;
+        const gptQ = (gptData.queries || [])[i];
+        const gemQ = (gemData.queries || [])[i];
+        const pplxQ = (pplxData.queries || [])[i];
+        const gaiQ = (googleAIData.queries || [])[i];
+        const claudeQ = (claudeData.queries || [])[i];
+        if ((gptQ && gptQ.status !== "Absent") || (gemQ && gemQ.status !== "Absent") || (pplxQ && pplxQ.status !== "Absent") || (gaiQ && gaiQ.status !== "Absent") || (claudeQ && claudeQ.status !== "Absent")) catBreakdown[cat].visible++;
+      });
+    }
     const catSummary = Object.entries(catBreakdown).map(([cat, d]) => `${cat}: ${d.total} queries, ${d.total>0?Math.round(d.visible/d.total*100):0}% win rate (${d.visible}/${d.total} visible)`).join(", ");
     const totalCatCited = Object.values(catBreakdown).reduce((s,d)=>s+d.visible,0);
     const totalCatTotal = Object.values(catBreakdown).reduce((s,d)=>s+d.total,0);
@@ -2068,7 +2089,7 @@ AUDIT DATA:
 - All competitors: ${compScoresArr.map(c => c.name + " (" + c.score + "%)").join(", ") || "none"}
 - Sentiment: ${sentLabel}
 - Key themes: ${themeNames || "none detected"}
-- Query categories: ${catSummary}
+- Query ${narrativeTopicGroups.length > 0 ? "topics" : "categories"}: ${catSummary}
 - Queries where brand is ABSENT on all engines: ${absentQueries.join(" | ") || "none"}
 - Website health: ${ppSummary || "not scored"}
 - Website Readiness (weighted): ${narrativeWeightedReadiness || "N/A"}% (Content Authority 25%, Structured Data 20%, E-E-A-T 20%, Citation Network 15%, Technical SEO 10%, Content Freshness 10%)
@@ -2085,7 +2106,7 @@ Return JSON only:
   "dashboard": "<3-4 sentences. Start with what the score means in context. Compare to top competitor. Highlight the biggest gap or opportunity. End with the single most important thing to focus on.>",
   "dashboardLabel": "<5-8 words contextualizing the score label>",
   "sentiment": "<3-4 sentences. Describe HOW AI engines talk about the brand. What narrative are they pushing? How does this compare to competitors? What perception gap exists?>",
-  "queryCategories": "Summarise query category performance for ${brand}. Use ONLY these exact numbers — do NOT make up percentages:\\n${Object.entries(catBreakdown).map(([cat, d]) => "- " + cat + ": " + d.total + " queries, " + (d.total>0?Math.round(d.visible/d.total*100):0) + "% win rate (" + d.visible + "/" + d.total + " visible)").join("\\n")}\\nTotal: ${totalCatTotal} queries across ${Object.keys(catBreakdown).length} categories. Visible: ${totalCatCited}, Absent: ${totalCatAbsent}. Use these EXACT numbers. Name the weakest category and recommend a specific action. Be concise, 3-4 sentences.",
+  "queryCategories": "Summarise query ${narrativeTopicGroups.length > 0 ? "topic" : "category"} performance for ${brand}. Use ONLY these exact numbers — do NOT make up percentages:\\n${Object.entries(catBreakdown).map(([cat, d]) => "- " + cat + ": " + d.total + " queries, " + (d.total>0?Math.round(d.visible/d.total*100):0) + "% win rate (" + d.visible + "/" + d.total + " visible)").join("\\n")}\\nTotal: ${totalCatTotal} queries across ${Object.keys(catBreakdown).length} ${narrativeTopicGroups.length > 0 ? "topics" : "categories"}. Visible: ${totalCatCited}, Absent: ${totalCatAbsent}. Use these EXACT numbers. Name the weakest ${narrativeTopicGroups.length > 0 ? "topic" : "category"} and recommend a specific action. Be concise, 3-4 sentences.",
   "categoryHealth": "<3-4 sentences. Translate technical scores into business language. Which website signals are helping visibility? Which gaps are holding the brand back? Be specific about what is missing.>",
   "citationSources": "<2-3 sentences. What types of sources are AI engines pulling from? Are they authoritative? Are there obvious sources missing that competitors likely have?>",
   "competitiveLandscape": "<2-3 sentences. How does the brand compare overall? Who is the biggest threat? What are competitors doing differently that is working?>"
@@ -2298,29 +2319,60 @@ function exportPDF(r){
   const searchQueries=r.searchQueries||gptQueries.map(q=>q.query||q);
   const gaiQueries=(r.engines[3]||{}).queries||[];
   const claudeQueries=(r.engines[4]||{}).queries||[];
-  const queryTableData=searchQueries.map((q,i)=>{
-    const qText=typeof q==="string"?q:q.query||q;
-    const gptStatus=gptQueries[i]?.status||"Absent";
-    const gemStatus=gemQueries[i]?.status||"Absent";
-    const pplxStatus=pplxQueries[i]?.status||"Absent";
-    const gaiStatus=gaiQueries[i]?.status||"Absent";
-    const claudeStatus=claudeQueries[i]?.status||"Absent";
-    return[qText,gptStatus,gemStatus,pplxStatus,gaiStatus,claudeStatus];
-  });
-  if(queryTableData.length>0){
-    doc.autoTable({startY:y,head:[["Query","ChatGPT","Gemini","Perplexity","Google AI","Claude"]],body:queryTableData,margin:{left:margin,right:margin},
-      styles:{fontSize:7,cellPadding:3},headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold",fontSize:8},
-      columnStyles:{0:{cellWidth:contentW-110},1:{cellWidth:22,halign:"center"},2:{cellWidth:22,halign:"center"},3:{cellWidth:22,halign:"center"},4:{cellWidth:22,halign:"center"},5:{cellWidth:22,halign:"center"}},
-      didParseCell:function(data){
-        if(data.section==="body"&&data.column.index>=1&&data.column.index<=5){
-          const val=data.cell.raw;
-          if(val==="Cited")data.cell.styles.textColor=green;
-          else if(val==="Mentioned")data.cell.styles.textColor=accent;
-          else data.cell.styles.textColor=red;
-          data.cell.styles.fontStyle="bold";
-        }
+  const pdfTopicGroups=r.topicGroups||[];
+  const statusCellColor=function(data){
+    if(data.section==="body"&&data.column.index>=1&&data.column.index<=5){
+      const val=data.cell.raw;
+      if(val==="Cited")data.cell.styles.textColor=green;
+      else if(val==="Mentioned")data.cell.styles.textColor=accent;
+      else data.cell.styles.textColor=red;
+      data.cell.styles.fontStyle="bold";
+    }
+  };
+  if(pdfTopicGroups.length>0){
+    // Topic-grouped query tables
+    pdfTopicGroups.forEach((tg,tgi)=>{
+      checkPage(25);
+      const tQueries=tg.queries.map(qText=>{
+        const idx=searchQueries.findIndex(sq=>(typeof sq==="string"?sq:sq.query)===qText);
+        const gS=idx>=0?(gptQueries[idx]?.status||"Absent"):"Absent";
+        const geS=idx>=0?(gemQueries[idx]?.status||"Absent"):"Absent";
+        const pS=idx>=0?(pplxQueries[idx]?.status||"Absent"):"Absent";
+        const gaS=idx>=0?(gaiQueries[idx]?.status||"Absent"):"Absent";
+        const cS=idx>=0?(claudeQueries[idx]?.status||"Absent"):"Absent";
+        return[qText,gS,geS,pS,gaS,cS];
+      });
+      const totalR=tQueries.length*5;
+      const present=tQueries.reduce((s,row)=>s+[1,2,3,4,5].reduce((ss,ci)=>ss+(row[ci]!=="Absent"?1:0),0),0);
+      const vis=Math.round((present/Math.max(totalR,1))*100);
+      doc.setFontSize(10);doc.setFont("helvetica","bold");doc.setTextColor(...dark);
+      doc.text(tg.topic+" — "+vis+"% visibility",margin,y);y+=5;
+      if(tQueries.length>0){
+        doc.autoTable({startY:y,head:[["Query","ChatGPT","Gemini","Perplexity","Google AI","Claude"]],body:tQueries,margin:{left:margin,right:margin},
+          styles:{fontSize:7,cellPadding:3},headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold",fontSize:8},
+          columnStyles:{0:{cellWidth:contentW-110},1:{cellWidth:22,halign:"center"},2:{cellWidth:22,halign:"center"},3:{cellWidth:22,halign:"center"},4:{cellWidth:22,halign:"center"},5:{cellWidth:22,halign:"center"}},
+          didParseCell:statusCellColor
+        });y=doc.lastAutoTable.finalY+8;
       }
-    });y=doc.lastAutoTable.finalY+10;
+    });y+=2;
+  } else {
+    // Legacy flat table
+    const queryTableData=searchQueries.map((q,i)=>{
+      const qText=typeof q==="string"?q:q.query||q;
+      const gptStatus=gptQueries[i]?.status||"Absent";
+      const gemStatus=gemQueries[i]?.status||"Absent";
+      const pplxStatus=pplxQueries[i]?.status||"Absent";
+      const gaiStatus=gaiQueries[i]?.status||"Absent";
+      const claudeStatus=claudeQueries[i]?.status||"Absent";
+      return[qText,gptStatus,gemStatus,pplxStatus,gaiStatus,claudeStatus];
+    });
+    if(queryTableData.length>0){
+      doc.autoTable({startY:y,head:[["Query","ChatGPT","Gemini","Perplexity","Google AI","Claude"]],body:queryTableData,margin:{left:margin,right:margin},
+        styles:{fontSize:7,cellPadding:3},headStyles:{fillColor:accent,textColor:[255,255,255],fontStyle:"bold",fontSize:8},
+        columnStyles:{0:{cellWidth:contentW-110},1:{cellWidth:22,halign:"center"},2:{cellWidth:22,halign:"center"},3:{cellWidth:22,halign:"center"},4:{cellWidth:22,halign:"center"},5:{cellWidth:22,halign:"center"}},
+        didParseCell:statusCellColor
+      });y=doc.lastAutoTable.finalY+10;
+    }
   }
 
   // ── SHARE OF VOICE ──
@@ -5550,31 +5602,106 @@ function IntentPage({r,goTo}){
     {/* Overall summary */}
     <div style={{...CARD.base,marginBottom:32}}>
       <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Query Visibility Summary</div>
-      <div style={{fontSize:12,color:C.muted,marginTop:2}}>{combinedQueries.length} prompts tested across all engines</div>
+      <div style={{fontSize:12,color:C.muted,marginTop:2}}>{combinedQueries.length} prompts tested across all engines{(r.topicGroups||[]).length>0&&` · ${(r.topicGroups||[]).length} topics`}</div>
+      {(r.topicGroups||[]).length>0&&(()=>{
+        const topicColors=["#2563eb","#8b5cf6","#059669","#d97706","#dc2626","#0ea5e9","#6b7280"];
+        const topicScores=(r.topicGroups||[]).map((tg,tgi)=>{
+          const tQueries=tg.queries.map(qText=>combinedQueries.find(cq=>cq.query===qText)||{gptStatus:"Absent",gemStatus:"Absent",pplxStatus:"Absent",gaiStatus:"Absent",claudeStatus:"Absent"});
+          const total=tQueries.length*5;
+          const present=tQueries.reduce((s,q)=>s+(q.gptStatus!=="Absent"?1:0)+(q.gemStatus!=="Absent"?1:0)+(q.pplxStatus!=="Absent"?1:0)+((q.gaiStatus||"Absent")!=="Absent"?1:0)+((q.claudeStatus||"Absent")!=="Absent"?1:0),0);
+          return{topic:tg.topic,vis:Math.round((present/Math.max(total,1))*100),color:topicColors[tgi%topicColors.length]};
+        });
+        return(<div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:12}}>
+          {topicScores.map((ts,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",background:ts.color+"08",border:"1px solid "+ts.color+"20",borderRadius:8}}>
+            <div style={{width:6,height:6,borderRadius:"50%",background:ts.color}}/>
+            <span style={{fontSize:11,color:C.sub}}>{ts.topic}</span>
+            <span style={{fontSize:12,fontWeight:500,color:ts.vis>=60?"#166534":ts.vis>=30?"#92400e":"#991b1b"}}>{ts.vis}%</span>
+          </div>))}
+        </div>);
+      })()}
     </div>
 
-    {/* Audit Query Results — flat table */}
+    {/* Audit Query Results — grouped by topic */}
     <div style={{fontSize:14,fontWeight:500,marginBottom:16}}>Audit Query Results</div>
 
     {combinedQueries.length===0?<div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:24,textAlign:"center",color:C.muted,fontSize:13}}>No query data available. Run an audit to see results.</div>
-    :<div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,overflow:"hidden"}}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px 80px",padding:"12px 20px",borderBottom:"1px solid "+C.border,fontSize:11,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em"}}>
-        <span>Query</span>
-        <span style={{textAlign:"center"}}>ChatGPT</span>
-        <span style={{textAlign:"center"}}>Gemini</span>
-        <span style={{textAlign:"center"}}>Perplexity</span>
-        <span style={{textAlign:"center"}}>Google AI</span>
-        <span style={{textAlign:"center"}}>Claude</span>
-      </div>
-      {combinedQueries.map((q,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px 80px",padding:"14px 20px",alignItems:"center",borderBottom:i<combinedQueries.length-1?"1px solid "+C.border+"30":"none",background:i%2===0?"transparent":C.border+"10"}}>
-        <span style={{fontSize:13,lineHeight:1.5,color:C.text,paddingRight:12}}>{q.query}{q.archetype&&<span style={{display:"inline-block",fontSize:9,fontWeight:500,padding:"2px 7px",borderRadius:4,background:C.accent+"10",color:C.accent,marginLeft:8,verticalAlign:"middle",whiteSpace:"nowrap"}}>{q.archetype}</span>}</span>
-        <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gptStatus)}</div>
-        <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gemStatus)}</div>
-        <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.pplxStatus)}</div>
-        <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gaiStatus||"Absent")}</div>
-        <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.claudeStatus||"Absent")}</div>
-      </div>))}
-    </div>}
+    :(() => {
+      const topicGroupsData = r.topicGroups || [];
+      const useTopicGroups = topicGroupsData.length > 0;
+      const topicColors = ["#2563eb","#8b5cf6","#059669","#d97706","#dc2626","#0ea5e9","#6b7280"];
+
+      if (!useTopicGroups) {
+        // Legacy flat table for old audits without topicGroups
+        return (<div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,overflow:"hidden"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px 80px",padding:"12px 20px",borderBottom:"1px solid "+C.border,fontSize:11,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em"}}>
+            <span>Query</span>
+            <span style={{textAlign:"center"}}>ChatGPT</span>
+            <span style={{textAlign:"center"}}>Gemini</span>
+            <span style={{textAlign:"center"}}>Perplexity</span>
+            <span style={{textAlign:"center"}}>Google AI</span>
+            <span style={{textAlign:"center"}}>Claude</span>
+          </div>
+          {combinedQueries.map((q,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px 80px",padding:"14px 20px",alignItems:"center",borderBottom:i<combinedQueries.length-1?"1px solid "+C.border+"30":"none",background:i%2===0?"transparent":C.border+"10"}}>
+            <span style={{fontSize:13,lineHeight:1.5,color:C.text,paddingRight:12}}>{q.query}{q.archetype&&<span style={{display:"inline-block",fontSize:9,fontWeight:500,padding:"2px 7px",borderRadius:4,background:C.accent+"10",color:C.accent,marginLeft:8,verticalAlign:"middle",whiteSpace:"nowrap"}}>{q.archetype}</span>}</span>
+            <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gptStatus)}</div>
+            <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gemStatus)}</div>
+            <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.pplxStatus)}</div>
+            <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gaiStatus||"Absent")}</div>
+            <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.claudeStatus||"Absent")}</div>
+          </div>))}
+        </div>);
+      }
+
+      // Topic-grouped display
+      const groups = topicGroupsData.map((tg, tgi) => {
+        const topicQueries = tg.queries.map(qText => {
+          return combinedQueries.find(cq => cq.query === qText) || {query:qText,gptStatus:"Absent",gemStatus:"Absent",pplxStatus:"Absent",gaiStatus:"Absent",claudeStatus:"Absent"};
+        });
+        const totalResponses = topicQueries.length * 5;
+        const present = topicQueries.reduce((s,q) => s + (q.gptStatus!=="Absent"?1:0) + (q.gemStatus!=="Absent"?1:0) + (q.pplxStatus!=="Absent"?1:0) + ((q.gaiStatus||"Absent")!=="Absent"?1:0) + ((q.claudeStatus||"Absent")!=="Absent"?1:0), 0);
+        const visibility = Math.round((present / Math.max(totalResponses,1)) * 100);
+        return {topic:tg.topic, queries:topicQueries, visibility, color:topicColors[tgi % topicColors.length]};
+      });
+
+      return (<div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {groups.map((g,gi)=>(
+          <div key={gi} style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,overflow:"hidden"}}>
+            {/* Topic header */}
+            <div style={{padding:"14px 20px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid "+C.border}}>
+              <div style={{width:4,height:28,borderRadius:2,background:g.color,flexShrink:0}}/>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:500,color:C.text,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{g.topic}</div>
+                <div style={{fontSize:11,color:C.muted,marginTop:1}}>{g.queries.length} queries</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{width:60,height:5,borderRadius:3,background:C.bg,overflow:"hidden"}}>
+                  <div style={{width:g.visibility+"%",height:"100%",borderRadius:3,background:g.visibility>=60?"#16a34a":g.visibility>=30?"#d97706":"#ef4444"}}/>
+                </div>
+                <div style={{fontSize:13,fontWeight:500,color:g.visibility>=60?"#166534":g.visibility>=30?"#92400e":"#991b1b",minWidth:36,textAlign:"right"}}>{g.visibility}%</div>
+              </div>
+            </div>
+            {/* Engine column headers */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px 80px",padding:"8px 20px",borderBottom:"1px solid "+C.border+"40",fontSize:10,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em"}}>
+              <span>Query</span>
+              <span style={{textAlign:"center"}}>ChatGPT</span>
+              <span style={{textAlign:"center"}}>Gemini</span>
+              <span style={{textAlign:"center"}}>Perplexity</span>
+              <span style={{textAlign:"center"}}>Google AI</span>
+              <span style={{textAlign:"center"}}>Claude</span>
+            </div>
+            {/* Query rows */}
+            {g.queries.map((q,qi)=>(<div key={qi} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px 80px",padding:"12px 20px",alignItems:"center",borderBottom:qi<g.queries.length-1?"1px solid "+C.border+"20":"none",background:qi%2===0?"transparent":C.border+"08"}}>
+              <span style={{fontSize:12,lineHeight:1.5,color:C.sub,paddingRight:12}}>{q.query}</span>
+              <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gptStatus)}</div>
+              <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gemStatus)}</div>
+              <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.pplxStatus)}</div>
+              <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gaiStatus||"Absent")}</div>
+              <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.claudeStatus||"Absent")}</div>
+            </div>))}
+          </div>
+        ))}
+      </div>);
+    })()}
 
     {/* Section B: Test a Prompt */}
     <div style={{marginTop:40,...CARD.base}}>
