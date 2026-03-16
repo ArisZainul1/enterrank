@@ -2158,6 +2158,7 @@ Rules:
       guidelinesData:typeof guidelinesData!=="undefined"?guidelinesData:null,
       narratives:typeof narratives!=="undefined"?narratives:{},
       engineWeights:getEngineWeights(region),
+      topicGroups:cd.topicGroups||[],
       verifiedChannelGaps:typeof verifiedChannelGaps!=="undefined"?verifiedChannelGaps:[],
       expandedCompetitorDomains:typeof expandedCompDomains!=="undefined"?[...expandedCompDomains]:[],
       tokenUsage
@@ -3658,8 +3659,10 @@ function NewAuditPage({data,setData,onRun,history=[]}){
   const[editingTopic,setEditingTopic]=useState(null);
   const[editVal,setEditVal]=useState("");
   const[newTopic,setNewTopic]=useState("");
+  const[topicGroups,setTopicGroups]=useState([]);
+  const[collapsedTopics,setCollapsedTopics]=useState({});
   const inputOk=data.brand&&data.industry&&data.website;
-  const topicsOk=data.topics.length>=3;
+  const topicsOk=topicGroups.length>0&&topicGroups.some(g=>g.queries.length>0);
   const[autoFilling,setAutoFilling]=useState(false);
   const[autoFilled,setAutoFilled]=useState(false);
   const fieldsLocked=!autoFilled&&!(data.industry&&data.industry.length>2)&&!(data.website&&data.website.length>5);
@@ -3700,54 +3703,56 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     if(!industry||industry.trim().length<2)return;
     setGeneratingTopics(true);
     try{
-      const prompt=`You are an AEO (AI Engine Optimisation) analyst. Your job is to generate the exact queries that REAL consumers in ${region||"this region"} would type into ChatGPT, Gemini, or Perplexity when making decisions in the ${industry} industry.
+      const prompt=`You are an AEO (AI Engine Optimisation) analyst generating search topics for a visibility audit.
 
 INDUSTRY: ${industry}
 REGION: ${region||"Global"}
 
-Generate exactly 15 search queries. These must sound like REAL people talking to an AI chatbot, not marketing copy or SEO keywords.
+Generate exactly 5 TOPICS relevant to the ${industry} industry in ${region||"Global"}. Under each topic, generate exactly 3 QUERIES that real consumers would type into ChatGPT, Gemini, or Perplexity.
 
-REALISM RULES:
-- Write queries the way real people type them: casual, sometimes grammatically imperfect, conversational
-- Include queries with local slang or region-specific phrasing if relevant to ${region||"this region"}
-- Some queries should be short and direct ("best telco malaysia"), others should be full sentences ("I'm looking for a mobile plan that gives me good coverage when I travel to rural areas")
-- Do NOT include any brand names, company names, or product names
-- Do NOT tailor queries toward any specific brand's strengths or weaknesses
+TOPIC RULES:
+- Topics should be broad industry themes (e.g. "Postpaid Plans", "Network Coverage", "Family Packages", "Device Bundles", "Switching Providers")
+- Topics must cover DIFFERENT aspects of the industry — no overlap
+- Topics should reflect what real consumers in ${region||"Global"} care about
 
-QUERY MIX:
-- 4 recommendation queries: "What's the best...", "recommend me...", "top X for..."
-- 3 comparison queries: "which is better for...", "compare...", "X vs Y" (use generic category terms, not brand names)
-- 3 evaluative queries: "is it worth...", "should I switch...", "what should I look for..."
-- 3 transactional queries: "cheapest...", "best deal...", "where to get..."
-- 2 broad industry queries: "what's happening with...", "latest trends in..."
+QUERY RULES:
+- Queries must sound like REAL people talking to an AI chatbot — casual, natural, conversational
+- No brand names, company names, or product names
+- Mix of short direct queries and longer conversational ones
+- Include region-specific phrasing where relevant
+- Each query under a topic must approach it from a different angle
 
-EXAMPLES OF GOOD vs BAD:
-GOOD: "which mobile plan is best if i stream a lot of youtube and netflix"
-BAD: "best postpaid plan with entertainment bundle including Disney+ and Netflix for heavy streamers in Malaysia 2026"
+EXAMPLES OF GOOD QUERIES:
+- "which mobile plan is best if i stream a lot"
+- "should i switch from prepaid to postpaid"
+- "cheapest unlimited data plan right now"
 
-GOOD: "should i switch from prepaid to postpaid"
-BAD: "comprehensive analysis of prepaid versus postpaid mobile telecommunications plans"
+EXAMPLES OF BAD QUERIES (too polished, too long, too SEO):
+- "comprehensive analysis of prepaid versus postpaid telecommunications plans in the Malaysian market for 2026"
+- "best postpaid plan with entertainment bundle including Disney+ and Netflix for heavy streamers"
 
-GOOD: "cheapest unlimited data plan right now"
-BAD: "most cost-effective unlimited mobile data subscription package available in the current market"
-
-The queries should feel like something you'd overhear someone asking their friend or typing into ChatGPT at 11pm. Natural. Human. Real.
-
-Return ONLY a JSON array of 15 strings. No explanation.`;
+Return ONLY valid JSON in this exact format — no explanation, no markdown, no code fences:
+[
+  {
+    "topic": "Topic Name",
+    "queries": ["query 1", "query 2", "query 3"]
+  }
+]`;
       const claudeResp=await callClaude(prompt, 0.5);
       const raw=claudeResp.text||claudeResp.response||"";
-      const result=safeJSON(raw);
-      const topicArr=result&&result.topics?result.topics:Array.isArray(result)?result:null;
-      if(topicArr&&Array.isArray(topicArr)){
-        const validTopics=topicArr.filter(t=>typeof t==="string"&&t.trim().length>5).map(t=>t.trim()).slice(0,15);
-        if(validTopics.length>0){
-          setData(prev=>{
-            const hasExisting=(prev.topics||[]).some(t=>(typeof t==="string"?t:"").trim().length>3);
-            if(!hasExisting)return{...prev,topics:validTopics};
-            return prev;
-          });
-          setTopicsAutoFilled(true);
-        }
+      const parsed=safeJSON(raw);
+      let groups=Array.isArray(parsed)?parsed:(parsed?.topics||[]);
+      groups=groups.filter(t=>t.topic&&Array.isArray(t.queries)&&t.queries.length>0);
+      groups=groups.slice(0,5);
+      groups.forEach(t=>{t.queries=t.queries.filter(q=>typeof q==="string"&&q.trim().length>5).slice(0,3);});
+      if(groups.length>0){
+        setTopicGroups(groups);
+        setData(prev=>{
+          const hasExisting=(prev.topics||[]).some(t=>(typeof t==="string"?t:"").trim().length>3);
+          if(!hasExisting)return{...prev,topics:groups.flatMap(g=>g.queries)};
+          return prev;
+        });
+        setTopicsAutoFilled(true);
       }
     }catch(e){console.error("Topic generation failed:",e);}
     setGeneratingTopics(false);
@@ -3793,52 +3798,57 @@ Return ONLY a JSON array of 15 strings. No explanation.`;
     setAutoFilling(false);
   };
 
-  // Generate topics via gpt-4o — crawl website first for context
+  // Generate topics via Claude — structured 5 topics x 3 queries
   const generateTopics=async()=>{
     setGenTopics(true);setError(null);
     const nw=normalizeUrl(data.website);const nc=(data.competitors||[]).map(c=>({...c,website:normalizeUrl(c.website||"")}));
     if(nw!==data.website||JSON.stringify(nc)!==JSON.stringify(data.competitors))setData(d=>({...d,website:nw,competitors:nc}));
     try{
-      const prompt=`You are an AEO (AI Engine Optimisation) analyst. Your job is to generate the exact queries that REAL consumers in ${data.region||"this region"} would type into ChatGPT, Gemini, or Perplexity when making decisions in the ${data.industry||"general"} industry.
+      const prompt=`You are an AEO (AI Engine Optimisation) analyst generating search topics for a visibility audit.
 
 INDUSTRY: ${data.industry||"general"}
 REGION: ${data.region||"Global"}
 
-Generate exactly 15 search queries. These must sound like REAL people talking to an AI chatbot, not marketing copy or SEO keywords.
+Generate exactly 5 TOPICS relevant to the ${data.industry||"general"} industry in ${data.region||"Global"}. Under each topic, generate exactly 3 QUERIES that real consumers would type into ChatGPT, Gemini, or Perplexity.
 
-REALISM RULES:
-- Write queries the way real people type them: casual, sometimes grammatically imperfect, conversational
-- Include queries with local slang or region-specific phrasing if relevant to ${data.region||"this region"}
-- Some queries should be short and direct ("best telco malaysia"), others should be full sentences ("I'm looking for a mobile plan that gives me good coverage when I travel to rural areas")
-- Do NOT include any brand names, company names, or product names
-- Do NOT tailor queries toward any specific brand's strengths or weaknesses
+TOPIC RULES:
+- Topics should be broad industry themes (e.g. "Postpaid Plans", "Network Coverage", "Family Packages", "Device Bundles", "Switching Providers")
+- Topics must cover DIFFERENT aspects of the industry — no overlap
+- Topics should reflect what real consumers in ${data.region||"Global"} care about
 
-QUERY MIX:
-- 4 recommendation queries: "What's the best...", "recommend me...", "top X for..."
-- 3 comparison queries: "which is better for...", "compare...", "X vs Y" (use generic category terms, not brand names)
-- 3 evaluative queries: "is it worth...", "should I switch...", "what should I look for..."
-- 3 transactional queries: "cheapest...", "best deal...", "where to get..."
-- 2 broad industry queries: "what's happening with...", "latest trends in..."
+QUERY RULES:
+- Queries must sound like REAL people talking to an AI chatbot — casual, natural, conversational
+- No brand names, company names, or product names
+- Mix of short direct queries and longer conversational ones
+- Include region-specific phrasing where relevant
+- Each query under a topic must approach it from a different angle
 
-EXAMPLES OF GOOD vs BAD:
-GOOD: "which mobile plan is best if i stream a lot of youtube and netflix"
-BAD: "best postpaid plan with entertainment bundle including Disney+ and Netflix for heavy streamers in Malaysia 2026"
+EXAMPLES OF GOOD QUERIES:
+- "which mobile plan is best if i stream a lot"
+- "should i switch from prepaid to postpaid"
+- "cheapest unlimited data plan right now"
 
-GOOD: "should i switch from prepaid to postpaid"
-BAD: "comprehensive analysis of prepaid versus postpaid mobile telecommunications plans"
+EXAMPLES OF BAD QUERIES (too polished, too long, too SEO):
+- "comprehensive analysis of prepaid versus postpaid telecommunications plans in the Malaysian market for 2026"
+- "best postpaid plan with entertainment bundle including Disney+ and Netflix for heavy streamers"
 
-GOOD: "cheapest unlimited data plan right now"
-BAD: "most cost-effective unlimited mobile data subscription package available in the current market"
-
-The queries should feel like something you'd overhear someone asking their friend or typing into ChatGPT at 11pm. Natural. Human. Real.
-
-Return ONLY a JSON array of 15 strings. No explanation.`;
+Return ONLY valid JSON in this exact format — no explanation, no markdown, no code fences:
+[
+  {
+    "topic": "Topic Name",
+    "queries": ["query 1", "query 2", "query 3"]
+  }
+]`;
       const claudeResp=await callClaude(prompt, 0.5);
       const raw=claudeResp.text||claudeResp.response||"";
       const parsed=safeJSON(raw);
-      const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
-      if(topics&&Array.isArray(topics)&&topics.length>0){
-        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>5).map(t=>t.trim()).slice(0,15)}));
+      let groups=Array.isArray(parsed)?parsed:(parsed?.topics||[]);
+      groups=groups.filter(t=>t.topic&&Array.isArray(t.queries)&&t.queries.length>0);
+      groups=groups.slice(0,5);
+      groups.forEach(t=>{t.queries=t.queries.filter(q=>typeof q==="string"&&q.trim().length>5).slice(0,3);});
+      if(groups.length>0){
+        setTopicGroups(groups);
+        setData(d=>({...d,topics:groups.flatMap(g=>g.queries)}));
         setAuditStep("topics");
       }else{
         setError("Failed to generate topics. Please try again.");
@@ -3853,27 +3863,26 @@ Return ONLY a JSON array of 15 strings. No explanation.`;
   const regenerateTopics=async()=>{
     setGenTopics(true);setError(null);
     try{
-      const existing=data.topics.join("; ");
-      const prompt=`You are an AEO (AI Engine Optimisation) analyst. Generate 5 MORE search queries for the ${data.industry||"general"} industry in ${data.region||"Global"}.
+      const prompt=`Generate 1 MORE topic for a ${data.industry||"general"} industry audit in ${data.region||"Global"}.
 
-I already have these queries (do NOT duplicate them): ${existing}
+I already have these topics: ${topicGroups.map(g=>g.topic).join(", ")}
 
-Generate exactly 5 NEW and DIFFERENT queries. These must sound like REAL people talking to an AI chatbot — casual, conversational, human.
+Generate 1 NEW topic (different from those above) with 3 queries. Same rules: casual, real consumer language, no brand names.
 
-RULES:
-- Do NOT include any brand names, company names, or product names
-- Mix of short casual queries and longer conversational ones
-- Include region-specific phrasing if relevant to ${data.region||"this region"}
-- Must be different angles from the existing queries above
-
-Return ONLY a JSON array of 5 strings. No explanation.`;
+Return JSON: [{"topic": "New Topic", "queries": ["q1", "q2", "q3"]}]`;
       const claudeResp=await callClaude(prompt, 0.5);
       const raw=claudeResp.text||claudeResp.response||"";
       const parsed=safeJSON(raw);
-      const newTopics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
-      if(newTopics&&Array.isArray(newTopics)&&newTopics.length>0){
-        const cleaned=newTopics.filter(t=>typeof t==="string"&&t.trim().length>15).map(t=>t.trim()).slice(0,5);
-        setData(d=>({...d,topics:[...d.topics,...cleaned].slice(0,15)}));
+      let groups=Array.isArray(parsed)?parsed:(parsed?.topics||[]);
+      groups=groups.filter(t=>t.topic&&Array.isArray(t.queries)&&t.queries.length>0);
+      groups=groups.slice(0,1);
+      if(groups.length>0&&groups[0].queries){
+        groups[0].queries=groups[0].queries.filter(q=>typeof q==="string"&&q.trim().length>5).slice(0,3);
+        setTopicGroups(prev=>{
+          const updated=[...prev,...groups].slice(0,7);
+          setData(d=>({...d,topics:updated.flatMap(g=>g.queries)}));
+          return updated;
+        });
       }
     }catch(e){console.error("Regenerate error:",e);}
     setGenTopics(false);
@@ -3938,7 +3947,7 @@ Return JSON only:
     try{
       const selectedArchetypes=archs;
       const archContext=selectedArchetypes.map((a,i)=>`${i+1}. ${typeof a==="string"?a:a.name||a.label||a}`).join("\n");
-      const prompt=`You are an AEO (AI Engine Optimisation) analyst. Your job is to generate the exact queries that REAL consumers in ${data.region||"this region"} would type into ChatGPT, Gemini, or Perplexity when making decisions in the ${data.industry||"general"} industry.
+      const prompt=`You are an AEO (AI Engine Optimisation) analyst generating search topics for a visibility audit.
 
 INDUSTRY: ${data.industry||"general"}
 REGION: ${data.region||"Global"}
@@ -3946,41 +3955,47 @@ REGION: ${data.region||"Global"}
 TARGET AUDIENCES:
 ${archContext}
 
-Generate exactly 15 search queries. These must sound like REAL people talking to an AI chatbot, not marketing copy or SEO keywords.
+Generate exactly 5 TOPICS relevant to the ${data.industry||"general"} industry in ${data.region||"Global"}. Under each topic, generate exactly 3 QUERIES that real consumers would type into ChatGPT, Gemini, or Perplexity.
 
-REALISM RULES:
-- Write queries the way real people type them: casual, sometimes grammatically imperfect, conversational
-- Include queries with local slang or region-specific phrasing if relevant to ${data.region||"this region"}
-- Some queries should be short and direct ("best telco malaysia"), others should be full sentences ("I'm looking for a mobile plan that gives me good coverage when I travel to rural areas")
-- Do NOT include any brand names, company names, or product names
-- Do NOT tailor queries toward any specific brand's strengths or weaknesses
+TOPIC RULES:
+- Topics should be broad industry themes (e.g. "Postpaid Plans", "Network Coverage", "Family Packages", "Device Bundles", "Switching Providers")
+- Topics must cover DIFFERENT aspects of the industry — no overlap
+- Topics should reflect what real consumers in ${data.region||"Global"} care about
+- Distribute topics across the target audiences
 
-QUERY MIX (distribute across the ${selectedArchetypes.length} audiences):
-- 4 recommendation queries: "What's the best...", "recommend me...", "top X for..."
-- 3 comparison queries: "which is better for...", "compare...", "X vs Y" (use generic category terms, not brand names)
-- 3 evaluative queries: "is it worth...", "should I switch...", "what should I look for..."
-- 3 transactional queries: "cheapest...", "best deal...", "where to get..."
-- 2 broad industry queries: "what's happening with...", "latest trends in..."
+QUERY RULES:
+- Queries must sound like REAL people talking to an AI chatbot — casual, natural, conversational
+- No brand names, company names, or product names
+- Mix of short direct queries and longer conversational ones
+- Include region-specific phrasing where relevant
+- Each query under a topic must approach it from a different angle
 
-EXAMPLES OF GOOD vs BAD:
-GOOD: "which mobile plan is best if i stream a lot of youtube and netflix"
-BAD: "best postpaid plan with entertainment bundle including Disney+ and Netflix for heavy streamers in Malaysia 2026"
+EXAMPLES OF GOOD QUERIES:
+- "which mobile plan is best if i stream a lot"
+- "should i switch from prepaid to postpaid"
+- "cheapest unlimited data plan right now"
 
-GOOD: "should i switch from prepaid to postpaid"
-BAD: "comprehensive analysis of prepaid versus postpaid mobile telecommunications plans"
+EXAMPLES OF BAD QUERIES (too polished, too long, too SEO):
+- "comprehensive analysis of prepaid versus postpaid telecommunications plans in the Malaysian market for 2026"
+- "best postpaid plan with entertainment bundle including Disney+ and Netflix for heavy streamers"
 
-GOOD: "cheapest unlimited data plan right now"
-BAD: "most cost-effective unlimited mobile data subscription package available in the current market"
-
-The queries should feel like something you'd overhear someone asking their friend or typing into ChatGPT at 11pm. Natural. Human. Real.
-
-Return ONLY a JSON array of 15 strings. No explanation.`;
+Return ONLY valid JSON in this exact format — no explanation, no markdown, no code fences:
+[
+  {
+    "topic": "Topic Name",
+    "queries": ["query 1", "query 2", "query 3"]
+  }
+]`;
       const claudeResp=await callClaude(prompt, 0.5);
       const raw=claudeResp.text||claudeResp.response||"";
       const parsed=safeJSON(raw);
-      const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
-      if(topics&&Array.isArray(topics)&&topics.length>0){
-        setData(d=>({...d,topics:topics.filter(t=>typeof t==="string"&&t.trim().length>5).map(t=>t.trim()).slice(0,15)}));
+      let groups=Array.isArray(parsed)?parsed:(parsed?.topics||[]);
+      groups=groups.filter(t=>t.topic&&Array.isArray(t.queries)&&t.queries.length>0);
+      groups=groups.slice(0,5);
+      groups.forEach(t=>{t.queries=t.queries.filter(q=>typeof q==="string"&&q.trim().length>5).slice(0,3);});
+      if(groups.length>0){
+        setTopicGroups(groups);
+        setData(d=>({...d,topics:groups.flatMap(g=>g.queries)}));
       }else{setError("Failed to generate topics. Please try again.");}
     }catch(e){console.error("Topic generation from archetypes failed:",e);setError("Failed to generate topics. Check your API connection.");}
     setGenTopics(false);
@@ -4022,9 +4037,10 @@ Return ONLY a JSON array of 15 strings. No explanation.`;
   const stopSmooth=()=>{if(intervalRef.current){clearInterval(intervalRef.current);intervalRef.current=null;}};
 
   const go=async()=>{
-    const normalizedData={...data,website:normalizeUrl(data.website),competitors:(data.competitors||[]).map(c=>({...c,website:normalizeUrl(c.website||"")}))};
+    const flatTopics=topicGroups.flatMap(g=>g.queries).filter(q=>q&&q.trim());
+    const normalizedData={...data,topics:flatTopics,website:normalizeUrl(data.website),competitors:(data.competitors||[]).map(c=>({...c,website:normalizeUrl(c.website||"")}))};
     setData(normalizedData);
-    onRun(normalizedData);
+    onRun({...normalizedData,topicGroups});
   };
 
   // Cleanup on unmount
@@ -4147,7 +4163,7 @@ Return ONLY a JSON array of 15 strings. No explanation.`;
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <span style={{fontSize:11,color:C.muted}}>{selectedArchetypes.length} of 3 selected</span>
           <button
-            onClick={()=>{setData(d=>({...d,archetypes:selectedArchetypes,topics:[]}));setAuditStep("topics");setGenTopics(true);generateTopicsFromArchetypes(selectedArchetypes);}}
+            onClick={()=>{setTopicGroups([]);setData(d=>({...d,archetypes:selectedArchetypes,topics:[]}));setAuditStep("topics");setGenTopics(true);generateTopicsFromArchetypes(selectedArchetypes);}}
             disabled={selectedArchetypes.length===0}
             style={{padding:"10px 24px",background:selectedArchetypes.length>0?C.accent:"#dde1e7",color:selectedArchetypes.length>0?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:500,cursor:selectedArchetypes.length>0?"pointer":"not-allowed",fontFamily:"'Satoshi',-apple-system,sans-serif"}}
           >
@@ -4159,65 +4175,76 @@ Return ONLY a JSON array of 15 strings. No explanation.`;
   );
 
   if(auditStep==="topics")return(<div style={{maxWidth:620,margin:"0 auto"}}>
-    <div style={{marginBottom:24,textAlign:"center"}}>
-      <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Review Topics for {data.brand}</h2>
-      <p style={{color:C.sub,fontSize:13,marginTop:4}}>These topics will be used to measure AI engine visibility. Edit, remove, or add more.</p>
+  <div style={{marginBottom:24,textAlign:"center"}}>
+    <h2 style={{fontSize:22,fontWeight:500,color:C.text,margin:0,fontFamily:"'Satoshi',-apple-system,sans-serif",letterSpacing:"-.02em"}}>Review Topics for {data.brand}</h2>
+    <p style={{color:C.sub,fontSize:13,marginTop:4}}>5 topics with 3 queries each. Edit, remove, or add more.</p>
+  </div>
+  <Card>
+    {generatingTopics&&(<div style={{display:"flex",alignItems:"center",gap:6,padding:"12px 14px",background:C.accent+"06",borderRadius:10,marginBottom:8,fontSize:11,color:C.accent}}>
+      <div style={{width:12,height:12,border:"2px solid "+C.accent,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+      Generating topics for {data.industry||"your industry"}...
+    </div>)}
+
+    <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+      {topicGroups.map((group,gi)=>{
+        const isCollapsed=collapsedTopics[gi]||false;
+        return(
+          <div key={gi} style={{border:"1px solid "+C.border,borderRadius:10,overflow:"hidden"}}>
+            <div onClick={()=>setCollapsedTopics(prev=>({...prev,[gi]:!prev[gi]}))} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"#f8fafc",cursor:"pointer",borderBottom:isCollapsed?"none":"1px solid "+C.borderSoft}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}}>
+                <span style={{fontSize:10,fontWeight:500,color:C.accent,background:C.accent+"10",padding:"2px 8px",borderRadius:4,flexShrink:0}}>Topic {gi+1}</span>
+                <input type="text" value={group.topic} onClick={e=>e.stopPropagation()} onChange={e=>{const u=[...topicGroups];u[gi]={...u[gi],topic:e.target.value};setTopicGroups(u);}} style={{fontSize:13,fontWeight:500,color:C.text,border:"none",outline:"none",background:"transparent",fontFamily:"inherit",flex:1,minWidth:0}}/>
+                <span style={{fontSize:11,color:C.muted,flexShrink:0}}>({group.queries.length})</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div onClick={e=>{e.stopPropagation();const u=[...topicGroups];u.splice(gi,1);setTopicGroups(u);setData(d=>({...d,topics:u.flatMap(g=>g.queries)}));}} style={{cursor:"pointer",fontSize:13,color:C.muted,padding:"0 4px"}} title="Remove topic">x</div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="2" style={{transform:isCollapsed?"rotate(-90deg)":"rotate(0deg)",transition:"transform 0.15s ease",flexShrink:0}}><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+            </div>
+            {!isCollapsed&&(
+              <div style={{padding:"8px 16px 12px"}}>
+                {group.queries.map((query,qi)=>{
+                  const qLower=(query||"").toLowerCase();
+                  const hasBrandWarn=data.brand&&data.brand.trim().length>1&&qLower.includes(data.brand.trim().toLowerCase());
+                  return(
+                    <div key={qi}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:qi<group.queries.length-1?"1px solid #f1f5f9":"none"}}>
+                        <div style={{width:6,height:6,borderRadius:"50%",background:C.accent+"40",flexShrink:0}}/>
+                        <input type="text" value={query} onChange={e=>{const u=[...topicGroups];u[gi]={...u[gi],queries:[...u[gi].queries]};u[gi].queries[qi]=e.target.value;setTopicGroups(u);setData(d=>({...d,topics:u.flatMap(g=>g.queries)}));}} style={{flex:1,fontSize:12,color:C.text,border:"none",outline:"none",background:"transparent",fontFamily:"inherit",padding:"2px 0"}}/>
+                        <div onClick={()=>{const u=[...topicGroups];u[gi]={...u[gi],queries:u[gi].queries.filter((_,j)=>j!==qi)};if(u[gi].queries.length===0)u.splice(gi,1);setTopicGroups(u);setData(d=>({...d,topics:u.flatMap(g=>g.queries)}));}} style={{cursor:"pointer",color:C.muted,fontSize:14,padding:"0 4px"}} title="Remove query">x</div>
+                      </div>
+                      {hasBrandWarn&&<div style={{fontSize:10,color:"#dc2626",paddingLeft:14,marginTop:1,marginBottom:2}}>Contains brand name — consider rephrasing as a generic query</div>}
+                    </div>
+                  );
+                })}
+                {group.queries.length<5&&(
+                  <div onClick={()=>{const u=[...topicGroups];u[gi]={...u[gi],queries:[...u[gi].queries,""]};setTopicGroups(u);}} style={{fontSize:11,color:C.accent,cursor:"pointer",padding:"6px 0 0",marginLeft:14}}>+ Add query</div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
-    <Card>
-      {/* Topic guidance */}
-      <div style={{display:"flex",alignItems:"flex-start",gap:8,padding:"10px 14px",background:"#fffbeb",border:"1px solid #fef3c7",borderRadius:10,marginBottom:12,fontSize:11,lineHeight:1.6,color:"#92400e"}}>
-        <div>
-          <span style={{fontWeight:500}}>Tip:</span> Enter topics as real search queries — the way someone would actually ask ChatGPT or Gemini. For example, "best credit cards with rewards in UAE" instead of just "credit cards". We test whether AI engines mention your brand in response to these queries <em>without</em> naming any brand.
-        </div>
-      </div>
-      {/* Topic loading indicator */}
-      {generatingTopics&&(<div style={{display:"flex",alignItems:"center",gap:6,padding:"12px 14px",background:C.accent+"06",borderRadius:10,marginBottom:8,fontSize:11,color:C.accent}}>
-        <div style={{width:12,height:12,border:"2px solid "+C.accent,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
-        Generating relevant search queries for {data.industry||"your industry"}...
-      </div>)}
-      {/* Topic list */}
-      <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
-        {data.topics.map((topic,i)=>{const topicLower=topic.toLowerCase();const topicContainsBrand=data.brand&&data.brand.trim().length>1&&topicLower.includes(data.brand.trim().toLowerCase());const topicContainsComp=(data.competitors||[]).some(c=>c.name&&c.name.trim().length>1&&topicLower.includes(c.name.trim().toLowerCase()));const hasWarning=topicContainsBrand||topicContainsComp;return(<div key={i}><div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:hasWarning?"#fef2f2":C.bg,borderRadius:8,border:`1px solid ${hasWarning?"#fecaca":C.borderSoft}`}}>
-          <span style={{fontSize:13,color:C.accent,fontWeight:600,fontFamily:"'Satoshi',-apple-system,sans-serif",minWidth:22}}>{i+1}.</span>
-          {editingTopic===i?(<>
-            <input value={editVal} onChange={e=>setEditVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")saveEdit(i);if(e.key==="Escape"){setEditingTopic(null);setEditVal("");}}} autoFocus style={{flex:1,padding:"4px 8px",background:"#fff",border:`1px solid ${C.accent}40`,borderRadius:6,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit"}}/>
-            <span onClick={()=>saveEdit(i)} style={{cursor:"pointer",fontSize:11,color:C.accent,fontWeight:600}}>Save</span>
-            <span onClick={()=>{setEditingTopic(null);setEditVal("");}} style={{cursor:"pointer",fontSize:11,color:C.muted}}>Cancel</span>
-          </>):(<>
-            <span style={{flex:1,fontSize:13,color:C.text}}>{topic}</span>
-            <span onClick={()=>startEdit(i)} style={{cursor:"pointer",fontSize:11,color:C.accent,fontWeight:500,opacity:.7}}>Edit</span>
-            <span onClick={()=>deleteTopic(i)} style={{cursor:"pointer",fontSize:14,color:C.muted,lineHeight:1}}>×</span>
-          </>)}
-        </div>{hasWarning&&(<div style={{fontSize:10,color:"#dc2626",marginTop:2,paddingLeft:24,marginBottom:2}}>{topicContainsBrand?"This topic contains your brand name":"This topic contains a competitor name"} — results may be inflated. Consider rephrasing as a generic query.</div>)}</div>);})}
-      </div>
 
-      {/* Topic counter */}
-      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
-        <span style={{fontSize:11,fontWeight:500,color:data.topics.length>=15?C.red:C.muted,fontFamily:"'Satoshi',-apple-system,sans-serif"}}>{data.topics.length} / 15 topics</span>
+    <div style={{textAlign:"center",fontSize:12,color:C.muted,marginBottom:16}}>
+      {topicGroups.reduce((s,g)=>s+g.queries.length,0)} / 15 queries across {topicGroups.length} topics
+    </div>
+
+    <button onClick={regenerateTopics} disabled={genTopics||generatingTopics||topicGroups.length>=7} style={{width:"100%",padding:"10px 16px",background:"none",border:"1px dashed "+C.accent+"40",borderRadius:8,fontSize:12,fontWeight:500,color:topicGroups.length>=7?C.muted:C.accent,cursor:genTopics||generatingTopics||topicGroups.length>=7?"not-allowed":"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",marginBottom:8,opacity:genTopics||generatingTopics||topicGroups.length>=7?.5:1}}>
+      {genTopics?"Generating...":"+ Add Another Topic"}
+    </button>
+
+    <div style={{paddingTop:16,borderTop:"1px solid "+C.borderSoft,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <button onClick={()=>setAuditStep("archetypes")} style={{padding:"8px 16px",background:"none",border:"1px solid "+C.border,borderRadius:8,fontSize:12,color:C.sub,cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>← Back</button>
+      <div style={{display:"flex",alignItems:"center",gap:12}}>
+        <span style={{fontSize:11,color:C.muted}}>{topicGroups.reduce((s,g)=>s+g.queries.length,0)} queries</span>
+        <button onClick={go} disabled={!topicsOk} style={{padding:"10px 24px",background:topicsOk?C.accent:"#dde1e7",color:topicsOk?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:500,cursor:topicsOk?"pointer":"not-allowed",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Run Audit →</button>
       </div>
-
-      {/* Add new topic */}
-      <div style={{display:"flex",gap:8,marginBottom:16}}>
-        <input value={newTopic} onChange={e=>setNewTopic(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTopic();}} placeholder={data.topics.length>=15?"Maximum 15 topics reached":"Add a custom topic..."} disabled={data.topics.length>=10} style={{flex:1,padding:"8px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,color:C.text,outline:"none",fontFamily:"inherit",opacity:data.topics.length>=15?.5:1}}/>
-        <button onClick={addTopic} disabled={!newTopic.trim()||data.topics.length>=10} style={{padding:"8px 16px",background:newTopic.trim()&&data.topics.length<15?C.accent:"#dde1e7",color:newTopic.trim()&&data.topics.length<15?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:newTopic.trim()&&data.topics.length<15?"pointer":"not-allowed",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Add</button>
-      </div>
-
-      {/* Generate more button */}
-      <button onClick={regenerateTopics} disabled={genTopics||generatingTopics||data.topics.length>=10} style={{width:"100%",padding:"10px 16px",background:"none",border:`1px dashed ${C.accent}40`,borderRadius:8,fontSize:12,fontWeight:600,color:data.topics.length>=15?C.muted:C.accent,cursor:genTopics||generatingTopics||data.topics.length>=15?"not-allowed":"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif",marginBottom:8,opacity:genTopics||generatingTopics||data.topics.length>=15?.5:1}}>
-        {genTopics?"Generating more topics...":"+ Generate More Topics"}
-      </button>
-
-
-      <div style={{paddingTop:16,borderTop:`1px solid ${C.borderSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <button onClick={()=>setAuditStep("archetypes")} style={{padding:"8px 16px",background:"none",border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,color:C.sub,cursor:"pointer",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>← Back to Audience</button>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <span style={{fontSize:11,color:C.muted}}>{data.topics.length} topics</span>
-          <button onClick={go} disabled={!topicsOk} style={{padding:"10px 24px",background:topicsOk?C.accent:"#dde1e7",color:topicsOk?"#fff":"#9ca3af",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:topicsOk?"pointer":"not-allowed",fontFamily:"'Satoshi',-apple-system,sans-serif"}}>Run Audit →</button>
-        </div>
-      </div>
-    </Card>
-    {error&&<div style={{marginTop:12,padding:"10px 16px",background:`${C.red}08`,border:`1px solid ${C.red}20`,borderRadius:8,fontSize:12,color:C.red}}>{error}</div>}
-  </div>);
+    </div>
+  </Card>
+  {error&&<div style={{marginTop:12,padding:"10px 16px",background:C.red+"08",border:"1px solid "+C.red+"20",borderRadius:8,fontSize:12,color:C.red}}>{error}</div>}
+</div>);
 
   /* ─── STEP 1: Client Details Input ─── */
   return(<div style={{maxWidth:620,margin:"0 auto"}}>
@@ -4964,52 +4991,52 @@ function QueryCategoriesPage({ r }) {
     };
   });
 
-  const categorize = (query) => {
-    const q = query.toLowerCase();
-    if (/\bbest\b|top\s+\d|recommend|which\s+(is|are)|should\s+i/i.test(q)) return "Recommendation";
-    if (/\bvs\b|compar|versus|difference\s+between|or\b.*\bor\b/i.test(q)) return "Comparison";
-    if (/\bhow\s+(to|do|does|can|much)|guide|tutorial|step/i.test(q)) return "How-To";
-    if (/\bbuy\b|price|cost|plan|package|subscription|where\s+to|deal/i.test(q)) return "Transactional";
-    if (/\breview|rating|experience|worth|reliable|complaint/i.test(q)) return "Evaluation";
-    if (/\bwhat\s+(is|are)|explain|meaning|definition|overview/i.test(q)) return "Informational";
-    return "General";
-  };
+  // Topic-based grouping (new) with AI-classification fallback (old)
+  const topicGroupsData = r.topicGroups || [];
+  const useTopicGroups = topicGroupsData.length > 0;
 
-  const categorized = {};
-  allQueries.forEach(q => {
-    const cat = categorize(q.query);
-    if (!categorized[cat]) categorized[cat] = [];
-    categorized[cat].push(q);
-  });
-
-  const categoryColors = {
-    "Recommendation": "#2563eb",
-    "Comparison": "#8b5cf6",
-    "How-To": "#059669",
-    "Transactional": "#d97706",
-    "Evaluation": "#dc2626",
-    "Informational": "#0ea5e9",
-    "General": "#6b7280"
-  };
-
-  const categoryDescs = {
-    "Recommendation": "Queries asking AI to recommend or suggest brands",
-    "Comparison": "Queries comparing brands, products, or features",
-    "How-To": "Queries seeking instructions or guides",
-    "Transactional": "Queries with purchase or pricing intent",
-    "Evaluation": "Queries seeking reviews, ratings, or assessments",
-    "Informational": "Queries seeking general knowledge or definitions",
-    "General": "Other industry-related queries"
-  };
-
-  const categories = Object.entries(categorized).map(([name, queries]) => {
-    const cited = queries.reduce((sum, q) => sum + (q.gptStatus === "Cited" ? 1 : 0) + (q.gemStatus === "Cited" ? 1 : 0) + (q.pplxStatus === "Cited" ? 1 : 0) + (q.gaiStatus === "Cited" ? 1 : 0) + (q.claudeStatus === "Cited" ? 1 : 0), 0);
-    const mentioned = queries.reduce((sum, q) => sum + (q.gptStatus === "Mentioned" ? 1 : 0) + (q.gemStatus === "Mentioned" ? 1 : 0) + (q.pplxStatus === "Mentioned" ? 1 : 0) + (q.gaiStatus === "Mentioned" ? 1 : 0) + (q.claudeStatus === "Mentioned" ? 1 : 0), 0);
-    const totalEngineResponses = queries.length * 5;
-    const absent = totalEngineResponses - cited - mentioned;
-    const winRate = Math.round(((cited + mentioned) / Math.max(totalEngineResponses, 1)) * 100);
-    return { name, queries, cited, mentioned, absent, total: totalEngineResponses, winRate, color: categoryColors[name] || "#6b7280", desc: categoryDescs[name] || "" };
-  }).sort((a, b) => b.queries.length - a.queries.length);
+  let categories;
+  if (useTopicGroups) {
+    const topicColors = ["#2563eb", "#8b5cf6", "#059669", "#d97706", "#dc2626", "#0ea5e9", "#6b7280"];
+    categories = topicGroupsData.map((tg, tgi) => {
+      const topicQueries = tg.queries.map(qText => {
+        return allQueries.find(aq => aq.query === qText) || { query: qText, gptStatus: "Absent", gemStatus: "Absent", pplxStatus: "Absent", gaiStatus: "Absent", claudeStatus: "Absent", bestStatus: "Absent" };
+      });
+      const cited = topicQueries.reduce((sum, q) => sum + (q.gptStatus === "Cited" ? 1 : 0) + (q.gemStatus === "Cited" ? 1 : 0) + (q.pplxStatus === "Cited" ? 1 : 0) + (q.gaiStatus === "Cited" ? 1 : 0) + (q.claudeStatus === "Cited" ? 1 : 0), 0);
+      const mentioned = topicQueries.reduce((sum, q) => sum + (q.gptStatus === "Mentioned" ? 1 : 0) + (q.gemStatus === "Mentioned" ? 1 : 0) + (q.pplxStatus === "Mentioned" ? 1 : 0) + (q.gaiStatus === "Mentioned" ? 1 : 0) + (q.claudeStatus === "Mentioned" ? 1 : 0), 0);
+      const totalEngineResponses = topicQueries.length * 5;
+      const absent = totalEngineResponses - cited - mentioned;
+      const winRate = Math.round(((cited + mentioned) / Math.max(totalEngineResponses, 1)) * 100);
+      return { name: tg.topic, queries: topicQueries, cited, mentioned, absent, total: totalEngineResponses, winRate, color: topicColors[tgi % topicColors.length], desc: `${topicQueries.length} queries in this topic` };
+    });
+  } else {
+    const categorize = (query) => {
+      const q = query.toLowerCase();
+      if (/\bbest\b|top\s+\d|recommend|which\s+(is|are)|should\s+i/i.test(q)) return "Recommendation";
+      if (/\bvs\b|compar|versus|difference\s+between|or\b.*\bor\b/i.test(q)) return "Comparison";
+      if (/\bhow\s+(to|do|does|can|much)|guide|tutorial|step/i.test(q)) return "How-To";
+      if (/\bbuy\b|price|cost|plan|package|subscription|where\s+to|deal/i.test(q)) return "Transactional";
+      if (/\breview|rating|experience|worth|reliable|complaint/i.test(q)) return "Evaluation";
+      if (/\bwhat\s+(is|are)|explain|meaning|definition|overview/i.test(q)) return "Informational";
+      return "General";
+    };
+    const categorized = {};
+    allQueries.forEach(q => {
+      const cat = categorize(q.query);
+      if (!categorized[cat]) categorized[cat] = [];
+      categorized[cat].push(q);
+    });
+    const categoryColors = { "Recommendation": "#2563eb", "Comparison": "#8b5cf6", "How-To": "#059669", "Transactional": "#d97706", "Evaluation": "#dc2626", "Informational": "#0ea5e9", "General": "#6b7280" };
+    const categoryDescs = { "Recommendation": "Queries asking AI to recommend or suggest brands", "Comparison": "Queries comparing brands, products, or features", "How-To": "Queries seeking instructions or guides", "Transactional": "Queries with purchase or pricing intent", "Evaluation": "Queries seeking reviews, ratings, or assessments", "Informational": "Queries seeking general knowledge or definitions", "General": "Other industry-related queries" };
+    categories = Object.entries(categorized).map(([name, queries]) => {
+      const cited = queries.reduce((sum, q) => sum + (q.gptStatus === "Cited" ? 1 : 0) + (q.gemStatus === "Cited" ? 1 : 0) + (q.pplxStatus === "Cited" ? 1 : 0) + (q.gaiStatus === "Cited" ? 1 : 0) + (q.claudeStatus === "Cited" ? 1 : 0), 0);
+      const mentioned = queries.reduce((sum, q) => sum + (q.gptStatus === "Mentioned" ? 1 : 0) + (q.gemStatus === "Mentioned" ? 1 : 0) + (q.pplxStatus === "Mentioned" ? 1 : 0) + (q.gaiStatus === "Mentioned" ? 1 : 0) + (q.claudeStatus === "Mentioned" ? 1 : 0), 0);
+      const totalEngineResponses = queries.length * 5;
+      const absent = totalEngineResponses - cited - mentioned;
+      const winRate = Math.round(((cited + mentioned) / Math.max(totalEngineResponses, 1)) * 100);
+      return { name, queries, cited, mentioned, absent, total: totalEngineResponses, winRate, color: categoryColors[name] || "#6b7280", desc: categoryDescs[name] || "" };
+    }).sort((a, b) => b.queries.length - a.queries.length);
+  }
 
   let totalCited = 0, totalMentioned = 0, totalAbsent = 0;
   allQueries.forEach(q => {
