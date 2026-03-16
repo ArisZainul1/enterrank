@@ -699,37 +699,6 @@ async function runRealAudit(cd, onProgress){
     return { status: "Mentioned", confidence: "low" };
   }
 
-  // Regex-based 0-3 weighted scoring (used for competitors to avoid extra API calls)
-  function quickScore(text, brandName) {
-    const lower = (text || "").toLowerCase();
-    const escaped = brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const name = escaped.toLowerCase();
-    const nameRegex = new RegExp('\\b' + escaped + '\\b', 'i');
-    if (!nameRegex.test(text) && !lower.includes(name)) return 0;
-
-    // Check if recommended (score 3)
-    const recommendedPatterns = [
-      new RegExp('(?:recommend|suggest|best|top choice|#1|first choice|go.?to|leading|number one|clear winner)\\s.{0,40}' + escaped, 'i'),
-      new RegExp(escaped + '.{0,30}(?:is the best|leads|tops|stands out|is recommended|is our top|is the leading|is ideal|is the go.?to)', 'i'),
-      new RegExp('(?:^|\\n)\\s*1[.\\)]\\s*\\*?\\*?' + escaped, 'im')
-    ];
-    if (recommendedPatterns.some(p => p.test(text))) return 3;
-
-    // Check if featured — detailed mention (score 2)
-    const sentences = text.split(/[.!?\n]+/).filter(s => nameRegex.test(s));
-    if (sentences.length >= 2) return 2;
-    if (sentences.some(s => s.length > 100)) return 2;
-    // Has pricing/feature details near brand
-    const detailPatterns = [
-      new RegExp(escaped + '.{0,80}(?:offers?|provides?|features?|starts?\\s+at|priced|\\$\\d|AED|USD|RM|EUR|GBP|\\d+%)', 'i'),
-      new RegExp('(?:offers?|provides?|features?|starts?\\s+at|priced).{0,80}' + escaped, 'i')
-    ];
-    if (detailPatterns.some(p => p.test(text))) return 2;
-
-    // Just listed (score 1)
-    return 1;
-  }
-
   // Send queries in throttled batches (used for Gemini)
   async function runQueryBatches(callFn, queries, batchSize, delayMs, engineLabel) {
     const gemTasks = queries.map((q, i) => async () => {
@@ -819,39 +788,34 @@ async function runRealAudit(cd, onProgress){
   // ── Step 4: Classify responses — scan real text for brand names and URLs ──
   onProgress("Classifying responses...", 62);
   let gptVisibility={},gemVisibility={},pplxVisibility={},googleAIVisibility={},claudeVisibility={};
-  const emptyVis={mentionRate:0,citationRate:0,weightedScore:0,queries:searchQueries.map(q=>({query:q,status:"Absent",confidence:"fallback",weightedScore:0}))};
+  const emptyVis={mentionRate:0,citationRate:0,queries:searchQueries.map(q=>({query:q,status:"Absent",confidence:"fallback"}))};
   try{
 
   function computeVisibility(responses, detectors) {
     const result = {};
-    const scoringCases = [];
+    const ambiguousCases = [];
     detectors.forEach(det => {
       const queries = responses.map((r, qi) => {
         const classification = classifyResponse(r.response, det, r.citations || []);
-        // Initial weightedScore from regex: Cited→2, Mentioned→1, Absent→0
-        const initialWS = classification.status === "Cited" ? 2 : classification.status === "Mentioned" ? 1 : 0;
-        // Collect ALL non-Absent for AI weighted scoring
-        if (classification.status !== "Absent" && (r.response || "").length > 20) {
+        if (classification.confidence === "low") {
           const sentences = (r.response || "").split(/[.!?\n]+/).filter(s => det.nameRegex.test(s));
-          const excerpt = sentences.slice(0, 5).join(". ").slice(0, 500) || (r.response || "").slice(0, 500);
-          scoringCases.push({ brandName: det.brandName, queryIndex: qi, query: r.query, excerpt, initialStatus: classification.status });
+          const excerpt = sentences.slice(0, 3).join(". ").slice(0, 300);
+          if (excerpt.length > 20) {
+            ambiguousCases.push({ brandName: det.brandName, queryIndex: qi, query: r.query, excerpt });
+          }
         }
-        return { query: r.query, status: classification.status, confidence: classification.confidence, weightedScore: initialWS, citations: r.citations || [] };
+        return { query: r.query, status: classification.status, confidence: classification.confidence, citations: r.citations || [] };
       });
       const total = queries.length || 1;
       const cited = queries.filter(q => q.status === "Cited").length;
       const mentioned = queries.filter(q => q.status === "Mentioned").length;
-      const presenceScore = ((cited + mentioned) / total) * 100;
-      const totalWS = queries.reduce((s, q) => s + q.weightedScore, 0);
-      const qualityScore = (totalWS / (total * 3)) * 100;
       result[det.brandName] = {
-        mentionRate: Math.round(presenceScore),
+        mentionRate: Math.round(((cited + mentioned) / total) * 100),
         citationRate: Math.round((cited / total) * 100),
-        weightedScore: Math.round((presenceScore * 0.6) + (qualityScore * 0.4)),
         queries
       };
     });
-    return { result, scoringCases };
+    return { result, ambiguousCases };
   }
 
   const gptVisRaw = computeVisibility(gptResponses, brandDetectors);
@@ -865,107 +829,58 @@ async function runRealAudit(cd, onProgress){
   googleAIVisibility = gaiVisRaw.result;
   claudeVisibility = claudeVisRaw.result;
 
-  // Batch weighted scoring — scores ALL non-Absent responses on 0-3 scale via AI
-  async function batchWeightedScore(scoringCases, callFn, visibility) {
-    if (scoringCases.length === 0) return;
-    const batchPrompt = `You are classifying how a brand appears in AI engine responses. For each response below, score the brand on a 0-3 scale:
+  // Batch reclassify ambiguous cases via AI
+  async function batchReclassify(ambiguousCases, callFn, visibility) {
+    if (ambiguousCases.length === 0) return;
+    const batchPrompt = `For each case below, a user asked an AI engine a question and the response mentioned a specific brand. Classify whether the brand was CITED (directly recommended, given specific actionable details, called out as a top choice, or given pricing/product info) or just MENTIONED (listed among others, passing reference, no specific recommendation).
 
-3 = RECOMMENDED: The brand is explicitly recommended as the best/top choice, listed first, or given the most detailed positive coverage. The response would make a reader choose this brand.
-2 = FEATURED: The brand is discussed with specific details (pricing, features, plans) but not singled out as the best. It's presented as a strong option among others.
-1 = LISTED: The brand is mentioned by name in a list or comparison but with no special emphasis. Just one of several options named.
-0 = ABSENT: The brand does not appear at all in the response.
+${ambiguousCases.map((c, i) => `${i + 1}. Brand: "${c.brandName}"\nQuery: "${c.query}"\nResponse excerpt: "${c.excerpt}"`).join("\n\n")}
 
-${scoringCases.map((c, i) => `[${i}] Brand: "${c.brandName}"\nQuery: "${c.query}"\nResponse excerpt: "${c.excerpt}"`).join("\n\n")}
+Return JSON only:
+{"classifications": [{"index": 1, "status": "Cited"}, {"index": 2, "status": "Mentioned"}, ...]}
 
-Return ONLY a JSON array of objects with index and score. No explanation.
-Example: [{"index": 0, "score": 2}, {"index": 1, "score": 3}]`;
+Be strict: only "Cited" if specifically recommended or given detailed actionable info. Being one of several options is "Mentioned".`;
     try {
-      const raw = await callFn(batchPrompt, "You are a text classifier. Return ONLY valid JSON, no markdown fences.", 0);
+      const raw = await callFn(batchPrompt, "You are a text classifier. Return ONLY valid JSON, no markdown fences.");
       const parsed = safeJSON(raw);
-      const scores = Array.isArray(parsed) ? parsed : (parsed?.scores || parsed?.classifications || []);
-      if (scores.length > 0) {
-        scores.forEach(s => {
-          if (s.index === undefined || s.score === undefined) return;
-          const sc = scoringCases[s.index];
-          if (!sc) return;
-          const ws = Math.min(3, Math.max(0, Math.round(s.score)));
-          const bv = visibility[sc.brandName];
-          if (bv && bv.queries[sc.queryIndex]) {
-            bv.queries[sc.queryIndex].weightedScore = ws;
-            bv.queries[sc.queryIndex].status = ws >= 2 ? "Cited" : ws >= 1 ? "Mentioned" : "Absent";
-            bv.queries[sc.queryIndex].confidence = "ai-scored";
+      if (parsed && parsed.classifications) {
+        parsed.classifications.forEach(cl => {
+          const cd2 = ambiguousCases[cl.index - 1];
+          if (cd2 && (cl.status === "Cited" || cl.status === "Mentioned")) {
+            const bv = visibility[cd2.brandName];
+            if (bv && bv.queries[cd2.queryIndex]) {
+              bv.queries[cd2.queryIndex].status = cl.status;
+              bv.queries[cd2.queryIndex].confidence = "ai-verified";
+            }
           }
         });
-        // Recalculate rates from updated scores
         Object.keys(visibility).forEach(bn => {
           const qs = visibility[bn].queries;
           const total = qs.length || 1;
           const cited = qs.filter(q => q.status === "Cited").length;
           const mentioned = qs.filter(q => q.status === "Mentioned").length;
-          const presenceScore = ((cited + mentioned) / total) * 100;
-          const totalWS = qs.reduce((sum, q) => sum + (q.weightedScore || 0), 0);
-          const qualityScore = (totalWS / (total * 3)) * 100;
-          visibility[bn].mentionRate = Math.round(presenceScore);
+          visibility[bn].mentionRate = Math.round(((cited + mentioned) / total) * 100);
           visibility[bn].citationRate = Math.round((cited / total) * 100);
-          visibility[bn].weightedScore = Math.round((presenceScore * 0.6) + (qualityScore * 0.4));
         });
       }
-    } catch (e) { console.error("Batch weighted scoring failed:", e); }
+    } catch (e) { console.error("Batch reclassification failed:", e); }
   }
 
-  // Score brand responses on all engines (only brand, not competitors — those use quickScore)
-  const brandScoringCases = {
-    gpt: gptVisRaw.scoringCases.filter(c => c.brandName === brand),
-    gem: gemVisRaw.scoringCases.filter(c => c.brandName === brand),
-    pplx: pplxVisRaw.scoringCases.filter(c => c.brandName === brand),
-    gai: gaiVisRaw.scoringCases.filter(c => c.brandName === brand),
-    claude: claudeVisRaw.scoringCases.filter(c => c.brandName === brand)
-  };
-  if (brandScoringCases.gpt.length > 0 || brandScoringCases.gem.length > 0 || brandScoringCases.pplx.length > 0) {
-    onProgress("Scoring brand visibility quality...", 63);
-    await Promise.all([
-      batchWeightedScore(brandScoringCases.gpt, callOpenAI, gptVisibility),
-      batchWeightedScore(brandScoringCases.gem, callGemini, gemVisibility),
-      batchWeightedScore(brandScoringCases.pplx, callOpenAI, pplxVisibility)
-    ]);
+  if (gptVisRaw.ambiguousCases.length > 0) {
+    onProgress("Verifying ChatGPT citations...", 63);
+    await batchReclassify(gptVisRaw.ambiguousCases, callOpenAI, gptVisibility);
   }
-  if (brandScoringCases.gai.length > 0 || brandScoringCases.claude.length > 0) {
-    onProgress("Scoring remaining engines...", 64);
-    await Promise.all([
-      batchWeightedScore(brandScoringCases.gai, callOpenAI, googleAIVisibility),
-      batchWeightedScore(brandScoringCases.claude, callOpenAI, claudeVisibility)
-    ]);
+  if (gemVisRaw.ambiguousCases.length > 0) {
+    onProgress("Verifying Gemini citations...", 64);
+    await batchReclassify(gemVisRaw.ambiguousCases, callGemini, gemVisibility);
+    await batchReclassify(pplxVisRaw.ambiguousCases, callOpenAI, pplxVisibility);
   }
-
-  // Apply quickScore to competitors (no extra API calls)
-  compNames.filter(n => n && n !== brand).forEach(compName => {
-    [
-      { responses: gptResponses, vis: gptVisibility },
-      { responses: gemResponses, vis: gemVisibility },
-      { responses: pplxResponses, vis: pplxVisibility },
-      { responses: googleAIResponses, vis: googleAIVisibility },
-      { responses: claudeResponses, vis: claudeVisibility }
-    ].forEach(({ responses, vis }) => {
-      const bv = vis[compName];
-      if (!bv || !bv.queries) return;
-      bv.queries.forEach((q, qi) => {
-        if (q.status === "Absent") { q.weightedScore = 0; return; }
-        const resp = responses[qi];
-        q.weightedScore = quickScore(resp?.response || "", compName);
-        q.status = q.weightedScore >= 2 ? "Cited" : q.weightedScore >= 1 ? "Mentioned" : "Absent";
-      });
-      const qs = bv.queries;
-      const total = qs.length || 1;
-      const cited = qs.filter(q => q.status === "Cited").length;
-      const mentioned = qs.filter(q => q.status === "Mentioned").length;
-      const presenceScore = ((cited + mentioned) / total) * 100;
-      const totalWS = qs.reduce((s, q) => s + (q.weightedScore || 0), 0);
-      const qualityScore = (totalWS / (total * 3)) * 100;
-      bv.mentionRate = Math.round(presenceScore);
-      bv.citationRate = Math.round((cited / total) * 100);
-      bv.weightedScore = Math.round((presenceScore * 0.6) + (qualityScore * 0.4));
-    });
-  });
+  if (gaiVisRaw.ambiguousCases.length > 0) {
+    await batchReclassify(gaiVisRaw.ambiguousCases, callOpenAI, googleAIVisibility);
+  }
+  if (claudeVisRaw.ambiguousCases.length > 0) {
+    await batchReclassify(claudeVisRaw.ambiguousCases, callOpenAI, claudeVisibility);
+  }
   }catch(stepError){
     console.error("Visibility computation failed:",stepError.message);
     onProgress("Warning: visibility analysis had an issue, continuing...",65);
@@ -977,20 +892,20 @@ Example: [{"index": 0, "score": 2}, {"index": 1, "score": 3}]`;
   let compScoresMap = {};
   try{
   compNames.filter(n => n).forEach(name => {
-    const gv = gptVisibility[name] || { mentionRate: 0, citationRate: 0, weightedScore: 0 };
-    const gm = gemVisibility[name] || { mentionRate: 0, citationRate: 0, weightedScore: 0 };
-    const pv = pplxVisibility[name] || { ...emptyVis, weightedScore: 0 };
-    const gaiv = googleAIVisibility[name] || { ...emptyVis, weightedScore: 0 };
-    const clv = claudeVisibility[name] || { ...emptyVis, weightedScore: 0 };
+    const gv = gptVisibility[name] || { mentionRate: 0, citationRate: 0 };
+    const gm = gemVisibility[name] || { mentionRate: 0, citationRate: 0 };
+    const pv = pplxVisibility[name] || emptyVis;
+    const gaiv = googleAIVisibility[name] || emptyVis;
+    const clv = claudeVisibility[name] || emptyVis;
     compScoresMap[name] = {
-      gpt: { mentionRate: gv.mentionRate, citationRate: gv.citationRate, score: gv.weightedScore || gv.mentionRate },
-      gemini: { mentionRate: gm.mentionRate, citationRate: gm.citationRate, score: gm.weightedScore || gm.mentionRate },
-      perplexity: { mentionRate: pv.mentionRate, citationRate: pv.citationRate, score: pv.weightedScore || pv.mentionRate },
-      googleai: { mentionRate: gaiv.mentionRate, citationRate: gaiv.citationRate, score: gaiv.weightedScore || gaiv.mentionRate },
-      claude: { mentionRate: clv.mentionRate, citationRate: clv.citationRate, score: clv.weightedScore || clv.mentionRate },
+      gpt: { mentionRate: gv.mentionRate, citationRate: gv.citationRate, score: Math.round((gv.mentionRate + gv.citationRate) / 2) },
+      gemini: { mentionRate: gm.mentionRate, citationRate: gm.citationRate, score: Math.round((gm.mentionRate + gm.citationRate) / 2) },
+      perplexity: { mentionRate: pv.mentionRate, citationRate: pv.citationRate, score: Math.round((pv.mentionRate + pv.citationRate) / 2) },
+      googleai: { mentionRate: gaiv.mentionRate, citationRate: gaiv.citationRate, score: Math.round((gaiv.mentionRate + gaiv.citationRate) / 2) },
+      claude: { mentionRate: clv.mentionRate, citationRate: clv.citationRate, score: Math.round((clv.mentionRate + clv.citationRate) / 2) },
       avgMentionRate: Math.round((gv.mentionRate + gm.mentionRate + pv.mentionRate + gaiv.mentionRate + clv.mentionRate) / 5),
       avgCitationRate: Math.round((gv.citationRate + gm.citationRate + pv.citationRate + gaiv.citationRate + clv.citationRate) / 5),
-      avgScore: Math.round(((gv.weightedScore||gv.mentionRate) + (gm.weightedScore||gm.mentionRate) + (pv.weightedScore||pv.mentionRate) + (gaiv.weightedScore||gaiv.mentionRate) + (clv.weightedScore||clv.mentionRate)) / 5)
+      avgScore: Math.round(((gv.mentionRate+gv.citationRate)/2 + (gm.mentionRate+gm.citationRate)/2 + (pv.mentionRate+pv.citationRate)/2 + (gaiv.mentionRate+gaiv.citationRate)/2 + (clv.mentionRate+clv.citationRate)/2) / 5)
     };
   });
   }catch(e){console.error("Competitor visibility map failed:",e.message||e);}
@@ -998,11 +913,11 @@ Example: [{"index": 0, "score": 2}, {"index": 1, "score": 3}]`;
   // ── Step 5: Build engine data objects ──
   onProgress("Analyzing strengths and weaknesses...", 66);
 
-  const brandGptVis = gptVisibility[brand] || { mentionRate: 0, citationRate: 0, weightedScore: 0, queries: [] };
-  const brandGemVis = gemVisibility[brand] || { mentionRate: 0, citationRate: 0, weightedScore: 0, queries: [] };
-  const brandPplxVis = pplxVisibility[brand] || { mentionRate: 0, citationRate: 0, weightedScore: 0, queries: [] };
-  const brandGaiVis = googleAIVisibility[brand] || { mentionRate: 0, citationRate: 0, weightedScore: 0, queries: [] };
-  const brandClaudeVis = claudeVisibility[brand] || { mentionRate: 0, citationRate: 0, weightedScore: 0, queries: [] };
+  const brandGptVis = gptVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
+  const brandGemVis = gemVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
+  const brandPplxVis = pplxVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
+  const brandGaiVis = googleAIVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
+  const brandClaudeVis = claudeVisibility[brand] || { mentionRate: 0, citationRate: 0, queries: [] };
 
   let swGpt={},swGem={};
   try{
@@ -1033,7 +948,7 @@ Return JSON only:
   let pplxData = {score:0,mentionRate:0,citationRate:0,queries:[],strengths:["Analysis unavailable"],weaknesses:["Analysis unavailable"]};
   try{
     gptData = {
-      score: brandGptVis.weightedScore || brandGptVis.mentionRate,
+      score: Math.round((brandGptVis.mentionRate + brandGptVis.citationRate) / 2),
       mentionRate: brandGptVis.mentionRate,
       citationRate: brandGptVis.citationRate,
       queries: brandGptVis.queries || [],
@@ -1041,7 +956,7 @@ Return JSON only:
       weaknesses: swGpt.weaknesses || ["Analysis unavailable"]
     };
     gemData = {
-      score: brandGemVis.weightedScore || brandGemVis.mentionRate,
+      score: Math.round((brandGemVis.mentionRate + brandGemVis.citationRate) / 2),
       mentionRate: brandGemVis.mentionRate,
       citationRate: brandGemVis.citationRate,
       queries: brandGemVis.queries || [],
@@ -1049,7 +964,7 @@ Return JSON only:
       weaknesses: swGem.weaknesses || ["Analysis unavailable"]
     };
     pplxData = {
-      score: brandPplxVis.weightedScore || brandPplxVis.mentionRate,
+      score: Math.round((brandPplxVis.mentionRate + brandPplxVis.citationRate) / 2),
       mentionRate: brandPplxVis.mentionRate,
       citationRate: brandPplxVis.citationRate,
       queries: brandPplxVis.queries || [],
@@ -1057,7 +972,7 @@ Return JSON only:
       weaknesses: ["Analysis via Perplexity"]
     };
     googleAIData = {
-      score: brandGaiVis.weightedScore || brandGaiVis.mentionRate,
+      score: Math.round((brandGaiVis.mentionRate + brandGaiVis.citationRate) / 2),
       mentionRate: brandGaiVis.mentionRate,
       citationRate: brandGaiVis.citationRate,
       queries: brandGaiVis.queries || [],
@@ -1065,7 +980,7 @@ Return JSON only:
       weaknesses: ["Analysis via Google AI Mode"]
     };
     claudeData = {
-      score: brandClaudeVis.weightedScore || brandClaudeVis.mentionRate,
+      score: Math.round((brandClaudeVis.mentionRate + brandClaudeVis.citationRate) / 2),
       mentionRate: brandClaudeVis.mentionRate,
       citationRate: brandClaudeVis.citationRate,
       queries: brandClaudeVis.queries || [],
@@ -2178,7 +2093,7 @@ Each department: 2-3 specific tasks. Total 5-7 tasks per phase. All tasks tailor
 
     const narrativePrompt = `You are a senior strategy consultant writing an AI visibility report for "${brand}" in ${industry} (${region}).
 
-SCORING METHOD: Visibility score uses weighted scoring (0-3 per response). 3=Recommended (top choice), 2=Featured (detailed coverage), 1=Listed (mentioned in list), 0=Absent. Score = total weighted points / max possible × 100. This means being recommended counts 3x more than being merely listed.
+SCORING METHOD: Visibility score = average of mention rate and citation rate. Mention rate = percentage of responses where brand appears (Cited or Mentioned). Citation rate = percentage where brand is actively recommended (Cited only). Score = (mentionRate + citationRate) / 2.
 
 AUDIT DATA:
 - Overall visibility score: ${overallScore}%
@@ -2715,22 +2630,10 @@ function generateAll(cd, apiData){
   const fB=(arr,fb)=>{if(!arr||!Array.isArray(arr))return fb;const f=arr.filter(s=>s&&typeof s==="string"&&!badP.some(bp=>s.toLowerCase().includes(bp))&&s.length>10);return f.length>=2?f:fb;};
   const engines=engineMeta.map((e,i)=>{
     if(hasApi&&apiData.engineData.engines&&apiData.engineData.engines[i]){const ae=apiData.engineData.engines[i];
-      return{...e,score:ae.score||0,mentionRate:ae.mentionRate||0,citationRate:ae.citationRate||0,queries:(ae.queries||[]).map(q=>({query:q.query||"",status:q.status||"Absent",weightedScore:q.weightedScore})),strengths:fB(ae.strengths,[`${cd.brand} appears in some ${cd.industry} queries`]),weaknesses:fB(ae.weaknesses,[`Competitors cited more frequently`])};}
+      return{...e,score:ae.score||0,mentionRate:ae.mentionRate||0,citationRate:ae.citationRate||0,queries:(ae.queries||[]).map(q=>({query:q.query||"",status:q.status||"Absent"})),strengths:fB(ae.strengths,[`${cd.brand} appears in some ${cd.industry} queries`]),weaknesses:fB(ae.weaknesses,[`Competitors cited more frequently`])};}
     return{...e,score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["No API data received"]};
   });
-  // Blended score: 60% presence + 40% weighted quality
-  engines.forEach(e=>{
-    const qs=e.queries||[];
-    const hasWS=qs.some(q=>q.weightedScore!==undefined);
-    if(hasWS){
-      const total=Math.max(qs.length,1);
-      const present=qs.filter(q=>(q.status||"Absent")!=="Absent").length;
-      const presenceScore=(present/total)*100;
-      const totalWS=qs.reduce((s,q)=>s+(q.weightedScore||0),0);
-      const qualityScore=(totalWS/(total*3))*100;
-      e.score=Math.round((presenceScore*0.6)+(qualityScore*0.4));
-    } else{e.score=e.mentionRate;}
-  });
+  engines.forEach(e=>{e.score=Math.round((e.mentionRate+e.citationRate)/2);});
   const gWeights=getEngineWeights(cd.region);
   const overall=Math.round(engines.reduce((sum,e)=>{const w=gWeights[e.id]||(1/engines.length);return sum+(e.score*w);},0));
   const getScoreLabel=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
@@ -5150,7 +5053,6 @@ function QueryCategoriesPage({ r }) {
       pplxStatus: pplxMatch?.status || "Absent",
       gaiStatus: gaiMatch?.status || "Absent",
       claudeStatus: claudeMatch?.status || "Absent",
-      gptWS: gptMatch?.weightedScore, gemWS: gemMatch?.weightedScore, pplxWS: pplxMatch?.weightedScore, gaiWS: gaiMatch?.weightedScore, claudeWS: claudeMatch?.weightedScore,
       bestStatus: (gptMatch?.status === "Cited" || gemMatch?.status === "Cited" || pplxMatch?.status === "Cited" || gaiMatch?.status === "Cited" || claudeMatch?.status === "Cited") ? "Cited" : (gptMatch?.status === "Mentioned" || gemMatch?.status === "Mentioned" || pplxMatch?.status === "Mentioned" || gaiMatch?.status === "Mentioned" || claudeMatch?.status === "Mentioned") ? "Mentioned" : "Absent",
       archetype: (r.queryArchetypeMap||{})[qText]||""
     };
@@ -5171,11 +5073,7 @@ function QueryCategoriesPage({ r }) {
       const mentioned = topicQueries.reduce((sum, q) => sum + (q.gptStatus === "Mentioned" ? 1 : 0) + (q.gemStatus === "Mentioned" ? 1 : 0) + (q.pplxStatus === "Mentioned" ? 1 : 0) + (q.gaiStatus === "Mentioned" ? 1 : 0) + (q.claudeStatus === "Mentioned" ? 1 : 0), 0);
       const totalEngineResponses = topicQueries.length * 5;
       const absent = totalEngineResponses - cited - mentioned;
-      const hasWS = topicQueries.some(q => q.gptWS !== undefined || q.gemWS !== undefined);
-      let winRate;
-      const presenceRate = ((cited + mentioned) / Math.max(totalEngineResponses, 1)) * 100;
-      if (hasWS) { const totalWS = topicQueries.reduce((s,q) => s + (q.gptWS||0) + (q.gemWS||0) + (q.pplxWS||0) + (q.gaiWS||0) + (q.claudeWS||0), 0); const qualityRate = (totalWS / Math.max(topicQueries.length * 5 * 3, 1)) * 100; winRate = Math.round((presenceRate * 0.6) + (qualityRate * 0.4)); }
-      else { winRate = Math.round(presenceRate); }
+      const winRate = Math.round(((cited + mentioned) / Math.max(totalEngineResponses, 1)) * 100);
       return { name: tg.topic, queries: topicQueries, cited, mentioned, absent, total: totalEngineResponses, winRate, color: topicColors[tgi % topicColors.length], desc: `${topicQueries.length} queries in this topic` };
     });
   } else {
@@ -5301,10 +5199,10 @@ function QueryCategoriesPage({ r }) {
                             {key:"pplxStatus",logo:<svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="#20808D" strokeWidth="1.5"/><path d="M5 5l6 6M11 5l-6 6" stroke="#20808D" strokeWidth="1.5" strokeLinecap="round"/></svg>},
                             {key:"gaiStatus",logo:<svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="#EA4335" strokeWidth="1.5"/><path d="M4 8h8M8 4v8" stroke="#EA4335" strokeWidth="1.5" strokeLinecap="round"/></svg>},
                             {key:"claudeStatus",logo:<svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="#D97706" strokeWidth="1.5"/><text x="8" y="11" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#D97706">C</text></svg>}
-                          ].map(eng=>{const st=q[eng.key]||"Absent";const wsKey=eng.key.replace("Status","WS");const ws=q[wsKey];const hasWS=ws!==undefined&&ws!==null;const label=hasWS?(ws>=3?"Recommended":ws>=2?"Featured":ws>=1?"Listed":"Absent"):st;const bg=hasWS?(ws>=3?"#dcfce7":ws>=2?"#dbeafe":ws>=1?"#fef3c7":"#fee2e2"):(st==="Cited"?"#dcfce7":st==="Mentioned"?"#dbeafe":"#fee2e2");const cl=hasWS?(ws>=3?"#166534":ws>=2?"#1e40af":ws>=1?"#92400e":"#991b1b"):(st==="Cited"?"#166534":st==="Mentioned"?"#1e40af":"#991b1b");return(
-                            <div key={eng.key} style={{display:"flex",alignItems:"center",gap:3,padding:"3px 7px",borderRadius:6,background:bg}}>
+                          ].map(eng=>{const st=q[eng.key]||"Absent";return(
+                            <div key={eng.key} style={{display:"flex",alignItems:"center",gap:3,padding:"3px 7px",borderRadius:6,background:st==="Cited"?"#dcfce7":st==="Mentioned"?"#dbeafe":"#fee2e2"}}>
                               {eng.logo}
-                              <span style={{fontSize:10,fontWeight:500,color:cl}}>{label}</span>
+                              <span style={{fontSize:10,fontWeight:500,color:st==="Cited"?"#166534":st==="Mentioned"?"#1e40af":"#991b1b"}}>{st}</span>
                             </div>
                           );})}
                         </div>
@@ -5620,7 +5518,6 @@ function IntentPage({r,goTo}){
   const allSearchQueries=r.searchQueries||gptQueries.map(q=>q.query);
 
   const normalizeStatus=(s)=>{if(!s)return"Absent";const l=s.trim().toLowerCase();if(l==="cited")return"Cited";if(l==="mentioned")return"Mentioned";return"Absent";};
-  const wsLabel=(ws)=>ws>=3?"Recommended":ws>=2?"Featured":ws>=1?"Listed":"Absent";
   const combinedQueries=allSearchQueries.map((query,i)=>{
     const qText=typeof query==="string"?query:query.query;
     const gptMatch=gptQueries.find(q=>q.query===qText)||gptQueries[i];
@@ -5628,17 +5525,15 @@ function IntentPage({r,goTo}){
     const pplxMatch=pplxQueries.find(q=>q.query===qText)||pplxQueries[i];
     const gaiMatch2=gaiQueries2.find(q=>q.query===qText)||gaiQueries2[i];
     const claudeMatch=claudeQueries.find(q=>q.query===qText)||claudeQueries[i];
-    return{query:qText,gptStatus:normalizeStatus(gptMatch?.status),gemStatus:normalizeStatus(gemMatch?.status),pplxStatus:normalizeStatus(pplxMatch?.status),gaiStatus:normalizeStatus(gaiMatch2?.status),claudeStatus:normalizeStatus(claudeMatch?.status),gptWS:gptMatch?.weightedScore,gemWS:gemMatch?.weightedScore,pplxWS:pplxMatch?.weightedScore,gaiWS:gaiMatch2?.weightedScore,claudeWS:claudeMatch?.weightedScore,archetype:(r.queryArchetypeMap||{})[qText]||""};
+    return{query:qText,gptStatus:normalizeStatus(gptMatch?.status),gemStatus:normalizeStatus(gemMatch?.status),pplxStatus:normalizeStatus(pplxMatch?.status),gaiStatus:normalizeStatus(gaiMatch2?.status),claudeStatus:normalizeStatus(claudeMatch?.status),archetype:(r.queryArchetypeMap||{})[qText]||""};
   });
 
-  // Status badge helper — shows weighted score label when available
-  const statusBadge=(status,ws)=>{
-    const hasWS=ws!==undefined&&ws!==null;
-    const label=hasWS?wsLabel(ws):status;
-    const bg=hasWS?(ws>=3?"#dcfce7":ws>=2?"#dbeafe":ws>=1?"#fef3c7":"#fee2e2"):(status==="Cited"?"#dcfce7":status==="Mentioned"?"#dbeafe":"#fee2e2");
-    const cl=hasWS?(ws>=3?"#166534":ws>=2?"#1e40af":ws>=1?"#92400e":"#991b1b"):(status==="Cited"?"#166534":status==="Mentioned"?"#1e40af":"#991b1b");
-    const icon=hasWS?(ws>=3?"\u2713\u2713":ws>=2?"\u2713":ws>=1?"~":"\u2717"):(status==="Cited"?"\u2713":status==="Mentioned"?"~":"\u2717");
-    return <span style={{fontSize:10,fontWeight:500,padding:"3px 8px",borderRadius:6,display:"inline-block",background:bg,color:cl,whiteSpace:"nowrap"}}>{icon} {label}</span>;
+  // Status badge helper
+  const statusBadge=(status)=>{
+    const bg=status==="Cited"?"#dcfce7":status==="Mentioned"?"#dbeafe":"#fee2e2";
+    const cl=status==="Cited"?"#166534":status==="Mentioned"?"#1e40af":"#991b1b";
+    const icon=status==="Cited"?"\u2713":status==="Mentioned"?"~":"\u2717";
+    return <span style={{fontSize:11,fontWeight:500,padding:"4px 10px",borderRadius:6,display:"inline-block",background:bg,color:cl}}>{icon} {status}</span>;
   };
 
 
@@ -5727,11 +5622,8 @@ function IntentPage({r,goTo}){
         const topicColors=["#2563eb","#8b5cf6","#059669","#d97706","#dc2626","#0ea5e9","#6b7280"];
         const topicScores=(r.topicGroups||[]).map((tg,tgi)=>{
           const tQueries=tg.queries.map(qText=>combinedQueries.find(cq=>cq.query===qText)||{gptStatus:"Absent",gemStatus:"Absent",pplxStatus:"Absent",gaiStatus:"Absent",claudeStatus:"Absent"});
-          const hasWS=tQueries.some(q=>q.gptWS!==undefined||q.gemWS!==undefined);
-          let vis;
-          const total=tQueries.length*5;const present=tQueries.reduce((s,q)=>s+(q.gptStatus!=="Absent"?1:0)+(q.gemStatus!=="Absent"?1:0)+(q.pplxStatus!=="Absent"?1:0)+((q.gaiStatus||"Absent")!=="Absent"?1:0)+((q.claudeStatus||"Absent")!=="Absent"?1:0),0);const presenceRate=(present/Math.max(total,1))*100;
-          if(hasWS){const totalWS=tQueries.reduce((s,q)=>s+(q.gptWS||0)+(q.gemWS||0)+(q.pplxWS||0)+(q.gaiWS||0)+(q.claudeWS||0),0);const qualityRate=(totalWS/Math.max(tQueries.length*5*3,1))*100;vis=Math.round((presenceRate*0.6)+(qualityRate*0.4));}
-          else{vis=Math.round(presenceRate);}
+          const total=tQueries.length*5;const present=tQueries.reduce((s,q)=>s+(q.gptStatus!=="Absent"?1:0)+(q.gemStatus!=="Absent"?1:0)+(q.pplxStatus!=="Absent"?1:0)+((q.gaiStatus||"Absent")!=="Absent"?1:0)+((q.claudeStatus||"Absent")!=="Absent"?1:0),0);
+          const vis=Math.round((present/Math.max(total,1))*100);
           return{topic:tg.topic,vis,color:topicColors[tgi%topicColors.length]};
         });
         return(<div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:12}}>
@@ -5766,11 +5658,11 @@ function IntentPage({r,goTo}){
           </div>
           {combinedQueries.map((q,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px 80px",padding:"14px 20px",alignItems:"center",borderBottom:i<combinedQueries.length-1?"1px solid "+C.border+"30":"none",background:i%2===0?"transparent":C.border+"10"}}>
             <span style={{fontSize:13,lineHeight:1.5,color:C.text,paddingRight:12}}>{q.query}{q.archetype&&<span style={{display:"inline-block",fontSize:9,fontWeight:500,padding:"2px 7px",borderRadius:4,background:C.accent+"10",color:C.accent,marginLeft:8,verticalAlign:"middle",whiteSpace:"nowrap"}}>{q.archetype}</span>}</span>
-            <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gptStatus,q.gptWS)}</div>
-            <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gemStatus,q.gemWS)}</div>
-            <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.pplxStatus,q.pplxWS)}</div>
-            <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gaiStatus||"Absent",q.gaiWS)}</div>
-            <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.claudeStatus||"Absent",q.claudeWS)}</div>
+            <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gptStatus)}</div>
+            <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gemStatus)}</div>
+            <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.pplxStatus)}</div>
+            <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gaiStatus||"Absent")}</div>
+            <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.claudeStatus||"Absent")}</div>
           </div>))}
         </div>);
       }
@@ -5780,18 +5672,9 @@ function IntentPage({r,goTo}){
         const topicQueries = tg.queries.map(qText => {
           return combinedQueries.find(cq => cq.query === qText) || {query:qText,gptStatus:"Absent",gemStatus:"Absent",pplxStatus:"Absent",gaiStatus:"Absent",claudeStatus:"Absent"};
         });
-        const hasWS = topicQueries.some(q => q.gptWS !== undefined || q.gemWS !== undefined);
-        let visibility;
         const totalResponses = topicQueries.length * 5;
         const present = topicQueries.reduce((s,q) => s + (q.gptStatus!=="Absent"?1:0) + (q.gemStatus!=="Absent"?1:0) + (q.pplxStatus!=="Absent"?1:0) + ((q.gaiStatus||"Absent")!=="Absent"?1:0) + ((q.claudeStatus||"Absent")!=="Absent"?1:0), 0);
-        const presenceScore = (present / Math.max(totalResponses,1)) * 100;
-        if (hasWS) {
-          const totalWS = topicQueries.reduce((s,q) => s + (q.gptWS||0) + (q.gemWS||0) + (q.pplxWS||0) + (q.gaiWS||0) + (q.claudeWS||0), 0);
-          const qualityScore = (totalWS / Math.max(topicQueries.length * 5 * 3,1)) * 100;
-          visibility = Math.round((presenceScore * 0.6) + (qualityScore * 0.4));
-        } else {
-          visibility = Math.round(presenceScore);
-        }
+        const visibility = Math.round((present / Math.max(totalResponses,1)) * 100);
         return {topic:tg.topic, queries:topicQueries, visibility, color:topicColors[tgi % topicColors.length]};
       });
 
@@ -5824,11 +5707,11 @@ function IntentPage({r,goTo}){
             {/* Query rows */}
             {g.queries.map((q,qi)=>(<div key={qi} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px 80px",padding:"12px 20px",alignItems:"center",borderBottom:qi<g.queries.length-1?"1px solid "+C.border+"20":"none",background:qi%2===0?"transparent":C.border+"08"}}>
               <span style={{fontSize:12,lineHeight:1.5,color:C.sub,paddingRight:12}}>{q.query}</span>
-              <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gptStatus,q.gptWS)}</div>
-              <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gemStatus,q.gemWS)}</div>
-              <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.pplxStatus,q.pplxWS)}</div>
-              <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gaiStatus||"Absent",q.gaiWS)}</div>
-              <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.claudeStatus||"Absent",q.claudeWS)}</div>
+              <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gptStatus)}</div>
+              <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gemStatus)}</div>
+              <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.pplxStatus)}</div>
+              <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.gaiStatus||"Absent")}</div>
+              <div style={{display:"flex",justifyContent:"center"}}>{statusBadge(q.claudeStatus||"Absent")}</div>
             </div>))}
           </div>
         ))}
