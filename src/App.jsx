@@ -841,12 +841,13 @@ async function runRealAudit(cd, onProgress){
       const total = queries.length || 1;
       const cited = queries.filter(q => q.status === "Cited").length;
       const mentioned = queries.filter(q => q.status === "Mentioned").length;
+      const presenceScore = ((cited + mentioned) / total) * 100;
       const totalWS = queries.reduce((s, q) => s + q.weightedScore, 0);
-      const maxWS = total * 3;
+      const qualityScore = (totalWS / (total * 3)) * 100;
       result[det.brandName] = {
-        mentionRate: Math.round(((cited + mentioned) / total) * 100),
+        mentionRate: Math.round(presenceScore),
         citationRate: Math.round((cited / total) * 100),
-        weightedScore: Math.round((totalWS / maxWS) * 100),
+        weightedScore: Math.round((presenceScore * 0.6) + (qualityScore * 0.4)),
         queries
       };
     });
@@ -901,11 +902,12 @@ Example: [{"index": 0, "score": 2}, {"index": 1, "score": 3}]`;
           const total = qs.length || 1;
           const cited = qs.filter(q => q.status === "Cited").length;
           const mentioned = qs.filter(q => q.status === "Mentioned").length;
+          const presenceScore = ((cited + mentioned) / total) * 100;
           const totalWS = qs.reduce((sum, q) => sum + (q.weightedScore || 0), 0);
-          const maxWS = total * 3;
-          visibility[bn].mentionRate = Math.round(((cited + mentioned) / total) * 100);
+          const qualityScore = (totalWS / (total * 3)) * 100;
+          visibility[bn].mentionRate = Math.round(presenceScore);
           visibility[bn].citationRate = Math.round((cited / total) * 100);
-          visibility[bn].weightedScore = Math.round((totalWS / maxWS) * 100);
+          visibility[bn].weightedScore = Math.round((presenceScore * 0.6) + (qualityScore * 0.4));
         });
       }
     } catch (e) { console.error("Batch weighted scoring failed:", e); }
@@ -956,10 +958,12 @@ Example: [{"index": 0, "score": 2}, {"index": 1, "score": 3}]`;
       const total = qs.length || 1;
       const cited = qs.filter(q => q.status === "Cited").length;
       const mentioned = qs.filter(q => q.status === "Mentioned").length;
+      const presenceScore = ((cited + mentioned) / total) * 100;
       const totalWS = qs.reduce((s, q) => s + (q.weightedScore || 0), 0);
-      bv.mentionRate = Math.round(((cited + mentioned) / total) * 100);
+      const qualityScore = (totalWS / (total * 3)) * 100;
+      bv.mentionRate = Math.round(presenceScore);
       bv.citationRate = Math.round((cited / total) * 100);
-      bv.weightedScore = Math.round((totalWS / (total * 3)) * 100);
+      bv.weightedScore = Math.round((presenceScore * 0.6) + (qualityScore * 0.4));
     });
   });
   }catch(stepError){
@@ -1228,6 +1232,9 @@ Return JSON only:
     };
     // Competitor sentiment
     const compSentiments=[];
+    // Build regex map for all competitors to detect sub-brand co-occurrence
+    const compRegexMap={};
+    (compNames||[]).forEach(cn=>{if(cn)compRegexMap[cn]=new RegExp('\\b'+cn.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i');});
     (compNames||[]).forEach(compName=>{
       if(!compName)return;
       const compEscaped=compName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
@@ -1235,6 +1242,18 @@ Return JSON only:
       let cPos=0,cNeg=0,cNeu=0,cTotal=0;
       allResponses.forEach(resp=>{
         if(!resp.text||!compRegex.test(resp.text))return;
+        // Sub-brand filter: if another competitor also appears in this response AND
+        // this competitor's name appears adjacent to the other's (e.g. "Maxis Hotlink"),
+        // skip counting — it's a sub-brand mention, not an independent one
+        const otherComps=(compNames||[]).filter(cn=>cn&&cn!==compName);
+        const isSubBrandMention=otherComps.some(other=>{
+          const otherRegex=compRegexMap[other];
+          if(!otherRegex||!otherRegex.test(resp.text))return false;
+          // Check if names appear adjacent (within 3 words of each other)
+          const adjacentRegex=new RegExp(other.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s+(?:\\w+\\s+){0,2}'+compEscaped+'|'+compEscaped+'\\s+(?:\\w+\\s+){0,2}'+other.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i');
+          return adjacentRegex.test(resp.text);
+        });
+        if(isSubBrandMention)return;
         cTotal++;
         const sentences=resp.text.split(/(?<=[.!?])\s+/).filter(s=>s.length>10);
         for(let i=0;i<sentences.length;i++){
@@ -2699,12 +2718,18 @@ function generateAll(cd, apiData){
       return{...e,score:ae.score||0,mentionRate:ae.mentionRate||0,citationRate:ae.citationRate||0,queries:(ae.queries||[]).map(q=>({query:q.query||"",status:q.status||"Absent",weightedScore:q.weightedScore})),strengths:fB(ae.strengths,[`${cd.brand} appears in some ${cd.industry} queries`]),weaknesses:fB(ae.weaknesses,[`Competitors cited more frequently`])};}
     return{...e,score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["No API data received"]};
   });
-  // Use weighted score if available, else fall back to mentionRate
+  // Blended score: 60% presence + 40% weighted quality
   engines.forEach(e=>{
     const qs=e.queries||[];
     const hasWS=qs.some(q=>q.weightedScore!==undefined);
-    if(hasWS){const totalWS=qs.reduce((s,q)=>s+(q.weightedScore||0),0);const maxWS=Math.max(qs.length,1)*3;e.score=Math.round((totalWS/maxWS)*100);}
-    else{e.score=e.mentionRate;}
+    if(hasWS){
+      const total=Math.max(qs.length,1);
+      const present=qs.filter(q=>(q.status||"Absent")!=="Absent").length;
+      const presenceScore=(present/total)*100;
+      const totalWS=qs.reduce((s,q)=>s+(q.weightedScore||0),0);
+      const qualityScore=(totalWS/(total*3))*100;
+      e.score=Math.round((presenceScore*0.6)+(qualityScore*0.4));
+    } else{e.score=e.mentionRate;}
   });
   const gWeights=getEngineWeights(cd.region);
   const overall=Math.round(engines.reduce((sum,e)=>{const w=gWeights[e.id]||(1/engines.length);return sum+(e.score*w);},0));
@@ -5148,8 +5173,9 @@ function QueryCategoriesPage({ r }) {
       const absent = totalEngineResponses - cited - mentioned;
       const hasWS = topicQueries.some(q => q.gptWS !== undefined || q.gemWS !== undefined);
       let winRate;
-      if (hasWS) { const totalWS = topicQueries.reduce((s,q) => s + (q.gptWS||0) + (q.gemWS||0) + (q.pplxWS||0) + (q.gaiWS||0) + (q.claudeWS||0), 0); winRate = Math.round((totalWS / Math.max(topicQueries.length * 5 * 3, 1)) * 100); }
-      else { winRate = Math.round(((cited + mentioned) / Math.max(totalEngineResponses, 1)) * 100); }
+      const presenceRate = ((cited + mentioned) / Math.max(totalEngineResponses, 1)) * 100;
+      if (hasWS) { const totalWS = topicQueries.reduce((s,q) => s + (q.gptWS||0) + (q.gemWS||0) + (q.pplxWS||0) + (q.gaiWS||0) + (q.claudeWS||0), 0); const qualityRate = (totalWS / Math.max(topicQueries.length * 5 * 3, 1)) * 100; winRate = Math.round((presenceRate * 0.6) + (qualityRate * 0.4)); }
+      else { winRate = Math.round(presenceRate); }
       return { name: tg.topic, queries: topicQueries, cited, mentioned, absent, total: totalEngineResponses, winRate, color: topicColors[tgi % topicColors.length], desc: `${topicQueries.length} queries in this topic` };
     });
   } else {
@@ -5703,8 +5729,9 @@ function IntentPage({r,goTo}){
           const tQueries=tg.queries.map(qText=>combinedQueries.find(cq=>cq.query===qText)||{gptStatus:"Absent",gemStatus:"Absent",pplxStatus:"Absent",gaiStatus:"Absent",claudeStatus:"Absent"});
           const hasWS=tQueries.some(q=>q.gptWS!==undefined||q.gemWS!==undefined);
           let vis;
-          if(hasWS){const totalWS=tQueries.reduce((s,q)=>s+(q.gptWS||0)+(q.gemWS||0)+(q.pplxWS||0)+(q.gaiWS||0)+(q.claudeWS||0),0);vis=Math.round((totalWS/Math.max(tQueries.length*5*3,1))*100);}
-          else{const total=tQueries.length*5;const present=tQueries.reduce((s,q)=>s+(q.gptStatus!=="Absent"?1:0)+(q.gemStatus!=="Absent"?1:0)+(q.pplxStatus!=="Absent"?1:0)+((q.gaiStatus||"Absent")!=="Absent"?1:0)+((q.claudeStatus||"Absent")!=="Absent"?1:0),0);vis=Math.round((present/Math.max(total,1))*100);}
+          const total=tQueries.length*5;const present=tQueries.reduce((s,q)=>s+(q.gptStatus!=="Absent"?1:0)+(q.gemStatus!=="Absent"?1:0)+(q.pplxStatus!=="Absent"?1:0)+((q.gaiStatus||"Absent")!=="Absent"?1:0)+((q.claudeStatus||"Absent")!=="Absent"?1:0),0);const presenceRate=(present/Math.max(total,1))*100;
+          if(hasWS){const totalWS=tQueries.reduce((s,q)=>s+(q.gptWS||0)+(q.gemWS||0)+(q.pplxWS||0)+(q.gaiWS||0)+(q.claudeWS||0),0);const qualityRate=(totalWS/Math.max(tQueries.length*5*3,1))*100;vis=Math.round((presenceRate*0.6)+(qualityRate*0.4));}
+          else{vis=Math.round(presenceRate);}
           return{topic:tg.topic,vis,color:topicColors[tgi%topicColors.length]};
         });
         return(<div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:12}}>
@@ -5755,14 +5782,15 @@ function IntentPage({r,goTo}){
         });
         const hasWS = topicQueries.some(q => q.gptWS !== undefined || q.gemWS !== undefined);
         let visibility;
+        const totalResponses = topicQueries.length * 5;
+        const present = topicQueries.reduce((s,q) => s + (q.gptStatus!=="Absent"?1:0) + (q.gemStatus!=="Absent"?1:0) + (q.pplxStatus!=="Absent"?1:0) + ((q.gaiStatus||"Absent")!=="Absent"?1:0) + ((q.claudeStatus||"Absent")!=="Absent"?1:0), 0);
+        const presenceScore = (present / Math.max(totalResponses,1)) * 100;
         if (hasWS) {
           const totalWS = topicQueries.reduce((s,q) => s + (q.gptWS||0) + (q.gemWS||0) + (q.pplxWS||0) + (q.gaiWS||0) + (q.claudeWS||0), 0);
-          const maxWS = topicQueries.length * 5 * 3;
-          visibility = Math.round((totalWS / Math.max(maxWS,1)) * 100);
+          const qualityScore = (totalWS / Math.max(topicQueries.length * 5 * 3,1)) * 100;
+          visibility = Math.round((presenceScore * 0.6) + (qualityScore * 0.4));
         } else {
-          const totalResponses = topicQueries.length * 5;
-          const present = topicQueries.reduce((s,q) => s + (q.gptStatus!=="Absent"?1:0) + (q.gemStatus!=="Absent"?1:0) + (q.pplxStatus!=="Absent"?1:0) + ((q.gaiStatus||"Absent")!=="Absent"?1:0) + ((q.claudeStatus||"Absent")!=="Absent"?1:0), 0);
-          visibility = Math.round((present / Math.max(totalResponses,1)) * 100);
+          visibility = Math.round(presenceScore);
         }
         return {topic:tg.topic, queries:topicQueries, visibility, color:topicColors[tgi % topicColors.length]};
       });
