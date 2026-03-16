@@ -3700,32 +3700,42 @@ function NewAuditPage({data,setData,onRun,history=[]}){
     if(!industry||industry.trim().length<2)return;
     setGeneratingTopics(true);
     try{
-      const prompt=`You are generating search queries that REAL consumers type into AI engines like ChatGPT, Gemini, and Perplexity.
+      const prompt=`You are an AEO (AI Engine Optimisation) analyst. Your job is to generate the exact queries that REAL consumers in ${region||"this region"} would type into ChatGPT, Gemini, or Perplexity when making decisions in the ${industry} industry.
 
 INDUSTRY: ${industry}
 REGION: ${region||"Global"}
-YEAR: 2026
 
-Generate exactly 15 search queries that people in this industry and region would realistically type into an AI chatbot in 2026.
+Generate exactly 15 search queries. These must sound like REAL people talking to an AI chatbot, not marketing copy or SEO keywords.
 
-CRITICAL RULES:
-- Queries must be BRAND-NEUTRAL. Do NOT mention, reference, or tailor queries toward any specific brand, company, product name, or website.
-- Queries should reflect what a REAL consumer in ${region||"this region"} would actually ask an AI engine.
-- Each query should be a natural question or request — the way a real person talks to ChatGPT, not an SEO keyword.
-- Mix query intents:
-  * 5 recommendation queries ("What is the best...", "Recommend me a...", "Top X for...")
-  * 3 comparison queries ("Compare...", "X vs Y category...", "Which is better for...")
-  * 3 how-to/informational queries ("How do I...", "What should I look for when...", "Guide to...")
-  * 2 transactional queries ("Where can I buy...", "Best deals on...", "Cheapest...")
-  * 2 general industry queries ("What are the latest trends in...", "Is X worth it in 2026...")
-- Queries must be relevant to the ${industry} industry in ${region||"Global"}.
-- Queries must be diverse — do NOT generate 5 variations of the same question.
-- Do NOT include any brand or competitor names in queries.
-- All queries must be in the primary language used in ${region||"this region"} for AI searches (English for US/UK/Singapore/Malaysia, etc).
+REALISM RULES:
+- Write queries the way real people type them: casual, sometimes grammatically imperfect, conversational
+- Include queries with local slang or region-specific phrasing if relevant to ${region||"this region"}
+- Some queries should be short and direct ("best telco malaysia"), others should be full sentences ("I'm looking for a mobile plan that gives me good coverage when I travel to rural areas")
+- Do NOT include any brand names, company names, or product names
+- Do NOT tailor queries toward any specific brand's strengths or weaknesses
 
-Return ONLY a JSON array of 15 query strings. No explanation, no numbering, no markdown.
-Example format: ["query 1", "query 2", ...]`;
-      const raw=await callOpenAI(prompt,"You generate brand-neutral search queries for industry research. Never include any brand or company names. Return ONLY valid JSON.",0.5);
+QUERY MIX:
+- 4 recommendation queries: "What's the best...", "recommend me...", "top X for..."
+- 3 comparison queries: "which is better for...", "compare...", "X vs Y" (use generic category terms, not brand names)
+- 3 evaluative queries: "is it worth...", "should I switch...", "what should I look for..."
+- 3 transactional queries: "cheapest...", "best deal...", "where to get..."
+- 2 broad industry queries: "what's happening with...", "latest trends in..."
+
+EXAMPLES OF GOOD vs BAD:
+GOOD: "which mobile plan is best if i stream a lot of youtube and netflix"
+BAD: "best postpaid plan with entertainment bundle including Disney+ and Netflix for heavy streamers in Malaysia 2026"
+
+GOOD: "should i switch from prepaid to postpaid"
+BAD: "comprehensive analysis of prepaid versus postpaid mobile telecommunications plans"
+
+GOOD: "cheapest unlimited data plan right now"
+BAD: "most cost-effective unlimited mobile data subscription package available in the current market"
+
+The queries should feel like something you'd overhear someone asking their friend or typing into ChatGPT at 11pm. Natural. Human. Real.
+
+Return ONLY a JSON array of 15 strings. No explanation.`;
+      const claudeResp=await callClaude(prompt, 0.5);
+      const raw=claudeResp.text||claudeResp.response||"";
       const result=safeJSON(raw);
       const topicArr=result&&result.topics?result.topics:Array.isArray(result)?result:null;
       if(topicArr&&Array.isArray(topicArr)){
@@ -3789,32 +3799,42 @@ Example format: ["query 1", "query 2", ...]`;
     const nw=normalizeUrl(data.website);const nc=(data.competitors||[]).map(c=>({...c,website:normalizeUrl(c.website||"")}));
     if(nw!==data.website||JSON.stringify(nc)!==JSON.stringify(data.competitors))setData(d=>({...d,website:nw,competitors:nc}));
     try{
-      const prompt=`You are generating search queries that REAL consumers type into AI engines like ChatGPT, Gemini, and Perplexity.
+      const prompt=`You are an AEO (AI Engine Optimisation) analyst. Your job is to generate the exact queries that REAL consumers in ${data.region||"this region"} would type into ChatGPT, Gemini, or Perplexity when making decisions in the ${data.industry||"general"} industry.
 
 INDUSTRY: ${data.industry||"general"}
 REGION: ${data.region||"Global"}
-YEAR: 2026
 
-Generate exactly 15 search queries that people in this industry and region would realistically type into an AI chatbot in 2026.
+Generate exactly 15 search queries. These must sound like REAL people talking to an AI chatbot, not marketing copy or SEO keywords.
 
-CRITICAL RULES:
-- Queries must be BRAND-NEUTRAL. Do NOT mention, reference, or tailor queries toward any specific brand, company, product name, or website.
-- Queries should reflect what a REAL consumer in ${data.region||"this region"} would actually ask an AI engine.
-- Each query should be a natural question or request — the way a real person talks to ChatGPT, not an SEO keyword.
-- Mix query intents:
-  * 5 recommendation queries ("What is the best...", "Recommend me a...", "Top X for...")
-  * 3 comparison queries ("Compare...", "X vs Y category...", "Which is better for...")
-  * 3 how-to/informational queries ("How do I...", "What should I look for when...", "Guide to...")
-  * 2 transactional queries ("Where can I buy...", "Best deals on...", "Cheapest...")
-  * 2 general industry queries ("What are the latest trends in...", "Is X worth it in 2026...")
-- Queries must be relevant to the ${data.industry||"general"} industry in ${data.region||"Global"}.
-- Queries must be diverse — do NOT generate 5 variations of the same question.
-- Do NOT include any brand or competitor names in queries.
-- All queries must be in the primary language used in ${data.region||"this region"} for AI searches (English for US/UK/Singapore/Malaysia, etc).
+REALISM RULES:
+- Write queries the way real people type them: casual, sometimes grammatically imperfect, conversational
+- Include queries with local slang or region-specific phrasing if relevant to ${data.region||"this region"}
+- Some queries should be short and direct ("best telco malaysia"), others should be full sentences ("I'm looking for a mobile plan that gives me good coverage when I travel to rural areas")
+- Do NOT include any brand names, company names, or product names
+- Do NOT tailor queries toward any specific brand's strengths or weaknesses
 
-Return ONLY a JSON array of 15 query strings. No explanation, no numbering, no markdown.
-Example format: ["query 1", "query 2", ...]`;
-      const raw=await callOpenAI(prompt,"You generate brand-neutral search queries for industry research. Never include any brand or company names. Return ONLY valid JSON.",0.5);
+QUERY MIX:
+- 4 recommendation queries: "What's the best...", "recommend me...", "top X for..."
+- 3 comparison queries: "which is better for...", "compare...", "X vs Y" (use generic category terms, not brand names)
+- 3 evaluative queries: "is it worth...", "should I switch...", "what should I look for..."
+- 3 transactional queries: "cheapest...", "best deal...", "where to get..."
+- 2 broad industry queries: "what's happening with...", "latest trends in..."
+
+EXAMPLES OF GOOD vs BAD:
+GOOD: "which mobile plan is best if i stream a lot of youtube and netflix"
+BAD: "best postpaid plan with entertainment bundle including Disney+ and Netflix for heavy streamers in Malaysia 2026"
+
+GOOD: "should i switch from prepaid to postpaid"
+BAD: "comprehensive analysis of prepaid versus postpaid mobile telecommunications plans"
+
+GOOD: "cheapest unlimited data plan right now"
+BAD: "most cost-effective unlimited mobile data subscription package available in the current market"
+
+The queries should feel like something you'd overhear someone asking their friend or typing into ChatGPT at 11pm. Natural. Human. Real.
+
+Return ONLY a JSON array of 15 strings. No explanation.`;
+      const claudeResp=await callClaude(prompt, 0.5);
+      const raw=claudeResp.text||claudeResp.response||"";
       const parsed=safeJSON(raw);
       const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(topics&&Array.isArray(topics)&&topics.length>0){
@@ -3834,29 +3854,21 @@ Example format: ["query 1", "query 2", ...]`;
     setGenTopics(true);setError(null);
     try{
       const existing=data.topics.join("; ");
-      const prompt=`You are generating search queries that REAL consumers type into AI engines like ChatGPT, Gemini, and Perplexity.
-
-INDUSTRY: ${data.industry||"general"}
-REGION: ${data.region||"Global"}
-YEAR: 2026
+      const prompt=`You are an AEO (AI Engine Optimisation) analyst. Generate 5 MORE search queries for the ${data.industry||"general"} industry in ${data.region||"Global"}.
 
 I already have these queries (do NOT duplicate them): ${existing}
 
-Generate exactly 5 NEW and DIFFERENT search queries that people in this industry and region would realistically type into an AI chatbot in 2026.
+Generate exactly 5 NEW and DIFFERENT queries. These must sound like REAL people talking to an AI chatbot — casual, conversational, human.
 
-CRITICAL RULES:
-- Queries must be BRAND-NEUTRAL. Do NOT mention, reference, or tailor queries toward any specific brand, company, product name, or website.
-- Queries should reflect what a REAL consumer in ${data.region||"this region"} would actually ask an AI engine.
-- Each query should be a natural question or request — the way a real person talks to ChatGPT, not an SEO keyword.
-- Mix query intents: recommendation, comparison, how-to, transactional, or general industry queries.
-- Queries must be relevant to the ${data.industry||"general"} industry in ${data.region||"Global"}.
-- Queries must be diverse — do NOT generate variations of existing queries.
-- Do NOT include any brand or competitor names in queries.
-- All queries must be in the primary language used in ${data.region||"this region"} for AI searches.
+RULES:
+- Do NOT include any brand names, company names, or product names
+- Mix of short casual queries and longer conversational ones
+- Include region-specific phrasing if relevant to ${data.region||"this region"}
+- Must be different angles from the existing queries above
 
-Return ONLY a JSON array of 5 query strings. No explanation, no numbering, no markdown.
-Example format: ["query 1", "query 2", ...]`;
-      const raw=await callOpenAI(prompt,"You generate brand-neutral search queries for industry research. Never include any brand or company names. Return ONLY valid JSON.",0.5);
+Return ONLY a JSON array of 5 strings. No explanation.`;
+      const claudeResp=await callClaude(prompt, 0.5);
+      const raw=claudeResp.text||claudeResp.response||"";
       const parsed=safeJSON(raw);
       const newTopics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(newTopics&&Array.isArray(newTopics)&&newTopics.length>0){
@@ -3926,36 +3938,45 @@ Return JSON only:
     try{
       const selectedArchetypes=archs;
       const archContext=selectedArchetypes.map((a,i)=>`${i+1}. ${typeof a==="string"?a:a.name||a.label||a}`).join("\n");
-      const prompt=`You are generating search queries that REAL consumers type into AI engines like ChatGPT, Gemini, and Perplexity.
+      const prompt=`You are an AEO (AI Engine Optimisation) analyst. Your job is to generate the exact queries that REAL consumers in ${data.region||"this region"} would type into ChatGPT, Gemini, or Perplexity when making decisions in the ${data.industry||"general"} industry.
 
 INDUSTRY: ${data.industry||"general"}
 REGION: ${data.region||"Global"}
-YEAR: 2026
 
-AUDIENCE PERSONAS (who is searching):
+TARGET AUDIENCES:
 ${archContext}
 
-Generate exactly 15 search queries that people in this industry and region would realistically type into an AI chatbot in 2026.
+Generate exactly 15 search queries. These must sound like REAL people talking to an AI chatbot, not marketing copy or SEO keywords.
 
-CRITICAL RULES:
-- Queries must be BRAND-NEUTRAL. Do NOT mention, reference, or tailor queries toward any specific brand, company, product name, or website.
-- Queries should reflect what a REAL consumer in ${data.region||"this region"} would actually ask an AI engine.
-- Each query should be a natural question or request — the way a real person talks to ChatGPT, not an SEO keyword.
-- Distribute queries across the audience personas provided.
-- Mix query intents:
-  * 5 recommendation queries ("What is the best...", "Recommend me a...", "Top X for...")
-  * 3 comparison queries ("Compare...", "X vs Y category...", "Which is better for...")
-  * 3 how-to/informational queries ("How do I...", "What should I look for when...", "Guide to...")
-  * 2 transactional queries ("Where can I buy...", "Best deals on...", "Cheapest...")
-  * 2 general industry queries ("What are the latest trends in...", "Is X worth it in 2026...")
-- Queries must be relevant to the ${data.industry||"general"} industry in ${data.region||"Global"}.
-- Queries must be diverse — do NOT generate 5 variations of the same question.
-- Do NOT include the brand being audited or any competitor names in queries.
-- All queries must be in the primary language used in ${data.region||"this region"} for AI searches (English for US/UK/Singapore/Malaysia, etc).
+REALISM RULES:
+- Write queries the way real people type them: casual, sometimes grammatically imperfect, conversational
+- Include queries with local slang or region-specific phrasing if relevant to ${data.region||"this region"}
+- Some queries should be short and direct ("best telco malaysia"), others should be full sentences ("I'm looking for a mobile plan that gives me good coverage when I travel to rural areas")
+- Do NOT include any brand names, company names, or product names
+- Do NOT tailor queries toward any specific brand's strengths or weaknesses
 
-Return ONLY a JSON array of 15 query strings. No explanation, no numbering, no markdown.
-Example format: ["query 1", "query 2", ...]`;
-      const raw=await callOpenAI(prompt,"You generate brand-neutral search queries for industry research. Never include any brand or company names. Return ONLY valid JSON.",0.5);
+QUERY MIX (distribute across the ${selectedArchetypes.length} audiences):
+- 4 recommendation queries: "What's the best...", "recommend me...", "top X for..."
+- 3 comparison queries: "which is better for...", "compare...", "X vs Y" (use generic category terms, not brand names)
+- 3 evaluative queries: "is it worth...", "should I switch...", "what should I look for..."
+- 3 transactional queries: "cheapest...", "best deal...", "where to get..."
+- 2 broad industry queries: "what's happening with...", "latest trends in..."
+
+EXAMPLES OF GOOD vs BAD:
+GOOD: "which mobile plan is best if i stream a lot of youtube and netflix"
+BAD: "best postpaid plan with entertainment bundle including Disney+ and Netflix for heavy streamers in Malaysia 2026"
+
+GOOD: "should i switch from prepaid to postpaid"
+BAD: "comprehensive analysis of prepaid versus postpaid mobile telecommunications plans"
+
+GOOD: "cheapest unlimited data plan right now"
+BAD: "most cost-effective unlimited mobile data subscription package available in the current market"
+
+The queries should feel like something you'd overhear someone asking their friend or typing into ChatGPT at 11pm. Natural. Human. Real.
+
+Return ONLY a JSON array of 15 strings. No explanation.`;
+      const claudeResp=await callClaude(prompt, 0.5);
+      const raw=claudeResp.text||claudeResp.response||"";
       const parsed=safeJSON(raw);
       const topics=parsed&&parsed.topics?parsed.topics:Array.isArray(parsed)?parsed:null;
       if(topics&&Array.isArray(topics)&&topics.length>0){
