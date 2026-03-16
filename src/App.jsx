@@ -898,14 +898,14 @@ Be strict: only "Cited" if specifically recommended or given detailed actionable
     const gaiv = googleAIVisibility[name] || emptyVis;
     const clv = claudeVisibility[name] || emptyVis;
     compScoresMap[name] = {
-      gpt: { mentionRate: gv.mentionRate, citationRate: gv.citationRate, score: Math.round(gv.mentionRate * 0.5 + gv.citationRate * 0.5) },
-      gemini: { mentionRate: gm.mentionRate, citationRate: gm.citationRate, score: Math.round(gm.mentionRate * 0.5 + gm.citationRate * 0.5) },
-      perplexity: { mentionRate: pv.mentionRate, citationRate: pv.citationRate, score: Math.round(pv.mentionRate * 0.5 + pv.citationRate * 0.5) },
-      googleai: { mentionRate: gaiv.mentionRate, citationRate: gaiv.citationRate, score: Math.round(gaiv.mentionRate * 0.5 + gaiv.citationRate * 0.5) },
-      claude: { mentionRate: clv.mentionRate, citationRate: clv.citationRate, score: Math.round(clv.mentionRate * 0.5 + clv.citationRate * 0.5) },
+      gpt: { mentionRate: gv.mentionRate, citationRate: gv.citationRate, score: gv.mentionRate },
+      gemini: { mentionRate: gm.mentionRate, citationRate: gm.citationRate, score: gm.mentionRate },
+      perplexity: { mentionRate: pv.mentionRate, citationRate: pv.citationRate, score: pv.mentionRate },
+      googleai: { mentionRate: gaiv.mentionRate, citationRate: gaiv.citationRate, score: gaiv.mentionRate },
+      claude: { mentionRate: clv.mentionRate, citationRate: clv.citationRate, score: clv.mentionRate },
       avgMentionRate: Math.round((gv.mentionRate + gm.mentionRate + pv.mentionRate + gaiv.mentionRate + clv.mentionRate) / 5),
       avgCitationRate: Math.round((gv.citationRate + gm.citationRate + pv.citationRate + gaiv.citationRate + clv.citationRate) / 5),
-      avgScore: Math.round(((gv.mentionRate * 0.5 + gv.citationRate * 0.5) + (gm.mentionRate * 0.5 + gm.citationRate * 0.5) + (pv.mentionRate * 0.5 + pv.citationRate * 0.5) + (gaiv.mentionRate * 0.5 + gaiv.citationRate * 0.5) + (clv.mentionRate * 0.5 + clv.citationRate * 0.5)) / 5)
+      avgScore: Math.round((gv.mentionRate + gm.mentionRate + pv.mentionRate + gaiv.mentionRate + clv.mentionRate) / 5)
     };
   });
   }catch(e){console.error("Competitor visibility map failed:",e.message||e);}
@@ -948,7 +948,7 @@ Return JSON only:
   let pplxData = {score:0,mentionRate:0,citationRate:0,queries:[],strengths:["Analysis unavailable"],weaknesses:["Analysis unavailable"]};
   try{
     gptData = {
-      score: Math.round(brandGptVis.mentionRate * 0.5 + brandGptVis.citationRate * 0.5),
+      score: brandGptVis.mentionRate,
       mentionRate: brandGptVis.mentionRate,
       citationRate: brandGptVis.citationRate,
       queries: brandGptVis.queries || [],
@@ -956,7 +956,7 @@ Return JSON only:
       weaknesses: swGpt.weaknesses || ["Analysis unavailable"]
     };
     gemData = {
-      score: Math.round(brandGemVis.mentionRate * 0.5 + brandGemVis.citationRate * 0.5),
+      score: brandGemVis.mentionRate,
       mentionRate: brandGemVis.mentionRate,
       citationRate: brandGemVis.citationRate,
       queries: brandGemVis.queries || [],
@@ -964,7 +964,7 @@ Return JSON only:
       weaknesses: swGem.weaknesses || ["Analysis unavailable"]
     };
     pplxData = {
-      score: Math.round(brandPplxVis.mentionRate * 0.5 + brandPplxVis.citationRate * 0.5),
+      score: brandPplxVis.mentionRate,
       mentionRate: brandPplxVis.mentionRate,
       citationRate: brandPplxVis.citationRate,
       queries: brandPplxVis.queries || [],
@@ -972,7 +972,7 @@ Return JSON only:
       weaknesses: ["Analysis via Perplexity"]
     };
     googleAIData = {
-      score: Math.round(brandGaiVis.mentionRate * 0.5 + brandGaiVis.citationRate * 0.5),
+      score: brandGaiVis.mentionRate,
       mentionRate: brandGaiVis.mentionRate,
       citationRate: brandGaiVis.citationRate,
       queries: brandGaiVis.queries || [],
@@ -980,7 +980,7 @@ Return JSON only:
       weaknesses: ["Analysis via Google AI Mode"]
     };
     claudeData = {
-      score: Math.round(brandClaudeVis.mentionRate * 0.5 + brandClaudeVis.citationRate * 0.5),
+      score: brandClaudeVis.mentionRate,
       mentionRate: brandClaudeVis.mentionRate,
       citationRate: brandClaudeVis.citationRate,
       queries: brandClaudeVis.queries || [],
@@ -1742,7 +1742,8 @@ IMPORTANT: Do NOT make everything a blog post. Include technical tasks (schema, 
   (async()=>{
   onProgress("Building 90-day roadmap...",88);
   try{
-  const overallScore=Math.round(((gptData.score||0)+(gemData.score||0)+(pplxData.score||0)+(googleAIData.score||0)+(claudeData.score||0))/5);
+  const roadmapWeights=getEngineWeights(region);
+  const overallScore=Math.round((gptData.score||0)*roadmapWeights.chatgpt+(gemData.score||0)*roadmapWeights.gemini+(pplxData.score||0)*roadmapWeights.perplexity+(googleAIData.score||0)*(roadmapWeights.googleai||0)+(claudeData.score||0)*(roadmapWeights.claude||0));
   const criticalCats=(mergedPainPoints||[]).filter(p=>p.severity==="critical").map(p=>p.label).join(", ");
   const weakCats=(mergedPainPoints||[]).filter(p=>p.severity==="warning").map(p=>p.label).join(", ");
   const channelGaps=(chData.channels||[]).filter(c=>c.status==="Not Present").map(c=>c.channel).join(", ");
@@ -1996,7 +1997,7 @@ Each department: 2-3 specific tasks. Total 5-7 tasks per phase. All tasks tailor
     const nCompNames = (compData?.competitors || []).map(c => c.name).filter(n => n).slice(0, 5);
     const compScoresArr = nCompNames.map(name => {
       const vis = compScoresMap?.[name];
-      return { name, score: vis ? Math.round(((vis.avgMentionRate||0) + (vis.avgCitationRate||0)) / 2) : 0 };
+      return { name, score: vis ? (vis.avgMentionRate||0) : 0 };
     }).sort((a, b) => b.score - a.score);
     const topCompetitor = compScoresArr[0] || { name: "competitors", score: 0 };
 
@@ -2055,6 +2056,8 @@ Each department: 2-3 specific tasks. Total 5-7 tasks per phase. All tasks tailor
     const aiCrawlerSummary=aiCrawlerData?(()=>{const r=aiCrawlerData.robotsTxt;const l=aiCrawlerData.llmsTxt;let s=r?.found?aiCrawlerData.summary:"robots.txt not found";if(r?.found){const blocked=(r.crawlers||[]).filter(c=>c.blocked);if(blocked.length>0)s+=` (blocked: ${blocked.map(c=>c.agent).join(", ")})`;}s+=l?.found?" | llms.txt: present":" | llms.txt: not found";return s;})():null;
 
     const narrativePrompt = `You are a senior strategy consultant writing an AI visibility report for "${brand}" in ${industry} (${region}).
+
+SCORING METHOD: Visibility score = percentage of AI engine responses where the brand appears (Cited or Mentioned). Citation rate is tracked separately as the percentage where the brand is actively recommended.
 
 AUDIT DATA:
 - Overall visibility score: ${overallScore}%
@@ -2264,7 +2267,7 @@ function exportPDF(r){
   if(avgCitation<10)findings.push(avgCitation+"% citation rate. Users get answers but aren't sent to your site.");
   const critCats=(r.painPoints||[]).filter(p=>p.severity==="critical");
   if(critCats.length>0)findings.push(critCats.map(c=>c.label.split("/")[0].trim()+" "+c.score+"%").join(", ")+" — need immediate attention.");
-  const compsAhead=(r.competitors||[]).filter(c=>{const cr=Math.round(((c.mentionRate||0)+(c.citationRate||0))/2);return cr>Math.round((avgMention+avgCitation)/2);});
+  const compsAhead=(r.competitors||[]).filter(c=>(c.mentionRate||0)>avgMention);
   if(compsAhead.length>0)findings.push(compsAhead.map(c=>c.name).join(", ")+" scoring above you on visibility metrics.");
   if(r.narratives?.dashboard){
     checkPage(20);doc.setFontSize(10);doc.setFont("helvetica","bold");doc.setTextColor(...dark);doc.text("AI Summary",margin,y);y+=6;
@@ -2562,7 +2565,7 @@ function generateAll(cd, apiData){
       return{...e,score:ae.score||0,mentionRate:ae.mentionRate||0,citationRate:ae.citationRate||0,queries:(ae.queries||[]).map(q=>({query:q.query||"",status:q.status||"Absent"})),strengths:fB(ae.strengths,[`${cd.brand} appears in some ${cd.industry} queries`]),weaknesses:fB(ae.weaknesses,[`Competitors cited more frequently`])};}
     return{...e,score:0,mentionRate:0,citationRate:0,queries:[],strengths:[],weaknesses:["No API data received"]};
   });
-  engines.forEach(e=>{e.score=Math.round(e.mentionRate*0.5+e.citationRate*0.5);});
+  engines.forEach(e=>{e.score=e.mentionRate;});
   const gWeights=getEngineWeights(cd.region);
   const overall=Math.round(engines.reduce((sum,e)=>{const w=gWeights[e.id]||(1/engines.length);return sum+(e.score*w);},0));
   const getScoreLabel=(s)=>s>=80?"Dominant":s>=60?"Strong":s>=40?"Moderate":s>=20?"Weak":"Invisible";
@@ -4280,8 +4283,8 @@ function DashboardPage({r,history,goTo}){
   const criticalCats=r.painPoints.filter(p=>p.severity==="critical");
   const weakestCat=r.painPoints.reduce((a,b)=>b.score<a.score?b:a,r.painPoints[0]);
   const strongestCat=r.painPoints.reduce((a,b)=>b.score>a.score?b:a,r.painPoints[0]);
-  const brandAvgRate=Math.round((avgMentions+avgCitations)/2);
-  const compsAhead=r.competitors.filter(c=>{const cr=Math.round(((c.mentionRate||0)+(c.citationRate||0))/2);return cr>brandAvgRate;});
+  const brandAvgRate=avgMentions;
+  const compsAhead=r.competitors.filter(c=>(c.mentionRate||0)>brandAvgRate);
   const channels=r.aeoChannels||[];
   const missingChannels=channels.filter(ch=>ch.status==="Not Present"||ch.statusLabel==="Not Present");
 
@@ -4574,8 +4577,8 @@ function DashboardPage({r,history,goTo}){
                 <td style={{padding:"10px 14px",textAlign:"center",color:C.muted}}>{"\u2014"}</td>
               </tr>
               {r.competitors.filter(c=>c.name.toLowerCase()!==r.clientData.brand.toLowerCase()).map((c,i)=>{
-                const compScore=Math.round(((c.mentionRate||0)+(c.citationRate||0))/2);
-                const diff=compScore-Math.round((avgMentions+avgCitations)/2);
+                const compScore=c.mentionRate||0;
+                const diff=compScore-avgMentions;
                 const isOpen=expandedComp===i;
                 const compWebsite=(r.clientData.competitors||[]).find(cc=>cc.name===c.name)?.website||"";
                 const compColor=["#f97316","#8b5cf6","#06b6d4","#ec4899","#84cc16"][i%5];
